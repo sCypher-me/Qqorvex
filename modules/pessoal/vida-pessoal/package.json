@@ -1,0 +1,31 @@
+{
+  "name": "@qqorvex/module-vida-pessoal",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@qqorvex/database": "workspace:*",
+    "@qqorvex/module-documentos": "workspace:*",
+    "@qqorvex/module-financas": "workspace:*",
+    "@qqorvex/module-hoje": "workspace:*",
+    "@qqorvex/module-metas-habitos": "workspace:*",
+    "@qqorvex/module-tarefas": "workspace:*",
+    "@qqorvex/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

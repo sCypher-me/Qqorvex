@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "qqorvex-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:\\Users\\Julio\\AppData\\Roaming\\npm\\node_modules\\pnpm\\bin\\pnpm.mjs",
+        "--filter",
+        "qqorvex",
+        "dev"
+      ],
+      "port": 5173
+    }
+  ]
+}

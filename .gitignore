@@ -1,0 +1,32 @@
+node_modules/
+dist/
+dist-ssr/
+build/
+.turbo/
+*.local
+.env
+.env.*
+!.env.example
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Editors/OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+*.tsbuildinfo
+
+# Superpowers visual brainstorming companion (mockups temporários)
+.superpowers/

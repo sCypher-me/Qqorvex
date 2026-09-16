@@ -1,0 +1,44 @@
+{
+  "name": "qqorvex",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@qqorvex/auth": "workspace:*",
+    "@qqorvex/database": "workspace:*",
+    "@qqorvex/design-system": "workspace:*",
+    "@qqorvex/module-agenda": "workspace:*",
+    "@qqorvex/module-biblioteca": "workspace:*",
+    "@qqorvex/module-documentos": "workspace:*",
+    "@qqorvex/module-estudos": "workspace:*",
+    "@qqorvex/module-financas": "workspace:*",
+    "@qqorvex/module-gamificacao": "workspace:*",
+    "@qqorvex/module-hoje": "workspace:*",
+    "@qqorvex/module-metas-habitos": "workspace:*",
+    "@qqorvex/module-segundo-cerebro": "workspace:*",
+    "@qqorvex/module-tarefas": "workspace:*",
+    "@qqorvex/module-vida-pessoal": "workspace:*",
+    "@qqorvex/notifications": "workspace:^",
+    "@qqorvex/ui": "workspace:*",
+    "@qqorvex/vex": "workspace:*",
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

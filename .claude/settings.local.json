@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /tmp/xmind1 /tmp/xmind2)",
+      "Bash(unzip -o \"C:\\\\Users\\\\Julio\\\\.claude\\\\uploads\\\\c400da5a-c00c-51a7-860a-37282bd336be\\\\fe73dfd2-Qqorvex.xmind\" -d /tmp/xmind1)",
+      "Bash(unzip -o \"C:\\\\Users\\\\Julio\\\\.claude\\\\uploads\\\\c400da5a-c00c-51a7-860a-37282bd336be\\\\274324b3-Continua__o_Qqorvex.xmind\" -d /tmp/xmind2)",
+      "Read(//tmp/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(pnpm --filter @qqorvex/module-estudos typecheck)",
+      "Bash(pnpm --filter @qqorvex/module-agenda typecheck)",
+      "Bash(pnpm --filter @qqorvex/module-biblioteca typecheck)",
+      "Bash(pnpm --filter qqorvex typecheck)"
+    ]
+  }
+}

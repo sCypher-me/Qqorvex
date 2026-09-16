@@ -1,0 +1,60 @@
+/*
+  Qqorvex Design System — Tokens
+  Fonte: Xmind "Qqorvex" > Paleta Oficial, Cores Semânticas, Tipografia Oficial.
+  Estes valores são a fonte de verdade visual do produto; não redefinir cores
+  ad-hoc dentro de módulos.
+*/
+@import "../fonts/faces.css";
+
+@theme {
+  /* Fundação */
+  --color-background: #0f1114;
+  --color-surface-1: #14181a;
+  --color-surface-2: #152124;
+  --color-border: #2d2d2d;
+
+  /* Texto */
+  --color-text-primary: #f4efe6;
+  --color-text-secondary-warm: #cfafa2;
+
+  /* Marca */
+  --color-brand-gold: #cf9c49;
+  --color-brand-cyan: #00e6fb;
+
+  /* Apoio */
+  --color-cyan-muted: #64adb4;
+  --color-warm-muted: #635752;
+
+  /* Semânticas */
+  --color-success: #4ade80;
+  --color-success-bg: rgb(74 222 128 / 0.10);
+  --color-success-border: rgb(74 222 128 / 0.30);
+
+  --color-error: #ff5d73;
+  --color-error-bg: rgb(255 93 115 / 0.10);
+  --color-error-border: rgb(255 93 115 / 0.30);
+
+  --color-warning: #f4c95d;
+  --color-warning-bg: rgb(244 201 93 / 0.10);
+  --color-warning-border: rgb(244 201 93 / 0.30);
+
+  --color-info: #5ebbff;
+  --color-info-bg: rgb(94 187 255 / 0.10);
+  --color-info-border: rgb(94 187 255 / 0.30);
+
+  /* Tipografia */
+  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "Manrope", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /**
+   * Card padrão (docs/decisions/design-system-componentes-v1.md) — decidido via brainstorming
+   * visual: cantos suaves, sombra discreta, borda de destaque fina à esquerda.
+   */
+  --radius-card: 0.625rem; /* 10px */
+  --shadow-card: 0 4px 18px rgb(0 0 0 / 0.35);
+
+  /* Chips de ação (botões sem borda, fundo tintado bem sutil) — mesma decisão do Card. */
+  --color-chip-neutral: rgb(244 239 230 / 0.06);
+  --color-chip-cyan: rgb(0 230 251 / 0.10);
+}

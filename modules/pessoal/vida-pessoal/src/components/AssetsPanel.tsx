@@ -1,0 +1,103 @@
+import { useState, type FormEvent } from "react";
+import type { SupabaseClient, Database } from "@qqorvex/database";
+import { useWarranties } from "@qqorvex/module-documentos";
+import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { useAssets, useCreateAsset, useDeleteAsset } from "../hooks/useVidaPratica";
+
+/** Inventário mais amplo que Garantias (útil pra seguro/mudança) — vínculo opcional com uma garantia já cadastrada. */
+export function AssetsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
+  const { assets, isLoading } = useAssets(client);
+  const { warranties } = useWarranties(client);
+  const createAsset = useCreateAsset(client, userId);
+  const deleteAsset = useDeleteAsset(client);
+  const [warrantyId, setWarrantyId] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const confirmAsset = assets.find((a) => a.id === confirmDeleteId) ?? null;
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+    if (!name) return;
+    createAsset.mutate({
+      name,
+      category: String(form.get("category") ?? "").trim() || undefined,
+      location: String(form.get("location") ?? "").trim() || undefined,
+      estimatedValue: form.get("estimatedValue") ? Number(form.get("estimatedValue")) : undefined,
+      warrantyId: warrantyId || undefined,
+    });
+    event.currentTarget.reset();
+    setWarrantyId("");
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
+        <input name="name" placeholder="Item" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
+        <input name="category" placeholder="Categoria" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
+        <input
+          name="estimatedValue"
+          type="number"
+          placeholder="Valor estimado"
+          className="w-32 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+        />
+        <input name="location" placeholder="Onde está" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
+        {warranties.length > 0 && (
+          <select
+            value={warrantyId}
+            onChange={(e) => setWarrantyId(e.target.value)}
+            className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+          >
+            <option value="">Garantia (opcional)</option>
+            {warranties.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.product_name}
+              </option>
+            ))}
+          </select>
+        )}
+        <Button type="submit" variant="secondary">
+          Adicionar
+        </Button>
+      </form>
+
+      {isLoading ? (
+        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+      ) : assets.length === 0 ? (
+        <p className="font-sans text-sm text-text-secondary-warm">Nenhum bem cadastrado.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {assets.map((asset) => (
+            <li key={asset.id}>
+              <Card>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-sans text-sm text-text-primary">{asset.name}</p>
+                    <p className="font-sans text-xs text-text-secondary-warm">
+                      {[asset.category, asset.estimated_value ? `R$ ${asset.estimated_value}` : null, asset.location]
+                        .filter(Boolean)
+                        .join(" · ") || "sem detalhes"}
+                    </p>
+                  </div>
+                  <Button type="button" variant="chip" onClick={() => setConfirmDeleteId(asset.id)}>
+                    Excluir
+                  </Button>
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ConfirmDialog
+        isOpen={confirmAsset !== null}
+        title={`Excluir "${confirmAsset?.name}"?`}
+        description="Essa ação não pode ser desfeita."
+        onConfirm={() => {
+          if (confirmAsset) deleteAsset.mutate(confirmAsset.id);
+          setConfirmDeleteId(null);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+    </div>
+  );
+}
