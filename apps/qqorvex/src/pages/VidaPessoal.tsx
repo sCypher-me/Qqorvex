@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button } from "@qqorvex/ui";
+import { Button, ChipTabs, EmptyState } from "@qqorvex/ui";
 import {
   useCreateIdea,
   useCreatePlan,
@@ -30,12 +30,13 @@ import {
 import { supabase } from "../app/supabase";
 
 type Bloco = "planejamento" | "bem-estar" | "pratica";
+type Coluna = "planos" | "projetos" | "ideias";
 
-const BLOCO_LABEL: Record<Bloco, string> = {
-  planejamento: "Planejamento",
-  "bem-estar": "Bem-estar",
-  pratica: "Vida Prática",
-};
+const BLOCO_OPTIONS: { value: Bloco; label: string }[] = [
+  { value: "planejamento", label: "Planejamento" },
+  { value: "bem-estar", label: "Bem-estar" },
+  { value: "pratica", label: "Vida Prática" },
+];
 
 /**
  * Vida Pessoal — módulo recriado com o usuário em 11/09/2026 (o Xmind original dessa parte foi
@@ -46,6 +47,7 @@ export function VidaPessoalPage() {
   const { session } = useAuth();
   const userId = session!.user.id;
   const [bloco, setBloco] = useState<Bloco>("planejamento");
+  const [formAberto, setFormAberto] = useState<Coluna | null>(null);
 
   const { plans, isLoading: plansLoading } = usePlans(supabase);
   const createPlan = useCreatePlan(supabase, userId);
@@ -61,121 +63,149 @@ export function VidaPessoalPage() {
   const createIdea = useCreateIdea(supabase, userId);
   const deleteIdea = useDeleteIdea(supabase);
 
-  return (
-    <main className="min-h-screen bg-background px-4 py-8 flex flex-col items-center gap-6">
-      <div className="w-full max-w-2xl">
-        <h1 className="font-display text-2xl font-bold text-text-primary">Vida Pessoal</h1>
-      </div>
+  const fecharForm = () => setFormAberto(null);
 
-      <div className="w-full max-w-2xl flex gap-2">
-        {(Object.keys(BLOCO_LABEL) as Bloco[]).map((b) => (
-          <Button key={b} type="button" variant={bloco === b ? "chip-accent" : "chip"} onClick={() => setBloco(b)}>
-            {BLOCO_LABEL[b]}
-          </Button>
-        ))}
-      </div>
+  return (
+    <div className="flex flex-col gap-[18px]">
+      <ChipTabs options={BLOCO_OPTIONS} value={bloco} onChange={setBloco} />
 
       {bloco === "planejamento" && (
-        <>
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Planos</h2>
-            <NewPlanForm onCreate={(input) => createPlan.mutate(input)} />
-            {plansLoading ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-            ) : plans.length === 0 ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Nenhum plano ainda.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {plans.map((plan) => (
-                  <PlanCard
-                    key={plan.id}
-                    client={supabase}
-                    plan={plan}
-                    onChangeStatus={(status) => updatePlanStatus.mutate({ planId: plan.id, status })}
-                    onDelete={() => deletePlan.mutate(plan.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+        <div className="grid grid-cols-1 lg:grid-cols-[repeat(3,minmax(0,1fr))] gap-5 items-start">
+          <PlanningColumn
+            title="Planos"
+            count={plans.length}
+            isLoading={plansLoading}
+            emptyText="Nenhum plano ainda."
+            formOpen={formAberto === "planos"}
+            onOpenForm={() => setFormAberto("planos")}
+            form={
+              <NewPlanForm
+                onCreate={(input) => {
+                  createPlan.mutate(input);
+                  fecharForm();
+                }}
+                onCancel={fecharForm}
+              />
+            }
+          >
+            {plans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                client={supabase}
+                plan={plan}
+                onChangeStatus={(status) => updatePlanStatus.mutate({ planId: plan.id, status })}
+                onDelete={() => deletePlan.mutate(plan.id)}
+              />
+            ))}
+          </PlanningColumn>
 
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Projetos</h2>
-            <NewProjectForm onCreate={(title) => createProject.mutate({ title })} />
-            {projectsLoading ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-            ) : projects.length === 0 ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Nenhum projeto ainda.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {projects.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    client={supabase}
-                    project={project}
-                    onChangeStatus={(status) => updateProjectStatus.mutate({ projectId: project.id, status })}
-                    onDelete={() => deleteProject.mutate(project.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+          <PlanningColumn
+            title="Projetos"
+            count={projects.length}
+            isLoading={projectsLoading}
+            emptyText="Nenhum projeto ainda."
+            formOpen={formAberto === "projetos"}
+            onOpenForm={() => setFormAberto("projetos")}
+            form={
+              <NewProjectForm
+                onCreate={(title) => {
+                  createProject.mutate({ title });
+                  fecharForm();
+                }}
+                onCancel={fecharForm}
+              />
+            }
+          >
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                client={supabase}
+                project={project}
+                onChangeStatus={(status) => updateProjectStatus.mutate({ projectId: project.id, status })}
+                onDelete={() => deleteProject.mutate(project.id)}
+              />
+            ))}
+          </PlanningColumn>
 
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Ideias</h2>
-            <NewIdeaForm onCreate={(input) => createIdea.mutate(input)} />
-            {ideasLoading ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-            ) : ideas.length === 0 ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Nenhuma ideia capturada ainda.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {ideas.map((idea) => (
-                  <IdeaCard key={idea.id} idea={idea} onDelete={() => deleteIdea.mutate(idea.id)} />
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+          <PlanningColumn
+            title="Ideias"
+            count={ideas.length}
+            isLoading={ideasLoading}
+            emptyText="Nenhuma ideia capturada ainda."
+            formOpen={formAberto === "ideias"}
+            onOpenForm={() => setFormAberto("ideias")}
+            form={
+              <NewIdeaForm
+                onCreate={(input) => {
+                  createIdea.mutate(input);
+                  fecharForm();
+                }}
+                onCancel={fecharForm}
+              />
+            }
+          >
+            {ideas.map((idea) => (
+              <IdeaCard key={idea.id} idea={idea} onDelete={() => deleteIdea.mutate(idea.id)} />
+            ))}
+          </PlanningColumn>
+        </div>
       )}
 
       {bloco === "bem-estar" && (
-        <section className="w-full max-w-2xl flex flex-col gap-3">
-          <h2 className="font-display text-lg font-semibold text-text-primary">Check-in diário</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
           <DailyCheckinForm client={supabase} userId={userId} />
-          <h2 className="font-display text-lg font-semibold text-text-primary mt-2">Pomodoro</h2>
           <PomodoroTimer client={supabase} userId={userId} />
-        </section>
+        </div>
       )}
 
       {bloco === "pratica" && (
-        <>
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Contatos Úteis</h2>
-            <UsefulContactsPanel client={supabase} userId={userId} />
-          </section>
-
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Veículos</h2>
-            <VehiclesPanel client={supabase} userId={userId} />
-          </section>
-
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Bens e Inventário</h2>
-            <AssetsPanel client={supabase} userId={userId} />
-          </section>
-
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Compras Importantes</h2>
-            <ImportantPurchasesPanel client={supabase} userId={userId} />
-          </section>
-
-          <section className="w-full max-w-2xl flex flex-col gap-3">
-            <h2 className="font-display text-lg font-semibold text-text-primary">Lista de Compras</h2>
-            <ShoppingListPanel client={supabase} userId={userId} />
-          </section>
-        </>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 items-start">
+          <UsefulContactsPanel client={supabase} userId={userId} />
+          <VehiclesPanel client={supabase} userId={userId} />
+          <AssetsPanel client={supabase} userId={userId} />
+          <ImportantPurchasesPanel client={supabase} userId={userId} />
+          <ShoppingListPanel client={supabase} userId={userId} />
+        </div>
       )}
-    </main>
+    </div>
+  );
+}
+
+function PlanningColumn({
+  title,
+  count,
+  isLoading,
+  emptyText,
+  formOpen,
+  onOpenForm,
+  form,
+  children,
+}: {
+  title: string;
+  count: number;
+  isLoading: boolean;
+  emptyText: string;
+  formOpen: boolean;
+  onOpenForm: () => void;
+  form: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3 min-w-0">
+      <div className="flex items-center gap-2.5">
+        <h2 className="font-display text-[17px] font-semibold text-text-primary">{title}</h2>
+        {!isLoading && <span className="font-mono text-xs text-text-muted">{count}</span>}
+      </div>
+
+      {isLoading ? <EmptyState>Carregando...</EmptyState> : count === 0 && !formOpen ? <EmptyState>{emptyText}</EmptyState> : children}
+
+      {formOpen ? (
+        <div className="qv-card p-4">{form}</div>
+      ) : (
+        <Button type="button" variant="dashed" className="w-full" onClick={onOpenForm}>
+          Adicionar
+        </Button>
+      )}
+    </section>
   );
 }

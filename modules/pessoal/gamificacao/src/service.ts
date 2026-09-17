@@ -1,4 +1,4 @@
-import type { GamificationAction, GamificationStats } from "./types";
+import type { GamificationAction, GamificationCounterField, GamificationStats } from "./types";
 
 /** XP concedido por ação — números de partida, fáceis de recalibrar depois (só código, sem migration). */
 export const XP_BY_ACTION: Record<GamificationAction, number> = {
@@ -60,6 +60,9 @@ export interface BadgeDefinition {
   key: string;
   label: string;
   description: string;
+  /** Contador de `gamification_stats` e meta que a badge checa — só para exibir "N de M" nas telas. */
+  counterField: GamificationCounterField;
+  target: number;
   isUnlocked: (stats: GamificationStats) => boolean;
 }
 
@@ -69,24 +72,32 @@ export const BADGE_CATALOG: BadgeDefinition[] = [
     key: "10_tarefas",
     label: "Produtivo",
     description: "Concluiu 10 tarefas.",
+    counterField: "tasks_completed",
+    target: 10,
     isUnlocked: (stats) => stats.tasks_completed >= 10,
   },
   {
     key: "5_checkins",
     label: "Consistente",
     description: "Fez 5 check-ins de hábito ou meta.",
+    counterField: "habit_or_goal_checkins",
+    target: 5,
     isUnlocked: (stats) => stats.habit_or_goal_checkins >= 5,
   },
   {
     key: "3_quizzes",
     label: "Estudioso",
     description: "Respondeu 3 quizzes em Estudos.",
+    counterField: "quizzes_completed",
+    target: 3,
     isUnlocked: (stats) => stats.quizzes_completed >= 3,
   },
   {
     key: "5_biblioteca",
     label: "Leitor",
     description: "Concluiu 5 itens da Biblioteca.",
+    counterField: "library_items_completed",
+    target: 5,
     isUnlocked: (stats) => stats.library_items_completed >= 5,
   },
 ];

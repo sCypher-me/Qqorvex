@@ -617,3 +617,10 @@ pastas vazias antecipadamente.
   navegador real (15/09/2026)**: Tarefas, Agenda, Finanças, Vida Pessoal e Segurança testados ao
   vivo com usuário de teste (`khyron.box@gmail.com`, apagado ao final) — Card/Badge/ConfirmDialog
   renderizando corretamente em todos, nenhum problema visual encontrado. Sem pendência.
+- **Design System v1.0 "Balanced Vex" — redesign completo aplicado** (16/09/2026, ver
+  `docs/decisions/redesign-visual-brainstorm.md` pro histórico do brainstorming e
+  `docs/design-system/tokens.md` pro sistema atual): supera a fase "página por página" acima —
+  nova paleta mais contida, sistema de classes `qv-*`, shell novo (header, paleta de comando
+  Cmd+K, painel da Vex com reconhecimento de contexto), Vex com presença visual real (login,
+  Hoje, painel lateral) pela primeira vez desde que a arte dela existe. Verificado: typecheck/
+  build/testes limpos, confirmado em navegador real. Nada commitado ainda.

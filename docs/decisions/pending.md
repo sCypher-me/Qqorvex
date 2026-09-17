@@ -1486,6 +1486,24 @@
   Sem migration, sem UI, sem teste de navegador (é infraestrutura de desenvolvimento, não uma
   feature visível). Rodar com `pnpm test` (ou `npx vitest run`) na raiz.
 
+- **Redesign visual completo — Design System v1.0 "Balanced Vex" aplicado (16/09/2026)**: depois
+  de 4 rodadas de brainstorming visual malsucedidas nesta sessão (ver
+  `docs/decisions/redesign-visual-brainstorm.md` pro histórico completo — a descoberta dos assets
+  reais da Vex em `Vex/`/`Logotipos/`, o briefing "produto de verdade + lar da Vex", a referência
+  da Persona 5), o usuário levou o design pra uma sessão separada e trouxe de volta **já aplicado
+  direto no código** (103 arquivos, +7303/-3927 linhas, não commitado). Repo virou git de verdade
+  nesse meio tempo (não era antes). Verifiquei tudo: typecheck limpo nos 18 projetos, build limpo
+  (644kB no chunk principal), 87/87 testes passando, confirmado ao vivo no navegador (login com
+  arte de corpo inteiro da Vex, Hoje com anel de nível e card ambiente da Vex, Finanças com o
+  painel lateral da Vex reconhecendo "contexto atual"). Nova paleta mais contida/dessaturada
+  (`#090b0e`/gold `#b88a54`/cyan `#43b9d2`) que a v1 baseada só no Xmind, sistema de classes `qv-*`
+  em `tokens.css`, novo shell (`apps/qqorvex/src/app/shell/`: header, paleta de comando Cmd+K,
+  painel da Vex), páginas novas (`AuthLayout`, `Gamificacao`, `Perfil`). Detalhes completos em
+  `docs/design-system/tokens.md`, que agora é a fonte de verdade do design system (a versão
+  anterior deste arquivo estava obsoleta). `designq.zip` (40MB, material bruto trazido da outra
+  sessão) e `.superpowers/` adicionados ao `.gitignore`. **Pendências reais**: nada commitado
+  ainda (perguntar antes do primeiro commit); decidir o que fazer com `designq.zip` em disco.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

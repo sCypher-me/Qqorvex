@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
-import { useAccounts, useCreateAccount } from "../hooks/useFinancas";
+import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { useAccounts, useCreateAccount, useTransactions } from "../hooks/useFinancas";
+import { computeAccountBalance } from "../service";
 import type { Account } from "../types";
+import { formatBRL } from "./TransactionList";
 
 const ACCOUNT_TYPE_LABEL: Record<Account["account_type"], string> = {
   dinheiro: "Dinheiro",
@@ -13,6 +15,7 @@ const ACCOUNT_TYPE_LABEL: Record<Account["account_type"], string> = {
 
 export function AccountsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { accounts, isLoading } = useAccounts(client);
+  const { transactions } = useTransactions(client);
   const createAccount = useCreateAccount(client, userId);
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState<Account["account_type"]>("outro");
@@ -26,33 +29,46 @@ export function AccountsPanel({ client, userId }: { client: SupabaseClient<Datab
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Contas</h2>
+    <div className="qv-card overflow-hidden">
+      <CardHeader divider title="Contas" meta={isLoading ? undefined : `${accounts.length}`} />
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
       ) : accounts.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma conta cadastrada.</p>
+        <EmptyState className="px-[18px] py-4">Nenhuma conta cadastrada. Adicione a primeira abaixo.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {accounts.map((account) => (
-            <li key={account.id} className="flex items-center justify-between text-sm text-text-primary">
-              <span>{account.name}</span>
-              <span className="text-xs text-text-secondary-warm">{ACCOUNT_TYPE_LABEL[account.account_type]}</span>
-            </li>
-          ))}
+        <ul>
+          {accounts.map((account) => {
+            const balance = computeAccountBalance(transactions, account.id);
+            return (
+              <li key={account.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[13px]">
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="text-sm font-medium truncate">{account.name}</span>
+                  <span className="text-xs text-text-muted">{ACCOUNT_TYPE_LABEL[account.account_type]}</span>
+                </div>
+                <span
+                  className={`font-mono text-sm font-medium whitespace-nowrap ${balance < 0 ? "text-error" : "text-text-primary"}`}
+                >
+                  {balance < 0 ? "− " : ""}
+                  {formatBRL(balance)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="qv-row-top flex flex-wrap gap-2 px-[18px] py-[14px]">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da conta"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Nome da conta"
+          className="qv-field flex-[2_1_160px] py-2"
         />
         <select
           value={accountType}
           onChange={(e) => setAccountType(e.target.value as Account["account_type"])}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Tipo de conta"
+          className="qv-field flex-[1_1_140px] py-2 px-3 text-[13px]"
         >
           {Object.entries(ACCOUNT_TYPE_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
@@ -60,7 +76,7 @@ export function AccountsPanel({ client, userId }: { client: SupabaseClient<Datab
             </option>
           ))}
         </select>
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="primary" size="sm" disabled={createAccount.isPending}>
           Adicionar
         </Button>
       </form>

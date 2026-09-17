@@ -1,8 +1,12 @@
 import { useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Card, Button, ConfirmDialog } from "@qqorvex/ui";
+import { Button, CardHeader, ConfirmDialog, EmptyState } from "@qqorvex/ui";
 import { useRestoreDocument, usePurgeDocument, useTrashedDocuments } from "../hooks/useDocumentos";
-import { daysUntilTrashExpiry } from "../service";
+import { TRASH_RETENTION_DAYS, daysUntilTrashExpiry } from "../service";
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
 
 /** "Lixeira própria com retenção" — documentos excluídos ficam aqui, recuperáveis, até o prazo expirar. */
 export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
@@ -11,47 +15,57 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
   const purge = usePurgeDocument(client);
   const [confirmPurgeId, setConfirmPurgeId] = useState<string | null>(null);
   const confirmDocument = documents.find((d) => d.id === confirmPurgeId) ?? null;
-
-  if (isLoading) return <p className="font-sans text-sm text-text-secondary-warm">Carregando lixeira...</p>;
-  if (documents.length === 0) return <p className="font-sans text-sm text-text-secondary-warm">Lixeira vazia.</p>;
-
   const today = new Date();
 
   return (
-    <ul className="flex flex-col gap-2">
-      {documents.map((document) => (
-        <li key={document.id}>
-          <Card>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-sans text-sm text-text-primary">{document.file_name}</p>
-                <p className="font-sans text-xs text-text-secondary-warm">
-                  Excluído em {document.deleted_at?.slice(0, 10)} · some em{" "}
-                  {daysUntilTrashExpiry(document.deleted_at!, today)} {daysUntilTrashExpiry(document.deleted_at!, today) === 1 ? "dia" : "dias"}
-                </p>
-              </div>
-              <div className="flex gap-1">
-                <Button type="button" variant="chip" onClick={() => restore.mutate(document.id)}>
-                  Restaurar
-                </Button>
-                <Button type="button" variant="chip" onClick={() => setConfirmPurgeId(document.id)}>
-                  Excluir para sempre
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </li>
-      ))}
+    <div className="qv-card overflow-hidden">
+      <CardHeader
+        divider
+        title="Lixeira"
+        meta={isLoading ? undefined : `${documents.length} ${documents.length === 1 ? "arquivo" : "arquivos"}`}
+      />
+      {isLoading ? (
+        <EmptyState className="px-5 py-4">Carregando lixeira...</EmptyState>
+      ) : documents.length === 0 ? (
+        <EmptyState className="px-5 py-4">
+          Lixeira vazia. Documentos excluídos ficam aqui por {TRASH_RETENTION_DAYS} dias antes de sumirem de vez.
+        </EmptyState>
+      ) : (
+        <ul>
+          {documents.map((document) => {
+            const daysLeft = daysUntilTrashExpiry(document.deleted_at!, today);
+            return (
+              <li key={document.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[14px] flex-wrap">
+                <div className="flex-[1_1_180px] min-w-0 flex flex-col gap-[3px]">
+                  <span className="text-sm font-medium truncate">{document.file_name}</span>
+                  <span className="font-mono text-xs text-text-muted truncate">
+                    excluído em {formatDate(document.deleted_at!)} · some em {daysLeft} {daysLeft === 1 ? "dia" : "dias"}
+                  </span>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button type="button" variant="quiet" size="sm" onClick={() => restore.mutate(document.id)}>
+                    Restaurar
+                  </Button>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => setConfirmPurgeId(document.id)}>
+                    Excluir para sempre
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <ConfirmDialog
         isOpen={confirmDocument !== null}
         title={`Excluir "${confirmDocument?.file_name}" para sempre?`}
         description="Essa ação não pode ser desfeita — o arquivo é removido definitivamente."
+        confirmLabel="Excluir para sempre"
         onConfirm={() => {
           if (confirmDocument) purge.mutate(confirmDocument);
           setConfirmPurgeId(null);
         }}
         onCancel={() => setConfirmPurgeId(null)}
       />
-    </ul>
+    </div>
   );
 }

@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
 import { useCreateWarranty, useDocuments, useWarranties } from "../hooks/useDocumentos";
+
+function formatDate(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("pt-BR");
+}
 
 /**
  * "Garantias" como área dedicada — a tabela e `computeWarrantyEndDate()` já existiam, só faltava
@@ -29,32 +33,35 @@ export function WarrantiesPanel({ client, userId }: { client: SupabaseClient<Dat
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="font-sans text-sm font-semibold text-text-secondary-warm">Garantias</h3>
+    <div className="qv-card overflow-hidden">
+      <CardHeader
+        divider
+        title="Garantias"
+        meta={isLoading ? undefined : `${warranties.length} ${warranties.length === 1 ? "garantia" : "garantias"}`}
+      />
 
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end">
-        <input
-          name="productName"
-          placeholder="Produto"
-          className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-        />
+      <form onSubmit={handleSubmit} className="flex flex-wrap gap-[10px] px-[18px] py-[14px] border-b border-border">
+        <input name="productName" placeholder="Produto" aria-label="Produto" className="qv-field flex-[2_1_180px]" />
         <input
           name="purchaseDate"
           type="date"
-          className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+          aria-label="Data da compra"
+          className="qv-field flex-[0_1_160px] font-mono text-[13px]"
         />
         <input
           name="durationMonths"
           type="number"
           min={1}
           placeholder="Meses"
-          className="w-20 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+          aria-label="Duração em meses"
+          className="qv-field flex-[0_1_100px] font-mono"
         />
         {documents.length > 0 && (
           <select
             value={documentId}
             onChange={(event) => setDocumentId(event.target.value)}
-            className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Nota fiscal"
+            className="qv-field flex-[1_1_180px] text-[13px]"
           >
             <option value="">Nota fiscal (opcional)</option>
             {documents.map((doc) => (
@@ -64,33 +71,39 @@ export function WarrantiesPanel({ client, userId }: { client: SupabaseClient<Dat
             ))}
           </select>
         )}
-        <Button type="submit" variant="secondary" disabled={createWarranty.isPending}>
+        <Button type="submit" variant="primary" disabled={createWarranty.isPending}>
           Adicionar
         </Button>
       </form>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando garantias...</p>
+        <EmptyState className="px-5 py-4">Carregando garantias...</EmptyState>
       ) : warranties.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma garantia cadastrada.</p>
+        <EmptyState className="px-5 py-4">
+          Nenhuma garantia cadastrada. Informe produto, data da compra e duração — o fim é calculado para você.
+        </EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {warranties.map((warranty) => (
-            <li
-              key={warranty.id}
-              className="bg-surface-2 border border-border rounded-md p-3 flex items-center justify-between gap-3"
-            >
-              <div>
-                <p className="font-sans text-sm text-text-primary">{warranty.product_name}</p>
-                <p className="font-sans text-xs text-text-secondary-warm">
-                  Comprado em {warranty.purchase_date} · vence em {warranty.end_date}
-                </p>
-              </div>
-              {warranty.end_date < today && (
-                <span className="text-xs px-2 py-1 rounded-md border border-error/40 text-error">Vencida</span>
-              )}
-            </li>
-          ))}
+        <ul>
+          {warranties.map((warranty) => {
+            const expired = warranty.end_date < today;
+            return (
+              <li key={warranty.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[14px]">
+                <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                  <span className="text-sm font-medium truncate">{warranty.product_name}</span>
+                  <span className="font-mono text-xs text-text-muted truncate">
+                    comprado em {formatDate(warranty.purchase_date)} · {warranty.duration_months}{" "}
+                    {warranty.duration_months === 1 ? "mês" : "meses"}
+                  </span>
+                </div>
+                <span className={`qv-pill shrink-0 ${expired ? "qv-pill-danger" : "qv-pill-success"}`}>
+                  {expired ? "Vencida" : "Ativa"}
+                </span>
+                <span className={`font-mono text-xs whitespace-nowrap shrink-0 ${expired ? "text-error" : "text-text-secondary"}`}>
+                  até {formatDate(warranty.end_date)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

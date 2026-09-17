@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Badge, Button } from "@qqorvex/ui";
 import {
   useEnsureCurrentStatement,
   useMarkStatementPaid,
@@ -8,6 +8,11 @@ import {
 } from "../hooks/useFinancas";
 import { computeStatementDueDate, computeStatementPeriod, computeStatementTotal, toReferenceMonth } from "../service";
 import type { Card } from "../types";
+import { formatBRL } from "./TransactionList";
+
+function formatIsoDate(iso: string): string {
+  return iso.split("-").reverse().join("/");
+}
 
 /**
  * "Fatura/fechamento de cartão" — total sempre calculado a partir das transações do cartão no
@@ -41,9 +46,9 @@ export function CardStatementPanel({
 
   if (!hasClosingConfig) {
     return (
-      <p className="font-sans text-xs text-text-secondary-warm">
+      <div className="qv-well px-[14px] py-3 text-[13px] text-text-secondary">
         Configure o dia de fechamento e vencimento deste cartão para acompanhar a fatura.
-      </p>
+      </div>
     );
   }
 
@@ -58,19 +63,22 @@ export function CardStatementPanel({
   }
 
   return (
-    <div className="bg-surface-1 border border-border rounded-md p-3 flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-sans text-sm text-text-primary">
-            Fatura atual ({periodStartIso} a {periodEndIso})
-          </p>
-          <p className="font-sans text-xs text-text-secondary-warm">Vence em {dueDateIso}</p>
+    <div className="qv-well p-[14px] flex flex-col gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <span className="text-[13px] font-semibold">Fatura atual</span>
+          <span className="font-mono text-xs text-text-muted">
+            {formatIsoDate(periodStartIso)} a {formatIsoDate(periodEndIso)} · vence {formatIsoDate(dueDateIso)}
+          </span>
         </div>
-        <span className="font-mono text-sm text-text-primary">R$ {total.toFixed(2)}</span>
+        <span className="font-mono text-base font-semibold text-text-primary whitespace-nowrap">{formatBRL(total)}</span>
       </div>
 
       <Button
+        type="button"
         variant={isPaid ? "ghost" : "secondary"}
+        size="sm"
+        className="self-start"
         onClick={handleMarkPaid}
         disabled={isPaid || !isClosed || ensureStatement.isPending || markPaid.isPending}
       >
@@ -78,12 +86,14 @@ export function CardStatementPanel({
       </Button>
 
       {statements.length > 0 && (
-        <div className="flex flex-col gap-1 pt-2 border-t border-border">
-          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-text-secondary-warm">Histórico</p>
+        <div className="qv-row-top pt-3 flex flex-col gap-2">
+          <span className="qv-eyebrow">Histórico</span>
           {statements.map((statement) => (
-            <p key={statement.id} className="font-sans text-xs text-text-secondary-warm">
-              {statement.reference_month} · venc. {statement.due_date} · {statement.status}
-            </p>
+            <div key={statement.id} className="flex items-center gap-3">
+              <span className="font-mono text-xs text-text-secondary">{statement.reference_month}</span>
+              <span className="flex-1 font-mono text-xs text-text-muted">venc. {formatIsoDate(statement.due_date)}</span>
+              <Badge tone={statement.status === "paga" ? "success" : "neutral"}>{statement.status}</Badge>
+            </div>
           ))}
         </div>
       )}

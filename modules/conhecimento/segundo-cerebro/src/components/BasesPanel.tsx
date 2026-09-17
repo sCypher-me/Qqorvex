@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
 import { usePages } from "../hooks/usePages";
 import {
   useAddPageToBase,
@@ -19,6 +19,17 @@ import { evaluateFormula } from "../formula";
 import { buildFormulaContext } from "../service";
 import { parseBaseViewConfig } from "../types";
 import type { Base } from "../types";
+
+const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function formatShortDate(iso: string): string {
+  const date = new Date(iso);
+  return `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]}`;
+}
+
+const TABLE_HEADER_CLASS =
+  "grid items-center gap-3 border-b border-border px-[18px] py-3 text-[11px] uppercase tracking-[0.08em] text-text-muted";
+const TABLE_ROW_CLASS = "qv-row grid items-center gap-3 px-[18px] py-[13px]";
 
 export function BasesPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { bases, isLoading } = useBases(client);
@@ -43,42 +54,65 @@ export function BasesPanel({ client, userId }: { client: SupabaseClient<Database
     return <BaseDetail client={client} base={selectedBase} onBack={() => setSelectedBaseId(null)} />;
   }
 
+  const columns = "grid-cols-[2fr_2fr_1fr_auto]";
+
   return (
-    <div className="flex flex-col gap-3">
-      {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-      ) : bases.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma Base criada ainda.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {bases.map((base) => (
-            <li key={base.id}>
-              <Card>
-                <div className="flex items-center justify-between gap-2">
-                  <button type="button" onClick={() => setSelectedBaseId(base.id)} className="text-left flex-1">
-                    <p className="font-sans text-sm text-text-primary">{base.name}</p>
-                    {base.description && <p className="font-sans text-xs text-text-secondary-warm">{base.description}</p>}
-                  </button>
-                  <Button type="button" variant="chip" onClick={() => setConfirmDeleteId(base.id)}>
-                    Excluir
-                  </Button>
-                </div>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={handleSubmit} className="flex gap-2">
+    <div className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-[10px]">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da Base"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Nome da Base"
+          className="qv-field max-w-[420px] flex-1 bg-surface-2"
         />
         <Button type="submit" variant="secondary">
           Criar Base
         </Button>
       </form>
+
+      {isLoading ? (
+        <EmptyState>Carregando...</EmptyState>
+      ) : bases.length === 0 ? (
+        <EmptyState>Nenhuma Base criada ainda. Uma Base agrupa páginas numa tabela com fórmulas.</EmptyState>
+      ) : (
+        <div className="qv-card overflow-hidden">
+          <div className={`${TABLE_HEADER_CLASS} ${columns}`}>
+            <span>Base</span>
+            <span>Descrição</span>
+            <span>Atualizada</span>
+            <span className="sr-only">Ações</span>
+          </div>
+          {bases.map((base) => (
+            <div
+              key={base.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedBaseId(base.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setSelectedBaseId(base.id);
+              }}
+              className={`${TABLE_ROW_CLASS} ${columns} cursor-pointer outline-none transition-colors hover:bg-white/[0.025] focus-visible:bg-white/[0.035]`}
+            >
+              <span className="truncate text-sm font-medium text-text-primary">{base.name}</span>
+              <span className="truncate text-[13px] text-text-secondary">{base.description ?? "—"}</span>
+              <span className="font-mono text-xs text-text-muted">{formatShortDate(base.updated_at)}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmDeleteId(base.id);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                Excluir
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
       <ConfirmDialog
         isOpen={confirmBase !== null}
         title={`Excluir a Base "${confirmBase?.name}"?`}
@@ -91,6 +125,16 @@ export function BasesPanel({ client, userId }: { client: SupabaseClient<Database
       />
     </div>
   );
+}
+
+/** Resultado de fórmula: número em mono, texto (ex.: status) em pílula, erro em pílula vermelha. */
+function FormulaValue({ value }: { value: string }) {
+  if (value === "—") return <span className="font-mono text-xs text-text-muted">—</span>;
+  if (value === "erro") return <span className="qv-pill qv-pill-danger justify-self-start">erro</span>;
+  if (value.trim() !== "" && !Number.isNaN(Number(value))) {
+    return <span className="font-mono text-xs text-text-secondary">{value}</span>;
+  }
+  return <span className="qv-pill max-w-full justify-self-start truncate">{value}</span>;
 }
 
 function BaseDetail({ client, base, onBack }: { client: SupabaseClient<Database>; base: Base; onBack: () => void }) {
@@ -136,16 +180,16 @@ function BaseDetail({ client, base, onBack }: { client: SupabaseClient<Database>
     }
   }
 
+  const gridTemplate = { gridTemplateColumns: `2fr ${formulas.map(() => "1fr").join(" ")} 1fr auto`.replace(/\s+/g, " ") };
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <button type="button" onClick={onBack} className="text-sm text-text-secondary-warm hover:text-text-primary">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="ghost" size="sm" onClick={onBack}>
           ‹ Todas as Bases
-        </button>
-        <h3 className="font-display text-lg font-semibold text-text-primary">{base.name}</h3>
-      </div>
-
-      <div className="flex flex-wrap gap-2 items-center">
+        </Button>
+        <span className="font-display text-lg font-semibold text-text-primary">{base.name}</span>
+        <span className="flex-1" />
         <input
           value={filterText}
           onChange={(e) => {
@@ -153,7 +197,8 @@ function BaseDetail({ client, base, onBack }: { client: SupabaseClient<Database>
           }}
           onBlur={() => updateViewConfig.mutate({ baseId: base.id, viewConfig: { ...view, filterText } })}
           placeholder="Filtrar por título..."
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary text-sm outline-none focus:border-brand-cyan"
+          aria-label="Filtrar por título"
+          className="qv-field w-[220px] py-2 text-[13px]"
         />
         <select
           value={view.sortByProperty ?? ""}
@@ -163,7 +208,8 @@ function BaseDetail({ client, base, onBack }: { client: SupabaseClient<Database>
               viewConfig: { ...view, filterText, sortByProperty: e.target.value || undefined },
             })
           }
-          className="rounded-md border border-border bg-surface-1 px-2 py-2 text-text-primary text-sm"
+          aria-label="Ordenar por"
+          className="qv-field w-auto py-2 text-[13px]"
         >
           <option value="">Ordenar por...</option>
           {formulas.map((f) => (
@@ -180,54 +226,54 @@ function BaseDetail({ client, base, onBack }: { client: SupabaseClient<Database>
               viewConfig: { ...view, filterText, sortDirection: e.target.value as "asc" | "desc" },
             })
           }
-          className="rounded-md border border-border bg-surface-1 px-2 py-2 text-text-primary text-sm"
+          aria-label="Direção da ordenação"
+          className="qv-field w-auto py-2 text-[13px]"
         >
           <option value="asc">Crescente</option>
           <option value="desc">Decrescente</option>
         </select>
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-text-secondary-warm text-xs uppercase">
-            <th className="pb-2">Página</th>
+      <div className="qv-card overflow-x-auto">
+        <div className="min-w-[560px]">
+          <div className={TABLE_HEADER_CLASS} style={gridTemplate}>
+            <span>Página</span>
             {formulas.map((f) => (
-              <th key={f.id} className="pb-2">
+              <span key={f.id} className="truncate">
                 {f.key}
-              </th>
+              </span>
             ))}
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((page) => (
-            <tr key={page.id} className="border-t border-border">
-              <td className="py-2 text-text-primary">{page.title}</td>
-              {formulas.map((f) => (
-                <td key={f.id} className="py-2 text-text-secondary-warm font-mono text-xs">
-                  {evaluateForPage(page.id, f.expression)}
-                </td>
-              ))}
-              <td className="py-2 text-right">
-                <button
-                  type="button"
-                  onClick={() => removePage.mutate(page.id)}
-                  className="text-xs px-2 py-1 rounded-md border border-border text-text-secondary-warm hover:bg-surface-1"
-                >
+            <span>Atualizada</span>
+            <span className="sr-only">Ações</span>
+          </div>
+          {sorted.length === 0 ? (
+            <p className="px-[18px] py-[13px] text-sm text-text-secondary">
+              {memberPages.length === 0 ? "Nenhuma página nesta Base ainda." : "Nenhuma página corresponde ao filtro."}
+            </p>
+          ) : (
+            sorted.map((page) => (
+              <div key={page.id} className={TABLE_ROW_CLASS} style={gridTemplate}>
+                <span className="truncate text-sm font-medium text-text-primary">{page.title}</span>
+                {formulas.map((f) => (
+                  <FormulaValue key={f.id} value={evaluateForPage(page.id, f.expression)} />
+                ))}
+                <span className="font-mono text-xs text-text-muted">{formatShortDate(page.updated_at)}</span>
+                <Button type="button" variant="ghost" size="xs" onClick={() => removePage.mutate(page.id)}>
                   Remover
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       {addablePages.length > 0 && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-[10px]">
           <select
             value={selectedPageId}
             onChange={(e) => setSelectedPageId(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Adicionar página"
+            className="qv-field max-w-[420px] flex-1"
           >
             <option value="">Adicionar página...</option>
             {addablePages.map((page) => (
@@ -249,37 +295,40 @@ function BaseDetail({ client, base, onBack }: { client: SupabaseClient<Database>
         </div>
       )}
 
-      <div className="flex flex-col gap-2 pt-2 border-t border-border">
-        <h4 className="font-sans text-sm font-semibold text-text-primary">Fórmulas</h4>
-        {formulas.map((f) => (
-          <div key={f.id} className="flex items-center justify-between gap-2 text-xs text-text-secondary-warm">
-            <span>
-              {f.key} = {f.expression}
-            </span>
-            <button
-              type="button"
-              onClick={() => deleteFormula.mutate(f.id)}
-              className="px-2 py-1 rounded-md border border-error/40 text-error hover:bg-error-bg"
-            >
-              Remover
-            </button>
+      <div className="qv-card flex flex-col gap-3 p-5">
+        <span className="qv-section-label">Fórmulas</span>
+        {formulas.length > 0 && (
+          <div className="flex flex-col">
+            {formulas.map((f) => (
+              <div key={f.id} className="qv-row flex items-center justify-between gap-3 py-2.5">
+                <span className="min-w-0 truncate font-mono text-xs text-text-secondary">
+                  <span className="text-text-primary">{f.key}</span> = {f.expression}
+                </span>
+                <Button type="button" variant="ghost" size="xs" className="hover:!text-error" onClick={() => deleteFormula.mutate(f.id)}>
+                  Remover
+                </Button>
+              </div>
+            ))}
           </div>
-        ))}
-        <div className="flex gap-2">
+        )}
+        <div className="flex flex-wrap items-center gap-[10px]">
           <input
             value={formulaKey}
             onChange={(e) => setFormulaKey(e.target.value)}
             placeholder="Nome (ex.: status)"
-            className="w-32 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Nome da fórmula"
+            className="qv-field w-40 py-2 text-[13px]"
           />
           <input
             value={formulaExpression}
             onChange={(e) => setFormulaExpression(e.target.value)}
             placeholder='Expressão (ex.: IF(nota >= 7, "Aprovado", "Reprovado"))'
-            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Expressão da fórmula"
+            className="qv-field min-w-[240px] flex-1 py-2 font-mono text-[13px]"
           />
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => {
               const key = formulaKey.trim();
               const expression = formulaExpression.trim();

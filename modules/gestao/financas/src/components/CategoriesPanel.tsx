@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
 import { useCategories, useCreateCategory } from "../hooks/useFinancas";
 import type { CategoryKind } from "../types";
+import { financeCategoryColor } from "./TransactionList";
 
 export function CategoriesPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { categories, isLoading } = useCategories(client);
@@ -18,41 +19,57 @@ export function CategoriesPanel({ client, userId }: { client: SupabaseClient<Dat
     setName("");
   }
 
+  const groups: { kind: CategoryKind; label: string }[] = [
+    { kind: "saida", label: "Saídas" },
+    { kind: "entrada", label: "Entradas" },
+  ];
+
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Categorias</h2>
-      {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-      ) : categories.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma categoria cadastrada.</p>
-      ) : (
-        <ul className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <li
-              key={category.id}
-              className="text-xs px-2 py-1 rounded-md border border-border text-text-primary"
-            >
-              {category.name} · {category.kind === "entrada" ? "Entrada" : "Saída"}
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={handleSubmit} className="flex gap-2">
+    <div className="qv-card overflow-hidden">
+      <CardHeader divider title="Categorias" meta={isLoading ? undefined : `${categories.length}`} />
+      <div className="px-[18px] py-[14px] flex flex-col gap-[14px]">
+        {isLoading ? (
+          <EmptyState>Carregando...</EmptyState>
+        ) : categories.length === 0 ? (
+          <EmptyState>Nenhuma categoria cadastrada. Categorias dão cor às transações e permitem orçamentos.</EmptyState>
+        ) : (
+          groups.map((group) => {
+            const items = categories.filter((c) => c.kind === group.kind);
+            if (items.length === 0) return null;
+            return (
+              <div key={group.kind} className="flex flex-col gap-2">
+                <span className="qv-eyebrow">{group.label}</span>
+                <ul className="flex flex-wrap gap-2">
+                  {items.map((category) => (
+                    <li key={category.id} className="qv-pill qv-pill-outline text-xs py-1 px-3">
+                      <span className="w-2 h-2 rounded-full" style={{ background: financeCategoryColor(category.id) }} />
+                      {category.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <form onSubmit={handleSubmit} className="qv-row-top flex flex-wrap gap-2 px-[18px] py-[14px]">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da categoria"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Nome da categoria"
+          className="qv-field flex-[2_1_160px] py-2"
         />
         <select
           value={kind}
           onChange={(e) => setKind(e.target.value as CategoryKind)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Tipo de categoria"
+          className="qv-field flex-[0_1_130px] py-2 px-3 text-[13px]"
         >
           <option value="saida">Saída</option>
           <option value="entrada">Entrada</option>
         </select>
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="primary" size="sm" disabled={createCategory.isPending}>
           Adicionar
         </Button>
       </form>

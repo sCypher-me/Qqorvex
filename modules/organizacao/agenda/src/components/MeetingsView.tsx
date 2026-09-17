@@ -1,14 +1,7 @@
 import { useState } from "react";
-import { Card, Button, ConfirmDialog } from "@qqorvex/ui";
+import { ConfirmDialog } from "@qqorvex/ui";
 import type { CalendarEvent } from "../types";
-
-function formatDateHeader(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
+import { EventListRow, formatDayHeader, groupEventsByDay } from "./EventStyle";
 
 /** "Reuniões dedicadas" — recorte da Agenda só com `category === "reuniao"`, sem duplicar o
  * registro do evento; o link fica em destaque para entrar direto. */
@@ -17,53 +10,52 @@ export function MeetingsView({ events, onDelete }: { events: CalendarEvent[]; on
   const meetings = events.filter((e) => e.category === "reuniao").sort((a, b) => a.start_at.localeCompare(b.start_at));
 
   if (meetings.length === 0) {
-    return <p className="font-sans text-text-secondary-warm">Nenhuma reunião agendada neste período.</p>;
-  }
-
-  const groups = new Map<string, CalendarEvent[]>();
-  for (const meeting of meetings) {
-    const dayKey = meeting.start_at.slice(0, 10);
-    const group = groups.get(dayKey) ?? [];
-    group.push(meeting);
-    groups.set(dayKey, group);
+    return (
+      <div className="qv-card p-5">
+        <p className="text-sm text-text-secondary">Nenhuma reunião agendada neste período.</p>
+      </div>
+    );
   }
 
   const confirmMeeting = meetings.find((meeting) => meeting.id === confirmDeleteId) ?? null;
 
   return (
-    <div className="flex flex-col gap-4">
-      {Array.from(groups.entries()).map(([dayKey, dayMeetings]) => (
-        <div key={dayKey} className="flex flex-col gap-2">
-          <h3 className="font-sans text-xs font-semibold uppercase tracking-wide text-text-secondary-warm">
-            {formatDateHeader(dayMeetings[0]!.start_at)}
-          </h3>
-          {dayMeetings.map((meeting) => (
-            <Card key={meeting.id}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-mono text-xs text-brand-cyan">{formatTime(meeting.start_at)}</p>
-                  <p className="font-sans text-sm text-text-primary">{meeting.title}</p>
-                  {meeting.location && <p className="font-sans text-xs text-text-secondary-warm">{meeting.location}</p>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {meeting.meeting_link && (
-                    <a
-                      href={meeting.meeting_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs px-3 py-1.5 rounded-md bg-brand-cyan text-background font-semibold hover:opacity-90"
+    <div className="flex flex-col gap-5">
+      {groupEventsByDay(meetings).map(([dayKey, dayMeetings]) => (
+        <section key={dayKey} className="flex flex-col gap-2.5">
+          <h3 className="qv-section-label">{formatDayHeader(dayMeetings[0]!.start_at)}</h3>
+          <div className="qv-card">
+            {dayMeetings.map((meeting) => (
+              <EventListRow
+                key={meeting.id}
+                event={meeting}
+                actions={
+                  <div className="flex items-center gap-2 shrink-0">
+                    {meeting.meeting_link && (
+                      <a
+                        href={meeting.meeting_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="qv-btn qv-btn-vex qv-btn-xs"
+                      >
+                        Entrar
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="qv-icon-btn"
+                      onClick={() => setConfirmDeleteId(meeting.id)}
+                      aria-label={`Excluir "${meeting.title}"`}
+                      title="Excluir"
                     >
-                      Entrar
-                    </a>
-                  )}
-                  <Button type="button" variant="chip" onClick={() => setConfirmDeleteId(meeting.id)}>
-                    Excluir
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+                      ✕
+                    </button>
+                  </div>
+                }
+              />
+            ))}
+          </div>
+        </section>
       ))}
       <ConfirmDialog
         isOpen={confirmMeeting !== null}

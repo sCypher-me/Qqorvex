@@ -8,20 +8,26 @@ export function SlashMenu({ query, onSelect }: { query: string; onSelect: (block
   const options = EDITABLE_BLOCK_TYPES.filter((type) => BLOCK_TYPE_LABELS[type].toLowerCase().includes(normalizedQuery));
 
   if (options.length === 0) {
-    return <p className="font-sans text-xs text-text-secondary-warm px-2 py-1">Nenhum tipo encontrado.</p>;
+    return (
+      <div className="qv-popover w-[236px] px-3 py-[9px] text-[13px] leading-normal text-text-muted">
+        Nenhum tipo encontrado.
+      </div>
+    );
   }
 
   return (
-    <div className="bg-surface-2 border border-border rounded-md flex flex-col overflow-hidden">
+    <div className="qv-popover flex max-h-[320px] w-[236px] flex-col overflow-y-auto p-1.5 leading-normal" role="listbox">
       {options.map((type) => (
         <button
           key={type}
           type="button"
+          role="option"
+          aria-selected={false}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(type)}
-          className="text-left px-3 py-1.5 text-sm font-sans text-text-primary hover:bg-surface-1"
+          className="flex items-center gap-[10px] rounded-[10px] px-3 py-[9px] text-left text-[13px] text-text-primary transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none"
         >
-          {BLOCK_TYPE_LABELS[type]}
+          <span className="flex-1">{BLOCK_TYPE_LABELS[type]}</span>
         </button>
       ))}
     </div>

@@ -1,89 +1,100 @@
-import { useState } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, Chip } from "@qqorvex/ui";
 import { useCreateFolder, useDeleteFolder, useFolders } from "../hooks/useDocumentos";
 
-/** "Pastas" como área dedicada — cria/lista/exclui e permite filtrar a listagem de Documentos por pasta. */
+/**
+ * "Pastas" como área dedicada — cria/lista/exclui e permite filtrar a listagem de Documentos por pasta.
+ * Visual: fileira de chips; `actions` (ex.: Garantias/Lixeira) ficam alinhadas à direita.
+ */
 export function FoldersPanel({
   client,
   userId,
   selectedFolderId,
   onSelectFolder,
+  actions,
 }: {
   client: SupabaseClient<Database>;
   userId: string;
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
+  actions?: ReactNode;
 }) {
   const { folders, isLoading } = useFolders(client);
   const createFolder = useCreateFolder(client, userId);
   const deleteFolder = useDeleteFolder(client);
   const [name, setName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  function handleCreate(event: FormEvent) {
+    event.preventDefault();
+    if (!name.trim()) return;
+    createFolder.mutate(name.trim());
+    setName("");
+    setIsCreating(false);
+  }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="font-sans text-sm font-semibold text-text-secondary-warm">Pastas</h3>
-
-      <div className="flex gap-2">
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Nova pasta"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-        />
-        <Button
-          variant="secondary"
-          onClick={() => {
-            if (!name.trim()) return;
-            createFolder.mutate(name.trim());
-            setName("");
-          }}
-        >
-          Criar
-        </Button>
-      </div>
-
+    <div className="flex items-center gap-2 flex-wrap">
+      <Chip active={selectedFolderId === null} onClick={() => onSelectFolder(null)}>
+        Todos
+      </Chip>
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando pastas...</p>
+        <span className="text-[13px] text-text-muted">Carregando pastas...</span>
       ) : (
-        <ul className="flex flex-wrap gap-1">
-          <li>
-            <button
-              type="button"
-              onClick={() => onSelectFolder(null)}
-              className={`text-xs px-2 py-1 rounded-md border ${
-                selectedFolderId === null ? "border-primary text-primary" : "border-border text-text-primary"
-              } hover:bg-surface-1`}
-            >
-              Todas
-            </button>
-          </li>
-          {folders.map((folder) => (
-            <li key={folder.id} className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => onSelectFolder(folder.id)}
-                className={`text-xs px-2 py-1 rounded-md border ${
-                  selectedFolderId === folder.id ? "border-primary text-primary" : "border-border text-text-primary"
-                } hover:bg-surface-1`}
-              >
+        folders.map((folder) =>
+          selectedFolderId === folder.id ? (
+            <span key={folder.id} className="inline-flex items-center gap-1">
+              <Chip active onClick={() => onSelectFolder(folder.id)}>
                 {folder.name}
-              </button>
+              </Chip>
               <button
                 type="button"
                 onClick={() => {
-                  if (selectedFolderId === folder.id) onSelectFolder(null);
+                  onSelectFolder(null);
                   deleteFolder.mutate(folder.id);
                 }}
-                className="text-xs px-1 text-text-secondary-warm hover:text-error"
+                className="qv-icon-btn hover:text-error"
                 title="Excluir pasta"
+                aria-label={`Excluir pasta ${folder.name}`}
               >
-                ×
+                ✕
               </button>
-            </li>
-          ))}
-        </ul>
+            </span>
+          ) : (
+            <Chip key={folder.id} onClick={() => onSelectFolder(folder.id)}>
+              {folder.name}
+            </Chip>
+          ),
+        )
       )}
+      {isCreating ? (
+        <form onSubmit={handleCreate} className="inline-flex items-center gap-2">
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setIsCreating(false);
+            }}
+            placeholder="Nome da pasta"
+            aria-label="Nome da nova pasta"
+            autoFocus
+            className="qv-field w-44 py-[7px] px-3 text-[13px]"
+          />
+          <Button type="submit" variant="primary" size="sm" disabled={createFolder.isPending}>
+            Criar
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setIsCreating(false)}>
+            Cancelar
+          </Button>
+        </form>
+      ) : (
+        <button type="button" onClick={() => setIsCreating(true)} className="qv-btn qv-btn-dashed rounded-full px-4 py-2">
+          + Nova pasta
+        </button>
+      )}
+      <span className="flex-1" />
+      {actions}
     </div>
   );
 }

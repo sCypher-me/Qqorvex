@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
+import { Button, EmptyState, Modal, SectionTitle } from "@qqorvex/ui";
 import {
   useGoals,
   useCreateGoal,
@@ -19,6 +21,8 @@ import { supabase } from "../app/supabase";
 export function MetasHabitosPage() {
   const { session } = useAuth();
   const userId = session!.user.id;
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [habitModalOpen, setHabitModalOpen] = useState(false);
 
   const { goals, isLoading: goalsLoading } = useGoals(supabase);
   const createGoal = useCreateGoal(supabase, userId);
@@ -31,18 +35,23 @@ export function MetasHabitosPage() {
   const deleteHabit = useDeleteHabit(supabase);
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 flex flex-col items-center gap-8">
-      <div className="w-full max-w-3xl">
-        <h1 className="font-display text-2xl font-bold text-text-primary">Metas & Hábitos</h1>
-      </div>
-
-      <section className="w-full max-w-3xl flex flex-col gap-3">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Metas</h2>
-        <NewGoalForm onCreate={(title) => createGoal.mutate({ title })} />
+    <div className="flex flex-col gap-[22px]">
+      <section className="flex flex-col gap-3">
+        <SectionTitle
+          actions={
+            <Button type="button" variant="primary" size="sm" onClick={() => setGoalModalOpen(true)}>
+              Nova meta
+            </Button>
+          }
+        >
+          Metas
+        </SectionTitle>
         {goalsLoading ? (
-          <p className="font-sans text-text-secondary-warm">Carregando...</p>
+          <EmptyState>Carregando...</EmptyState>
+        ) : goals.length === 0 ? (
+          <EmptyState>Nenhuma meta criada ainda. Use "Nova meta" para definir o primeiro resultado que você quer alcançar.</EmptyState>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 items-start">
             {goals.map((goal) => (
               <GoalCard
                 key={goal.id}
@@ -56,13 +65,22 @@ export function MetasHabitosPage() {
         )}
       </section>
 
-      <section className="w-full max-w-3xl flex flex-col gap-3">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Hábitos</h2>
-        <NewHabitForm onCreate={(name) => createHabit.mutate({ name })} />
+      <section className="flex flex-col gap-3">
+        <SectionTitle
+          actions={
+            <Button type="button" variant="primary" size="sm" onClick={() => setHabitModalOpen(true)}>
+              Novo hábito
+            </Button>
+          }
+        >
+          Hábitos
+        </SectionTitle>
         {habitsLoading ? (
-          <p className="font-sans text-text-secondary-warm">Carregando...</p>
+          <EmptyState>Carregando...</EmptyState>
+        ) : habits.length === 0 ? (
+          <EmptyState>Nenhum hábito criado ainda. Use "Novo hábito" para começar.</EmptyState>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="qv-card overflow-hidden flex flex-col">
             {habits.map((habit) => (
               <HabitCard
                 key={habit.id}
@@ -81,9 +99,27 @@ export function MetasHabitosPage() {
         )}
       </section>
 
-      <section className="w-full max-w-3xl">
-        <RoutinesPanel client={supabase} userId={userId} />
-      </section>
-    </main>
+      <RoutinesPanel client={supabase} userId={userId} />
+
+      <Modal isOpen={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Nova meta">
+        <NewGoalForm
+          onCreate={(title) => {
+            createGoal.mutate({ title });
+            setGoalModalOpen(false);
+          }}
+          onCancel={() => setGoalModalOpen(false)}
+        />
+      </Modal>
+
+      <Modal isOpen={habitModalOpen} onClose={() => setHabitModalOpen(false)} title="Novo hábito">
+        <NewHabitForm
+          onCreate={(name) => {
+            createHabit.mutate({ name });
+            setHabitModalOpen(false);
+          }}
+          onCancel={() => setHabitModalOpen(false)}
+        />
+      </Modal>
+    </div>
   );
 }

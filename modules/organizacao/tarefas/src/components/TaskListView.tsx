@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Card, Badge, Button, ConfirmDialog } from "@qqorvex/ui";
+import { Badge, Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
 import type { TaskPriority, TaskStatus, TaskWithConditions } from "../types";
+import { formatDueDate } from "./TaskCard";
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   nao_iniciado: "Não iniciado",
@@ -14,6 +15,8 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   media: "Média",
   alta: "Alta",
 };
+
+const FILTER_CLASS = "qv-field w-auto py-2 px-3 text-[13px]";
 
 /**
  * "Todas as Tarefas" + "Tags & Filtros" — ao contrário do Kanban (só 3 estados ativos, sem
@@ -49,12 +52,13 @@ export function TaskListView({
   const confirmTask = tasks.find((t) => t.id === confirmDeleteId) ?? null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+          aria-label="Filtrar por status"
+          className={FILTER_CLASS}
         >
           <option value="">Todos os status</option>
           {Object.entries(STATUS_LABEL).map(([value, label]) => (
@@ -66,7 +70,8 @@ export function TaskListView({
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+          aria-label="Filtrar por prioridade"
+          className={FILTER_CLASS}
         >
           <option value="">Todas as prioridades</option>
           {Object.entries(PRIORITY_LABEL).map(([value, label]) => (
@@ -79,7 +84,8 @@ export function TaskListView({
           <select
             value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
-            className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Filtrar por tag"
+            className={FILTER_CLASS}
           >
             <option value="">Todas as tags</option>
             {allTags.map((tag) => (
@@ -89,48 +95,62 @@ export function TaskListView({
             ))}
           </select>
         )}
-        <label className="flex items-center gap-1 text-sm text-text-secondary-warm">
-          <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
+        <label className="flex items-center gap-2 text-[13px] text-text-secondary ml-1 cursor-pointer">
+          <input
+            type="checkbox"
+            className="qv-check"
+            checked={showCancelled}
+            onChange={(e) => setShowCancelled(e.target.checked)}
+          />
           Mostrar canceladas
         </label>
+        <span className="flex-1" />
+        <span className="font-mono text-xs text-text-muted">{filtered.length}</span>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma tarefa encontrada.</p>
+        <EmptyState>Nenhuma tarefa encontrada.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {filtered.map((task) => (
-            <li key={task.id}>
-              <Card>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex-1">
-                  <p className={`font-sans text-sm text-text-primary ${task.is_cancelled ? "line-through text-text-secondary-warm" : ""}`}>
+        <ul className="qv-card overflow-hidden flex flex-col">
+          {filtered.map((task) => {
+            const due = task.due_date ? formatDueDate(task.due_date, task.status === "concluido" || task.is_cancelled) : null;
+            return (
+              <li key={task.id} className="qv-row flex items-center gap-4 px-[18px] py-[14px] flex-wrap">
+                <div className="flex-1 min-w-[220px] flex flex-col gap-1.5">
+                  <span
+                    className={`text-sm font-medium ${
+                      task.is_cancelled ? "line-through text-text-muted" : "text-text-primary"
+                    }`}
+                  >
                     {task.title}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    <Badge tone="info">{STATUS_LABEL[task.status]}</Badge>
-                    {task.priority !== "sem_prioridade" && <Badge tone="warning">{PRIORITY_LABEL[task.priority]}</Badge>}
-                    {task.isOverdue && <Badge tone="error">Atrasada</Badge>}
-                    {task.isBlocked && <Badge tone="info">Bloqueada</Badge>}
-                    {task.is_cancelled && <Badge tone="warning">Cancelada</Badge>}
-                    {task.due_date && (
-                      <span className="font-mono text-xs px-2 py-0.5 rounded-full border border-border text-text-secondary-warm">
-                        {task.due_date}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {task.priority !== "sem_prioridade" && (
+                      <Badge tone={task.priority === "alta" ? "warning" : "neutral"}>{PRIORITY_LABEL[task.priority]}</Badge>
+                    )}
+                    {task.isBlocked && <Badge tone="warning">Bloqueada</Badge>}
+                    {task.is_cancelled && <Badge tone="neutral">Cancelada</Badge>}
+                    {task.tags.map((tag) => (
+                      <Badge key={tag} tone="outline">
+                        {tag}
+                      </Badge>
+                    ))}
+                    {due && (
+                      <span className={`font-mono text-[11px] ${due.className}`} title={task.due_date ?? undefined}>
+                        {due.label}
                       </span>
                     )}
-                    {task.tags.map((tag) => (
-                      <span key={tag} className="text-xs px-2 py-0.5 rounded-full border border-border text-text-secondary-warm">
-                        #{tag}
-                      </span>
-                    ))}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {!task.is_cancelled && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {task.is_cancelled ? (
+                    <Badge tone="outline">{STATUS_LABEL[task.status]}</Badge>
+                  ) : (
                     <select
                       value={task.status}
                       onChange={(e) => onChangeStatus(task.id, e.target.value as TaskStatus)}
-                      className="text-xs rounded-md border border-border bg-surface-1 px-1 py-1 text-text-primary"
+                      aria-label={`Status de "${task.title}"`}
+                      className="qv-field w-auto py-[5px] px-2.5 text-xs rounded-[10px]"
                     >
                       {Object.entries(STATUS_LABEL).map(([value, label]) => (
                         <option key={value} value={value}>
@@ -139,17 +159,16 @@ export function TaskListView({
                       ))}
                     </select>
                   )}
-                  <Button type="button" variant="chip" onClick={() => onToggleCancelled(task.id, !task.is_cancelled)}>
+                  <Button type="button" variant="quiet" size="xs" onClick={() => onToggleCancelled(task.id, !task.is_cancelled)}>
                     {task.is_cancelled ? "Reativar" : "Cancelar"}
                   </Button>
-                  <Button type="button" variant="chip" onClick={() => setConfirmDeleteId(task.id)}>
+                  <Button type="button" variant="ghost" size="xs" onClick={() => setConfirmDeleteId(task.id)}>
                     Excluir
                   </Button>
                 </div>
-              </div>
-              </Card>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
       <ConfirmDialog

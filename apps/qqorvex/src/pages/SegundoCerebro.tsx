@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@qqorvex/auth";
-import { Button } from "@qqorvex/ui";
+import { Chip, EmptyState } from "@qqorvex/ui";
 import {
   usePages,
   useAllPageLinks,
@@ -29,37 +29,52 @@ export function SegundoCerebroPage() {
   const createPage = useCreatePage(supabase, userId);
   const deletePage = useDeletePage(supabase);
 
+  const linkTitlesByPage = useMemo(() => {
+    const titleById = new Map(pages.map((p) => [p.id, p.title]));
+    const result = new Map<string, string[]>();
+    for (const link of links) {
+      const targetTitle = titleById.get(link.target_page_id);
+      if (!targetTitle) continue;
+      const list = result.get(link.source_page_id) ?? [];
+      list.push(targetTitle);
+      result.set(link.source_page_id, list);
+    }
+    return result;
+  }, [pages, links]);
+
   return (
-    <main className="min-h-screen bg-background px-4 py-8 flex flex-col items-center gap-6">
-      <div className="w-full max-w-2xl">
-        <h1 className="font-display text-2xl font-bold text-text-primary">Segundo Cérebro</h1>
-      </div>
-
-      <div className="w-full max-w-2xl">
+    <div className="flex flex-col gap-[18px]">
+      <div className="flex flex-wrap items-center gap-[10px]">
         <NewPageForm onCreate={(title) => createPage.mutate({ title })} />
+        <div className="flex items-center gap-[10px]" role="tablist">
+          {(Object.keys(VIEW_LABEL) as ViewMode[]).map((view) => (
+            <Chip key={view} role="tab" active={viewMode === view} onClick={() => setViewMode(view)}>
+              {VIEW_LABEL[view]}
+            </Chip>
+          ))}
+        </div>
       </div>
 
-      <div className="w-full max-w-2xl flex gap-2">
-        {(Object.keys(VIEW_LABEL) as ViewMode[]).map((view) => (
-          <Button key={view} type="button" variant={viewMode === view ? "chip-accent" : "chip"} onClick={() => setViewMode(view)}>
-            {VIEW_LABEL[view]}
-          </Button>
-        ))}
-      </div>
-
-      <div className="w-full max-w-2xl flex flex-col gap-2">
-        {viewMode === "bases" ? (
-          <BasesPanel client={supabase} userId={userId} />
-        ) : isLoading ? (
-          <p className="font-sans text-text-secondary-warm">Carregando...</p>
-        ) : viewMode === "grafo" ? (
-          <GraphView pages={pages} links={links} onSelectPage={(pageId) => navigate(`/segundo-cerebro/${pageId}`)} />
-        ) : pages.length === 0 ? (
-          <p className="font-sans text-text-secondary-warm">Nenhuma página ainda.</p>
-        ) : (
-          pages.map((page) => <PageCard key={page.id} page={page} onDelete={() => deletePage.mutate(page.id)} />)
-        )}
-      </div>
-    </main>
+      {viewMode === "bases" ? (
+        <BasesPanel client={supabase} userId={userId} />
+      ) : isLoading ? (
+        <EmptyState>Carregando...</EmptyState>
+      ) : viewMode === "grafo" ? (
+        <GraphView pages={pages} links={links} onSelectPage={(pageId) => navigate(`/segundo-cerebro/${pageId}`)} />
+      ) : pages.length === 0 ? (
+        <EmptyState>Nenhuma página ainda. Dê um título acima e crie a primeira.</EmptyState>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+          {pages.map((page) => (
+            <PageCard
+              key={page.id}
+              page={page}
+              linkTitles={linkTitlesByPage.get(page.id)}
+              onDelete={() => deletePage.mutate(page.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

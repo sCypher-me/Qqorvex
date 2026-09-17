@@ -1,28 +1,67 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, EmptyState, ProgressBar } from "@qqorvex/ui";
 import { useTodayCheckin, useUpsertCheckin } from "../hooks/useVidaPessoal";
 
-const MOOD_EMOJI = ["😞", "😕", "😐", "🙂", "😄"];
+const SCALE = [1, 2, 3, 4, 5];
 
-function ScaleSelector({ value, onChange, labels }: { value: number; onChange: (v: number) => void; labels: string[] }) {
+function ScaleSelector({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
   return (
-    <div className="flex gap-1">
-      {labels.map((label, index) => {
-        const scaleValue = index + 1;
-        return (
-          <button
-            key={scaleValue}
-            type="button"
-            onClick={() => onChange(scaleValue)}
-            className={`text-lg w-9 h-9 rounded-md border flex items-center justify-center ${
-              value === scaleValue ? "border-primary bg-surface-1" : "border-border hover:bg-surface-1"
-            }`}
-          >
-            {label}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2.5">
+      <span className="text-[13px] text-text-secondary">{label}</span>
+      <div className="flex gap-2" role="radiogroup" aria-label={label}>
+        {SCALE.map((scaleValue) => {
+          const selected = value === scaleValue;
+          return (
+            <button
+              key={scaleValue}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(scaleValue)}
+              className={`flex-1 rounded-xl py-3.5 font-mono text-[15px] border cursor-pointer transition-colors ${
+                selected
+                  ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark text-vex-cyan-bright"
+                  : "bg-vex-obsidian border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
+              }`}
+            >
+              {scaleValue}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ScaleSummary({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <span className="text-[13px] text-text-secondary">{label}</span>
+      <div className="flex items-center gap-3.5">
+        <ProgressBar value={(value / 5) * 100} className="flex-1" />
+        <span className="font-mono text-sm text-text-primary">{value}/5</span>
+      </div>
+    </div>
+  );
+}
+
+function CheckinCard({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="qv-card p-[22px] flex flex-col gap-[18px]">
+      <div className="flex items-center gap-3">
+        <h2 className="flex-1 font-display text-lg font-semibold text-text-primary">Check-in diário</h2>
+        {actions}
+      </div>
+      {children}
     </div>
   );
 }
@@ -39,54 +78,58 @@ export function DailyCheckinForm({ client, userId }: { client: SupabaseClient<Da
   const [note, setNote] = useState("");
   const [editing, setEditing] = useState(false);
 
-  if (isLoading) return <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>;
+  if (isLoading) {
+    return (
+      <CheckinCard>
+        <EmptyState>Carregando...</EmptyState>
+      </CheckinCard>
+    );
+  }
 
   if (checkin && !editing) {
     return (
-      <div className="bg-surface-2 border border-border rounded-md p-4 flex items-center justify-between gap-3">
-        <p className="font-sans text-sm text-text-primary">
-          Check-in de hoje: {MOOD_EMOJI[checkin.mood - 1]} humor · sono {checkin.sleep_quality}/5 · energia{" "}
-          {checkin.energy}/5
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            setMood(checkin.mood);
-            setSleepQuality(checkin.sleep_quality);
-            setEnergy(checkin.energy);
-            setNote(checkin.note ?? "");
-            setEditing(true);
-          }}
-          className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
-        >
-          Editar
-        </button>
-      </div>
+      <CheckinCard
+        actions={
+          <Button
+            type="button"
+            variant="quiet"
+            size="sm"
+            onClick={() => {
+              setMood(checkin.mood);
+              setSleepQuality(checkin.sleep_quality);
+              setEnergy(checkin.energy);
+              setNote(checkin.note ?? "");
+              setEditing(true);
+            }}
+          >
+            Editar
+          </Button>
+        }
+      >
+        <ScaleSummary label="Humor" value={checkin.mood} />
+        <ScaleSummary label="Qualidade do sono" value={checkin.sleep_quality} />
+        <ScaleSummary label="Energia" value={checkin.energy} />
+        {checkin.note && <p className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-primary">{checkin.note}</p>}
+      </CheckinCard>
     );
   }
 
   return (
-    <div className="bg-surface-2 border border-border rounded-md p-4 flex flex-col gap-3">
-      <div>
-        <p className="font-sans text-xs text-text-secondary-warm mb-1">Humor</p>
-        <ScaleSelector value={mood} onChange={setMood} labels={MOOD_EMOJI} />
-      </div>
-      <div>
-        <p className="font-sans text-xs text-text-secondary-warm mb-1">Qualidade do sono</p>
-        <ScaleSelector value={sleepQuality} onChange={setSleepQuality} labels={["1", "2", "3", "4", "5"]} />
-      </div>
-      <div>
-        <p className="font-sans text-xs text-text-secondary-warm mb-1">Energia</p>
-        <ScaleSelector value={energy} onChange={setEnergy} labels={["1", "2", "3", "4", "5"]} />
-      </div>
-      <input
+    <CheckinCard>
+      <ScaleSelector label="Como está seu humor hoje?" value={mood} onChange={setMood} />
+      <ScaleSelector label="Qualidade do sono" value={sleepQuality} onChange={setSleepQuality} />
+      <ScaleSelector label="Como está sua energia hoje?" value={energy} onChange={setEnergy} />
+      <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="Nota (opcional)"
-        className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary text-sm outline-none focus:border-brand-cyan"
+        placeholder="Uma linha sobre o dia (opcional)"
+        aria-label="Nota do dia"
+        className="qv-field"
       />
       <Button
+        type="button"
         variant="primary"
+        className="self-start"
         onClick={() => {
           upsertCheckin.mutate({ mood, sleepQuality, energy, note: note.trim() || undefined });
           setEditing(false);
@@ -94,6 +137,6 @@ export function DailyCheckinForm({ client, userId }: { client: SupabaseClient<Da
       >
         Salvar check-in
       </Button>
-    </div>
+    </CheckinCard>
   );
 }

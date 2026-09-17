@@ -12,36 +12,43 @@ export function CheckpointsPanel({ client, pageId }: { client: SupabaseClient<Da
   const restoreCheckpoint = useRestoreCheckpoint(client, pageId);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Histórico</h2>
-        <Button variant="secondary" onClick={() => createCheckpoint.mutate()} disabled={createCheckpoint.isPending}>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-display text-base font-semibold text-text-primary">Histórico</span>
+        <Button variant="secondary" size="sm" onClick={() => createCheckpoint.mutate()} disabled={createCheckpoint.isPending}>
           Salvar checkpoint
         </Button>
       </div>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <p className="text-sm text-text-secondary">Carregando...</p>
       ) : checkpoints.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum checkpoint salvo ainda.</p>
+        <p className="text-sm leading-relaxed text-text-secondary">Nenhum checkpoint salvo ainda.</p>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col">
           {checkpoints.map((checkpoint) => (
-            <li
-              key={checkpoint.id}
-              className="flex items-center justify-between gap-2 text-sm text-text-primary bg-surface-2 border border-border rounded-md p-2"
-            >
-              <span>
-                {checkpoint.title} — {new Date(checkpoint.created_at).toLocaleString("pt-BR")}
-              </span>
-              <button
+            <li key={checkpoint.id} className="qv-row flex items-center justify-between gap-3 py-2.5">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-[13px] font-medium text-text-primary">{checkpoint.title}</span>
+                <span className="font-mono text-[11px] text-text-muted">
+                  {new Date(checkpoint.created_at).toLocaleString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              <Button
                 type="button"
+                variant="quiet"
+                size="xs"
                 onClick={() => restoreCheckpoint.mutate(checkpoint)}
                 disabled={restoreCheckpoint.isPending}
-                className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
               >
                 Restaurar
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

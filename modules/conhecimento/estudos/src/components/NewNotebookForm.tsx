@@ -13,15 +13,16 @@ export function NewNotebookForm({ onCreate }: { onCreate: (name: string) => void
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2.5">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Nome do Caderno (matéria, curso, prova...)"
-        className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+        placeholder="Nome do novo caderno"
+        aria-label="Nome do novo caderno"
+        className="qv-field flex-1 max-w-[420px]"
       />
-      <Button type="submit" variant="primary">
-        Criar Caderno
+      <Button type="submit" variant="primary" className="px-5">
+        Criar caderno
       </Button>
     </form>
   );

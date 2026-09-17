@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
+import { Button, EmptyState } from "@qqorvex/ui";
 import { useDocumentVersions, useRestoreDocumentVersion, useUploadNewVersion } from "../hooks/useDocumentos";
 import type { Document } from "../types";
 
@@ -19,17 +20,12 @@ export function VersionHistoryPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="bg-surface-2 border border-border rounded-md p-3 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="font-sans text-sm text-text-primary">
-          Versões de {document.file_name} (atual: v{document.current_version})
-        </p>
-        <button type="button" onClick={onClose} className="text-xs text-text-secondary-warm hover:text-text-primary">
-          Fechar
-        </button>
-      </div>
-
-      <div>
+    <div className="qv-row px-[18px] py-[14px] flex flex-col gap-3 bg-[rgba(67,185,210,.04)]">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+          <span className="text-sm font-semibold truncate">Versões de {document.file_name}</span>
+          <span className="font-mono text-xs text-text-muted">atual: v{document.current_version}</span>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -41,38 +37,42 @@ export function VersionHistoryPanel({
             event.target.value = "";
           }}
         />
-        <button
+        <Button
           type="button"
+          variant="primary"
+          size="sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadNewVersion.isPending}
-          className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
         >
           {uploadNewVersion.isPending ? "Enviando..." : "Enviar nova versão"}
+        </Button>
+        <button type="button" onClick={onClose} className="qv-icon-btn" aria-label="Fechar versões">
+          ✕
         </button>
       </div>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando histórico...</p>
+        <EmptyState>Carregando histórico...</EmptyState>
       ) : versions.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma versão anterior ainda.</p>
+        <EmptyState>Nenhuma versão anterior ainda. Ao enviar uma nova versão, a atual fica guardada aqui.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="qv-well flex flex-col">
           {versions.map((version) => (
-            <li key={version.id} className="border border-border rounded-md p-2 flex items-center justify-between gap-3">
-              <div>
-                <p className="font-sans text-sm text-text-primary">
-                  v{version.version_number} — {version.file_name}
-                </p>
-                <p className="font-sans text-xs text-text-secondary-warm">{version.created_at.slice(0, 10)}</p>
-              </div>
-              <button
+            <li key={version.id} className="qv-row flex items-center gap-3 px-[14px] py-[10px]">
+              <span className="font-mono text-xs text-text-secondary shrink-0">v{version.version_number}</span>
+              <span className="flex-1 min-w-0 text-[13px] truncate">{version.file_name}</span>
+              <span className="font-mono text-xs text-text-muted shrink-0">
+                {new Date(version.created_at).toLocaleDateString("pt-BR")}
+              </span>
+              <Button
                 type="button"
+                variant="quiet"
+                size="xs"
                 onClick={() => restoreVersion.mutate({ document, version })}
                 disabled={restoreVersion.isPending}
-                className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
               >
                 Restaurar
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

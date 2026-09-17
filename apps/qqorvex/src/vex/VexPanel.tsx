@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 
 /**
  * A Vex monta ferramentas dos 8 módulos de domínio — pesado o bastante pra não valer a pena
@@ -8,31 +8,18 @@ const VexConversationView = lazy(() =>
   import("./VexConversationView").then((m) => ({ default: m.VexConversationView })),
 );
 
-/** Aba fixa na borda direita, visível em toda página autenticada — abre um painel deslizante com a Vex. */
-export function VexPanel() {
-  const [open, setOpen] = useState(false);
-
+/**
+ * Painel lateral da Vex (Design System v1.0): coluna de 372px à direita do conteúdo, aberta pelo
+ * botão "Falar com a Vex" do cabeçalho. Fica fixa na altura da tela enquanto a página rola.
+ */
+export function VexPanel({ onClose }: { onClose: () => void }) {
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-brand-cyan text-background font-display font-semibold px-2 py-4 rounded-l-md [writing-mode:vertical-rl] hover:brightness-110"
+    <aside className="w-[372px] shrink-0 h-screen sticky top-0 border-l border-border bg-vex-obsidian flex flex-col animate-vex-in z-10">
+      <Suspense
+        fallback={<p className="p-5 text-sm text-text-secondary">Abrindo a Vex...</p>}
       >
-        Vex
-      </button>
-
-      <div
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm p-4 transition-transform duration-200 ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {open && (
-          <Suspense fallback={null}>
-            <VexConversationView onClose={() => setOpen(false)} />
-          </Suspense>
-        )}
-      </div>
-    </>
+        <VexConversationView variant="panel" onClose={onClose} />
+      </Suspense>
+    </aside>
   );
 }

@@ -1,5 +1,6 @@
 import type { CalendarEvent } from "../types";
 import { addDays, isSameDay, startOfMonth, startOfWeek } from "../dateUtils";
+import { categoryStyle } from "./EventStyle";
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -24,36 +25,60 @@ export function MonthView({
   const today = new Date();
 
   return (
-    <div className="flex flex-col gap-1 w-full">
-      <div className="grid grid-cols-7 gap-1">
+    <div className="qv-card p-5 flex flex-col gap-2 w-full">
+      <div className="grid grid-cols-7 gap-2">
         {WEEKDAY_LABELS.map((label) => (
-          <p key={label} className="text-center text-xs text-text-secondary-warm">
+          <span key={label} className="text-center text-[11px] tracking-[.1em] uppercase text-text-muted">
             {label}
-          </p>
+          </span>
         ))}
       </div>
       {weeks.map((week, weekIndex) => (
-        <div key={weekIndex} className="grid grid-cols-7 gap-1">
+        <div key={weekIndex} className="grid grid-cols-7 gap-2">
           {week.map((day) => {
             const inMonth = day.getMonth() === monthAnchor.getMonth();
             const dayEvents = events.filter((e) => isSameDay(new Date(e.start_at), day));
             const selected = isSameDay(day, selectedDate);
+            const isToday = isSameDay(day, today);
 
             return (
               <button
                 key={day.toISOString()}
                 type="button"
                 onClick={() => onSelectDate(day)}
-                className={`flex flex-col items-center gap-1 rounded-md border p-1 min-h-[52px] ${
+                aria-pressed={selected}
+                className={`flex flex-col items-center justify-between gap-1.5 rounded-md border px-1 py-2 min-h-[64px] cursor-pointer transition-colors ${
                   selected
-                    ? "border-brand-cyan bg-surface-1"
+                    ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark"
                     : inMonth
-                      ? "border-border hover:bg-surface-1"
-                      : "border-transparent opacity-40 hover:bg-surface-1"
-                } ${isSameDay(day, today) ? "font-bold text-brand-cyan" : "text-text-primary"}`}
+                      ? "bg-vex-graphite border-border hover:border-text-muted"
+                      : "bg-transparent border-transparent opacity-40 hover:border-border"
+                }`}
               >
-                <span className="text-xs">{day.getDate()}</span>
-                {dayEvents.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan" />}
+                <span
+                  className={`font-mono text-sm font-semibold ${
+                    selected || isToday ? "text-vex-cyan-bright" : "text-text-primary"
+                  }`}
+                >
+                  {day.getDate()}
+                </span>
+                {dayEvents.length > 0 ? (
+                  <span className="flex items-center gap-1">
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <span
+                        key={event.id}
+                        className="w-1 h-1 rounded-full"
+                        style={{ background: categoryStyle(event.category).accent }}
+                        aria-hidden
+                      />
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <span className="font-mono text-[10px] text-text-muted leading-none">+{dayEvents.length - 3}</span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="h-1" aria-hidden />
+                )}
               </button>
             );
           })}

@@ -1,31 +1,36 @@
 import { forwardRef, type HTMLAttributes } from "react";
 
-type CardAccent = "cyan" | "gold" | "none";
+export type CardVariant = "default" | "vex" | "milestone" | "tile" | "well" | "column";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  accent?: CardAccent;
+  /**
+   * default = vidro grafite (card padrão) · vex = insight/presença da Vex (cyan) · milestone =
+   * marco/gamificação (ouro, canto cortado) · tile = card compacto sólido (kanban, badges) ·
+   * well = área rebaixada dentro de um card · column = coluna de kanban.
+   */
+  variant?: CardVariant;
+  /** Sem padding interno — para cards com cabeçalho/lista que controlam o próprio espaçamento. */
+  flush?: boolean;
 }
 
-const accentClasses: Record<CardAccent, string> = {
-  cyan: "border-l-2 border-l-brand-cyan",
-  gold: "border-l-2 border-l-brand-gold",
-  none: "",
+const variantClasses: Record<CardVariant, string> = {
+  default: "qv-card",
+  vex: "qv-card-vex",
+  milestone: "qv-card-milestone",
+  tile: "qv-tile",
+  well: "qv-well",
+  column: "qv-column",
 };
 
 /**
- * Card padrão do design system (docs/decisions/design-system-componentes-v1.md) — decidido via
- * brainstorming visual. `forwardRef` porque alguns usos (ex.: `TaskCard` com `@dnd-kit/core`)
+ * Card do Design System v1.0. Nunca usa borda colorida à esquerda como destaque — ênfase vem da
+ * variante (vex/milestone). `forwardRef` porque alguns usos (ex.: `TaskCard` com `@dnd-kit/core`)
  * precisam do nó DOM real por baixo (`setNodeRef`), não só de props.
  */
 export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
-  { accent = "cyan", className = "", ...props },
+  { variant = "default", flush = false, className = "", ...props },
   ref,
 ) {
-  return (
-    <div
-      ref={ref}
-      className={`bg-surface-2 border border-border rounded-card shadow-card p-4 flex flex-col gap-2 ${accentClasses[accent]} ${className}`}
-      {...props}
-    />
-  );
+  const padding = flush ? "" : variant === "tile" || variant === "well" ? "p-3" : "p-5";
+  return <div ref={ref} className={`${variantClasses[variant]} ${padding} flex flex-col gap-3 ${className}`} {...props} />;
 });

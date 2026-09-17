@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Button } from "@qqorvex/ui";
+import { Button, Input } from "@qqorvex/ui";
 
 /**
  * "Campo mínimo obrigatório: Título." Prazo/categoria/etc. ficam para depois.
  */
-export function NewGoalForm({ onCreate }: { onCreate: (title: string) => void }) {
+export function NewGoalForm({ onCreate, onCancel }: { onCreate: (title: string) => void; onCancel?: () => void }) {
   const [title, setTitle] = useState("");
 
   function handleSubmit(event: FormEvent) {
@@ -16,16 +16,24 @@ export function NewGoalForm({ onCreate }: { onCreate: (title: string) => void })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Input
+        label="Título"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Qual resultado você quer alcançar?"
-        className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+        autoFocus
       />
-      <Button type="submit" variant="primary">
-        Criar meta
-      </Button>
+      <div className="flex gap-2.5 justify-end flex-wrap">
+        {onCancel && (
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            Cancelar
+          </Button>
+        )}
+        <Button type="submit" variant="primary" disabled={!title.trim()}>
+          Criar meta
+        </Button>
+      </div>
     </form>
   );
 }

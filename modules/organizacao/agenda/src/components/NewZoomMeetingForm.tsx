@@ -37,29 +37,34 @@ export function NewZoomMeetingForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-center">
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Título da reunião"
-        className="flex-1 min-w-[160px] rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-      />
-      <input
-        type="datetime-local"
-        value={startAt}
-        onChange={(e) => setStartAt(e.target.value)}
-        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-      />
-      <input
-        type="datetime-local"
-        value={endAt}
-        onChange={(e) => setEndAt(e.target.value)}
-        className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-      />
-      <Button type="submit" variant="secondary" disabled={isCreating}>
-        {isCreating ? "Criando..." : "Nova reunião Zoom"}
-      </Button>
-      {error && <p className="w-full text-sm text-error">{error}</p>}
+    <form onSubmit={handleSubmit} className="qv-card p-3.5 flex flex-col gap-2.5">
+      <div className="flex gap-2.5 flex-wrap">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Nova reunião no Zoom — título"
+          aria-label="Título da reunião"
+          className="qv-field flex-1 basis-[220px]"
+        />
+        <input
+          type="datetime-local"
+          value={startAt}
+          onChange={(e) => setStartAt(e.target.value)}
+          aria-label="Início"
+          className="qv-field w-auto font-mono text-[13px] text-text-secondary"
+        />
+        <input
+          type="datetime-local"
+          value={endAt}
+          onChange={(e) => setEndAt(e.target.value)}
+          aria-label="Fim"
+          className="qv-field w-auto font-mono text-[13px] text-text-secondary"
+        />
+        <Button type="submit" variant="primary" disabled={isCreating} className="px-5">
+          {isCreating ? "Criando..." : "Nova reunião Zoom"}
+        </Button>
+      </div>
+      {error && <p className="text-[13px] text-error">{error}</p>}
     </form>
   );
 }

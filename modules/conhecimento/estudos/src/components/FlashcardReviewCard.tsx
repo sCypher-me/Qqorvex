@@ -19,18 +19,19 @@ export function FlashcardReviewCard({
   const [revealed, setRevealed] = useState(false);
 
   return (
-    <Card accent="gold">
-      <p className="font-sans text-sm text-text-primary">{flashcard.front}</p>
+    <Card variant="tile" flush className="p-4">
+      <p className="text-sm font-medium leading-relaxed text-text-primary">{flashcard.front}</p>
 
       {revealed ? (
         <>
-          <p className="font-sans text-sm text-brand-cyan border-t border-border pt-3">{flashcard.back}</p>
-          <div className="flex gap-1">
+          <p className="qv-row-top pt-3 text-sm leading-relaxed text-text-secondary">{flashcard.back}</p>
+          <div className="flex gap-1.5 flex-wrap">
             {GRADE_OPTIONS.map((option) => (
               <Button
                 key={option.grade}
                 type="button"
-                variant="chip"
+                variant="quiet"
+                size="xs"
                 onClick={() => {
                   onGrade(option.grade);
                   setRevealed(false);
@@ -42,7 +43,7 @@ export function FlashcardReviewCard({
           </div>
         </>
       ) : (
-        <Button variant="chip-accent" onClick={() => setRevealed(true)}>
+        <Button type="button" variant="secondary" size="xs" className="self-start" onClick={() => setRevealed(true)}>
           Mostrar resposta
         </Button>
       )}

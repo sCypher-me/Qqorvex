@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, ConfirmDialog, type BadgeTone } from "@qqorvex/ui";
+import { Button, Badge, ConfirmDialog, EmptyState, type BadgeTone } from "@qqorvex/ui";
 import { useCreateRecurringTask, useRecurringTasks, useUpdateRecurringTaskStatus } from "../hooks/useTasks";
 import type { TaskRecurrenceFrequency, RecurringTask } from "../types";
 
@@ -17,10 +17,15 @@ const RECURRING_STATUS_LABEL: Record<RecurringTask["status"], string> = {
 };
 
 const RECURRING_STATUS_TONE: Record<RecurringTask["status"], BadgeTone> = {
-  ativa: "success",
-  pausada: "warning",
-  cancelada: "error",
+  ativa: "info",
+  pausada: "neutral",
+  cancelada: "outline",
 };
+
+function formatDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
 
 /**
  * A próxima ocorrência é gerada sozinha (cron em `send-notifications`, a cada 5 min) — sem botão
@@ -46,40 +51,40 @@ export function RecurringTasksPanel({ client, userId }: { client: SupabaseClient
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Tarefas recorrentes</h2>
+    <div className="qv-card overflow-hidden flex flex-col">
+      <div className="flex items-center gap-3 px-[18px] pt-[18px] pb-3.5">
+        <span className="font-display text-base font-semibold">Tarefas recorrentes</span>
+        {!isLoading && <span className="font-mono text-xs text-text-muted">{recurringTasks.length}</span>}
+      </div>
+
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState className="px-[18px] pb-4">Carregando...</EmptyState>
       ) : recurringTasks.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma tarefa recorrente cadastrada.</p>
+        <EmptyState className="px-[18px] pb-4">Nenhuma tarefa recorrente cadastrada.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col qv-row-top">
           {recurringTasks.map((recurring) => (
-            <li
-              key={recurring.id}
-              className="bg-surface-2 border border-border rounded-md p-3 flex items-center justify-between gap-2 text-sm text-text-primary"
-            >
-              <div className="flex flex-col gap-1">
-                <p>{recurring.title}</p>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Badge tone={RECURRING_STATUS_TONE[recurring.status]}>{RECURRING_STATUS_LABEL[recurring.status]}</Badge>
-                  <span className="text-xs text-text-secondary-warm">
-                    {FREQUENCY_LABEL[recurring.frequency]} · próxima em {recurring.next_occurrence_date}
-                  </span>
-                </div>
+            <li key={recurring.id} className="qv-row flex items-center gap-4 px-[18px] py-[14px] flex-wrap">
+              <div className="flex-1 min-w-[200px] flex flex-col gap-[3px]">
+                <span className="text-sm font-medium text-text-primary">{recurring.title}</span>
+                <span className="text-xs text-text-muted">
+                  {FREQUENCY_LABEL[recurring.frequency]} · próxima em{" "}
+                  <span className="font-mono text-text-secondary">{formatDate(recurring.next_occurrence_date)}</span>
+                </span>
               </div>
-              <div className="flex items-center gap-2">
+              <Badge tone={RECURRING_STATUS_TONE[recurring.status]}>{RECURRING_STATUS_LABEL[recurring.status]}</Badge>
+              <div className="flex items-center gap-1.5">
                 {recurring.status === "ativa" ? (
-                  <Button type="button" variant="chip" onClick={() => updateStatus.mutate({ id: recurring.id, status: "pausada" })}>
+                  <Button type="button" variant="quiet" size="xs" onClick={() => updateStatus.mutate({ id: recurring.id, status: "pausada" })}>
                     Pausar
                   </Button>
                 ) : recurring.status === "pausada" ? (
-                  <Button type="button" variant="chip" onClick={() => updateStatus.mutate({ id: recurring.id, status: "ativa" })}>
+                  <Button type="button" variant="quiet" size="xs" onClick={() => updateStatus.mutate({ id: recurring.id, status: "ativa" })}>
                     Retomar
                   </Button>
                 ) : null}
                 {recurring.status !== "cancelada" && (
-                  <Button type="button" variant="chip" onClick={() => setConfirmCancelId(recurring.id)}>
+                  <Button type="button" variant="ghost" size="xs" onClick={() => setConfirmCancelId(recurring.id)}>
                     Cancelar
                   </Button>
                 )}
@@ -89,17 +94,19 @@ export function RecurringTasksPanel({ client, userId }: { client: SupabaseClient
         </ul>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="qv-row-top flex flex-wrap items-center gap-2.5 px-[18px] py-[14px]">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Título da tarefa recorrente"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Título da tarefa recorrente"
+          className="qv-field flex-1 min-w-[200px] py-2.5"
         />
         <select
           value={frequency}
           onChange={(e) => setFrequency(e.target.value as TaskRecurrenceFrequency)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Frequência"
+          className="qv-field w-auto py-2.5"
         >
           {Object.entries(FREQUENCY_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
@@ -111,7 +118,8 @@ export function RecurringTasksPanel({ client, userId }: { client: SupabaseClient
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Data de início"
+          className="qv-field w-auto py-2.5 font-mono text-[13px]"
         />
         <Button type="submit" variant="primary">
           Criar

@@ -11,9 +11,3 @@
  */
 @source "../../../../packages/**/*.{ts,tsx}";
 @source "../../../../modules/**/*.{ts,tsx}";
-
-body {
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-}

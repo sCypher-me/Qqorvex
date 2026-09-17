@@ -67,9 +67,9 @@ export function BlockEditor({ client, pageId, userId }: { client: SupabaseClient
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-[10px] text-[15px] leading-[1.75] text-text-secondary">
       {blocks.length === 0 ? (
-        <Button type="button" variant="secondary" onClick={handleAddFirstBlock}>
+        <Button type="button" variant="dashed" className="self-start" onClick={handleAddFirstBlock}>
           Adicionar bloco
         </Button>
       ) : (

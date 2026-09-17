@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { useWarranties } from "@qqorvex/module-documentos";
-import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input, Select } from "@qqorvex/ui";
 import { useAssets, useCreateAsset, useDeleteAsset } from "../hooks/useVidaPratica";
+
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 /** Inventário mais amplo que Garantias (útil pra seguro/mudança) — vínculo opcional com uma garantia já cadastrada. */
 export function AssetsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
@@ -10,6 +12,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
   const { warranties } = useWarranties(client);
   const createAsset = useCreateAsset(client, userId);
   const deleteAsset = useDeleteAsset(client);
+  const [formOpen, setFormOpen] = useState(false);
   const [warrantyId, setWarrantyId] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmAsset = assets.find((a) => a.id === confirmDeleteId) ?? null;
@@ -31,63 +34,88 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-        <input name="name" placeholder="Item" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input name="category" placeholder="Categoria" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input
-          name="estimatedValue"
-          type="number"
-          placeholder="Valor estimado"
-          className="w-32 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-        />
-        <input name="location" placeholder="Onde está" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        {warranties.length > 0 && (
-          <select
-            value={warrantyId}
-            onChange={(e) => setWarrantyId(e.target.value)}
-            className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-          >
-            <option value="">Garantia (opcional)</option>
-            {warranties.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.product_name}
-              </option>
-            ))}
-          </select>
-        )}
-        <Button type="submit" variant="secondary">
-          Adicionar
-        </Button>
-      </form>
+    <section className="qv-card p-[18px] flex flex-col gap-3">
+      <div className="flex items-center gap-2.5">
+        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Bens e inventário</h2>
+        {!isLoading && <span className="font-mono text-xs text-text-muted">{assets.length}</span>}
+      </div>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState>Carregando...</EmptyState>
       ) : assets.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum bem cadastrado.</p>
+        <EmptyState>Nenhum bem cadastrado.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {assets.map((asset) => (
-            <li key={asset.id}>
-              <Card>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-sans text-sm text-text-primary">{asset.name}</p>
-                    <p className="font-sans text-xs text-text-secondary-warm">
-                      {[asset.category, asset.estimated_value ? `R$ ${asset.estimated_value}` : null, asset.location]
-                        .filter(Boolean)
-                        .join(" · ") || "sem detalhes"}
-                    </p>
-                  </div>
-                  <Button type="button" variant="chip" onClick={() => setConfirmDeleteId(asset.id)}>
-                    Excluir
-                  </Button>
-                </div>
-              </Card>
-            </li>
-          ))}
+        <ul className="flex flex-col gap-3">
+          {assets.map((asset) => {
+            const details = [asset.category, asset.location].filter(Boolean).join(" · ");
+            return (
+              <li key={asset.id} className="qv-row-top flex items-center gap-2.5 py-2">
+                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="text-[13px] text-text-primary">{asset.name}</span>
+                  {details && <span className="text-xs text-text-muted">{details}</span>}
+                </span>
+                <span className="font-mono text-xs text-text-secondary">
+                  {asset.estimated_value ? brl.format(asset.estimated_value) : "—"}
+                </span>
+                <button
+                  type="button"
+                  className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+                  aria-label={`Excluir "${asset.name}"`}
+                  title="Excluir"
+                  onClick={() => setConfirmDeleteId(asset.id)}
+                >
+                  ✕
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
+
+      {formOpen ? (
+        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+          <Input name="name" placeholder="Item" aria-label="Item" className="py-2 text-[13px]" autoFocus />
+          <div className="grid grid-cols-2 gap-2">
+            <Input name="category" placeholder="Categoria" aria-label="Categoria" className="py-2 text-[13px]" />
+            <Input
+              name="estimatedValue"
+              type="number"
+              placeholder="Valor estimado"
+              aria-label="Valor estimado"
+              className="py-2 text-[13px] font-mono"
+            />
+          </div>
+          <Input name="location" placeholder="Onde está" aria-label="Onde está" className="py-2 text-[13px]" />
+          {warranties.length > 0 && (
+            <Select
+              value={warrantyId}
+              onChange={(e) => setWarrantyId(e.target.value)}
+              aria-label="Garantia"
+              className="py-2 text-[13px]"
+            >
+              <option value="">Garantia (opcional)</option>
+              {warranties.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.product_name}
+                </option>
+              ))}
+            </Select>
+          )}
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary" size="sm">
+              Adicionar
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
+              Fechar
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button type="button" variant="dashed" className="w-full" onClick={() => setFormOpen(true)}>
+          Adicionar
+        </Button>
+      )}
+
       <ConfirmDialog
         isOpen={confirmAsset !== null}
         title={`Excluir "${confirmAsset?.name}"?`}
@@ -98,6 +126,6 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
         }}
         onCancel={() => setConfirmDeleteId(null)}
       />
-    </div>
+    </section>
   );
 }

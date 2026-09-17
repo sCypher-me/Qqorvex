@@ -40,6 +40,8 @@ const BibliotecaPage = lazy(() => import("../pages/Biblioteca").then((m) => ({ d
 const DocumentosPage = lazy(() => import("../pages/Documentos").then((m) => ({ default: m.DocumentosPage })));
 const FinancasPage = lazy(() => import("../pages/Financas").then((m) => ({ default: m.FinancasPage })));
 const VidaPessoalPage = lazy(() => import("../pages/VidaPessoal").then((m) => ({ default: m.VidaPessoalPage })));
+const PerfilPage = lazy(() => import("../pages/Perfil").then((m) => ({ default: m.PerfilPage })));
+const GamificacaoPage = lazy(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
 const VexPage = lazy(() => import("../pages/Vex").then((m) => ({ default: m.VexPage })));
 
 const queryClient = new QueryClient();
@@ -64,9 +66,12 @@ function ModuleRegistrations() {
 
 function PageFallback() {
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center">
-      <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-    </main>
+    <div className="flex-1 flex items-center justify-center py-24">
+      <span className="flex items-center gap-2.5 text-sm text-text-secondary">
+        <span className="w-[7px] h-[7px] rounded-full bg-vex-cyan-bright animate-core-glow" />
+        Carregando...
+      </span>
+    </div>
   );
 }
 
@@ -91,6 +96,8 @@ export function App() {
                 <Route path="/documentos" element={<DocumentosPage />} />
                 <Route path="/financas" element={<FinancasPage />} />
                 <Route path="/vida-pessoal" element={<VidaPessoalPage />} />
+                <Route path="/perfil" element={<PerfilPage />} />
+                <Route path="/gamificacao" element={<GamificacaoPage />} />
                 <Route path="/seguranca" element={<SegurancaPage />} />
                 <Route path="/vex" element={<VexPage />} />
               </Route>

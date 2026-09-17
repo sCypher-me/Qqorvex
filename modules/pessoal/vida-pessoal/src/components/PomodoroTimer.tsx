@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, ProgressRing } from "@qqorvex/ui";
 import { useLogPomodoroSession, usePomodoroSessions } from "../hooks/useVidaPessoal";
 import { countCompletedPomodorosThisWeek, countCompletedPomodorosToday } from "../service";
 
@@ -90,49 +90,66 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
   const completedThisWeek = countCompletedPomodorosThisWeek(sessions, today);
 
   return (
-    <div className="bg-surface-2 border border-border rounded-md p-4 flex flex-col items-center gap-3">
-      <div
-        className="text-6xl transition-transform duration-1000 ease-linear select-none"
-        style={{ transform: `scale(${0.4 + progress * 0.6})` }}
-        aria-hidden
-      >
-        🌳
-      </div>
+    <div className="qv-card p-[22px] flex flex-col items-center gap-[18px]">
+      <h2 className="self-start font-display text-lg font-semibold text-text-primary">Pomodoro</h2>
+
+      <ProgressRing value={progress * 100} size={180} thickness={14}>
+        <span className="font-mono text-[34px] font-semibold tabular-nums text-text-primary" role="timer">
+          {String(minutesLeft).padStart(2, "0")}:{String(secondsLeft).padStart(2, "0")}
+        </span>
+        <span className="text-[11px] tracking-[.1em] uppercase text-text-muted">
+          {session ? "foco" : "pronto"} · <span className="font-mono">{duration}</span> min
+        </span>
+      </ProgressRing>
 
       {session ? (
-        <>
-          <p className="font-display text-2xl text-text-primary tabular-nums">
-            {String(minutesLeft).padStart(2, "0")}:{String(secondsLeft).padStart(2, "0")}
-          </p>
-          <Button variant="secondary" onClick={handleCancel}>
-            Cancelar (a árvore morre)
+        <div className="flex flex-col gap-2 w-full">
+          <Button type="button" variant="quiet" className="w-full" onClick={handleCancel}>
+            Encerrar
           </Button>
-        </>
+          <span className="text-xs text-text-muted text-center leading-relaxed">
+            Encerrar antes do fim ou sair da aba perde a sessão.
+          </span>
+        </div>
       ) : (
-        <>
-          <div className="flex gap-2">
-            {DURATIONS_MINUTES.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDuration(d)}
-                className={`text-sm px-3 py-1.5 rounded-md border ${
-                  duration === d ? "border-primary text-primary" : "border-border text-text-primary hover:bg-surface-1"
-                }`}
-              >
-                {d}m
-              </button>
-            ))}
+        <div className="flex flex-col gap-2.5 w-full">
+          <div className="flex gap-2" role="radiogroup" aria-label="Duração">
+            {DURATIONS_MINUTES.map((d) => {
+              const selected = duration === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setDuration(d)}
+                  className={`flex-1 rounded-xl py-2 font-mono text-[13px] border cursor-pointer transition-colors ${
+                    selected
+                      ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark text-vex-cyan-bright"
+                      : "bg-vex-obsidian border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
+                  }`}
+                >
+                  {d}m
+                </button>
+              );
+            })}
           </div>
-          <Button variant="primary" onClick={handleStart}>
+          <Button type="button" variant="vex" className="w-full" onClick={handleStart}>
             Começar
           </Button>
-        </>
+        </div>
       )}
 
-      <p className="font-sans text-xs text-text-secondary-warm">
-        {completedToday} {completedToday === 1 ? "árvore" : "árvores"} hoje · {completedThisWeek} esta semana
-      </p>
+      <div className="w-full flex flex-col">
+        <div className="qv-row-top flex items-baseline gap-2.5 py-2">
+          <span className="flex-1 text-[13px] text-text-primary">Concluídos hoje</span>
+          <span className="font-mono text-xs text-text-secondary">{completedToday}</span>
+        </div>
+        <div className="qv-row-top flex items-baseline gap-2.5 py-2">
+          <span className="flex-1 text-[13px] text-text-primary">Esta semana</span>
+          <span className="font-mono text-xs text-text-secondary">{completedThisWeek}</span>
+        </div>
+      </div>
     </div>
   );
 }

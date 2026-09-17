@@ -1,60 +1,606 @@
 /*
-  Qqorvex Design System — Tokens
-  Fonte: Xmind "Qqorvex" > Paleta Oficial, Cores Semânticas, Tipografia Oficial.
-  Estes valores são a fonte de verdade visual do produto; não redefinir cores
-  ad-hoc dentro de módulos.
+  Qqorvex Design System — Tokens (v1.0 · "Balanced Vex")
+  Fonte: Qqorvex Design System v1.0 (designq.zip → _ds/tokens + "Qqorvex App.dc.html").
+  Dark mode exclusivo: grafite/obsidiana dominante, ouro = físico/premium/marco, cyan = ativo/Vex.
+  Verde/vermelho/âmbar são reservados a estados (sucesso, erro, atenção) — nunca ouro ou cyan.
+
+  Os nomes antigos (surface-1, text-secondary-warm, brand-cyan...) continuam existindo e apontam
+  para os valores novos, para que os módulos já herdem a paleta sem precisar renomear classes.
 */
 @import "../fonts/faces.css";
 
 @theme {
-  /* Fundação */
-  --color-background: #0f1114;
-  --color-surface-1: #14181a;
-  --color-surface-2: #152124;
-  --color-border: #2d2d2d;
+  /* Paleta Vex */
+  --color-vex-black: #090b0e;
+  --color-vex-obsidian: #101318;
+  --color-vex-graphite: #171b21;
+  --color-vex-raised: #1e232b;
+  --color-vex-border: #2a3039;
+  --color-vex-gold: #b88a54;
+  --color-vex-gold-bright: #d2a66f;
+  --color-vex-gold-muted: #73583b;
+  --color-vex-cyan: #43b9d2;
+  --color-vex-cyan-bright: #72d8eb;
+  --color-vex-cyan-dark: #246c7b;
+
+  /* Fundação (nomes históricos) */
+  --color-background: #090b0e;
+  --color-surface-1: #101318;
+  --color-surface-2: #171b21;
+  --color-surface-3: #1e232b;
+  --color-border: #2a3039;
 
   /* Texto */
-  --color-text-primary: #f4efe6;
-  --color-text-secondary-warm: #cfafa2;
+  --color-text-primary: #f1f3f5;
+  --color-text-secondary: #a5abb4;
+  --color-text-secondary-warm: #a5abb4;
+  --color-text-muted: #707780;
 
   /* Marca */
-  --color-brand-gold: #cf9c49;
-  --color-brand-cyan: #00e6fb;
+  --color-brand-gold: #b88a54;
+  --color-brand-cyan: #43b9d2;
 
   /* Apoio */
-  --color-cyan-muted: #64adb4;
-  --color-warm-muted: #635752;
+  --color-cyan-muted: #246c7b;
+  --color-warm-muted: #707780;
 
   /* Semânticas */
-  --color-success: #4ade80;
-  --color-success-bg: rgb(74 222 128 / 0.10);
-  --color-success-border: rgb(74 222 128 / 0.30);
+  --color-success: #32c48d;
+  --color-success-bg: rgb(50 196 141 / 0.14);
+  --color-success-border: rgb(50 196 141 / 0.4);
 
-  --color-error: #ff5d73;
-  --color-error-bg: rgb(255 93 115 / 0.10);
-  --color-error-border: rgb(255 93 115 / 0.30);
+  --color-error: #f05d6c;
+  --color-error-bg: rgb(240 93 108 / 0.14);
+  --color-error-border: rgb(240 93 108 / 0.45);
 
-  --color-warning: #f4c95d;
-  --color-warning-bg: rgb(244 201 93 / 0.10);
-  --color-warning-border: rgb(244 201 93 / 0.30);
+  --color-critical: #d94155;
 
-  --color-info: #5ebbff;
-  --color-info-bg: rgb(94 187 255 / 0.10);
-  --color-info-border: rgb(94 187 255 / 0.30);
+  --color-warning: #e7a84b;
+  --color-warning-bg: rgb(231 168 75 / 0.14);
+  --color-warning-border: rgb(231 168 75 / 0.42);
+
+  --color-info: #72d8eb;
+  --color-info-bg: rgb(67 185 210 / 0.14);
+  --color-info-border: #246c7b;
+
+  /* Categorias (paleta fechada — não estender ad hoc) */
+  --color-category-amber: #c98c45;
+  --color-category-blue: #5e86c8;
+  --color-category-green: #6faf91;
+  --color-category-magenta: #a56d98;
+  --color-category-coral: #c7786e;
+  --color-category-lavender: #8a7fb5;
+  --color-category-teal: #4e9a9a;
+  --color-category-cyan: #43b9d2;
+  --color-category-bronze: #9a7652;
+  --color-category-bluegray: #687a91;
 
   /* Tipografia */
   --font-display: "Space Grotesk", sans-serif;
   --font-sans: "Manrope", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /**
-   * Card padrão (docs/decisions/design-system-componentes-v1.md) — decidido via brainstorming
-   * visual: cantos suaves, sombra discreta, borda de destaque fina à esquerda.
-   */
-  --radius-card: 0.625rem; /* 10px */
-  --shadow-card: 0 4px 18px rgb(0 0 0 / 0.35);
+  /* Raios: controle 12px, card 16px, Vex/modais 20px */
+  --radius-md: 0.75rem;
+  --radius-card: 1rem;
+  --radius-vex: 1.25rem;
 
-  /* Chips de ação (botões sem borda, fundo tintado bem sutil) — mesma decisão do Card. */
-  --color-chip-neutral: rgb(244 239 230 / 0.06);
-  --color-chip-cyan: rgb(0 230 251 / 0.10);
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.045), 0 1px 2px rgb(0 0 0 / 0.55), 0 20px 44px rgb(0 0 0 / 0.32);
+  --shadow-popover: 0 1px 2px rgb(0 0 0 / 0.6), 0 18px 40px rgb(0 0 0 / 0.45);
+  --shadow-glow-cyan: 0 0 20px rgb(67 185 210 / 0.35);
+  --shadow-glow-gold: 0 0 18px rgb(210 166 111 / 0.22);
+
+  /* Chips de ação */
+  --color-chip-neutral: rgb(255 255 255 / 0.04);
+  --color-chip-cyan: rgb(67 185 210 / 0.12);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --animate-vex-in: vexIn 280ms cubic-bezier(0, 0, 0, 1);
+  --animate-overlay-in: overlayIn 220ms cubic-bezier(0, 0, 0, 1);
+  --animate-core-glow: coreGlow 2.4s ease-in-out infinite;
+
+  @keyframes vexIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes overlayIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes coreGlow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+}
+
+/* ───────────── Base ───────────── */
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-vex-black);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+  }
+
+  /* Atmosfera: brilho cyan no topo-esquerdo, bronze no rodapé-direito e a malha "Faceted Lattice". */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(1100px 600px at 12% -8%, rgb(67 185 210 / 0.07), transparent 62%),
+      radial-gradient(900px 520px at 92% 108%, rgb(184 138 84 / 0.055), transparent 60%);
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.42;
+    background-image:
+      linear-gradient(115deg, rgb(60 68 80 / 0.16) 1px, transparent 1px),
+      linear-gradient(65deg, rgb(60 68 80 / 0.16) 1px, transparent 1px),
+      linear-gradient(rgb(48 55 65 / 0.12) 1px, transparent 1px);
+    background-size: 96px 96px, 96px 96px, 96px 96px;
+  }
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font-family: var(--font-sans);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-vex-cyan-bright);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(67 185 210 / 0.28);
+  }
+
+  ::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"],
+  progress {
+    accent-color: var(--color-vex-cyan);
+  }
+
+  select option {
+    background: var(--color-vex-raised);
+    color: var(--color-text-primary);
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-vex-border);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+/* ───────────── Componentes (classes `qv-*`, compartilhadas por app e módulos) ───────────── */
+@layer components {
+  /* Superfícies */
+  .qv-card {
+    background: linear-gradient(180deg, rgb(32 37 45 / 0.86), rgb(20 24 30 / 0.94));
+    border: 1px solid rgb(50 57 68 / 0.9);
+    border-radius: 16px;
+    box-shadow: var(--shadow-card);
+  }
+  .qv-card-vex {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(120deg, rgb(67 185 210 / 0.12), rgb(22 26 32 / 0.96) 55%);
+    border: 1px solid rgb(36 108 123 / 0.9);
+    border-radius: 20px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 32px rgb(67 185 210 / 0.08), 0 20px 44px rgb(0 0 0 / 0.34);
+  }
+  .qv-card-milestone {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(120deg, rgb(184 138 84 / 0.16), rgb(24 28 34 / 0.96) 54%);
+    border: 1px solid rgb(184 138 84 / 0.45);
+    border-radius: 16px;
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 16px 40px rgb(0 0 0 / 0.35);
+  }
+  .qv-column {
+    background: rgb(12 15 19 / 0.6);
+    border: 1px solid rgb(50 57 68 / 0.8);
+    border-radius: 16px;
+  }
+  .qv-tile {
+    background: var(--color-vex-graphite);
+    border: 1px solid var(--color-vex-border);
+    border-radius: 12px;
+    transition: border-color 160ms var(--ease-standard);
+  }
+  .qv-well {
+    background: rgb(11 14 18 / 0.75);
+    border: 1px solid rgb(50 57 68 / 0.85);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025);
+  }
+  .qv-popover {
+    background: linear-gradient(180deg, rgb(38 44 54 / 0.96), rgb(26 31 38 / 0.98));
+    border: 1px solid rgb(58 66 78 / 0.9);
+    border-radius: 16px;
+    box-shadow: var(--shadow-popover);
+  }
+  .qv-dialog {
+    background: linear-gradient(180deg, rgb(34 40 49 / 0.96), rgb(19 23 28 / 0.98));
+    border: 1px solid rgb(58 66 78 / 0.9);
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgb(0 0 0 / 0.6), 0 30px 70px rgb(0 0 0 / 0.55);
+    animation: var(--animate-overlay-in);
+  }
+  .qv-backdrop {
+    background: rgb(6 8 11 / 0.66);
+    backdrop-filter: blur(24px) saturate(0.9);
+  }
+  .qv-dropzone {
+    background: var(--color-vex-graphite);
+    border: 1px dashed var(--color-vex-border);
+    border-radius: 14px;
+  }
+
+  /* Linhas de lista dentro de cards */
+  .qv-row {
+    border-bottom: 1px solid rgb(52 59 70 / 0.55);
+  }
+  .qv-row:last-child {
+    border-bottom: none;
+  }
+  .qv-row-top {
+    border-top: 1px solid rgb(52 59 70 / 0.55);
+  }
+
+  /* Campos */
+  .qv-field {
+    width: 100%;
+    min-width: 0;
+    background: rgb(11 14 18 / 0.75);
+    border: 1px solid rgb(50 57 68 / 0.85);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025);
+    padding: 11px 14px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    line-height: 1.4;
+    outline: none;
+    transition: border-color 160ms var(--ease-standard), box-shadow 160ms var(--ease-standard);
+  }
+  .qv-field:hover {
+    border-color: rgb(80 88 100 / 0.9);
+  }
+  .qv-field:focus,
+  .qv-field:focus-visible {
+    background: var(--color-vex-obsidian);
+    border-color: var(--color-vex-cyan-bright);
+    box-shadow: 0 0 0 1px var(--color-vex-cyan-bright), 0 0 16px rgb(67 185 210 / 0.22);
+    outline: none;
+  }
+  .qv-field[aria-invalid="true"] {
+    border-color: var(--color-error);
+  }
+  .qv-field:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  select.qv-field {
+    padding-right: 12px;
+    color: var(--color-text-primary);
+  }
+  textarea.qv-field {
+    resize: vertical;
+    min-height: 88px;
+    line-height: 1.6;
+  }
+  .qv-field-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  /* Botões */
+  .qv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: filter 160ms var(--ease-standard), border-color 160ms var(--ease-standard),
+      color 160ms var(--ease-standard), background-color 160ms var(--ease-standard), transform 160ms var(--ease-standard);
+  }
+  .qv-btn:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+  .qv-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .qv-btn-sm {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+  .qv-btn-xs {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 10px;
+  }
+  .qv-btn-primary {
+    background: linear-gradient(180deg, rgb(40 47 57 / 0.98), rgb(28 33 41 / 0.98));
+    border-color: var(--color-vex-cyan-dark);
+    color: var(--color-text-primary);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 6px 18px rgb(0 0 0 / 0.35);
+  }
+  .qv-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.15);
+  }
+  .qv-btn-secondary {
+    background: transparent;
+    border-color: var(--color-vex-border);
+    color: var(--color-text-primary);
+  }
+  .qv-btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-text-muted);
+  }
+  .qv-btn-quiet {
+    background: transparent;
+    border-color: var(--color-vex-border);
+    color: var(--color-text-secondary);
+  }
+  .qv-btn-quiet:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-muted);
+  }
+  .qv-btn-ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+  }
+  .qv-btn-ghost:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    background: rgb(255 255 255 / 0.045);
+  }
+  .qv-btn-vex {
+    background: rgb(67 185 210 / 0.12);
+    border-color: var(--color-vex-cyan-dark);
+    color: var(--color-vex-cyan-bright);
+  }
+  .qv-btn-vex:hover:not(:disabled) {
+    filter: brightness(1.15);
+  }
+  .qv-btn-premium {
+    background: linear-gradient(180deg, rgb(184 138 84 / 0.22), rgb(115 88 59 / 0.18));
+    border-color: rgb(184 138 84 / 0.55);
+    color: var(--color-vex-gold-bright);
+  }
+  .qv-btn-premium:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+  .qv-btn-danger {
+    background: transparent;
+    border-color: var(--color-error);
+    color: var(--color-error);
+  }
+  .qv-btn-danger:hover:not(:disabled) {
+    background: rgb(240 93 108 / 0.08);
+  }
+  .qv-btn-dashed {
+    background: transparent;
+    border: 1px dashed var(--color-vex-border);
+    color: var(--color-text-muted);
+    font-weight: 500;
+    font-size: 13px;
+  }
+  .qv-btn-dashed:hover:not(:disabled) {
+    color: var(--color-text-primary);
+  }
+  .qv-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    border: 1px solid var(--color-vex-border);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 160ms var(--ease-standard), border-color 160ms var(--ease-standard);
+  }
+  .qv-icon-btn:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-muted);
+  }
+
+  /* Chips de filtro/abas (pílula) */
+  .qv-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-vex-border);
+    transition: all 160ms var(--ease-standard);
+  }
+  .qv-chip:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-muted);
+  }
+  .qv-chip[data-active="true"],
+  .qv-chip[aria-selected="true"],
+  .qv-chip[aria-pressed="true"] {
+    background: rgb(67 185 210 / 0.12);
+    color: var(--color-vex-cyan-bright);
+    border-color: var(--color-vex-cyan-dark);
+  }
+
+  /* Pílulas de status/tag */
+  .qv-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: nowrap;
+    background: var(--color-vex-raised);
+    color: var(--color-text-secondary);
+  }
+  .qv-pill-info {
+    background: rgb(67 185 210 / 0.14);
+    color: var(--color-vex-cyan-bright);
+  }
+  .qv-pill-success {
+    background: rgb(50 196 141 / 0.14);
+    color: var(--color-success);
+  }
+  .qv-pill-warning {
+    background: rgb(231 168 75 / 0.14);
+    color: var(--color-warning);
+  }
+  .qv-pill-danger {
+    background: rgb(240 93 108 / 0.14);
+    color: var(--color-error);
+  }
+  .qv-pill-premium {
+    background: rgb(184 138 84 / 0.16);
+    color: var(--color-vex-gold-bright);
+  }
+  .qv-pill-outline {
+    background: transparent;
+    border: 1px solid var(--color-vex-border);
+    color: var(--color-text-secondary);
+  }
+  .qv-pill-module {
+    background: transparent;
+    border: 1px solid var(--color-vex-border);
+    color: var(--color-text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Texto */
+  .qv-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .qv-section-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .qv-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Progresso */
+  .qv-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: rgb(42 48 57 / 0.9);
+    overflow: hidden;
+  }
+  .qv-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--color-vex-cyan);
+    transition: width 220ms var(--ease-standard);
+  }
+
+  /* Caixa de seleção visual (substituto do checkbox nativo em listas) */
+  .qv-check {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    border-radius: 5px;
+    border: 1.75px solid var(--color-vex-border);
+    background: transparent;
+    cursor: pointer;
+    display: inline-grid;
+    place-content: center;
+    transition: all 160ms var(--ease-standard);
+  }
+  .qv-check:hover {
+    border-color: var(--color-text-muted);
+  }
+  .qv-check:checked {
+    background: rgb(50 196 141 / 0.25);
+    border-color: var(--color-success);
+  }
+  .qv-check:checked::after {
+    content: "";
+    width: 7px;
+    height: 4px;
+    border-left: 1.75px solid var(--color-success);
+    border-bottom: 1.75px solid var(--color-success);
+    transform: translateY(-1px) rotate(-45deg);
+  }
 }

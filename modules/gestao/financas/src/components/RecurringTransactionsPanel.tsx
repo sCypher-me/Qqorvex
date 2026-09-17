@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Badge, Button, CardHeader, EmptyState } from "@qqorvex/ui";
 import {
   useCreateRecurringTransaction,
   useGenerateOccurrence,
@@ -8,6 +8,7 @@ import {
   useUpdateRecurringStatus,
 } from "../hooks/useFinancas";
 import type { RecurrenceFrequency, TransactionType } from "../types";
+import { formatSignedBRL, parseBRLInput } from "./TransactionList";
 
 const FREQUENCY_LABEL: Record<RecurrenceFrequency, string> = {
   mensal: "Mensal",
@@ -16,6 +17,10 @@ const FREQUENCY_LABEL: Record<RecurrenceFrequency, string> = {
   semestral: "Semestral",
   anual: "Anual",
 };
+
+function formatIsoDate(iso: string): string {
+  return iso.split("-").reverse().join("/");
+}
 
 /**
  * "Assinatura é uma recorrência de saída com is_subscription=true; mesma tabela." Um único painel
@@ -37,79 +42,98 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
-    const parsedAmount = Number(amount);
+    const parsedAmount = parseBRLInput(amount);
     if (!trimmed || !(parsedAmount > 0)) return;
     createRecurring.mutate({ name: trimmed, amount: parsedAmount, transactionType, frequency, startDate, isSubscription });
     setName("");
     setAmount("");
   }
 
+  const activeCount = recurringTransactions.filter((r) => r.status === "ativa").length;
+
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Recorrências &amp; Assinaturas</h2>
+    <div className="qv-card overflow-hidden">
+      <CardHeader
+        divider
+        title="Recorrências & Assinaturas"
+        meta={isLoading ? undefined : `${activeCount} ${activeCount === 1 ? "ativa" : "ativas"}`}
+      />
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
       ) : recurringTransactions.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma recorrência cadastrada.</p>
+        <EmptyState className="px-[18px] py-4">
+          Nenhuma recorrência cadastrada. Contas fixas e assinaturas aparecem aqui e no calendário financeiro.
+        </EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {recurringTransactions.map((recurring) => (
-            <li
-              key={recurring.id}
-              className="bg-surface-2 border border-border rounded-md p-3 flex items-center justify-between gap-2 text-sm text-text-primary"
-            >
-              <div>
-                <p>
-                  {recurring.name}
-                  {recurring.is_subscription ? " · Assinatura" : ""}
-                </p>
-                <p className="text-xs text-text-secondary-warm">
-                  {FREQUENCY_LABEL[recurring.frequency]} · próxima cobrança {recurring.next_occurrence_date} ·{" "}
-                  {recurring.status}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => generateOccurrence.mutate(recurring)}
-                  disabled={recurring.status !== "ativa" || generateOccurrence.isPending}
-                  className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1 disabled:opacity-50"
+        <ul>
+          {recurringTransactions.map((recurring) => {
+            const isActive = recurring.status === "ativa";
+            const isEntrada = recurring.transaction_type === "entrada";
+            return (
+              <li key={recurring.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[13px] flex-wrap">
+                <div className="flex-[1_1_200px] min-w-0 flex flex-col gap-0.5">
+                  <span className="text-sm font-medium truncate flex items-center gap-2">
+                    {recurring.name}
+                    {recurring.is_subscription && <Badge tone="outline">Assinatura</Badge>}
+                    {!isActive && <Badge tone="warning">{recurring.status}</Badge>}
+                  </span>
+                  <span className="text-xs text-text-muted">
+                    {FREQUENCY_LABEL[recurring.frequency]} · próxima cobrança{" "}
+                    <span className="font-mono">{formatIsoDate(recurring.next_occurrence_date)}</span>
+                  </span>
+                </div>
+                <span
+                  className={`font-mono text-sm font-medium whitespace-nowrap ${isEntrada ? "text-success" : "text-error"} ${
+                    isActive ? "" : "opacity-60"
+                  }`}
                 >
-                  Gerar cobrança agora
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateStatus.mutate({ id: recurring.id, status: recurring.status === "ativa" ? "pausada" : "ativa" })
-                  }
-                  className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
-                >
-                  {recurring.status === "ativa" ? "Pausar" : "Reativar"}
-                </button>
-              </div>
-            </li>
-          ))}
+                  {formatSignedBRL(recurring.amount, isEntrada ? "+" : "-")}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    size="xs"
+                    onClick={() => generateOccurrence.mutate(recurring)}
+                    disabled={!isActive || generateOccurrence.isPending}
+                  >
+                    Gerar cobrança agora
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    size="xs"
+                    onClick={() => updateStatus.mutate({ id: recurring.id, status: isActive ? "pausada" : "ativa" })}
+                  >
+                    {isActive ? "Pausar" : "Reativar"}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end">
+      <form onSubmit={handleSubmit} className="qv-row-top flex flex-wrap items-center gap-2 px-[18px] py-[14px]">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome"
-          className="flex-1 min-w-[140px] rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Nome da recorrência"
+          className="qv-field flex-[2_1_160px] py-2"
         />
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Valor"
-          type="number"
-          step="0.01"
-          className="w-28 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          placeholder="R$ 0,00"
+          aria-label="Valor"
+          inputMode="decimal"
+          className="qv-field flex-[0_1_120px] py-2 font-mono text-[13px]"
         />
         <select
           value={transactionType}
           onChange={(e) => setTransactionType(e.target.value as Exclude<TransactionType, "transferencia">)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Tipo"
+          className="qv-field flex-[0_1_120px] py-2 px-3 text-[13px]"
         >
           <option value="saida">Saída</option>
           <option value="entrada">Entrada</option>
@@ -117,7 +141,8 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
         <select
           value={frequency}
           onChange={(e) => setFrequency(e.target.value as RecurrenceFrequency)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Frequência"
+          className="qv-field flex-[0_1_130px] py-2 px-3 text-[13px]"
         >
           {Object.entries(FREQUENCY_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
@@ -129,13 +154,19 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Data de início"
+          className="qv-field flex-[0_1_160px] py-2 font-mono text-[13px]"
         />
-        <label className="flex items-center gap-1 text-xs text-text-secondary-warm">
-          <input type="checkbox" checked={isSubscription} onChange={(e) => setIsSubscription(e.target.checked)} />
+        <label className="flex items-center gap-2 text-[13px] text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            className="qv-check"
+            checked={isSubscription}
+            onChange={(e) => setIsSubscription(e.target.checked)}
+          />
           Assinatura
         </label>
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="primary" size="sm" disabled={createRecurring.isPending}>
           Adicionar
         </Button>
       </form>

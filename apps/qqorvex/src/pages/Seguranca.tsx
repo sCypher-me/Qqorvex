@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { Badge, Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
 import {
   useAuth,
   useMfaFactors,
@@ -10,7 +10,6 @@ import {
   registerPasskey,
   renamePasskey,
   deletePasskey,
-  useProfile,
   useSessions,
   revokeSession,
   parseUserAgent,
@@ -20,7 +19,6 @@ import {
 } from "@qqorvex/auth";
 import { useNotifications } from "@qqorvex/notifications";
 import { GoogleCalendarSection } from "@qqorvex/module-agenda";
-import { useGamificationStats, useUnlockedBadges, GamificationWidget, BadgesPanel } from "@qqorvex/module-gamificacao";
 
 /** "ativo há X" a partir de refreshed_at/created_at — só pra exibição, sem lib nova. */
 function formatRelativeTime(isoDate: string): string {
@@ -34,14 +32,35 @@ function formatRelativeTime(isoDate: string): string {
   return `há ${days}d`;
 }
 
-/** "Central de Segurança" v1 lean: Perfil + 2FA (TOTP) + Passkey + Dispositivos + notificações push. */
+const shortDate = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
+
+function formatShortDate(isoDate: string): string {
+  return shortDate.format(new Date(isoDate)).replace(".", "").replace(" de ", " ");
+}
+
+/** Sessão sem atividade há mais de um dia aparece com o ponto cinza (continua válida até ser encerrada). */
+const RECENT_ACTIVITY_MS = 24 * 60 * 60 * 1000;
+
+function SecurityCard({ title, pill, children }: { title: string; pill?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="qv-card p-5 flex flex-col gap-3.5">
+      <div className="flex items-center gap-2.5">
+        <h2 className="font-display text-[17px] font-semibold flex-1">{title}</h2>
+        {pill}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function CardText({ children }: { children: ReactNode }) {
+  return <p className="text-[13px] text-text-secondary leading-relaxed">{children}</p>;
+}
+
+/** "Central de Segurança" v1 lean: 2FA (TOTP) + Passkey + Sessões + PIN do Cofre + notificações push + integrações. */
 export function SegurancaPage() {
   const { client, session } = useAuth();
   const userId = session!.user.id;
-  const { profile, isLoading: profileLoading, save: saveProfile } = useProfile(client, userId);
-  const { progress: gamificationProgress, title: gamificationTitle, isLoading: gamificationStatsLoading } = useGamificationStats(client, userId);
-  const { badges, isLoading: badgesLoading } = useUnlockedBadges(client, userId);
-  const gamificationLoading = gamificationStatsLoading || badgesLoading;
   const { factors, isLoading, refresh } = useMfaFactors(client);
   const { passkeys, isLoading: passkeysLoading, refresh: refreshPasskeys } = usePasskeys(client);
   const { sessions, currentSessionId, isLoading: sessionsLoading, refresh: refreshSessions } = useSessions(client);
@@ -64,41 +83,9 @@ export function SegurancaPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
-  const [bio, setBio] = useState("");
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [profileSaved, setProfileSaved] = useState(false);
-  const [profileBusy, setProfileBusy] = useState(false);
-
   const [confirmDeletePasskeyId, setConfirmDeletePasskeyId] = useState<string | null>(null);
   const [confirmRevokeSessionId, setConfirmRevokeSessionId] = useState<string | null>(null);
   const [confirmSignOutOthers, setConfirmSignOutOthers] = useState(false);
-
-  useEffect(() => {
-    if (!profile) return;
-    setDisplayName(profile.display_name ?? "");
-    setUsername(profile.username ?? "");
-    setBio(profile.bio ?? "");
-  }, [profile]);
-
-  async function handleSaveProfile(event: FormEvent) {
-    event.preventDefault();
-    setProfileError(null);
-    setProfileSaved(false);
-    setProfileBusy(true);
-    const { error: saveError } = await saveProfile({
-      displayName: displayName.trim() || null,
-      username: username.trim() || null,
-      bio: bio.trim() || null,
-    });
-    setProfileBusy(false);
-    if (saveError) {
-      setProfileError(saveError);
-      return;
-    }
-    setProfileSaved(true);
-  }
 
   const verifiedTotp = factors.find((f) => f.status === "verified");
 
@@ -199,85 +186,43 @@ export function SegurancaPage() {
     refreshPin();
   }
 
+  const pinFieldClass =
+    "qv-field w-[150px] font-mono text-[15px] tracking-[.3em] placeholder:font-sans placeholder:text-[13px] placeholder:tracking-normal";
+
   return (
-    <main className="min-h-screen bg-background px-4 py-8 flex flex-col items-center gap-6">
-      <div className="w-full max-w-md">
-        <h1 className="font-display text-2xl font-bold text-text-primary">Segurança</h1>
-      </div>
-
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Perfil</h2>
-
-        {profileLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-        ) : (
-          <form onSubmit={handleSaveProfile} className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="font-sans text-xs text-text-secondary-warm">Nome de exibição</span>
-              <input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-sans text-xs text-text-secondary-warm">Nome de usuário (3–20, letras minúsculas/números/_)</span>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="font-sans text-xs text-text-secondary-warm">Bio</span>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={2}
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-              />
-            </label>
-            <Button type="submit" variant="primary" disabled={profileBusy}>
-              {profileBusy ? "Salvando..." : "Salvar perfil"}
-            </Button>
-            {profileError && <p className="font-sans text-sm text-error">{profileError}</p>}
-            {profileSaved && !profileError && <p className="font-sans text-sm text-success">Perfil atualizado.</p>}
-          </form>
-        )}
-      </Card>
-
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Gamificação</h2>
-        {gamificationLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-        ) : (
-          <>
-            <GamificationWidget progress={gamificationProgress} title={gamificationTitle} />
-            <BadgesPanel badges={badges} />
-          </>
-        )}
-      </Card>
-
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Verificação em duas etapas (app autenticador)</h2>
-
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start max-w-[1040px]">
+      <SecurityCard
+        title="Verificação em duas etapas"
+        pill={
+          isLoading ? undefined : verifiedTotp ? <Badge tone="success">Ativa</Badge> : <Badge>Inativa</Badge>
+        }
+      >
         {isLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+          <EmptyState>Carregando...</EmptyState>
         ) : verifiedTotp ? (
-          <div className="flex flex-col gap-2">
-            <p className="font-sans text-sm text-success">2FA ativado. A partir de agora, o login pede um código do app autenticador.</p>
-            <Button variant="secondary" onClick={() => handleRemove(verifiedTotp.id)} disabled={busy}>
-              Desativar 2FA
-            </Button>
-          </div>
+          <>
+            <CardText>
+              App autenticador configurado. A partir de agora, cada login por senha pede o código de 6 dígitos gerado
+              no app.
+            </CardText>
+            <div className="flex gap-2.5">
+              <Button variant="destructive" onClick={() => handleRemove(verifiedTotp.id)} disabled={busy}>
+                Desativar
+              </Button>
+            </div>
+          </>
         ) : enrollment ? (
           <form onSubmit={handleConfirm} className="flex flex-col gap-3">
-            <p className="font-sans text-sm text-text-secondary-warm">
-              Escaneie o QR code com um app autenticador (Google Authenticator, Authy, 1Password...) e digite o
-              código de 6 dígitos para confirmar.
-            </p>
-            <img src={enrollment.qrCodeDataUri} alt="QR code do 2FA" className="w-40 h-40 self-center bg-white p-2 rounded-md" />
-            <p className="font-mono text-xs text-text-secondary-warm break-all">
+            <CardText>
+              Escaneie o QR code com um app autenticador (Google Authenticator, Authy, 1Password...) e digite o código de
+              6 dígitos para confirmar.
+            </CardText>
+            <img
+              src={enrollment.qrCodeDataUri}
+              alt="QR code do 2FA"
+              className="w-40 h-40 self-center bg-white p-2 rounded-md"
+            />
+            <p className="font-mono text-xs text-text-muted break-all">
               Não conseguiu escanear? Digite manualmente: {enrollment.secret}
             </p>
             <input
@@ -285,9 +230,10 @@ export function SegurancaPage() {
               onChange={(e) => setCode(e.target.value)}
               placeholder="Código de 6 dígitos"
               inputMode="numeric"
-              className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+              aria-label="Código de 6 dígitos"
+              className="qv-field font-mono tracking-[.2em] placeholder:font-sans placeholder:tracking-normal"
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               <Button type="submit" variant="primary" disabled={busy || code.trim().length === 0}>
                 Confirmar
               </Button>
@@ -297,63 +243,79 @@ export function SegurancaPage() {
             </div>
           </form>
         ) : (
-          <div className="flex flex-col gap-2">
-            <p className="font-sans text-sm text-text-secondary-warm">
+          <>
+            <CardText>
               Adicione uma camada extra de segurança: além da senha, o login vai pedir um código gerado por um app
               autenticador no seu celular.
-            </p>
-            <Button variant="primary" onClick={handleEnable} disabled={busy}>
-              Ativar 2FA
-            </Button>
-          </div>
+            </CardText>
+            <div className="flex gap-2.5">
+              <Button variant="primary" onClick={handleEnable} disabled={busy}>
+                Ativar 2FA
+              </Button>
+            </div>
+          </>
         )}
 
-        {error && <p className="font-sans text-sm text-error">{error}</p>}
-      </Card>
+        {error && <p className="text-[13px] text-error">{error}</p>}
+      </SecurityCard>
 
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Passkeys</h2>
-        <p className="font-sans text-sm text-text-secondary-warm">
-          Entre sem senha usando Windows Hello, o leitor de digital do seu computador ou uma chave de segurança
-          física. É uma forma alternativa de entrar, não um passo extra depois da senha.
-        </p>
+      <SecurityCard title="Passkeys">
+        <CardText>
+          Entre sem senha usando Windows Hello, o leitor de digital do seu computador ou uma chave de segurança física. É
+          uma forma alternativa de entrar, não um passo extra depois da senha.
+        </CardText>
 
         {passkeysLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+          <EmptyState>Carregando...</EmptyState>
         ) : passkeys.length > 0 ? (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col">
             {passkeys.map((passkey) => (
-              <li key={passkey.id} className="flex items-center justify-between gap-2 text-sm">
+              <li key={passkey.id} className="qv-row-top flex items-center gap-3 py-2.5">
                 {renamingId === passkey.id ? (
-                  <div className="flex flex-1 gap-2">
+                  <div className="flex flex-1 min-w-0 gap-2">
                     <input
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
-                      className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 text-text-primary text-sm"
+                      aria-label="Nome da passkey"
+                      className="qv-field flex-1 min-w-0"
                       autoFocus
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleSaveRename(passkey.id)}
                       disabled={passkeyBusy}
-                      className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
                     >
                       Salvar
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRenamingId(passkey.id);
-                      setRenameValue(passkey.friendlyName ?? "");
-                    }}
-                    className="text-text-primary text-left hover:underline"
-                  >
-                    {passkey.friendlyName ?? "Passkey sem nome"}
-                  </button>
+                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      title="Renomear"
+                      onClick={() => {
+                        setRenamingId(passkey.id);
+                        setRenameValue(passkey.friendlyName ?? "");
+                      }}
+                      className="text-sm font-medium text-left text-text-primary hover:underline truncate"
+                    >
+                      {passkey.friendlyName ?? "Passkey sem nome"}
+                    </button>
+                    <span className="font-mono text-xs text-text-muted">
+                      criada em {formatShortDate(passkey.createdAt)} ·{" "}
+                      {passkey.lastUsedAt ? `usada ${formatRelativeTime(passkey.lastUsedAt)}` : "nunca usada"}
+                    </span>
+                  </div>
                 )}
-                <Button type="button" variant="chip" onClick={() => setConfirmDeletePasskeyId(passkey.id)} disabled={passkeyBusy}>
+                <Button
+                  type="button"
+                  variant="quiet"
+                  size="xs"
+                  onClick={() => setConfirmDeletePasskeyId(passkey.id)}
+                  disabled={passkeyBusy}
+                >
                   Remover
                 </Button>
               </li>
@@ -361,166 +323,198 @@ export function SegurancaPage() {
           </ul>
         ) : null}
 
-        <Button variant="secondary" onClick={handleAddPasskey} disabled={passkeyBusy}>
-          Adicionar passkey
+        <Button variant="primary" className="self-start" onClick={handleAddPasskey} disabled={passkeyBusy}>
+          Cadastrar passkey
         </Button>
 
-        {passkeyError && <p className="font-sans text-sm text-error">{passkeyError}</p>}
-        <ConfirmDialog
-          isOpen={confirmDeletePasskeyId !== null}
-          title="Remover esta passkey?"
-          description="Você não vai mais poder entrar com ela. Essa ação não pode ser desfeita."
-          onConfirm={() => {
-            if (confirmDeletePasskeyId) handleDeletePasskey(confirmDeletePasskeyId);
-            setConfirmDeletePasskeyId(null);
-          }}
-          onCancel={() => setConfirmDeletePasskeyId(null)}
-        />
-      </Card>
+        {passkeyError && <p className="text-[13px] text-error">{passkeyError}</p>}
+      </SecurityCard>
 
-      <Card className="w-full max-w-md">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-text-primary">Dispositivos</h2>
-          <Button type="button" variant="chip" onClick={() => setConfirmSignOutOthers(true)} disabled={sessionsBusy}>
-            Sair de todos os outros
+      <div className="flex flex-col gap-5">
+        <SecurityCard title="Sessões ativas">
+          {sessionsLoading ? (
+            <EmptyState>Carregando...</EmptyState>
+          ) : (
+            <ul className="flex flex-col">
+              {sessions.map((deviceSession) => {
+                const { browser, os } = parseUserAgent(deviceSession.userAgent);
+                const isCurrent = deviceSession.id === currentSessionId;
+                const lastActivity = deviceSession.refreshedAt ?? deviceSession.createdAt;
+                const isRecent = isCurrent || Date.now() - new Date(lastActivity).getTime() < RECENT_ACTIVITY_MS;
+                return (
+                  <li key={deviceSession.id} className="qv-row-top flex items-center gap-3 py-2.5">
+                    <span
+                      aria-hidden
+                      className={`w-[7px] h-[7px] rounded-full shrink-0 ${isRecent ? "bg-success" : "bg-text-muted"}`}
+                    />
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="text-sm font-medium truncate">
+                        {browser} — {os}
+                      </span>
+                      <span className="font-mono text-xs text-text-muted">
+                        {deviceSession.ip ?? "IP desconhecido"} · ativo {formatRelativeTime(lastActivity)}
+                      </span>
+                    </div>
+                    {isCurrent ? (
+                      <span className="text-xs text-vex-cyan-bright whitespace-nowrap">esta sessão</span>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="quiet"
+                        size="xs"
+                        onClick={() => setConfirmRevokeSessionId(deviceSession.id)}
+                        disabled={sessionsBusy}
+                      >
+                        Sair
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <Button
+            type="button"
+            variant="destructive"
+            className="self-start"
+            onClick={() => setConfirmSignOutOthers(true)}
+            disabled={sessionsBusy}
+          >
+            Encerrar outras sessões
           </Button>
-        </div>
+        </SecurityCard>
 
-        {sessionsLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {sessions.map((deviceSession) => {
-              const { browser, os } = parseUserAgent(deviceSession.userAgent);
-              const isCurrent = deviceSession.id === currentSessionId;
-              return (
-                <li key={deviceSession.id} className="flex items-center justify-between gap-2 text-sm">
-                  <div>
-                    <p className="font-sans text-text-primary">
-                      {browser} no {os} {isCurrent && <span className="text-brand-cyan">(Este dispositivo)</span>}
-                    </p>
-                    <p className="font-sans text-xs text-text-secondary-warm">
-                      {deviceSession.ip ?? "IP desconhecido"} — ativo{" "}
-                      {formatRelativeTime(deviceSession.refreshedAt ?? deviceSession.createdAt)}
-                    </p>
-                  </div>
-                  {!isCurrent && (
-                    <Button type="button" variant="chip" onClick={() => setConfirmRevokeSessionId(deviceSession.id)} disabled={sessionsBusy}>
-                      Sair
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <ConfirmDialog
-          isOpen={confirmRevokeSessionId !== null}
-          title="Encerrar sessão neste dispositivo?"
-          description="O dispositivo vai precisar entrar novamente."
-          confirmLabel="Sair"
-          onConfirm={() => {
-            if (confirmRevokeSessionId) handleRevokeSession(confirmRevokeSessionId);
-            setConfirmRevokeSessionId(null);
-          }}
-          onCancel={() => setConfirmRevokeSessionId(null)}
-        />
-        <ConfirmDialog
-          isOpen={confirmSignOutOthers}
-          title="Sair de todos os outros dispositivos?"
-          description="Todas as outras sessões ativas serão encerradas."
-          confirmLabel="Sair de todos"
-          onConfirm={() => {
-            setConfirmSignOutOthers(false);
-            handleSignOutOthers();
-          }}
-          onCancel={() => setConfirmSignOutOthers(false)}
-        />
-      </Card>
+        <SecurityCard title="Integrações">
+          <GoogleCalendarSection
+            client={client}
+            userId={userId}
+            supabaseUrl={import.meta.env.VITE_SUPABASE_URL}
+            googleClientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+          />
+        </SecurityCard>
+      </div>
 
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">PIN do Cofre</h2>
-        <p className="font-sans text-sm text-text-secondary-warm">
-          O PIN destrava só os documentos marcados no Cofre — não é o login do app. Pelo menos 6 dígitos numéricos.
-        </p>
+      <div className="flex flex-col gap-5">
+        <SecurityCard title="PIN do cofre" pill={pinLoading ? undefined : hasPin ? <Badge tone="success">Definido</Badge> : <Badge>Sem PIN</Badge>}>
+          <CardText>
+            O PIN destrava só os documentos marcados no Cofre — não é o login do app. Pelo menos 6 dígitos numéricos.
+          </CardText>
 
-        {pinLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-        ) : (
-          <form onSubmit={handleSetPin} className="flex flex-col gap-3">
-            {hasPin && (
-              <input
-                type="password"
-                inputMode="numeric"
-                value={pinCurrentValue}
-                onChange={(e) => setPinCurrentValue(e.target.value)}
-                placeholder="PIN atual"
-                className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-              />
-            )}
-            <input
-              type="password"
-              inputMode="numeric"
-              value={pinValue}
-              onChange={(e) => setPinValue(e.target.value)}
-              placeholder={hasPin ? "Novo PIN" : "Criar PIN"}
-              className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-            />
-            <input
-              type="password"
-              inputMode="numeric"
-              value={pinConfirmValue}
-              onChange={(e) => setPinConfirmValue(e.target.value)}
-              placeholder="Confirmar PIN"
-              className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-            />
-            <Button type="submit" variant="primary" disabled={pinBusy}>
-              {hasPin ? "Trocar PIN" : "Criar PIN"}
-            </Button>
-            {pinError && <p className="font-sans text-sm text-error">{pinError}</p>}
-            {pinSaved && !pinError && <p className="font-sans text-sm text-success">PIN salvo.</p>}
-          </form>
-        )}
-      </Card>
+          {pinLoading ? (
+            <EmptyState>Carregando...</EmptyState>
+          ) : (
+            <form onSubmit={handleSetPin} className="flex flex-col gap-3">
+              <div className="flex gap-2.5 items-center flex-wrap">
+                {hasPin && (
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    value={pinCurrentValue}
+                    onChange={(e) => setPinCurrentValue(e.target.value)}
+                    placeholder="PIN atual"
+                    aria-label="PIN atual"
+                    className={pinFieldClass}
+                  />
+                )}
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  value={pinValue}
+                  onChange={(e) => setPinValue(e.target.value)}
+                  placeholder={hasPin ? "Novo PIN" : "Criar PIN"}
+                  aria-label={hasPin ? "Novo PIN" : "Criar PIN"}
+                  className={pinFieldClass}
+                />
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  value={pinConfirmValue}
+                  onChange={(e) => setPinConfirmValue(e.target.value)}
+                  placeholder="Confirmar PIN"
+                  aria-label="Confirmar PIN"
+                  className={pinFieldClass}
+                />
+              </div>
+              <Button type="submit" variant="secondary" className="self-start" disabled={pinBusy}>
+                {hasPin ? "Alterar PIN" : "Criar PIN"}
+              </Button>
+              {pinError && <p className="text-[13px] text-error">{pinError}</p>}
+              {pinSaved && !pinError && <p className="text-[13px] text-success">PIN salvo.</p>}
+            </form>
+          )}
+        </SecurityCard>
 
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Notificações</h2>
+        <SecurityCard
+          title="Notificações"
+          pill={
+            notifications.supported && !notifications.isLoading ? (
+              notifications.isSubscribed ? (
+                <Badge tone="success">Ativas</Badge>
+              ) : (
+                <Badge>Desativadas</Badge>
+              )
+            ) : undefined
+          }
+        >
+          {!notifications.supported ? (
+            <CardText>Este navegador não suporta notificações push.</CardText>
+          ) : notifications.isLoading ? (
+            <EmptyState>Carregando...</EmptyState>
+          ) : notifications.isSubscribed ? (
+            <>
+              <CardText>Notificações ativadas neste dispositivo.</CardText>
+              <Button variant="secondary" className="self-start" onClick={notifications.disable}>
+                Desativar neste dispositivo
+              </Button>
+            </>
+          ) : (
+            <>
+              <CardText>
+                Receba lembretes de eventos da Agenda (e futuramente de hábitos e orçamento) direto no seu dispositivo,
+                mesmo com o Qqorvex fechado.
+              </CardText>
+              <Button variant="primary" className="self-start" onClick={notifications.enable}>
+                Ativar notificações
+              </Button>
+            </>
+          )}
 
-        {!notifications.supported ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Este navegador não suporta notificações push.</p>
-        ) : notifications.isLoading ? (
-          <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-        ) : notifications.isSubscribed ? (
-          <div className="flex flex-col gap-2">
-            <p className="font-sans text-sm text-success">Notificações ativadas neste dispositivo.</p>
-            <Button variant="secondary" onClick={notifications.disable}>
-              Desativar neste dispositivo
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <p className="font-sans text-sm text-text-secondary-warm">
-              Receba lembretes de eventos da Agenda (e futuramente de hábitos e orçamento) direto no seu
-              dispositivo, mesmo com o Qqorvex fechado.
-            </p>
-            <Button variant="primary" onClick={notifications.enable}>
-              Ativar notificações
-            </Button>
-          </div>
-        )}
+          {notifications.error && <p className="text-[13px] text-error">{notifications.error}</p>}
+        </SecurityCard>
+      </div>
 
-        {notifications.error && <p className="font-sans text-sm text-error">{notifications.error}</p>}
-      </Card>
-
-      <Card className="w-full max-w-md">
-        <h2 className="font-display text-lg font-semibold text-text-primary">Integrações</h2>
-        <GoogleCalendarSection
-          client={client}
-          userId={userId}
-          supabaseUrl={import.meta.env.VITE_SUPABASE_URL}
-          googleClientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
-        />
-      </Card>
-    </main>
+      <ConfirmDialog
+        isOpen={confirmDeletePasskeyId !== null}
+        title="Remover esta passkey?"
+        description="Você não vai mais poder entrar com ela. Essa ação não pode ser desfeita."
+        onConfirm={() => {
+          if (confirmDeletePasskeyId) handleDeletePasskey(confirmDeletePasskeyId);
+          setConfirmDeletePasskeyId(null);
+        }}
+        onCancel={() => setConfirmDeletePasskeyId(null)}
+      />
+      <ConfirmDialog
+        isOpen={confirmRevokeSessionId !== null}
+        title="Encerrar sessão neste dispositivo?"
+        description="O dispositivo vai precisar entrar novamente."
+        confirmLabel="Sair"
+        onConfirm={() => {
+          if (confirmRevokeSessionId) handleRevokeSession(confirmRevokeSessionId);
+          setConfirmRevokeSessionId(null);
+        }}
+        onCancel={() => setConfirmRevokeSessionId(null)}
+      />
+      <ConfirmDialog
+        isOpen={confirmSignOutOthers}
+        title="Sair de todos os outros dispositivos?"
+        description="Todas as outras sessões ativas serão encerradas."
+        confirmLabel="Sair de todos"
+        onConfirm={() => {
+          setConfirmSignOutOthers(false);
+          handleSignOutOthers();
+        }}
+        onCancel={() => setConfirmSignOutOthers(false)}
+      />
+    </div>
   );
 }

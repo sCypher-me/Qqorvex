@@ -13,12 +13,13 @@ export function NewPageForm({ onCreate }: { onCreate: (title: string) => void })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-1 min-w-[280px] items-center gap-[10px]">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Título da página"
-        className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+        placeholder="Título da nova página"
+        aria-label="Título da nova página"
+        className="qv-field flex-1 max-w-[420px] bg-surface-2"
       />
       <Button type="submit" variant="primary">
         Criar página

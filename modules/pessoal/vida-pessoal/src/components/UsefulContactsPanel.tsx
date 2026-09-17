@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input } from "@qqorvex/ui";
 import { useCreateUsefulContact, useDeleteUsefulContact, useUsefulContacts } from "../hooks/useVidaPratica";
 
 /** NÃO é uma agenda de contatos genérica (decisão explícita do usuário) — só profissionais/serviços úteis. */
@@ -8,6 +8,7 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
   const { contacts, isLoading } = useUsefulContacts(client);
   const createContact = useCreateUsefulContact(client, userId);
   const deleteContact = useDeleteUsefulContact(client);
+  const [formOpen, setFormOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmContact = contacts.find((c) => c.id === confirmDeleteId) ?? null;
 
@@ -25,45 +26,59 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-        <input name="name" placeholder="Nome" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input
-          name="category"
-          placeholder="Categoria (ex.: encanador)"
-          className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
-        />
-        <input name="phone" placeholder="Telefone" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <Button type="submit" variant="secondary">
-          Adicionar
-        </Button>
-      </form>
+    <section className="qv-card p-[18px] flex flex-col gap-3">
+      <div className="flex items-center gap-2.5">
+        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Contatos úteis</h2>
+        {!isLoading && <span className="font-mono text-xs text-text-muted">{contacts.length}</span>}
+      </div>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState>Carregando...</EmptyState>
       ) : contacts.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum contato útil cadastrado.</p>
+        <EmptyState>Nenhum contato útil cadastrado.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {contacts.map((contact) => (
-            <li key={contact.id}>
-              <Card>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-sans text-sm text-text-primary">{contact.name}</p>
-                    <p className="font-sans text-xs text-text-secondary-warm">
-                      {[contact.category, contact.phone].filter(Boolean).join(" · ") || "sem detalhes"}
-                    </p>
-                  </div>
-                  <Button type="button" variant="chip" onClick={() => setConfirmDeleteId(contact.id)}>
-                    Excluir
-                  </Button>
-                </div>
-              </Card>
+            <li key={contact.id} className="qv-row-top flex items-center gap-2.5 py-2">
+              <span className="flex-1 min-w-0 text-[13px] text-text-primary">
+                {contact.category && <span className="text-text-secondary">{contact.category} — </span>}
+                {contact.name}
+              </span>
+              <span className="font-mono text-xs text-text-secondary">{contact.phone || "—"}</span>
+              <button
+                type="button"
+                className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+                aria-label={`Excluir "${contact.name}"`}
+                title="Excluir"
+                onClick={() => setConfirmDeleteId(contact.id)}
+              >
+                ✕
+              </button>
             </li>
           ))}
         </ul>
       )}
+
+      {formOpen ? (
+        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+          <Input name="name" placeholder="Nome" aria-label="Nome" className="py-2 text-[13px]" autoFocus />
+          <Input name="category" placeholder="Categoria (ex.: encanador)" aria-label="Categoria" className="py-2 text-[13px]" />
+          <Input name="phone" placeholder="Telefone" aria-label="Telefone" className="py-2 text-[13px] font-mono" />
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary" size="sm">
+              Adicionar
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
+              Fechar
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button type="button" variant="dashed" className="w-full" onClick={() => setFormOpen(true)}>
+          Adicionar
+        </Button>
+      )}
+
       <ConfirmDialog
         isOpen={confirmContact !== null}
         title={`Excluir "${confirmContact?.name}"?`}
@@ -74,6 +89,6 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
         }}
         onCancel={() => setConfirmDeleteId(null)}
       />
-    </div>
+    </section>
   );
 }

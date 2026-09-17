@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { Button } from "@qqorvex/ui";
+import { Button, Input } from "@qqorvex/ui";
 
 /** "Campo mínimo obrigatório: Título." Descrição fica para depois, se fizer falta. */
-export function NewProjectForm({ onCreate }: { onCreate: (title: string) => void }) {
+export function NewProjectForm({ onCreate, onCancel }: { onCreate: (title: string) => void; onCancel?: () => void }) {
   const [title, setTitle] = useState("");
 
   function handleSubmit(event: FormEvent) {
@@ -14,16 +14,18 @@ export function NewProjectForm({ onCreate }: { onCreate: (title: string) => void
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Nome do projeto"
-        className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-      />
-      <Button type="submit" variant="primary">
-        Criar projeto
-      </Button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <Input label="Nome do projeto" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Reforma do escritório" autoFocus />
+      <div className="flex gap-2">
+        <Button type="submit" variant="primary" size="sm">
+          Criar projeto
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            Cancelar
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

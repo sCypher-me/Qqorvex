@@ -1,33 +1,54 @@
 import type { Balances } from "../service";
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
+import { formatBRL } from "./TransactionList";
 
 /** "Diferenciar valores positivos, negativos, futuros e pendentes com ícone/texto além de cor." */
-export function DashboardCards({ balances }: { balances: Balances }) {
+export function DashboardCards({ balances, accountCount }: { balances: Balances; accountCount?: number }) {
+  const saldoNegativo = balances.saldoAtual < 0;
+  const projetadoNegativo = balances.saldoProjetado < 0;
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
-      <Card label="Saldo Atual" value={formatCurrency(balances.saldoAtual)} tone={balances.saldoAtual >= 0 ? "success" : "error"} />
-      <Card label="Saldo Projetado" value={formatCurrency(balances.saldoProjetado)} tone={balances.saldoProjetado >= 0 ? "info" : "warning"} />
-      <Card label="Entradas (realizadas)" value={formatCurrency(balances.entradasRealizadas)} tone="success" />
-      <Card label="Saídas (realizadas)" value={formatCurrency(balances.saidasRealizadas)} tone="error" />
+    <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(210px,1fr))] w-full">
+      <SummaryCard
+        label="Saldo atual"
+        value={`${saldoNegativo ? "− " : ""}${formatBRL(balances.saldoAtual)}`}
+        color={saldoNegativo ? "var(--color-error)" : "var(--color-text-primary)"}
+        meta={
+          accountCount !== undefined
+            ? `${accountCount} ${accountCount === 1 ? "conta cadastrada" : "contas cadastradas"}${saldoNegativo ? " · negativo" : ""}`
+            : saldoNegativo
+              ? "negativo · só transações concluídas"
+              : "só transações concluídas"
+        }
+      />
+      <SummaryCard
+        label="Entradas realizadas"
+        value={formatBRL(balances.entradasRealizadas)}
+        color="var(--color-success)"
+        meta={`+ ${formatBRL(balances.entradasFuturas)} previstas`}
+      />
+      <SummaryCard
+        label="Saídas realizadas"
+        value={formatBRL(balances.saidasRealizadas)}
+        color="var(--color-error)"
+        meta={`− ${formatBRL(balances.saidasFuturas)} previstas`}
+      />
+      <SummaryCard
+        label="Saldo projetado"
+        value={`${projetadoNegativo ? "− " : ""}${formatBRL(balances.saldoProjetado)}`}
+        color={projetadoNegativo ? "var(--color-warning)" : "var(--color-text-secondary)"}
+        meta={projetadoNegativo ? "fica negativo · inclui futuras e pendentes" : "inclui futuras e pendentes"}
+      />
     </div>
   );
 }
 
-function Card({ label, value, tone }: { label: string; value: string; tone: "success" | "error" | "info" | "warning" }) {
-  const toneClass = {
-    success: "text-success",
-    error: "text-error",
-    info: "text-info",
-    warning: "text-warning",
-  }[tone];
-
+function SummaryCard({ label, value, color, meta }: { label: string; value: string; color: string; meta: string }) {
   return (
-    <div className="bg-surface-2 border border-border rounded-md p-3">
-      <p className="font-sans text-xs text-text-secondary-warm">{label}</p>
-      <p className={`font-display text-lg font-semibold ${toneClass}`}>{value}</p>
+    <div className="qv-card p-[18px] flex flex-col gap-2 shadow-[0_1px_2px_rgba(0,0,0,.5),0_12px_30px_rgba(0,0,0,.28)]">
+      <span className="qv-eyebrow font-normal">{label}</span>
+      <span className="font-mono text-2xl font-semibold whitespace-nowrap tabular-nums" style={{ color }}>
+        {value}
+      </span>
+      <span className="text-xs text-text-secondary">{meta}</span>
     </div>
   );
 }

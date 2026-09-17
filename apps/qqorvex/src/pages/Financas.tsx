@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button, Card } from "@qqorvex/ui";
+import { ChipTabs, EmptyState } from "@qqorvex/ui";
 import {
   useAccounts,
   useCards,
@@ -10,6 +10,7 @@ import {
   useCreateTransaction,
   useDeleteTransaction,
   computeBalances,
+  formatSignedBRL,
   AccountsPanel,
   BudgetsPanel,
   CardsPanel,
@@ -23,6 +24,18 @@ import {
 } from "@qqorvex/module-financas";
 import { useVehicles } from "@qqorvex/module-vida-pessoal";
 import { supabase } from "../app/supabase";
+
+type ExtraTab = "contas" | "cartoes" | "categorias" | "recorrencias" | "parcelamentos";
+
+const EXTRA_TABS: { value: ExtraTab; label: string }[] = [
+  { value: "contas", label: "Contas" },
+  { value: "cartoes", label: "Cartões e faturas" },
+  { value: "categorias", label: "Categorias" },
+  { value: "recorrencias", label: "Recorrências" },
+  { value: "parcelamentos", label: "Parcelamentos" },
+];
+
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 export function FinancasPage() {
   const { session } = useAuth();
@@ -39,6 +52,7 @@ export function FinancasPage() {
 
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const [extraTab, setExtraTab] = useState<ExtraTab>("contas");
 
   const balances = computeBalances(transactions);
   const selectedDayKey = selectedDay.toISOString().slice(0, 10);
@@ -46,102 +60,126 @@ export function FinancasPage() {
   const projectedOnSelectedDay = recurringTransactions.filter(
     (r) => r.status === "ativa" && r.next_occurrence_date === selectedDayKey,
   );
+  const selectedDayLabel = selectedDayKey.split("-").reverse().join("/");
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 flex flex-col items-center gap-6">
-      <div className="w-full max-w-3xl">
-        <h1 className="font-display text-2xl font-bold text-text-primary">Finanças</h1>
-      </div>
+    <div className="flex flex-col gap-5">
+      <DashboardCards balances={balances} accountCount={accounts.length} />
 
-      <div className="w-full max-w-3xl">
-        <DashboardCards balances={balances} />
-      </div>
+      <NewTransactionForm
+        accounts={accounts}
+        categories={categories}
+        cards={cards}
+        vehicles={vehicles.map((v) => ({ id: v.id, nickname: v.nickname }))}
+        onCreate={(input) => createTransaction.mutate(input)}
+      />
 
-      <div className="w-full max-w-3xl">
-        <NewTransactionForm
-          accounts={accounts}
-          categories={categories}
-          cards={cards}
-          vehicles={vehicles.map((v) => ({ id: v.id, nickname: v.nickname }))}
-          onCreate={(input) => createTransaction.mutate(input)}
-        />
-      </div>
-
-      <div className="w-full max-w-3xl">
+      <div className="grid gap-5 items-start grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         {isLoading ? (
-          <p className="font-sans text-text-secondary-warm">Carregando...</p>
-        ) : (
-          <TransactionList client={supabase} transactions={transactions} onDelete={(id) => deleteTransaction.mutate(id)} />
-        )}
-      </div>
-
-      <Card className="w-full max-w-3xl">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold text-text-primary">Calendário Financeiro</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="chip"
-              onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-              aria-label="Mês anterior"
-            >
-              ‹
-            </Button>
-            <Button
-              type="button"
-              variant="chip"
-              onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-              aria-label="Próximo mês"
-            >
-              ›
-            </Button>
+          <div className="qv-card">
+            <EmptyState className="px-[18px] py-4">Carregando transações...</EmptyState>
           </div>
-        </div>
-        <FinancialCalendarView
-          monthAnchor={calendarMonth}
-          transactions={transactions}
-          recurringTransactions={recurringTransactions}
-          selectedDate={selectedDay}
-          onSelectDate={setSelectedDay}
-        />
-        {transactionsOnSelectedDay.length === 0 && projectedOnSelectedDay.length === 0 ? (
-          <p className="font-sans text-xs text-text-secondary-warm">Nada em {selectedDayKey}.</p>
         ) : (
-          <ul className="flex flex-col gap-1">
-            {transactionsOnSelectedDay.map((t) => (
-              <li key={t.id} className="font-sans text-xs text-text-primary">
-                R$ {t.amount.toFixed(2)} — {t.name}
-              </li>
-            ))}
-            {projectedOnSelectedDay.map((r) => (
-              <li key={r.id} className="font-sans text-xs text-text-secondary-warm">
-                (projetado) R$ {r.amount.toFixed(2)} — {r.name}
-              </li>
-            ))}
-          </ul>
+          <TransactionList
+            client={supabase}
+            transactions={transactions}
+            categories={categories}
+            accounts={accounts}
+            cards={cards}
+            onDelete={(id) => deleteTransaction.mutate(id)}
+          />
         )}
-      </Card>
 
-      <div className="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <AccountsPanel client={supabase} userId={userId} />
-        <CardsPanel client={supabase} userId={userId} />
+        <div className="flex flex-col gap-4">
+          <div className="qv-card p-[18px] flex flex-col gap-[14px]">
+            <div className="flex items-center gap-[10px]">
+              <span className="text-base font-semibold">Calendário financeiro</span>
+              <span className="flex-1" />
+              <button
+                type="button"
+                className="qv-icon-btn"
+                onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+                aria-label="Mês anterior"
+              >
+                ‹
+              </button>
+              <span className="font-mono text-xs text-text-muted min-w-[62px] text-center">
+                {MONTHS_SHORT[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+              </span>
+              <button
+                type="button"
+                className="qv-icon-btn"
+                onClick={() => setCalendarMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+                aria-label="Próximo mês"
+              >
+                ›
+              </button>
+            </div>
+            <FinancialCalendarView
+              monthAnchor={calendarMonth}
+              transactions={transactions}
+              recurringTransactions={recurringTransactions}
+              selectedDate={selectedDay}
+              onSelectDate={setSelectedDay}
+            />
+            <span className="text-xs text-text-muted">
+              Pontos em vermelho são saídas; verde, entradas. Ponto vazado = recorrência prevista.
+            </span>
+
+            <div className="qv-well px-[14px] py-3 flex flex-col gap-2">
+              <span className="qv-eyebrow">
+                Dia <span className="font-mono">{selectedDayLabel}</span>
+              </span>
+              {transactionsOnSelectedDay.length === 0 && projectedOnSelectedDay.length === 0 ? (
+                <span className="text-[13px] text-text-secondary">Nada neste dia.</span>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {transactionsOnSelectedDay.map((t) => (
+                    <li key={t.id} className="flex items-baseline gap-[10px]">
+                      <span className="flex-1 min-w-0 text-[13px] truncate">{t.name}</span>
+                      <span
+                        className={`font-mono text-xs whitespace-nowrap ${
+                          t.transaction_type === "entrada"
+                            ? "text-success"
+                            : t.transaction_type === "saida"
+                              ? "text-error"
+                              : "text-text-secondary"
+                        }`}
+                      >
+                        {formatSignedBRL(
+                          t.amount,
+                          t.transaction_type === "entrada" ? "+" : t.transaction_type === "saida" ? "-" : "",
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                  {projectedOnSelectedDay.map((r) => (
+                    <li key={r.id} className="flex items-baseline gap-[10px]">
+                      <span className="flex-1 min-w-0 text-[13px] text-text-secondary truncate">
+                        {r.name} <span className="text-text-muted">· prevista</span>
+                      </span>
+                      <span className="font-mono text-xs whitespace-nowrap text-text-secondary">
+                        {formatSignedBRL(r.amount, r.transaction_type === "entrada" ? "+" : "-")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <BudgetsPanel client={supabase} userId={userId} />
+        </div>
       </div>
 
-      <div className="w-full max-w-3xl">
-        <CategoriesPanel client={supabase} userId={userId} />
+      <div className="flex flex-col gap-4">
+        <ChipTabs options={EXTRA_TABS} value={extraTab} onChange={setExtraTab} />
+        {extraTab === "contas" && <AccountsPanel client={supabase} userId={userId} />}
+        {extraTab === "cartoes" && <CardsPanel client={supabase} userId={userId} />}
+        {extraTab === "categorias" && <CategoriesPanel client={supabase} userId={userId} />}
+        {extraTab === "recorrencias" && <RecurringTransactionsPanel client={supabase} userId={userId} />}
+        {extraTab === "parcelamentos" && <InstallmentsPanel client={supabase} userId={userId} />}
       </div>
-
-      <div className="w-full max-w-3xl">
-        <RecurringTransactionsPanel client={supabase} userId={userId} />
-      </div>
-
-      <div className="w-full max-w-3xl">
-        <InstallmentsPanel client={supabase} userId={userId} />
-      </div>
-
-      <div className="w-full max-w-3xl">
-        <BudgetsPanel client={supabase} userId={userId} />
-      </div>
-    </main>
+    </div>
   );
 }

@@ -20,7 +20,11 @@ export function useGamificationStats(client: SupabaseClient<Database>, userId: s
 
 export function useUnlockedBadges(client: SupabaseClient<Database>, userId: string) {
   const query = useQuery({ queryKey: BADGES_KEY, queryFn: () => listUnlockedBadges(client, userId) });
-  const unlockedKeys = new Set((query.data ?? []).map((b) => b.badge_key));
-  const badges = BADGE_CATALOG.map((badge) => ({ ...badge, isUnlockedForUser: unlockedKeys.has(badge.key) }));
+  const unlockedAtByKey = new Map((query.data ?? []).map((b) => [b.badge_key, b.unlocked_at] as const));
+  const badges = BADGE_CATALOG.map((badge) => ({
+    ...badge,
+    isUnlockedForUser: unlockedAtByKey.has(badge.key),
+    unlockedAt: unlockedAtByKey.get(badge.key) ?? null,
+  }));
   return { badges, isLoading: query.isLoading };
 }

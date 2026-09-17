@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button } from "@qqorvex/ui";
+import { Button, Notice } from "@qqorvex/ui";
 import { searchGoogleBooks, searchTmdb, type MetadataSearchResult } from "../metadataProviders";
 import { findDuplicateItem } from "../service";
 import { LIBRARY_ITEM_TYPE_LABELS, SEARCHABLE_ITEM_TYPES } from "../service";
@@ -84,32 +84,45 @@ export function NewItemForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-[7px]">
+        <label htmlFor="library-new-item-title" className="qv-field-label">
+          Título
+        </label>
         <input
+          id="library-new-item-title"
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
             setDuplicate(null);
             resetSearch();
           }}
-          placeholder="Título do item (livro, filme, curso...)"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          placeholder="Livro, filme, série, curso..."
+          className="qv-field"
         />
-        <select
-          value={itemType}
-          onChange={(e) => {
-            setItemType(e.target.value as LibraryItemType);
-            resetSearch();
-          }}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
-        >
-          {Object.entries(LIBRARY_ITEM_TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+      </div>
+
+      <div className="flex gap-2.5 items-end flex-wrap">
+        <div className="flex flex-col gap-[7px] flex-1 min-w-[160px]">
+          <label htmlFor="library-new-item-type" className="qv-field-label">
+            Tipo
+          </label>
+          <select
+            id="library-new-item-type"
+            value={itemType}
+            onChange={(e) => {
+              setItemType(e.target.value as LibraryItemType);
+              resetSearch();
+            }}
+            className="qv-field"
+          >
+            {Object.entries(LIBRARY_ITEM_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
         {isSearchable && (
           <Button type="button" variant="secondary" onClick={handleSearch} disabled={isSearching || !title.trim()}>
             {isSearching ? "Buscando..." : "Buscar"}
@@ -121,9 +134,9 @@ export function NewItemForm({
       </div>
 
       {results && (
-        <div className="flex flex-col gap-1">
+        <div className="qv-well p-1.5 flex flex-col gap-0.5 max-h-72 overflow-auto">
           {results.length === 0 ? (
-            <p className="font-sans text-sm text-text-secondary-warm">Nenhum resultado encontrado.</p>
+            <p className="text-sm text-text-secondary px-2.5 py-2">Nenhum resultado encontrado.</p>
           ) : (
             results.map((result, index) => (
               <button
@@ -133,11 +146,16 @@ export function NewItemForm({
                   setSelected(result);
                   setResults(null);
                 }}
-                className="flex items-center gap-2 text-left bg-surface-2 border border-border rounded-md p-2 hover:border-brand-cyan"
+                className="flex items-center gap-3 text-left rounded-[10px] px-2.5 py-2 hover:bg-[rgba(255,255,255,.04)] transition-colors"
               >
-                {result.coverUrl && <img src={result.coverUrl} alt="" className="w-8 h-12 object-cover rounded-sm" />}
-                <span className="font-sans text-sm text-text-primary">
-                  {result.title} {result.year ? `(${result.year})` : ""}
+                {result.coverUrl ? (
+                  <img src={result.coverUrl} alt="" className="w-8 h-12 object-cover rounded-[6px] shrink-0" />
+                ) : (
+                  <span className="w-8 h-12 rounded-[6px] shrink-0 bg-surface-3" aria-hidden />
+                )}
+                <span className="text-sm text-text-primary min-w-0">
+                  {result.title}
+                  {result.year ? <span className="font-mono text-xs text-text-muted ml-1.5">{result.year}</span> : null}
                 </span>
               </button>
             ))
@@ -146,33 +164,34 @@ export function NewItemForm({
       )}
 
       {selected && (
-        <div className="flex items-center gap-2 bg-surface-2 border border-brand-cyan rounded-md p-2">
-          {selected.coverUrl && <img src={selected.coverUrl} alt="" className="w-8 h-12 object-cover rounded-sm" />}
-          <span className="font-sans text-sm text-text-primary flex-1">
-            Metadados de "{selected.title}" serão preenchidos automaticamente.
+        <div className="qv-tile p-2.5 flex items-center gap-3 border-vex-cyan-dark">
+          {selected.coverUrl && <img src={selected.coverUrl} alt="" className="w-8 h-12 object-cover rounded-[6px] shrink-0" />}
+          <span className="text-[13px] leading-normal text-text-secondary flex-1 min-w-0">
+            Metadados de <span className="text-text-primary">"{selected.title}"</span> serão preenchidos automaticamente.
           </span>
-          <button
-            type="button"
-            onClick={() => setSelected(null)}
-            className="text-xs px-2 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1"
-          >
+          <Button type="button" variant="quiet" size="xs" onClick={() => setSelected(null)}>
             Remover
-          </button>
+          </Button>
         </div>
       )}
 
       {duplicate && (
-        <div className="bg-warning-bg border border-warning-border rounded-md p-3 flex flex-col gap-2">
-          <p className="text-sm text-warning">Já existe um item chamado "{duplicate.title}" desse mesmo tipo.</p>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={handleCreateAnyway}>
-              Adicionar mesmo assim
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setDuplicate(null)}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
+        <Notice
+          tone="warning"
+          title="Item duplicado"
+          actions={
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={handleCreateAnyway}>
+                Adicionar mesmo assim
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setDuplicate(null)}>
+                Cancelar
+              </Button>
+            </>
+          }
+        >
+          Já existe um item chamado "{duplicate.title}" desse mesmo tipo.
+        </Notice>
       )}
     </form>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, Notice } from "@qqorvex/ui";
 import { useConnectGoogleCalendar, useDisconnectGoogleCalendar, useGoogleCalendarConnection } from "../hooks/useGoogleCalendar";
 
 /**
@@ -40,19 +40,19 @@ export function GoogleCalendarSection({
 
   if (!googleClientId) {
     return (
-      <p className="font-sans text-sm text-text-secondary-warm">
-        Integração com Google Calendar ainda não configurada (falta `VITE_GOOGLE_CLIENT_ID`).
+      <p className="text-[13px] leading-relaxed text-text-secondary">
+        Integração com Google Calendar ainda não configurada (falta <span className="font-mono">VITE_GOOGLE_CLIENT_ID</span>).
       </p>
     );
   }
 
-  if (isLoading) return <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>;
+  if (isLoading) return <p className="text-[13px] text-text-secondary">Carregando...</p>;
 
   if (connection) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="font-sans text-sm text-success">Google Calendar conectado — sincronizando a cada poucos minutos.</p>
-        <Button variant="secondary" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
+      <div className="flex flex-col gap-3 items-start">
+        <span className="qv-pill qv-pill-success">Google Calendar conectado — sincronizando a cada poucos minutos</span>
+        <Button type="button" variant="secondary" size="sm" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
           Desconectar
         </Button>
       </div>
@@ -60,23 +60,23 @@ export function GoogleCalendarSection({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="font-sans text-sm text-text-secondary-warm">
+    <div className="flex flex-col gap-3 items-start">
+      <p className="text-[13px] leading-relaxed text-text-secondary">
         Cria um calendário dedicado "Qqorvex" na sua conta Google e sincroniza seus eventos nos dois sentidos.
       </p>
-      <Button variant="primary" onClick={() => connect.mutate()} disabled={connect.isPending}>
+      <Button type="button" variant="primary" size="sm" onClick={() => connect.mutate()} disabled={connect.isPending}>
         Conectar Google Calendar
       </Button>
       {connect.error && (
-        <p className="font-sans text-sm text-error">
+        <Notice tone="error" className="w-full">
           {connect.error instanceof Error ? connect.error.message : "Falha ao iniciar a conexão."}
-        </p>
+        </Notice>
       )}
       {callbackResult === "error" && (
-        <p className="font-sans text-sm text-error">
+        <Notice tone="error" className="w-full" title="A conexão com o Google falhou">
           A conexão com o Google falhou. Confira se a Calendar API está ativada e se seu e-mail está na lista de
           testadores da tela de consentimento, e tente de novo.
-        </p>
+        </Notice>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
 import { useLibraryItems } from "@qqorvex/module-biblioteca";
 import { useRelatedLibraryItems, useRelateLibraryItem, useUnrelateLibraryItem } from "../hooks/useEstudosIntegrations";
 
@@ -25,19 +25,19 @@ export function RelatedLibraryItemsPanel({
   const relatableItems = allItems.filter((i) => !relatedIds.has(i.id));
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="font-sans text-sm font-semibold text-text-secondary-warm">Itens da Biblioteca usados neste Caderno</h3>
+    <div className="flex flex-col gap-3">
+      <CardHeader title="Itens da Biblioteca" meta={isLoading ? undefined : related.length} />
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState>Carregando...</EmptyState>
       ) : related.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum item relacionado.</p>
+        <EmptyState>Nenhum item da Biblioteca usado neste caderno.</EmptyState>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col">
           {related.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-2 text-sm text-text-primary">
-              <span>{item.title}</span>
-              <Button type="button" variant="chip" onClick={() => unrelate.mutate(item.id)}>
+            <li key={item.id} className="qv-row flex items-center justify-between gap-3 py-2.5 text-sm text-text-primary">
+              <span className="min-w-0 truncate">{item.title}</span>
+              <Button type="button" variant="quiet" size="xs" onClick={() => unrelate.mutate(item.id)}>
                 Remover relação
               </Button>
             </li>
@@ -46,11 +46,12 @@ export function RelatedLibraryItemsPanel({
       )}
 
       {relatableItems.length > 0 && (
-        <div className="flex gap-2">
+        <div className="flex gap-2.5">
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Item da Biblioteca"
+            className="qv-field flex-1 py-2 text-[13px]"
           >
             <option value="">Usar um item da Biblioteca...</option>
             {relatableItems.map((item) => (
@@ -60,7 +61,10 @@ export function RelatedLibraryItemsPanel({
             ))}
           </select>
           <Button
+            type="button"
             variant="secondary"
+            size="sm"
+            disabled={!selectedId}
             onClick={() => {
               if (!selectedId) return;
               relate.mutate(selectedId);

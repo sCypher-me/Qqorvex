@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
 import { useHabits } from "../hooks/useHabits";
 import {
   useAddHabitToRoutine,
@@ -45,15 +45,15 @@ export function RoutinesPanel({ client, userId }: { client: SupabaseClient<Datab
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Rotinas</h2>
+    <div className="qv-card p-[18px] flex flex-col gap-3">
+      <span className="font-display text-base font-semibold">Rotinas</span>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState>Carregando...</EmptyState>
       ) : routines.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhuma rotina criada ainda.</p>
+        <EmptyState>Nenhuma rotina criada ainda.</EmptyState>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
           {routines.map((routine) => (
             <RoutineCard
               key={routine.id}
@@ -73,12 +73,13 @@ export function RoutinesPanel({ client, userId }: { client: SupabaseClient<Datab
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2.5 flex-wrap pt-1">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da rotina (ex.: Manhã)"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Nome da rotina"
+          className="qv-field flex-1 min-w-[200px] py-2.5"
         />
         <Button type="submit" variant="secondary">
           Criar rotina
@@ -111,65 +112,70 @@ function RoutineCard({
 }) {
   const [selectedHabitId, setSelectedHabitId] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const routineHabits = habitIds.map((id) => habitsById.get(id)).filter((h): h is { id: string; name: string } => !!h);
+  const doneToday = routineHabits.filter((h) => logs.some((log) => log.habit_id === h.id && log.state === "concluido")).length;
 
   return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <p className="font-display text-sm font-semibold text-text-primary">{routine.name}</p>
-        <Button type="button" variant="chip" onClick={() => setConfirmOpen(true)}>
-          Excluir rotina
-        </Button>
-        <ConfirmDialog
-          isOpen={confirmOpen}
-          title={`Excluir a rotina "${routine.name}"?`}
-          description="Essa ação não pode ser desfeita."
-          onConfirm={() => {
-            setConfirmOpen(false);
-            onDelete();
-          }}
-          onCancel={() => setConfirmOpen(false)}
-        />
+    <div className="qv-well p-[14px] flex flex-col gap-1.5">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          <span className="text-sm font-semibold text-text-primary">{routine.name}</span>
+          <span className="font-mono text-xs text-text-secondary">
+            {routineHabits.length > 0 ? `${doneToday}/${routineHabits.length} hoje` : "0 hábitos"}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="qv-icon-btn"
+          aria-label={`Excluir a rotina "${routine.name}"`}
+          title="Excluir rotina"
+          onClick={() => setConfirmOpen(true)}
+        >
+          ✕
+        </button>
       </div>
 
-      {habitIds.length === 0 ? (
-        <p className="font-sans text-xs text-text-secondary-warm">Nenhum hábito nesta rotina ainda.</p>
+      {routineHabits.length === 0 ? (
+        <span className="text-xs text-text-muted">Nenhum hábito nesta rotina ainda.</span>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {habitIds.map((habitId) => {
-            const habit = habitsById.get(habitId);
-            if (!habit) return null;
-            const todayLog = logs.find((log) => log.habit_id === habitId);
-
-            return (
-              <li key={habitId} className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-sm text-text-primary">{habit.name}</span>
-                <div className="flex gap-1">
-                  {LOG_OPTIONS.map((option) => (
-                    <Button
-                      key={option.state}
-                      type="button"
-                      variant={todayLog?.state === option.state ? "chip-accent" : "chip"}
-                      onClick={() => onLogHabit(habitId, option.state)}
-                    >
-                      {option.label}
+        <ul className="flex flex-col mt-1.5">
+            {routineHabits.map((habit) => {
+              const todayLog = logs.find((log) => log.habit_id === habit.id);
+              return (
+                <li key={habit.id} className="qv-row-top flex flex-col gap-1.5 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] text-text-primary flex-1 min-w-0">{habit.name}</span>
+                    <Button type="button" variant="ghost" size="xs" onClick={() => onRemoveHabit(habit.id)}>
+                      Remover
                     </Button>
-                  ))}
-                  <Button type="button" variant="chip" onClick={() => onRemoveHabit(habitId)}>
-                    Remover
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {LOG_OPTIONS.map((option) => (
+                      <Button
+                        key={option.state}
+                        type="button"
+                        variant={todayLog?.state === option.state ? "vex" : "quiet"}
+                        size="xs"
+                        aria-pressed={todayLog?.state === option.state}
+                        onClick={() => onLogHabit(habit.id, option.state)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
       )}
 
       {availableHabits.length > 0 && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1.5">
           <select
             value={selectedHabitId}
             onChange={(e) => setSelectedHabitId(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Adicionar hábito à rotina"
+            className="qv-field flex-1 py-[7px] px-2.5 text-[13px]"
           >
             <option value="">Adicionar hábito...</option>
             {availableHabits.map((habit) => (
@@ -179,7 +185,9 @@ function RoutineCard({
             ))}
           </select>
           <Button
+            type="button"
             variant="secondary"
+            size="sm"
             onClick={() => {
               if (!selectedHabitId) return;
               onAddHabit(selectedHabitId);
@@ -190,6 +198,17 @@ function RoutineCard({
           </Button>
         </div>
       )}
-    </Card>
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title={`Excluir a rotina "${routine.name}"?`}
+        description="Essa ação não pode ser desfeita."
+        onConfirm={() => {
+          setConfirmOpen(false);
+          onDelete();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </div>
   );
 }

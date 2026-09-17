@@ -28,5 +28,9 @@ supabase/.branches/
 supabase/.temp/
 *.tsbuildinfo
 
+# Material de design bruto (referência, não faz parte do app) e sessões do Visual Companion
+designq.zip
+.superpowers/
+
 # Superpowers visual brainstorming companion (mockups temporários)
 .superpowers/

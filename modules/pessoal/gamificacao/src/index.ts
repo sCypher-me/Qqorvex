@@ -4,3 +4,4 @@ export * from "./repository";
 export * from "./hooks/useGamificacao";
 export * from "./components/GamificationWidget";
 export * from "./components/BadgesPanel";
+export * from "./components/ActionCountersCard";

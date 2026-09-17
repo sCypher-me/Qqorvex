@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, ConfirmDialog, type BadgeTone } from "@qqorvex/ui";
+import { Button, Badge, CardHeader, ConfirmDialog, EmptyState, type BadgeTone } from "@qqorvex/ui";
 import { useCreateRecurringEvent, useRecurringEvents, useUpdateRecurringEventStatus } from "../hooks/useRecurringEvents";
 import type { RecurringEventFrequency, RecurringEvent } from "../types";
 
@@ -21,6 +21,12 @@ const RECURRING_STATUS_TONE: Record<RecurringEvent["status"], BadgeTone> = {
   pausada: "warning",
   cancelada: "error",
 };
+
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (!year || !month || !day) return isoDate;
+  return new Date(year, month - 1, day).toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", "");
+}
 
 /**
  * A próxima ocorrência é gerada sozinha (cron em `send-notifications`, a cada 5 min) — sem botão
@@ -57,99 +63,131 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Eventos recorrentes</h2>
-      {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
-      ) : recurringEvents.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum evento recorrente cadastrado.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {recurringEvents.map((recurring) => (
-            <li
-              key={recurring.id}
-              className="bg-surface-2 border border-border rounded-md p-3 flex items-center justify-between gap-2 text-sm text-text-primary"
-            >
-              <div className="flex flex-col gap-1">
-                <p>{recurring.title}</p>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Badge tone={RECURRING_STATUS_TONE[recurring.status]}>{RECURRING_STATUS_LABEL[recurring.status]}</Badge>
-                  <span className="text-xs text-text-secondary-warm">
+    <div className="flex flex-col gap-[18px]">
+      <form onSubmit={handleSubmit} className="qv-card p-3.5 flex flex-col gap-2.5">
+        <div className="flex gap-2.5 flex-wrap">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Novo evento recorrente — título"
+            aria-label="Título do evento recorrente"
+            className="qv-field flex-1 basis-[240px]"
+          />
+          <Button type="submit" variant="primary" className="px-5">
+            Criar
+          </Button>
+        </div>
+        <div className="flex items-center gap-2.5 flex-wrap text-[13px] text-text-secondary">
+          <select
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value as RecurringEventFrequency)}
+            aria-label="Frequência"
+            className="qv-field w-auto py-2 text-[13px]"
+          >
+            {Object.entries(FREQUENCY_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2">
+            <span>A partir de</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="qv-field w-auto py-2 font-mono text-[13px]"
+            />
+          </label>
+          {!isAllDay && (
+            <span className="flex items-center gap-2">
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                aria-label="Início"
+                className="qv-field w-auto py-2 font-mono text-[13px]"
+              />
+              <span aria-hidden>–</span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                aria-label="Fim"
+                className="qv-field w-auto py-2 font-mono text-[13px]"
+              />
+            </span>
+          )}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" className="qv-check" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} />
+            Dia inteiro
+          </label>
+        </div>
+      </form>
+
+      <div className="qv-card">
+        <CardHeader
+          divider
+          title="Eventos recorrentes"
+          meta={isLoading ? undefined : `${recurringEvents.length} ${recurringEvents.length === 1 ? "receita" : "receitas"}`}
+        />
+        {isLoading ? (
+          <EmptyState className="px-5 py-4">Carregando...</EmptyState>
+        ) : recurringEvents.length === 0 ? (
+          <EmptyState className="px-5 py-4">Nenhum evento recorrente cadastrado.</EmptyState>
+        ) : (
+          <ul className="flex flex-col">
+            {recurringEvents.map((recurring) => (
+              <li key={recurring.id} className="qv-row flex items-center gap-3.5 px-5 py-3.5 flex-wrap sm:flex-nowrap">
+                <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                  <span className="text-sm font-medium text-text-primary truncate">{recurring.title}</span>
+                  <span className="text-xs text-text-muted">
                     {FREQUENCY_LABEL[recurring.frequency]}
-                    {!recurring.is_all_day && recurring.start_time ? ` às ${recurring.start_time.slice(0, 5)}` : " (dia inteiro)"} · próxima
-                    em {recurring.next_occurrence_date}
+                    {!recurring.is_all_day && recurring.start_time ? (
+                      <>
+                        {" às "}
+                        <span className="font-mono">{recurring.start_time.slice(0, 5)}</span>
+                      </>
+                    ) : (
+                      " · dia inteiro"
+                    )}
+                    {" · próxima em "}
+                    <span className="font-mono">{formatDate(recurring.next_occurrence_date)}</span>
                   </span>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {recurring.status === "ativa" ? (
-                  <Button type="button" variant="chip" onClick={() => updateStatus.mutate({ id: recurring.id, status: "pausada" })}>
-                    Pausar
-                  </Button>
-                ) : recurring.status === "pausada" ? (
-                  <Button type="button" variant="chip" onClick={() => updateStatus.mutate({ id: recurring.id, status: "ativa" })}>
-                    Retomar
-                  </Button>
-                ) : null}
-                {recurring.status !== "cancelada" && (
-                  <Button type="button" variant="chip" onClick={() => setConfirmCancelId(recurring.id)}>
-                    Cancelar
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Título do evento recorrente"
-          className="flex-1 min-w-[160px] rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-        />
-        <label className="flex items-center gap-1 text-sm text-text-secondary-warm">
-          <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} />
-          Dia inteiro
-        </label>
-        {!isAllDay && (
-          <>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
-            />
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
-            />
-          </>
+                <Badge tone={RECURRING_STATUS_TONE[recurring.status]}>{RECURRING_STATUS_LABEL[recurring.status]}</Badge>
+                <div className="flex items-center gap-2">
+                  {recurring.status === "ativa" ? (
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      size="xs"
+                      onClick={() => updateStatus.mutate({ id: recurring.id, status: "pausada" })}
+                    >
+                      Pausar
+                    </Button>
+                  ) : recurring.status === "pausada" ? (
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      size="xs"
+                      onClick={() => updateStatus.mutate({ id: recurring.id, status: "ativa" })}
+                    >
+                      Retomar
+                    </Button>
+                  ) : null}
+                  {recurring.status !== "cancelada" && (
+                    <Button type="button" variant="quiet" size="xs" onClick={() => setConfirmCancelId(recurring.id)}>
+                      Cancelar
+                    </Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-        <select
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value as RecurringEventFrequency)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
-        >
-          {Object.entries(FREQUENCY_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-        />
-        <Button type="submit" variant="primary">
-          Criar
-        </Button>
-      </form>
+      </div>
+
       <ConfirmDialog
         isOpen={confirmRecurring !== null}
         title={`Cancelar "${confirmRecurring?.title}"?`}

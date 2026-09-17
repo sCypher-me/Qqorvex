@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { AttachDocumentPanel } from "@qqorvex/module-documentos";
 import { useTransactions, computeVehicleSpending } from "@qqorvex/module-financas";
-import { Button, Card, ConfirmDialog } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input } from "@qqorvex/ui";
 import {
   useAddVehicleImportantDate,
   useCreateVehicle,
@@ -12,12 +12,20 @@ import {
 } from "../hooks/useVidaPratica";
 import type { Vehicle } from "../types";
 
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+/** `yyyy-mm-dd` → `dd/mm/aaaa` sem passar por `Date` (evita deslocamento de fuso). */
+function formatIsoDate(iso: string): string {
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : iso;
+}
+
 /**
  * Total gasto por Veículo (docs/decisions/pending.md — integração Finanças ↔ Veículos): busca as
  * transações do usuário e soma via `computeVehicleSpending()` (puro, em `@qqorvex/module-financas`)
  * — Vida Pessoal conhece Finanças aqui, nunca o contrário (Finanças não sabe o que é um Veículo).
  */
-function VehicleCard({ client, vehicle, onDelete }: { client: SupabaseClient<Database>; vehicle: Vehicle; onDelete: () => void }) {
+function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Database>; vehicle: Vehicle; onDelete: () => void }) {
   const { dates } = useVehicleImportantDates(client, vehicle.id);
   const addDate = useAddVehicleImportantDate(client, vehicle.id);
   const { transactions } = useTransactions(client);
@@ -26,25 +34,30 @@ function VehicleCard({ client, vehicle, onDelete }: { client: SupabaseClient<Dat
   const [label, setLabel] = useState("");
   const [date, setDate] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const details = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate].filter(Boolean).join(" · ");
 
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-sans text-sm text-text-primary">{vehicle.nickname}</p>
-          <p className="font-sans text-xs text-text-secondary-warm">
-            {[vehicle.brand, vehicle.model, vehicle.year, vehicle.plate].filter(Boolean).join(" · ") || "sem detalhes"}
-            {" · "}Total gasto: R$ {totalSpent.toFixed(2)}
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <Button type="button" variant="chip" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? "Fechar" : "Detalhes"}
-          </Button>
-          <Button type="button" variant="chip" onClick={() => setConfirmOpen(true)}>
-            Excluir
-          </Button>
-        </div>
+    <li className="qv-row-top flex flex-col gap-2.5 py-2">
+      <div className="flex items-center gap-2.5">
+        <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <span className="text-[13px] text-text-primary">{vehicle.nickname}</span>
+          <span className="text-xs text-text-muted">{details || "sem detalhes"}</span>
+        </span>
+        <span className="font-mono text-xs text-text-secondary" title="Total gasto">
+          {brl.format(totalSpent)}
+        </span>
+        <Button type="button" variant="ghost" size="xs" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+          {expanded ? "Fechar" : "Detalhes"}
+        </Button>
+        <button
+          type="button"
+          className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+          aria-label={`Excluir "${vehicle.nickname}"`}
+          title="Excluir"
+          onClick={() => setConfirmOpen(true)}
+        >
+          ✕
+        </button>
       </div>
       <ConfirmDialog
         isOpen={confirmOpen}
@@ -58,16 +71,22 @@ function VehicleCard({ client, vehicle, onDelete }: { client: SupabaseClient<Dat
       />
 
       {expanded && (
-        <div className="flex flex-col gap-3 pt-2 border-t border-border">
-          <div>
-            <p className="font-sans text-xs text-text-secondary-warm mb-1">Datas importantes (IPVA, seguro, revisão)</p>
+        <div className="qv-well p-3 flex flex-col gap-3">
+          <div className="flex items-baseline gap-2.5">
+            <span className="flex-1 text-[13px] text-text-primary">Total gasto</span>
+            <span className="font-mono text-xs text-text-secondary">{brl.format(totalSpent)}</span>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="qv-eyebrow">Datas importantes (IPVA, seguro, revisão)</span>
             {dates.length === 0 ? (
-              <p className="font-sans text-sm text-text-secondary-warm">Nenhuma data cadastrada.</p>
+              <EmptyState className="text-[13px]">Nenhuma data cadastrada.</EmptyState>
             ) : (
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col">
                 {dates.map((d) => (
-                  <li key={d.id} className="font-sans text-sm text-text-primary">
-                    {d.label}: {d.date}
+                  <li key={d.id} className="qv-row flex items-baseline gap-2.5 py-1.5">
+                    <span className="flex-1 text-[13px] text-text-primary">{d.label}</span>
+                    <span className="font-mono text-xs text-text-secondary">{formatIsoDate(d.date)}</span>
                   </li>
                 ))}
               </ul>
@@ -80,22 +99,26 @@ function VehicleCard({ client, vehicle, onDelete }: { client: SupabaseClient<Dat
                 setLabel("");
                 setDate("");
               }}
-              className="flex gap-2 mt-1"
+              className="flex flex-col gap-2"
             >
-              <input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Ex.: IPVA"
-                className="flex-1 text-sm rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary"
-              />
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="text-sm rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary"
-              />
-              <Button type="submit" variant="ghost">
-                Adicionar
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Ex.: IPVA"
+                  aria-label="Descrição da data"
+                  className="py-2 text-[13px]"
+                />
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  aria-label="Data"
+                  className="py-2 text-[13px] font-mono"
+                />
+              </div>
+              <Button type="submit" variant="quiet" size="xs" className="self-start">
+                Adicionar data
               </Button>
             </form>
           </div>
@@ -103,7 +126,7 @@ function VehicleCard({ client, vehicle, onDelete }: { client: SupabaseClient<Dat
           <AttachDocumentPanel client={client} relatedModule="vida-pessoal" relatedEntityId={vehicle.id} />
         </div>
       )}
-    </Card>
+    </li>
   );
 }
 
@@ -112,6 +135,7 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
   const { vehicles, isLoading } = useVehicles(client);
   const createVehicle = useCreateVehicle(client, userId);
   const deleteVehicle = useDeleteVehicle(client);
+  const [formOpen, setFormOpen] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,29 +153,47 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-        <input name="nickname" placeholder="Apelido" className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input name="brand" placeholder="Marca" className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input name="model" placeholder="Modelo" className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input name="year" type="number" placeholder="Ano" className="w-20 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <input name="plate" placeholder="Placa" className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm" />
-        <Button type="submit" variant="secondary">
-          Adicionar
-        </Button>
-      </form>
+    <section className="qv-card p-[18px] flex flex-col gap-3">
+      <div className="flex items-center gap-2.5">
+        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Veículos</h2>
+        {!isLoading && <span className="font-mono text-xs text-text-muted">{vehicles.length}</span>}
+      </div>
 
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState>Carregando...</EmptyState>
       ) : vehicles.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum veículo cadastrado.</p>
+        <EmptyState>Nenhum veículo cadastrado.</EmptyState>
       ) : (
-        <div className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {vehicles.map((vehicle) => (
-            <VehicleCard key={vehicle.id} client={client} vehicle={vehicle} onDelete={() => deleteVehicle.mutate(vehicle.id)} />
+            <VehicleRow key={vehicle.id} client={client} vehicle={vehicle} onDelete={() => deleteVehicle.mutate(vehicle.id)} />
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+
+      {formOpen ? (
+        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+          <Input name="nickname" placeholder="Apelido" aria-label="Apelido" className="py-2 text-[13px]" autoFocus />
+          <div className="grid grid-cols-2 gap-2">
+            <Input name="brand" placeholder="Marca" aria-label="Marca" className="py-2 text-[13px]" />
+            <Input name="model" placeholder="Modelo" aria-label="Modelo" className="py-2 text-[13px]" />
+            <Input name="year" type="number" placeholder="Ano" aria-label="Ano" className="py-2 text-[13px] font-mono" />
+            <Input name="plate" placeholder="Placa" aria-label="Placa" className="py-2 text-[13px] font-mono" />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary" size="sm">
+              Adicionar
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
+              Fechar
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button type="button" variant="dashed" className="w-full" onClick={() => setFormOpen(true)}>
+          Adicionar
+        </Button>
+      )}
+    </section>
   );
 }

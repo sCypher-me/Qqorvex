@@ -85,12 +85,51 @@ de `docs/`, e nunca tinham sido lidos antes desta sessão:
   v3 (re-publicado) e v4. Arquivos ficam em `.superpowers/brainstorm/<sessão>/content/` dentro do
   próprio repo (adicionar ao `.gitignore` se ainda não estiver).
 
-## Próximo passo
+## Resolvido — design aplicado (16/09/2026)
 
-Usuário vai desenhar a interface numa conversa separada (outro modelo). Quando o design estiver
-estruturado e for trazido de volta (imagem, HTML, Figma, ou só descrição), a sequência é:
-1. Extrair o sistema de tokens do design trazido (cor, tipografia, espaçamento, tratamento de
-   borda/canto, iconografia) — comparar com o que já existe em `packages/design-system`.
-2. **writing-plans**: plano de implementação detalhado (quais componentes de `packages/ui` mudam,
-   ordem de rollout pelas ~15 páginas, o que precisa de asset novo).
-3. **executing-plans**: execução em lotes com checkpoints (não tudo de uma vez).
+O usuário desenhou o sistema numa sessão separada e já **aplicou direto no código** (não voltou
+como spec pra eu planejar/executar em lotes — o `writing-plans`/`executing-plans` previstos abaixo
+não chegaram a rodar, o design chegou pronto e integrado). Estado ao reabrir esta sessão: 103
+arquivos alterados (+7303/-3927 linhas), não commitados, repo git inicializado (não estava antes).
+
+Verificação feita: `pnpm -r run typecheck` limpo nos 18 projetos, `pnpm --filter qqorvex build`
+limpo (chunk principal 599kB → 644kB), `npx vitest run` 87/87 testes passando (os testes de
+função pura de 15/09 sobreviveram intactos, como esperado). Confirmado ao vivo no navegador:
+tela de login (`AuthLayout.tsx`, arte de corpo inteiro da Vex integrada), Hoje (anel de nível/XP,
+card "Seu dia", card ambiente da Vex sugerindo ajuda), Finanças (stat cards com números mono,
+painel lateral da Vex abrindo com "contexto atual: Finanças" e sugestões relevantes à página).
+Resultado entrega o briefing: produto de verdade + lar da Vex, sem parecer dashboard genérico.
+
+Detalhes completos do sistema (paleta "Balanced Vex" v1.0, classes `qv-*`, onde mexer) agora em
+`docs/design-system/tokens.md` — esse arquivo é a fonte de verdade daqui pra frente, este aqui
+(`redesign-visual-brainstorm.md`) fica só como histórico de como se chegou até lá.
+
+Limpeza feita: `designq.zip` (40MB, material bruto) e `.superpowers/` adicionados ao `.gitignore`
+— não fazem parte do app, não deveriam ir pro histórico do git.
+
+**Pendências reais, não fecho sozinho:**
+- Nada ainda commitado — perguntar ao usuário antes de criar o primeiro commit (regra de
+  autonomia: não commitar sem pedido explícito).
+- `designq.zip` continua em disco na raiz do repo (só ignorado pelo git) — perguntar se o usuário
+  quer apagar, mover pra fora do repo, ou manter aí mesmo como referência local.
+
+## Varredura completa de QA (17/09/2026)
+
+Percorri as 13 páginas autenticadas (Hoje, Tarefas, Agenda, Metas & Hábitos, Estudos, Segundo
+Cérebro, Biblioteca, Documentos, Finanças, Vida Pessoal, Segurança, Perfil, Gamificação) mais a
+Paleta de Comando (Ctrl+K) e o painel lateral da Vex com usuário de teste real
+(`khyron.box@gmail.com`, apagado ao final — cascata confirmada por SQL, 0 linhas órfãs). Nenhum
+problema visual encontrado em nenhuma — todas consistentes com o sistema `qv-*`, estados vazios
+com cópia útil, cores semânticas aplicadas corretamente (verde/vermelho em Finanças, pílulas de
+status em Segurança/Tarefas).
+
+**Teste funcional** (não só visual): criei uma tarefa real via captura rápida (persistiu, contador
+da coluna Kanban atualizou) e uma transação real em Finanças (persistiu, Saldo Projetado recalculou
+e ficou negativo corretamente, indicador apareceu no Calendário Financeiro) — confirma que a
+migração de 103 arquivos não quebrou lógica por trás da nova aparência, só mudou a casca visual.
+
+**1 erro de console encontrado, não é bug do redesign**: falha ao registrar o Service Worker de
+notificações push (`/sw.js` existe, é feature anterior a esta sessão) — muito provavelmente
+limitação do sandbox do navegador desta sessão de testes (Service Workers costumam ser bloqueados
+dentro de iframes sandboxed), não uma regressão introduzida pelo redesign. Não investiguei mais a
+fundo porque não há evidência de que seja causado pelas mudanças desta sessão.

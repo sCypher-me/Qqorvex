@@ -36,17 +36,27 @@ const TASK_STATUS_LABEL: Record<Task["status"], string> = {
 const TEXT_SHAPED_TYPES: EditableBlockType[] = ["texto", "titulo1", "titulo2", "titulo3", "lista", "citacao", "callout"];
 
 const TEXT_INPUT_CLASS_BY_TYPE: Partial<Record<EditableBlockType, string>> = {
-  titulo1: "font-display text-xl font-bold text-text-primary",
-  titulo2: "font-display text-lg font-bold text-text-primary",
-  titulo3: "font-display text-base font-bold text-text-primary",
-  citacao: "font-sans italic text-text-secondary-warm border-l-2 border-border pl-2",
-  callout: "font-sans text-text-primary bg-surface-2 rounded-md px-2 py-1",
+  titulo1: "font-display text-[22px] leading-[1.35] font-semibold text-text-primary",
+  titulo2: "font-display text-lg leading-[1.4] font-semibold text-text-primary",
+  titulo3: "font-display text-base leading-[1.5] font-semibold text-text-primary",
+  citacao:
+    "text-[15px] leading-[1.75] text-text-primary border-l-2 border-vex-gold bg-[rgba(184,138,84,.07)] rounded-r-[12px] px-4 py-[14px]",
+  callout: "text-[15px] leading-[1.75] text-text-primary bg-surface-2 border border-border rounded-[12px] px-4 py-3",
 };
 
 const BLOCK_TYPE_ICON: Partial<Record<EditableBlockType, string>> = {
   lista: "•",
-  callout: "💡",
 };
+
+/** Campo "invisível" do corpo do editor — o texto fica no fluxo da página, sem caixa. */
+const INLINE_INPUT_CLASS = "flex-1 min-w-0 bg-transparent outline-none placeholder:text-text-muted";
+
+/** Rótulo discreto que substitui ícones decorativos nos blocos de referência/mídia. */
+function KindLabel({ children }: { children: string }) {
+  return <span className="qv-pill qv-pill-module shrink-0">{children}</span>;
+}
+
+const CONTROL_BUTTON_CLASS = "qv-icon-btn h-7 w-7 text-xs disabled:opacity-30 disabled:cursor-not-allowed";
 
 function isCaretAtStart(el: HTMLInputElement | HTMLTextAreaElement): boolean {
   return el.selectionStart === 0 && el.selectionEnd === 0;
@@ -116,7 +126,7 @@ export function BlockRow({
   }
 
   const controls = (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex items-center gap-1 shrink-0 self-start leading-none opacity-0 transition-opacity group-hover/block:opacity-100 group-focus-within/block:opacity-100">
       {isEditableType && (
         <select
           value={block.block_type}
@@ -125,7 +135,8 @@ export function BlockRow({
             setContent(defaultContentForBlockType(nextType));
             onChangeType(block.id, nextType);
           }}
-          className="text-xs rounded-md border border-border bg-surface-1 px-1 py-1 text-text-primary"
+          aria-label="Tipo do bloco"
+          className="qv-field w-auto h-7 rounded-[10px] px-2 py-0 text-xs"
         >
           {EDITABLE_BLOCK_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -138,22 +149,28 @@ export function BlockRow({
         type="button"
         onClick={() => onMoveUp(block.id)}
         disabled={isFirst}
-        className="text-xs px-1.5 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1 disabled:opacity-30"
+        aria-label="Mover bloco para cima"
+        title="Mover para cima"
+        className={CONTROL_BUTTON_CLASS}
       >
-        ▲
+        ↑
       </button>
       <button
         type="button"
         onClick={() => onMoveDown(block.id)}
         disabled={isLast}
-        className="text-xs px-1.5 py-1 rounded-md border border-border text-text-primary hover:bg-surface-1 disabled:opacity-30"
+        aria-label="Mover bloco para baixo"
+        title="Mover para baixo"
+        className={CONTROL_BUTTON_CLASS}
       >
-        ▼
+        ↓
       </button>
       <button
         type="button"
         onClick={() => onDelete(block.id)}
-        className="text-xs px-1.5 py-1 rounded-md border border-error/40 text-error hover:bg-error-bg"
+        aria-label="Excluir bloco"
+        title="Excluir bloco"
+        className={`${CONTROL_BUTTON_CLASS} hover:!border-error hover:!text-error`}
       >
         ✕
       </button>
@@ -162,8 +179,8 @@ export function BlockRow({
 
   if (block.block_type === "divisor") {
     return (
-      <div className="flex items-center gap-2">
-        <hr className="flex-1 border-border" />
+      <div className="group/block flex items-center gap-2 py-1">
+        <hr className="flex-1 border-0 border-t border-border" />
         {controls}
       </div>
     );
@@ -172,9 +189,11 @@ export function BlockRow({
   if (block.block_type === "checklist") {
     const checklist = content as unknown as ChecklistBlockContent;
     return (
-      <div className="flex items-center gap-2">
+      <div className="group/block flex items-center gap-3">
         <input
           type="checkbox"
+          className="qv-check"
+          aria-label="Concluído"
           checked={checklist.checked}
           onChange={(e) => {
             const next = { ...checklist, checked: e.target.checked };
@@ -188,7 +207,7 @@ export function BlockRow({
           onChange={(e) => setContent({ ...checklist, text: e.target.value })}
           onBlur={() => onUpdateContent(block.id, content)}
           onKeyDown={(e) => handlePrimaryKeyDown(e, checklist.text)}
-          className={`flex-1 bg-transparent outline-none font-sans text-text-primary ${checklist.checked ? "line-through opacity-60" : ""}`}
+          className={`${INLINE_INPUT_CLASS} ${checklist.checked ? "line-through text-text-muted" : "text-text-primary"}`}
         />
         {controls}
       </div>
@@ -198,14 +217,15 @@ export function BlockRow({
   if (block.block_type === "codigo") {
     const code = content as unknown as CodeBlockContent;
     return (
-      <div className="flex items-start gap-2">
+      <div className="group/block flex items-start gap-2">
         <textarea
           ref={(el) => registerInputRef(block.id, el)}
           value={code.text}
           onChange={(e) => setContent({ ...code, text: e.target.value })}
           onBlur={() => onUpdateContent(block.id, content)}
           rows={4}
-          className="flex-1 bg-surface-2 border border-border rounded-md p-2 font-mono text-sm text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Código"
+          className="qv-field flex-1 font-mono text-[13px] leading-[1.6]"
         />
         {controls}
       </div>
@@ -215,10 +235,16 @@ export function BlockRow({
   if (block.block_type === "toggle") {
     const toggle = content as unknown as ToggleBlockContent;
     return (
-      <div className="flex flex-col gap-1">
+      <div className="group/block flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setIsToggleOpen((v) => !v)} className="text-text-secondary-warm text-xs">
-            {isToggleOpen ? "▼" : "▶"}
+          <button
+            type="button"
+            onClick={() => setIsToggleOpen((v) => !v)}
+            aria-expanded={isToggleOpen}
+            aria-label={isToggleOpen ? "Recolher" : "Expandir"}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-muted hover:text-text-primary"
+          >
+            <span className={`inline-block text-base leading-none transition-transform ${isToggleOpen ? "rotate-90" : ""}`}>›</span>
           </button>
           <input
             ref={(el) => registerInputRef(block.id, el)}
@@ -227,7 +253,7 @@ export function BlockRow({
             onBlur={() => onUpdateContent(block.id, content)}
             onKeyDown={(e) => handlePrimaryKeyDown(e, toggle.summary)}
             placeholder="Resumo do toggle..."
-            className="flex-1 bg-transparent outline-none font-sans font-medium text-text-primary"
+            className={`${INLINE_INPUT_CLASS} font-medium text-text-primary`}
           />
           {controls}
         </div>
@@ -238,7 +264,8 @@ export function BlockRow({
             onBlur={() => onUpdateContent(block.id, content)}
             rows={2}
             placeholder="Detalhes..."
-            className="ml-6 bg-surface-2 border border-border rounded-md p-2 font-sans text-sm text-text-primary outline-none focus:border-brand-cyan"
+            aria-label="Detalhes do toggle"
+            className="qv-field ml-8 w-auto text-sm"
           />
         )}
       </div>
@@ -248,8 +275,8 @@ export function BlockRow({
   if (block.block_type === "link") {
     const link = content as unknown as LinkBlockContent;
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-text-secondary-warm">🔗</span>
+      <div className="group/block flex items-center gap-2.5">
+        <KindLabel>Link</KindLabel>
         <input
           ref={(el) => registerInputRef(block.id, el)}
           type="url"
@@ -258,11 +285,16 @@ export function BlockRow({
           onBlur={() => onUpdateContent(block.id, content)}
           onKeyDown={(e) => handlePrimaryKeyDown(e, link.url)}
           placeholder="https://..."
-          className="flex-1 bg-transparent outline-none font-sans text-brand-cyan"
+          className={`${INLINE_INPUT_CLASS} text-vex-cyan-bright`}
         />
         {link.url && (
-          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-secondary-warm hover:underline shrink-0">
-            Abrir
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-xs font-semibold text-text-secondary hover:text-text-primary"
+          >
+            Abrir →
           </a>
         )}
         {controls}
@@ -273,7 +305,7 @@ export function BlockRow({
   if (block.block_type === "imagem" || block.block_type === "arquivo") {
     const media = content as unknown as MediaBlockContent;
     return (
-      <div className="flex items-center gap-2">
+      <div className="group/block flex items-center gap-2">
         <MediaBlockBody
           block={block}
           documents={documents}
@@ -297,16 +329,20 @@ export function BlockRow({
     const linkablePages = pages.filter((p) => p.id !== currentPageId);
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="group/block flex items-center gap-2">
         {referencedPage ? (
-          <div className="flex flex-1 items-center gap-2">
-            <span className="text-text-secondary-warm">📄</span>
-            <Link to={`/segundo-cerebro/${referencedPage.id}`} className="flex-1 text-sm text-brand-cyan hover:underline">
-              {referencedPage.title}
+          <div className="flex flex-1 items-center gap-2.5">
+            <KindLabel>Página</KindLabel>
+            <Link
+              to={`/segundo-cerebro/${referencedPage.id}`}
+              className="flex-1 text-[15px] font-medium text-vex-cyan-bright hover:underline"
+            >
+              {referencedPage.title} →
             </Link>
             <Button
               type="button"
-              variant="chip"
+              variant="quiet"
+              size="xs"
               onClick={() => {
                 const next = { pageId: null };
                 setContent(next);
@@ -325,7 +361,8 @@ export function BlockRow({
               setContent(next);
               onUpdateContent(block.id, next);
             }}
-            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Referenciar uma página"
+            className="qv-field flex-1 py-2 text-sm"
           >
             <option value="">Referenciar uma página...</option>
             {linkablePages.map((page) => (
@@ -349,13 +386,13 @@ export function BlockRow({
     };
 
     return (
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 flex flex-col gap-1 overflow-x-auto">
-          <table className="text-sm border-collapse">
+      <div className="group/block flex items-start justify-between gap-2">
+        <div className="qv-well flex flex-1 flex-col gap-2 overflow-x-auto p-3">
+          <table className="border-collapse text-sm leading-normal">
             <thead>
               <tr>
                 {table.columns.map((column, colIndex) => (
-                  <th key={colIndex} className="border border-border p-1 text-left">
+                  <th key={colIndex} className="border border-border px-2 py-1.5 text-left">
                     <div className="flex items-center gap-1">
                       <input
                         value={column}
@@ -364,7 +401,8 @@ export function BlockRow({
                           setContent({ ...table, columns });
                         }}
                         onBlur={() => onUpdateContent(block.id, content)}
-                        className="min-w-[80px] bg-transparent outline-none font-sans font-semibold text-text-primary"
+                        aria-label={`Nome da coluna ${colIndex + 1}`}
+                        className="min-w-[80px] bg-transparent text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted outline-none focus:text-text-primary"
                       />
                       {table.columns.length > 1 && (
                         <button
@@ -375,7 +413,8 @@ export function BlockRow({
                               rows: table.rows.map((row) => row.filter((_, ci) => ci !== colIndex)),
                             })
                           }
-                          className="text-xs text-text-secondary-warm hover:text-error shrink-0"
+                          aria-label="Remover coluna"
+                          className="shrink-0 text-xs text-text-muted hover:text-error"
                         >
                           ✕
                         </button>
@@ -383,10 +422,11 @@ export function BlockRow({
                     </div>
                   </th>
                 ))}
-                <th className="p-1">
+                <th className="px-2 py-1.5">
                   <Button
                     type="button"
-                    variant="chip"
+                    variant="dashed"
+                    size="xs"
                     onClick={() =>
                       saveTable({
                         columns: [...table.columns, `Coluna ${table.columns.length + 1}`],
@@ -403,7 +443,7 @@ export function BlockRow({
               {table.rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {row.map((cell, colIndex) => (
-                    <td key={colIndex} className="border border-border p-1">
+                    <td key={colIndex} className="border border-border px-2 py-1.5">
                       <input
                         value={cell}
                         onChange={(e) => {
@@ -413,16 +453,18 @@ export function BlockRow({
                           setContent({ ...table, rows });
                         }}
                         onBlur={() => onUpdateContent(block.id, content)}
-                        className="min-w-[80px] bg-transparent outline-none font-sans text-text-primary"
+                        aria-label={`Linha ${rowIndex + 1}, coluna ${colIndex + 1}`}
+                        className="min-w-[80px] bg-transparent text-text-primary outline-none"
                       />
                     </td>
                   ))}
-                  <td className="p-1">
+                  <td className="px-2 py-1.5">
                     {table.rows.length > 1 && (
                       <button
                         type="button"
                         onClick={() => saveTable({ ...table, rows: table.rows.filter((_, ri) => ri !== rowIndex) })}
-                        className="text-xs text-text-secondary-warm hover:text-error"
+                        aria-label="Remover linha"
+                        className="text-xs text-text-muted hover:text-error"
                       >
                         ✕
                       </button>
@@ -434,7 +476,8 @@ export function BlockRow({
           </table>
           <Button
             type="button"
-            variant="chip"
+            variant="dashed"
+            size="xs"
             className="self-start"
             onClick={() => saveTable({ ...table, rows: [...table.rows, table.columns.map(() => "")] })}
           >
@@ -449,9 +492,9 @@ export function BlockRow({
   if (block.block_type === "equacao") {
     const equation = content as unknown as EquationBlockContent;
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-text-secondary-warm">Σ</span>
+      <div className="group/block flex flex-col gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="w-5 shrink-0 text-center text-text-muted">Σ</span>
           <input
             ref={(el) => registerInputRef(block.id, el)}
             value={equation.latex}
@@ -459,7 +502,7 @@ export function BlockRow({
             onBlur={() => onUpdateContent(block.id, content)}
             onKeyDown={(e) => handlePrimaryKeyDown(e, equation.latex)}
             placeholder="LaTeX, ex.: E = mc^2"
-            className="flex-1 bg-transparent outline-none font-mono text-sm text-text-primary"
+            className={`${INLINE_INPUT_CLASS} font-mono text-[13px] text-text-primary`}
           />
           {controls}
         </div>
@@ -480,17 +523,20 @@ export function BlockRow({
         : null;
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="group/block flex items-center gap-2">
         {referencedTask ? (
-          <div className="flex flex-1 items-center gap-2 flex-wrap">
-            <span className="text-text-secondary-warm">📌</span>
-            <span className="text-sm text-text-primary">{referencedTask.title}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full border border-border text-text-secondary-warm">
+          <div className="flex flex-1 flex-wrap items-center gap-2.5">
+            <KindLabel>Tarefa</KindLabel>
+            <span className="text-[15px] font-medium text-text-primary">{referencedTask.title}</span>
+            <span
+              className={`qv-pill ${referencedTask.status === "concluido" ? "qv-pill-success" : referencedTask.status === "em_andamento" ? "qv-pill-info" : ""}`}
+            >
               {TASK_STATUS_LABEL[referencedTask.status]}
             </span>
             <Button
               type="button"
-              variant="chip"
+              variant="quiet"
+              size="xs"
               onClick={() => {
                 const next = { entityType: null, entityId: null };
                 setContent(next);
@@ -501,15 +547,16 @@ export function BlockRow({
             </Button>
           </div>
         ) : referencedEvent ? (
-          <div className="flex flex-1 items-center gap-2 flex-wrap">
-            <span className="text-text-secondary-warm">📅</span>
-            <span className="text-sm text-text-primary">{referencedEvent.title}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full border border-border text-text-secondary-warm">
+          <div className="flex flex-1 flex-wrap items-center gap-2.5">
+            <KindLabel>Evento</KindLabel>
+            <span className="text-[15px] font-medium text-text-primary">{referencedEvent.title}</span>
+            <span className="qv-pill qv-pill-outline font-mono">
               {new Date(referencedEvent.start_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
             </span>
             <Button
               type="button"
-              variant="chip"
+              variant="quiet"
+              size="xs"
               onClick={() => {
                 const next = { entityType: null, entityId: null };
                 setContent(next);
@@ -529,7 +576,8 @@ export function BlockRow({
               setContent(next);
               onUpdateContent(block.id, next);
             }}
-            className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary text-sm"
+            aria-label="Referenciar uma tarefa ou evento"
+            className="qv-field flex-1 py-2 text-sm"
           >
             <option value="">Referenciar uma tarefa ou evento...</option>
             <optgroup label="Tarefas">
@@ -557,9 +605,9 @@ export function BlockRow({
     const embed = content as unknown as EmbedBlockContent;
     const embedUrl = embed.url ? resolveEmbedUrl(embed.url) : null;
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-text-secondary-warm">🌐</span>
+      <div className="group/block flex flex-col gap-2">
+        <div className="flex items-center gap-2.5">
+          <KindLabel>Embed</KindLabel>
           <input
             ref={(el) => registerInputRef(block.id, el)}
             type="url"
@@ -568,14 +616,14 @@ export function BlockRow({
             onBlur={() => onUpdateContent(block.id, content)}
             onKeyDown={(e) => handlePrimaryKeyDown(e, embed.url)}
             placeholder="Link do YouTube, Vimeo, Spotify, Figma ou CodePen..."
-            className="flex-1 bg-transparent outline-none font-sans text-brand-cyan"
+            className={`${INLINE_INPUT_CLASS} text-vex-cyan-bright`}
           />
           {controls}
         </div>
         {embed.url && embedUrl && (
           <iframe
             src={embedUrl}
-            className="w-full aspect-video rounded-md border border-border"
+            className="aspect-video w-full rounded-[12px] border border-border"
             sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
             referrerPolicy="strict-origin-when-cross-origin"
             loading="lazy"
@@ -583,7 +631,7 @@ export function BlockRow({
           />
         )}
         {embed.url && !embedUrl && (
-          <p className="font-sans text-xs text-error">
+          <p className="text-xs leading-normal text-error">
             Esse link não é suportado. Provedores aceitos: YouTube, Vimeo, Spotify, Figma, CodePen.
           </p>
         )}
@@ -597,9 +645,9 @@ export function BlockRow({
   const icon = BLOCK_TYPE_ICON[block.block_type as EditableBlockType];
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="group/block flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        {icon && <span className="text-text-secondary-warm">{icon}</span>}
+        {icon && <span className="w-4 shrink-0 text-center text-text-muted">{icon}</span>}
         <input
           ref={(el) => registerInputRef(block.id, el)}
           value={text}
@@ -607,7 +655,7 @@ export function BlockRow({
           onBlur={() => onUpdateContent(block.id, content)}
           onKeyDown={(e) => handlePrimaryKeyDown(e, text)}
           placeholder="Escreva algo, ou / para escolher um tipo..."
-          className={`flex-1 bg-transparent outline-none ${TEXT_INPUT_CLASS_BY_TYPE[block.block_type as EditableBlockType] ?? "font-sans text-text-primary"}`}
+          className={`${INLINE_INPUT_CLASS} ${TEXT_INPUT_CLASS_BY_TYPE[block.block_type as EditableBlockType] ?? "text-[15px] leading-[1.75] text-text-secondary focus:text-text-primary"}`}
         />
         {controls}
       </div>
@@ -690,27 +738,36 @@ function MediaBlockBody({
           accept={isImage ? "image/*" : undefined}
           disabled={isUploading}
           onChange={handleFileChange}
-          className="flex-1 min-w-0 text-sm text-text-primary"
+          aria-label={isImage ? "Enviar imagem" : "Enviar arquivo"}
+          className="min-w-0 flex-1 text-sm text-text-secondary file:mr-3 file:cursor-pointer file:rounded-[10px] file:border file:border-solid file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-text-primary hover:file:border-text-muted"
         />
-        {isUploading && <span className="text-xs text-text-secondary-warm shrink-0">Enviando...</span>}
+        {isUploading && <span className="shrink-0 text-xs text-text-secondary">Enviando...</span>}
         {error && <span className="text-xs text-error shrink-0">{error}</span>}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 items-center gap-2 flex-wrap">
+    <div className="flex flex-1 flex-wrap items-center gap-2.5">
       {isImage && url ? (
-        <img src={url} alt={document.file_name} className="max-h-48 rounded-md border border-border" />
+        <img src={url} alt={document.file_name} className="max-h-48 rounded-[12px] border border-border" />
       ) : (
-        <span className="font-sans text-sm text-text-primary">📎 {document.file_name}</span>
+        <>
+          <KindLabel>Anexo</KindLabel>
+          <span className="text-sm text-text-primary">{document.file_name}</span>
+        </>
       )}
       {url && (
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-secondary-warm hover:underline shrink-0">
-          Abrir
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-xs font-semibold text-text-secondary hover:text-text-primary"
+        >
+          Abrir →
         </a>
       )}
-      <Button type="button" variant="chip" onClick={() => onUpdateContent({ documentId: null })}>
+      <Button type="button" variant="quiet" size="xs" onClick={() => onUpdateContent({ documentId: null })}>
         Trocar
       </Button>
     </div>
@@ -747,5 +804,5 @@ function EquationPreview({ latex }: { latex: string }) {
     };
   }, [latex]);
 
-  return <div ref={containerRef} className="bg-surface-2 border border-border rounded-md p-2 overflow-x-auto" />;
+  return <div ref={containerRef} className="qv-well overflow-x-auto p-3 text-text-primary" />;
 }

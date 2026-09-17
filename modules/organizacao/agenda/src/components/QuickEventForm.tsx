@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { Button } from "@qqorvex/ui";
+import { Button, Notice } from "@qqorvex/ui";
 import type { CalendarEvent, NewEventInput } from "../types";
+import { formatShortDate } from "./EventStyle";
 
 const CATEGORY_LABEL: Record<string, string> = {
   compromisso: "Compromisso",
@@ -93,18 +94,51 @@ export function QuickEventForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="qv-card p-3.5 flex flex-col gap-2.5">
+      <div className="flex gap-2.5 flex-wrap">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Título do evento"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          placeholder="Novo evento — ex: Reunião com o time"
+          aria-label="Título do evento"
+          className="qv-field flex-1 basis-[240px]"
         />
+        <div className="qv-well flex items-center gap-2 px-3.5 py-0 min-h-[44px] font-mono text-[13px] text-text-secondary">
+          <span className="whitespace-nowrap">{formatShortDate(selectedDate)}</span>
+          {isAllDay ? (
+            <span className="whitespace-nowrap">· dia inteiro</span>
+          ) : (
+            <>
+              <span aria-hidden>·</span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                aria-label="Início"
+                className="bg-transparent border-0 outline-none font-mono text-[13px] text-text-primary w-[82px]"
+              />
+              <span aria-hidden>–</span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                aria-label="Fim"
+                className="bg-transparent border-0 outline-none font-mono text-[13px] text-text-primary w-[82px]"
+              />
+            </>
+          )}
+        </div>
+        <Button type="submit" variant="primary" className="px-5">
+          Criar
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2.5 flex-wrap text-[13px] text-text-secondary">
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-2 py-2 text-text-primary text-sm"
+          aria-label="Categoria"
+          className="qv-field w-auto py-2 text-[13px]"
         >
           {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
@@ -112,70 +146,50 @@ export function QuickEventForm({
             </option>
           ))}
         </select>
-        <Button type="submit" variant="primary">
-          Adicionar
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-3 text-sm text-text-primary">
-        <label className="flex items-center gap-1">
-          <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} />
+        <select
+          value={reminderMinutes}
+          onChange={(e) => setReminderMinutes(e.target.value)}
+          aria-label="Lembrete"
+          className="qv-field w-auto py-2 text-[13px]"
+        >
+          {REMINDER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" className="qv-check" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} />
           Dia inteiro
         </label>
-        {!isAllDay && (
-          <>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary"
-            />
-            <span>até</span>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="rounded-md border border-border bg-surface-1 px-2 py-1 text-text-primary"
-            />
-          </>
+        {category === "reuniao" && (
+          <input
+            value={meetingLink}
+            onChange={(e) => setMeetingLink(e.target.value)}
+            placeholder="Link da reunião (opcional)"
+            aria-label="Link da reunião"
+            className="qv-field flex-1 basis-[220px] py-2 text-[13px]"
+          />
         )}
       </div>
 
-      {category === "reuniao" && (
-        <input
-          value={meetingLink}
-          onChange={(e) => setMeetingLink(e.target.value)}
-          placeholder="Link da reunião (opcional)"
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-        />
-      )}
-
-      <select
-        value={reminderMinutes}
-        onChange={(e) => setReminderMinutes(e.target.value)}
-        className="rounded-md border border-border bg-surface-1 px-2 py-2 text-text-primary text-sm w-fit"
-      >
-        {REMINDER_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-
       {conflicts && conflicts.length > 0 && (
-        <div className="bg-warning-bg border border-warning-border rounded-md p-3 flex flex-col gap-2">
-          <p className="text-sm text-warning">
-            Conflita com: {conflicts.map((c) => c.title).join(", ")}
-          </p>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={confirmAnyway}>
-              Criar mesmo assim
-            </Button>
-            <Button type="button" variant="ghost" onClick={reset}>
-              Escolher outro horário
-            </Button>
-          </div>
-        </div>
+        <Notice
+          tone="warning"
+          title="Horário ocupado"
+          actions={
+            <>
+              <Button type="button" variant="secondary" size="sm" onClick={confirmAnyway}>
+                Criar mesmo assim
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={reset}>
+                Escolher outro horário
+              </Button>
+            </>
+          }
+        >
+          Conflita com: {conflicts.map((c) => c.title).join(", ")}
+        </Notice>
       )}
     </form>
   );

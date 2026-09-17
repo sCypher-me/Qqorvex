@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button } from "@qqorvex/ui";
+import { ChipTabs, EmptyState } from "@qqorvex/ui";
 import {
   useEventsInRange,
   useCreateEvent,
@@ -36,12 +36,15 @@ const VIEW_LABEL: Record<ViewMode, string> = {
   reunioes: "Reuniões",
   recorrentes: "Recorrentes",
 };
+const VIEW_OPTIONS = (Object.keys(VIEW_LABEL) as ViewMode[]).map((value) => ({ value, label: VIEW_LABEL[value] }));
 const WIDE_RANGE_DAYS = 60;
 
 function rangeForView(view: ViewMode, selectedDate: Date): { start: Date; end: Date } {
   switch (view) {
     case "dia":
-      return { start: startOfDay(selectedDate), end: endOfDay(selectedDate) };
+      // A visão Dia busca a semana inteira: a faixa de 7 dias marca os dias com eventos e trocar
+      // de dia dentro da semana não refaz a consulta. A grade continua filtrando só o dia.
+      return { start: startOfWeek(selectedDate), end: endOfWeek(selectedDate) };
     case "semana":
       return { start: startOfWeek(selectedDate), end: endOfWeek(selectedDate) };
     case "mes": {
@@ -60,7 +63,8 @@ function rangeForView(view: ViewMode, selectedDate: Date): { start: Date; end: D
 function navigate(view: ViewMode, selectedDate: Date, direction: 1 | -1): Date {
   switch (view) {
     case "dia":
-      return addDays(selectedDate, direction);
+      // ‹ › da barra de abas substituem as setas da faixa semanal (semana anterior/próxima).
+      return addDays(selectedDate, 7 * direction);
     case "semana":
       return addDays(selectedDate, 7 * direction);
     case "mes":
@@ -72,6 +76,30 @@ function navigate(view: ViewMode, selectedDate: Date, direction: 1 | -1): Date {
       return selectedDate;
   }
 }
+
+function shortDate(date: Date): string {
+  return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", "");
+}
+
+function periodLabel(view: ViewMode, selectedDate: Date): string | null {
+  switch (view) {
+    case "dia":
+    case "semana": {
+      const start = startOfWeek(selectedDate);
+      return `${shortDate(start)} – ${shortDate(addDays(start, 6))}`;
+    }
+    case "mes":
+      return selectedDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    case "lista":
+    case "reunioes":
+      return `${shortDate(selectedDate)} – ${shortDate(addDays(selectedDate, WIDE_RANGE_DAYS - 1))}`;
+    case "recorrentes":
+      return null;
+  }
+}
+
+const NAV_BUTTON_CLASS =
+  "w-[34px] h-[34px] shrink-0 rounded-[10px] border border-border bg-vex-obsidian text-text-secondary text-base cursor-pointer hover:text-text-primary hover:border-text-muted transition-colors";
 
 export function AgendaPage() {
   const { session } = useAuth();
@@ -86,90 +114,79 @@ export function AgendaPage() {
   const createZoomMeeting = useCreateZoomMeeting(supabase, userId);
 
   const dayEvents = events.filter((e) => new Date(e.start_at) >= startOfDay(selectedDate) && new Date(e.start_at) < endOfDay(selectedDate));
+  const period = periodLabel(viewMode, selectedDate);
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 flex flex-col items-center gap-6">
-      <div className="w-full max-w-3xl">
-        <h1 className="font-display text-2xl font-bold text-text-primary">Agenda</h1>
-      </div>
-
-      <div className="w-full max-w-3xl flex items-center justify-between gap-2">
-        <div className="flex gap-2">
-          {(Object.keys(VIEW_LABEL) as ViewMode[]).map((view) => (
-            <Button key={view} type="button" variant={viewMode === view ? "chip-accent" : "chip"} onClick={() => setViewMode(view)}>
-              {VIEW_LABEL[view]}
-            </Button>
-          ))}
-        </div>
-        {viewMode !== "dia" && viewMode !== "recorrentes" && (
-          <div className="flex items-center gap-2">
-            <Button
+    <div className="flex flex-col gap-[18px]">
+      <div className="flex items-center gap-2 flex-wrap">
+        <ChipTabs options={VIEW_OPTIONS} value={viewMode} onChange={setViewMode} />
+        <span className="flex-1" />
+        {period && viewMode !== "recorrentes" && (
+          <>
+            <span className="font-mono text-xs text-text-muted mr-1">{period}</span>
+            <button
               type="button"
-              variant="chip"
+              className={NAV_BUTTON_CLASS}
               onClick={() => setSelectedDate((d) => navigate(viewMode, d, -1))}
               aria-label="Período anterior"
             >
               ‹
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="chip"
+              className={NAV_BUTTON_CLASS}
               onClick={() => setSelectedDate((d) => navigate(viewMode, d, 1))}
               aria-label="Próximo período"
             >
               ›
-            </Button>
-          </div>
+            </button>
+          </>
         )}
       </div>
 
       {viewMode === "dia" && (
-        <div className="w-full max-w-3xl">
-          <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-        </div>
+        <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} events={events} showNavigation={false} />
       )}
 
       {viewMode !== "recorrentes" && (
-        <div className="w-full max-w-3xl">
-          <QuickEventForm
-            selectedDate={selectedDate}
-            checkConflicts={(input) => findConflicts(events, input)}
-            onCreate={(input) => createEvent.mutate(input)}
-          />
-        </div>
+        <QuickEventForm
+          selectedDate={selectedDate}
+          checkConflicts={(input) => findConflicts(events, input)}
+          onCreate={(input) => createEvent.mutate(input)}
+        />
       )}
 
-      <div className="w-full max-w-3xl">
-        {viewMode === "recorrentes" ? (
-          <RecurringEventsPanel client={supabase} userId={userId} />
-        ) : isLoading ? (
-          <p className="font-sans text-text-secondary-warm">Carregando...</p>
-        ) : viewMode === "dia" ? (
-          <DayAgenda events={dayEvents} onDelete={(id) => deleteEvent.mutate(id)} />
-        ) : viewMode === "semana" ? (
-          <WeekView weekAnchor={selectedDate} events={events} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-        ) : viewMode === "mes" ? (
-          <MonthView
-            monthAnchor={selectedDate}
-            events={events}
-            selectedDate={selectedDate}
-            onSelectDate={(date) => {
-              setSelectedDate(date);
-              setViewMode("dia");
-            }}
+      {viewMode === "recorrentes" ? (
+        <RecurringEventsPanel client={supabase} userId={userId} />
+      ) : isLoading ? (
+        <div className="qv-card p-5">
+          <EmptyState>Carregando...</EmptyState>
+        </div>
+      ) : viewMode === "dia" ? (
+        <DayAgenda events={dayEvents} onDelete={(id) => deleteEvent.mutate(id)} />
+      ) : viewMode === "semana" ? (
+        <WeekView weekAnchor={selectedDate} events={events} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      ) : viewMode === "mes" ? (
+        <MonthView
+          monthAnchor={selectedDate}
+          events={events}
+          selectedDate={selectedDate}
+          onSelectDate={(date) => {
+            setSelectedDate(date);
+            setViewMode("dia");
+          }}
+        />
+      ) : viewMode === "lista" ? (
+        <ListView events={events} onDelete={(id) => deleteEvent.mutate(id)} />
+      ) : (
+        <div className="flex flex-col gap-[18px]">
+          <NewZoomMeetingForm
+            isCreating={createZoomMeeting.isPending}
+            onCreate={(input) => createZoomMeeting.mutateAsync(input)}
           />
-        ) : viewMode === "lista" ? (
-          <ListView events={events} onDelete={(id) => deleteEvent.mutate(id)} />
-        ) : (
-          <div className="flex flex-col gap-4">
-            <NewZoomMeetingForm
-              isCreating={createZoomMeeting.isPending}
-              onCreate={(input) => createZoomMeeting.mutateAsync(input)}
-            />
-            <MeetingsView events={events} onDelete={(id) => deleteEvent.mutate(id)} />
-          </div>
-        )}
-      </div>
-    </main>
+          <MeetingsView events={events} onDelete={(id) => deleteEvent.mutate(id)} />
+        </div>
+      )}
+    </div>
   );
 }

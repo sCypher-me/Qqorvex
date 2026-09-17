@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
 import { useCreateInstallmentPurchase, useInstallments } from "../hooks/useFinancas";
+import { formatBRL, parseBRLInput } from "./TransactionList";
+
+function formatIsoDate(iso: string): string {
+  return iso.split("-").reverse().join("/");
+}
 
 export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { installments, isLoading } = useInstallments(client);
@@ -15,7 +20,7 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
-    const parsedTotal = Number(totalAmount);
+    const parsedTotal = parseBRLInput(totalAmount);
     const parsedCount = Number(installmentCount);
     if (!trimmed || !(parsedTotal > 0) || !(parsedCount > 0)) return;
     createInstallmentPurchase.mutate({
@@ -30,52 +35,64 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-lg font-semibold text-text-primary">Parcelamentos</h2>
+    <div className="qv-card overflow-hidden">
+      <CardHeader divider title="Parcelamentos" meta={isLoading ? undefined : `${installments.length}`} />
       {isLoading ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Carregando...</p>
+        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
       ) : installments.length === 0 ? (
-        <p className="font-sans text-sm text-text-secondary-warm">Nenhum parcelamento cadastrado.</p>
+        <EmptyState className="px-[18px] py-4">
+          Nenhum parcelamento cadastrado. Ao parcelar, cada parcela vira uma transação futura.
+        </EmptyState>
       ) : (
-        <ul className="flex flex-col gap-1">
+        <ul>
           {installments.map((installment) => (
-            <li key={installment.id} className="text-sm text-text-primary">
-              {installment.name} · R$ {installment.total_amount.toFixed(2)} em {installment.installment_count}x ·
-              1ª parcela {installment.first_installment_date}
+            <li key={installment.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[13px]">
+              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <span className="text-sm font-medium truncate">{installment.name}</span>
+                <span className="font-mono text-xs text-text-muted">
+                  {installment.installment_count}x · 1ª parcela {formatIsoDate(installment.first_installment_date)}
+                </span>
+              </div>
+              <span className="font-mono text-sm font-medium whitespace-nowrap text-text-primary">
+                {formatBRL(installment.total_amount)}
+              </span>
             </li>
           ))}
         </ul>
       )}
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end">
+      <form onSubmit={handleSubmit} className="qv-row-top flex flex-wrap gap-2 px-[18px] py-[14px]">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da compra"
-          className="flex-1 min-w-[140px] rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          aria-label="Nome da compra"
+          className="qv-field flex-[2_1_160px] py-2"
         />
         <input
           value={totalAmount}
           onChange={(e) => setTotalAmount(e.target.value)}
-          placeholder="Valor total"
-          type="number"
-          step="0.01"
-          className="w-28 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          placeholder="Valor total R$"
+          aria-label="Valor total"
+          inputMode="decimal"
+          className="qv-field flex-[0_1_140px] py-2 font-mono text-[13px]"
         />
         <input
           value={installmentCount}
           onChange={(e) => setInstallmentCount(e.target.value)}
           placeholder="Nº parcelas"
+          aria-label="Número de parcelas"
           type="number"
           min="1"
-          className="w-24 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+          className="qv-field flex-[0_1_100px] py-2 font-mono text-[13px]"
         />
         <input
           type="date"
           value={firstInstallmentDate}
           onChange={(e) => setFirstInstallmentDate(e.target.value)}
-          className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary"
+          aria-label="Data da primeira parcela"
+          className="qv-field flex-[0_1_160px] py-2 font-mono text-[13px]"
         />
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="primary" size="sm" disabled={createInstallmentPurchase.isPending}>
           Parcelar
         </Button>
       </form>

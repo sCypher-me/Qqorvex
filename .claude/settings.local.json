@@ -9,7 +9,9 @@
       "Bash(pnpm --filter @qqorvex/module-estudos typecheck)",
       "Bash(pnpm --filter @qqorvex/module-agenda typecheck)",
       "Bash(pnpm --filter @qqorvex/module-biblioteca typecheck)",
-      "Bash(pnpm --filter qqorvex typecheck)"
+      "Bash(pnpm --filter qqorvex typecheck)",
+      "PowerShell(Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead\\(\"C:\\\\Users\\\\Julio\\\\Music\\\\Qqorvex\\\\designq.zip\"\\); $z.Entries | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 300; $z.Dispose\\(\\))",
+      "PowerShell($d=\"$env:TEMP\\\\designq\"; if \\(Test-Path $d\\) { Remove-Item -Recurse -Force $d -Confirm:$false }; Expand-Archive -Path \"C:\\\\Users\\\\Julio\\\\Music\\\\Qqorvex\\\\designq.zip\" -DestinationPath $d; $d)"
     ]
   }
 }

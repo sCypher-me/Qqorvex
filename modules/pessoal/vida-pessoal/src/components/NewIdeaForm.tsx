@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { Button } from "@qqorvex/ui";
+import { Button, Input } from "@qqorvex/ui";
 import type { NewIdeaInput } from "../types";
 
 /** Caixa de captura simples — sem status/categoria, de propósito. */
-export function NewIdeaForm({ onCreate }: { onCreate: (input: NewIdeaInput) => void }) {
+export function NewIdeaForm({ onCreate, onCancel }: { onCreate: (input: NewIdeaInput) => void; onCancel?: () => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -17,23 +17,23 @@ export function NewIdeaForm({ onCreate }: { onCreate: (input: NewIdeaInput) => v
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Sua ideia"
-        className="rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <Input label="Sua ideia" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="O que passou pela cabeça?" autoFocus />
+      <Input
+        label="Detalhes (opcional)"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Contexto, links, próximos passos"
       />
       <div className="flex gap-2">
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Detalhes (opcional)"
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 text-text-primary outline-none focus:border-brand-cyan"
-        />
-        <Button type="submit" variant="primary">
+        <Button type="submit" variant="primary" size="sm">
           Capturar ideia
         </Button>
+        {onCancel && (
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            Cancelar
+          </Button>
+        )}
       </div>
     </form>
   );
