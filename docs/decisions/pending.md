@@ -1623,6 +1623,32 @@
   otimizado) + keystore de assinatura própria (não gerado ainda, decisão do usuário quando
   chegar a hora).
 
+- **Design mobile — shell adaptado (17/09/2026)**: o app nunca tinha sido testado em largura de
+  celular — confirmei visualmente (375px) e o resultado era inutilizável: a Sidebar fixa (256px)
+  tomava quase a tela toda, sobrava uma tira de ~70px pro conteúdo real. Como agora o Qqorvex
+  também vira APK de verdade (ver entrada de empacotamento Android acima), isso deixou de ser só
+  "responsivo incompleto" e virou bloqueador real.
+  **Decisão do usuário**: barra de navegação inferior (padrão nativo Android/iOS) em vez de menu
+  hambúrguer — recomendei isso justamente por causa do APK, não seria a escolha óbvia pra só um
+  site responsivo.
+  **Implementado**: `apps/qqorvex/src/app/shell/MobileNav.tsx` — `MobileBottomNav` (4 abas fixas:
+  Hoje/Tarefas/Agenda/Vex + "Mais") e `MoreSheet` (painel deslizando de baixo pra cima com a
+  mesma lista completa de seções da Sidebar, reaproveitando o tipo `SidebarSection[]` sem duplicar
+  dado). Vex entra nas 4 abas fixas de propósito — é o item que mais pede acesso rápido em
+  qualquer tela. `ProtectedLayout.tsx`: Sidebar vira `hidden lg:block`, `<main>` ganha padding
+  responsivo (`px-4 lg:px-8`, `pb-24` pra não ficar atrás da barra fixa). `VexPanel.tsx`: painel de
+  372px fixo virou sobreposição de tela cheia em `<lg` (mesmo problema estrutural da Sidebar,
+  372px também não cabia). `AppHeader.tsx`: botão "Falar com a Vex" escondido em `<lg` (redundante
+  com a aba da barra inferior), padding responsivo.
+  Typecheck/build/testes limpos. **Confirmado em navegador real (375×812)**: Hoje, Finanças
+  (cards empilham em coluna única, densidade adaptativa se mantém) e o painel da Vex em tela
+  cheia (contexto correto, "CONTEXTO ATUAL: Finanças") — tudo testado e funcionando. `MoreSheet`
+  testado abrindo/navegando. Usuário de teste apagado ao final.
+  **Não coberto ainda**: páginas com tabela larga (ex. lista de transações com scroll horizontal)
+  e formulários mais densos (Tarefas/Agenda quick-capture) não foram auditados um a um — o shell
+  agora comporta telas pequenas, mas conteúdo específico de cada página pode precisar de ajuste
+  pontual conforme for sendo usado de verdade no celular.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

@@ -45,7 +45,7 @@ export function AppHeader({ onOpenPalette, onToggleVex }: { onOpenPalette: () =>
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 flex-wrap px-[26px] py-4 border-b border-[rgba(50,57,68,.7)] bg-[linear-gradient(180deg,rgba(14,17,22,.86),rgba(11,14,18,.72))] backdrop-blur-[20px]">
+    <header className="sticky top-0 z-20 flex items-center gap-3 flex-wrap px-4 lg:px-[26px] py-4 border-b border-[rgba(50,57,68,.7)] bg-[linear-gradient(180deg,rgba(14,17,22,.86),rgba(11,14,18,.72))] backdrop-blur-[20px]">
       <div className="flex flex-col gap-[3px] min-w-0 flex-[1_1_200px]">
         <h1 className="font-display text-[22px] font-semibold tracking-[-0.015em] truncate m-0">{title}</h1>
         {subtitle && <span className="text-xs text-text-muted truncate">{subtitle}</span>}
@@ -116,7 +116,7 @@ export function AppHeader({ onOpenPalette, onToggleVex }: { onOpenPalette: () =>
       <button
         type="button"
         onClick={onToggleVex}
-        className="qv-btn qv-btn-vex py-2 px-3.5 shrink-0"
+        className="hidden lg:flex qv-btn qv-btn-vex py-2 px-3.5 shrink-0"
       >
         <img src={BRAND_ASSETS.vexAvatar} alt="" className="w-[22px] h-[22px] rounded-full object-cover" />
         Falar com a Vex

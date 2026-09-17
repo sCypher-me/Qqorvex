@@ -8,6 +8,7 @@ import { VexPanel } from "../vex/VexPanel";
 import { PageMetaProvider } from "./shell/PageMeta";
 import { AppHeader } from "./shell/AppHeader";
 import { CommandPalette } from "./shell/CommandPalette";
+import { MobileBottomNav, MoreSheet } from "./shell/MobileNav";
 import { BRAND_ASSETS, getNavSections } from "./shell/navigation";
 import { supabase } from "./supabase";
 
@@ -37,6 +38,7 @@ function Shell() {
   const isVexPage = location.pathname === "/vex";
   const [vexOpen, setVexOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { session } = useAuth();
   const { profile } = useProfile(supabase, session!.user.id);
   const isOwner = profile?.role === "dono";
@@ -66,13 +68,17 @@ function Shell() {
     setVexOpen((v) => !v);
   }
 
+  const navSections = getNavSections(isOwner);
+
   return (
     <div className="flex min-h-screen items-stretch">
-      <Sidebar sections={getNavSections(isOwner)} brandSymbolSrc={BRAND_ASSETS.symbol} footer={<SidebarUser profile={profile} />} />
+      <div className="hidden lg:block">
+        <Sidebar sections={navSections} brandSymbolSrc={BRAND_ASSETS.symbol} footer={<SidebarUser profile={profile} />} />
+      </div>
 
       <div className="flex-1 min-w-0 flex flex-col">
         <AppHeader onOpenPalette={() => setPaletteOpen(true)} onToggleVex={toggleVex} />
-        <main className="flex-1 min-w-0 px-8 pt-[30px] pb-12 flex flex-col gap-[22px]">
+        <main className="flex-1 min-w-0 px-4 lg:px-8 pt-5 lg:pt-[30px] pb-24 lg:pb-12 flex flex-col gap-[22px]">
           <Outlet />
         </main>
       </div>
@@ -80,6 +86,8 @@ function Shell() {
       {vexOpen && !isVexPage && <VexPanel onClose={() => setVexOpen(false)} />}
 
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} isOwner={isOwner} />
+      <MobileBottomNav onOpenVex={openVex} onOpenMore={() => setMoreOpen(true)} />
+      <MoreSheet sections={navSections} isOpen={moreOpen} onClose={() => setMoreOpen(false)} />
     </div>
   );
 }
