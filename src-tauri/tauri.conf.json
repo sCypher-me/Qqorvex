@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "qqorvex",
+  "version": "0.1.0",
+  "identifier": "tech.biocypher.qqorvex",
+  "build": {
+    "frontendDist": "../apps/qqorvex/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "node C:/Users/Julio/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.mjs --filter qqorvex dev",
+    "beforeBuildCommand": "node C:/Users/Julio/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.mjs --filter qqorvex build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Qqorvex",
+        "width": 800,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

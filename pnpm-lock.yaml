@@ -44,6 +44,9 @@ importers:
       '@qqorvex/module-hoje':
         specifier: workspace:*
         version: link:../../modules/hoje
+      '@qqorvex/module-manager':
+        specifier: workspace:*
+        version: link:../../modules/gestao/manager
       '@qqorvex/module-metas-habitos':
         specifier: workspace:*
         version: link:../../modules/organizacao/metas-habitos
@@ -253,6 +256,28 @@ importers:
       '@qqorvex/module-hoje':
         specifier: workspace:*
         version: link:../../hoje
+      '@qqorvex/ui':
+        specifier: workspace:*
+        version: link:../../../packages/ui
+      '@tanstack/react-query':
+        specifier: ^5.0.0
+        version: 5.102.8(react@19.2.8)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.18
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  modules/gestao/manager:
+    dependencies:
+      '@qqorvex/database':
+        specifier: workspace:*
+        version: link:../../../packages/database
       '@qqorvex/ui':
         specifier: workspace:*
         version: link:../../../packages/ui

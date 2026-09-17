@@ -623,4 +623,15 @@ pastas vazias antecipadamente.
   nova paleta mais contida, sistema de classes `qv-*`, shell novo (header, paleta de comando
   Cmd+K, painel da Vex com reconhecimento de contexto), Vex com presença visual real (login,
   Hoje, painel lateral) pela primeira vez desde que a arte dela existe. Verificado: typecheck/
-  build/testes limpos, confirmado em navegador real. Nada commitado ainda.
+  build/testes limpos, confirmado em navegador real. Commitado e no GitHub
+  (`github.com/sCypher-me/Qqorvex`).
+- **Vex — cérebro hospedado (Gemini) + busca na web (Tavily)** (17/09/2026, ver
+  `docs/decisions/pending.md`): antes só funcionava com Ollama local. `GeminiProvider` +
+  Edge Functions `vex-chat`/`vex-web-search` (chaves em `app_secrets`, nunca no bundle). Cadeia de
+  fallback: Gemini → Ollama → Echo. Confirmado de ponta a ponta com usuário real.
+- **Papel de Dono + Painel Manager + código de resgate** (17/09/2026, ver
+  `docs/decisions/pending.md`): `profiles.role`/`account_tier` novos, `is_owner()` protege 5
+  funções `SECURITY DEFINER` novas (contas, exclusão, visão geral agregada, config write-only).
+  Novo módulo `@qqorvex/module-manager` e página `/manager` (só visível pro Dono). Sistema de
+  código de resgate (`redemption_codes`/`redeem_code()`) — `account_tier` é só etiqueta hoje, não
+  bloqueia nada, preparado pro dia que existir plano pago.

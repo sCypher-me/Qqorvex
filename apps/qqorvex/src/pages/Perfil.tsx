@@ -1,8 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, EmptyState, Input, SectionTitle, Textarea } from "@qqorvex/ui";
+import { Badge, Button, EmptyState, Input, SectionTitle, Textarea, type BadgeTone } from "@qqorvex/ui";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { BadgesPanel, formatXp, useGamificationStats, useUnlockedBadges } from "@qqorvex/module-gamificacao";
+import { useRedeemCode, type AccountTier } from "@qqorvex/module-manager";
+
+const TIER_LABEL: Record<AccountTier, string> = { padrao: "Padrão", parceiro: "Parceiro", lifetime: "Lifetime" };
+const TIER_TONE: Record<AccountTier, BadgeTone> = { padrao: "neutral", parceiro: "info", lifetime: "premium" };
 
 const memberSinceFormat = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 
@@ -18,9 +22,25 @@ export function PerfilPage() {
   const { client, session } = useAuth();
   const userId = session!.user.id;
   const email = session!.user.email ?? null;
-  const { profile, isLoading: profileLoading, save: saveProfile } = useProfile(client, userId);
+  const { profile, isLoading: profileLoading, save: saveProfile, refresh: refreshProfile } = useProfile(client, userId);
   const { stats, progress, title } = useGamificationStats(client, userId);
   const { badges, isLoading: badgesLoading } = useUnlockedBadges(client, userId);
+  const redeemCodeMutation = useRedeemCode(client);
+  const [redeemInput, setRedeemInput] = useState("");
+  const [redeemMessage, setRedeemMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+
+  async function handleRedeem(event: FormEvent) {
+    event.preventDefault();
+    setRedeemMessage(null);
+    try {
+      const tier = await redeemCodeMutation.mutateAsync(redeemInput);
+      setRedeemMessage({ tone: "success", text: `Código aplicado — sua conta agora é ${TIER_LABEL[tier as AccountTier] ?? tier}.` });
+      setRedeemInput("");
+      refreshProfile();
+    } catch (error) {
+      setRedeemMessage({ tone: "error", text: error instanceof Error ? error.message : "Não consegui resgatar esse código." });
+    }
+  }
 
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -92,12 +112,17 @@ export function PerfilPage() {
               </>
             )}
           </span>
-          {progress && (
+          {(progress || profile) && (
             <div className="flex gap-2 flex-wrap pt-0.5">
               {title && <Badge tone="premium">{title}</Badge>}
-              <Badge tone="info">
-                Nível <span className="font-mono">{progress.level}</span>
-              </Badge>
+              {progress && (
+                <Badge tone="info">
+                  Nível <span className="font-mono">{progress.level}</span>
+                </Badge>
+              )}
+              {profile && (
+                <Badge tone={TIER_TONE[profile.account_tier as AccountTier]}>{TIER_LABEL[profile.account_tier as AccountTier]}</Badge>
+              )}
             </div>
           )}
         </div>
@@ -162,6 +187,28 @@ export function PerfilPage() {
               Segurança
             </Link>
           </div>
+        </section>
+
+        <section className="qv-card p-5 flex flex-col gap-3">
+          <h2 className="font-display text-[17px] font-semibold">Código de resgate</h2>
+          <p className="text-[13px] text-text-secondary leading-relaxed">
+            Ganhou um código de parceiro ou lifetime? Resgata aqui.
+          </p>
+          <form onSubmit={handleRedeem} className="flex items-end gap-2.5 flex-wrap">
+            <Input
+              label="Código"
+              placeholder="QQ-XXXX-XXXX"
+              value={redeemInput}
+              onChange={(e) => setRedeemInput(e.target.value)}
+              wrapperClassName="flex-1 min-w-[160px]"
+            />
+            <Button type="submit" disabled={redeemCodeMutation.isPending || !redeemInput.trim()}>
+              Resgatar
+            </Button>
+          </form>
+          {redeemMessage && (
+            <p className={`text-[13px] ${redeemMessage.tone === "success" ? "text-success" : "text-error"}`}>{redeemMessage.text}</p>
+          )}
         </section>
       </div>
     </div>

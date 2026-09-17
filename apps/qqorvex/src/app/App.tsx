@@ -41,6 +41,7 @@ const DocumentosPage = lazy(() => import("../pages/Documentos").then((m) => ({ d
 const FinancasPage = lazy(() => import("../pages/Financas").then((m) => ({ default: m.FinancasPage })));
 const VidaPessoalPage = lazy(() => import("../pages/VidaPessoal").then((m) => ({ default: m.VidaPessoalPage })));
 const PerfilPage = lazy(() => import("../pages/Perfil").then((m) => ({ default: m.PerfilPage })));
+const ManagerPage = lazy(() => import("../pages/Manager").then((m) => ({ default: m.ManagerPage })));
 const GamificacaoPage = lazy(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
 const VexPage = lazy(() => import("../pages/Vex").then((m) => ({ default: m.VexPage })));
 
@@ -98,6 +99,7 @@ export function App() {
                 <Route path="/vida-pessoal" element={<VidaPessoalPage />} />
                 <Route path="/perfil" element={<PerfilPage />} />
                 <Route path="/gamificacao" element={<GamificacaoPage />} />
+                <Route path="/manager" element={<ManagerPage />} />
                 <Route path="/seguranca" element={<SegurancaPage />} />
                 <Route path="/vex" element={<VexPage />} />
               </Route>

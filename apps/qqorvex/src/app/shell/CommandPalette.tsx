@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { NAV_SECTIONS } from "./navigation";
+import { getNavSections } from "./navigation";
 
 interface PaletteEntry {
   group: string;
@@ -13,7 +13,17 @@ interface PaletteEntry {
  * Paleta de comandos (⌘K / Ctrl+K) — design "Sobreposições › Paleta de comandos". Por enquanto
  * cobre navegação entre módulos e abrir a Vex; Esc fecha, setas escolhem, Enter executa.
  */
-export function CommandPalette({ isOpen, onClose, onOpenVex }: { isOpen: boolean; onClose: () => void; onOpenVex: () => void }) {
+export function CommandPalette({
+  isOpen,
+  onClose,
+  onOpenVex,
+  isOwner = false,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onOpenVex: () => void;
+  isOwner?: boolean;
+}) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -21,13 +31,13 @@ export function CommandPalette({ isOpen, onClose, onOpenVex }: { isOpen: boolean
 
   const entries = useMemo<PaletteEntry[]>(
     () => [
-      ...NAV_SECTIONS.flatMap((section) =>
+      ...getNavSections(isOwner).flatMap((section) =>
         section.items.map((item) => ({ group: "Ir para", label: item.label, run: () => navigate(item.to) })),
       ),
       { group: "Vex", label: "Falar com a Vex", run: onOpenVex },
       { group: "Vex", label: "Abrir conversa em tela cheia", run: () => navigate("/vex") },
     ],
-    [navigate, onOpenVex],
+    [navigate, onOpenVex, isOwner],
   );
 
   const normalized = query.trim().toLowerCase();

@@ -20,6 +20,7 @@
     "@qqorvex/module-financas": "workspace:*",
     "@qqorvex/module-gamificacao": "workspace:*",
     "@qqorvex/module-hoje": "workspace:*",
+    "@qqorvex/module-manager": "workspace:*",
     "@qqorvex/module-metas-habitos": "workspace:*",
     "@qqorvex/module-segundo-cerebro": "workspace:*",
     "@qqorvex/module-tarefas": "workspace:*",

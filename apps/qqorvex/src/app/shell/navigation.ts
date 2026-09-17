@@ -1,14 +1,20 @@
 import type { SidebarSection } from "@qqorvex/ui";
 
-/** Navegação principal (Design System v1.0) — sem ícones, seções agrupando os módulos. */
-export const NAV_SECTIONS: SidebarSection[] = [
-  {
-    title: "Principal",
-    items: [
-      { label: "Hoje", to: "/" },
-      { label: "Gamificação", to: "/gamificacao" },
-    ],
-  },
+/**
+ * Navegação principal (Design System v1.0) — sem ícones, seções agrupando os módulos.
+ * "Manager" só aparece pro Dono (`profiles.role === 'dono'`) — RLS/SECURITY DEFINER no banco já
+ * protegem os dados mesmo se alguém forçar a URL, isso aqui é só não oferecer o link à toa.
+ */
+export function getNavSections(isOwner: boolean): SidebarSection[] {
+  return [
+    {
+      title: "Principal",
+      items: [
+        { label: "Hoje", to: "/" },
+        { label: "Gamificação", to: "/gamificacao" },
+        ...(isOwner ? [{ label: "Manager", to: "/manager" }] : []),
+      ],
+    },
   {
     title: "Organização",
     items: [
@@ -40,7 +46,8 @@ export const NAV_SECTIONS: SidebarSection[] = [
       { label: "Segurança", to: "/seguranca" },
     ],
   },
-];
+  ];
+}
 
 /** Rótulo legível do módulo de origem de um item da Hoje (`HojeItem.source`). */
 export const MODULE_LABELS: Record<string, string> = {

@@ -8,7 +8,7 @@ import { VexPanel } from "../vex/VexPanel";
 import { PageMetaProvider } from "./shell/PageMeta";
 import { AppHeader } from "./shell/AppHeader";
 import { CommandPalette } from "./shell/CommandPalette";
-import { BRAND_ASSETS, NAV_SECTIONS } from "./shell/navigation";
+import { BRAND_ASSETS, getNavSections } from "./shell/navigation";
 import { supabase } from "./supabase";
 
 /**
@@ -37,6 +37,9 @@ function Shell() {
   const isVexPage = location.pathname === "/vex";
   const [vexOpen, setVexOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { session } = useAuth();
+  const { profile } = useProfile(supabase, session!.user.id);
+  const isOwner = profile?.role === "dono";
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -65,7 +68,7 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen items-stretch">
-      <Sidebar sections={NAV_SECTIONS} brandSymbolSrc={BRAND_ASSETS.symbol} footer={<SidebarUser />} />
+      <Sidebar sections={getNavSections(isOwner)} brandSymbolSrc={BRAND_ASSETS.symbol} footer={<SidebarUser profile={profile} />} />
 
       <div className="flex-1 min-w-0 flex flex-col">
         <AppHeader onOpenPalette={() => setPaletteOpen(true)} onToggleVex={toggleVex} />
@@ -76,16 +79,14 @@ function Shell() {
 
       {vexOpen && !isVexPage && <VexPanel onClose={() => setVexOpen(false)} />}
 
-      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} />
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} isOwner={isOwner} />
     </div>
   );
 }
 
-function SidebarUser() {
+function SidebarUser({ profile }: { profile: ReturnType<typeof useProfile>["profile"] }) {
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
-  const userId = session!.user.id;
-  const { profile } = useProfile(supabase, userId);
   const email = session?.user.email ?? "";
   const name = profile?.display_name || profile?.username || email.split("@")[0] || "Você";
   const initials = name

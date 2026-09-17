@@ -2034,6 +2034,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_tier: string
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -2042,10 +2043,12 @@ export type Database = {
           pin_failed_attempts: number
           pin_hash: string | null
           pin_locked_until: string | null
+          role: string
           updated_at: string
           username: string | null
         }
         Insert: {
+          account_tier?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -2054,10 +2057,12 @@ export type Database = {
           pin_failed_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
+          role?: string
           updated_at?: string
           username?: string | null
         }
         Update: {
+          account_tier?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -2066,6 +2071,7 @@ export type Database = {
           pin_failed_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
+          role?: string
           updated_at?: string
           username?: string | null
         }
@@ -2443,6 +2449,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      redemption_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          id: string
+          note: string | null
+          redeemed_at: string | null
+          redeemed_by: string | null
+          tier: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          id?: string
+          note?: string | null
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          tier: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string | null
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          tier?: string
+        }
+        Relationships: []
       }
       routine_habits: {
         Row: {
@@ -3142,7 +3181,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_account: { Args: { target_user_id: string }; Returns: undefined }
+      get_system_overview: {
+        Args: never
+        Returns: {
+          total_documents: number
+          total_events: number
+          total_pages: number
+          total_tasks: number
+          total_transactions: number
+          total_users: number
+        }[]
+      }
       has_security_pin: { Args: never; Returns: boolean }
+      is_owner: { Args: never; Returns: boolean }
+      list_all_accounts: {
+        Args: never
+        Returns: {
+          account_tier: string
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          role: string
+          username: string
+        }[]
+      }
       list_my_sessions: {
         Args: never
         Returns: {
@@ -3154,8 +3218,21 @@ export type Database = {
           user_agent: string
         }[]
       }
+      list_secret_keys: {
+        Args: never
+        Returns: {
+          has_value: boolean
+          key: string
+          updated_at: string
+        }[]
+      }
+      redeem_code: { Args: { input_code: string }; Returns: string }
       revoke_my_session: {
         Args: { target_session_id: string }
+        Returns: undefined
+      }
+      set_secret: {
+        Args: { input_key: string; input_value: string }
         Returns: undefined
       }
       set_security_pin: {

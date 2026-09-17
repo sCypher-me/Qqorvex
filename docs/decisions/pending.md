@@ -1561,6 +1561,68 @@
   `fetch`) — a cadeia de fallback funcionou como esperado e a conversa se recuperou sozinha (~26s
   de latência por causa da tentativa+fallback, sem travar). Sem pendência.
 
+- **Reset de contas + Painel Manager (Dono) + código de resgate — implementado (17/09/2026)**:
+  usuário pediu pra apagar todas as contas cadastradas (só existiam
+  `juliocesar@biocypher.tech`, da configuração inicial do projeto, e uma
+  `karita.tst@hotmail.com` de origem desconhecida) e recriar do zero como Dono. Apaguei as duas
+  (cascata via `auth.users`), usuário recriou `juliocesar@biocypher.tech` pela tela normal de
+  cadastro (não crio conta digitando senha por ele — regra de segurança, nunca manuseio senha,
+  mesmo que o usuário mande o valor direto no chat).
+  **Novo sistema de papel/nível de conta** (3 migrations): `profiles.role` (`usuario`|`dono`,
+  default `usuario`) e `profiles.account_tier` (`padrao`|`parceiro`|`lifetime`, default `padrao`)
+  — `account_tier` não bloqueia nada hoje (toda conta continua com acesso total de graça), é só
+  uma etiqueta preparada pro dia que existir um plano pago, por decisão explícita do usuário
+  ("ainda não há nada bloqueado — é preparação pro futuro"). `is_owner()` (SECURITY DEFINER,
+  evita recursão de RLS) habilita `profiles_select_owner` e protege 5 funções novas:
+  `list_all_accounts()` (junta profiles+auth.users pro Dono ver e-mail de cada conta),
+  `delete_account(uuid)` (Dono exclui qualquer conta menos a própria — usa o fluxo normal pra
+  isso), `get_system_overview()` (contagens agregadas, nunca dado de linha — evita abrir RLS
+  "dono vê tudo" em cada tabela de domínio), `list_secret_keys()`/`set_secret()` (write-only de
+  propósito — nunca devolve o valor salvo de volta pro cliente, só existência/data).
+  **Achado técnico**: `revoke ... from public` sozinho não bastou pra tirar acesso de `anon` nas
+  funções novas (diferente do que aconteceu com as funções do PIN em 15/09) — esse projeto
+  aparentemente concede EXECUTE a `anon` separado do grant de PUBLIC em funções recém-criadas;
+  precisei `revoke ... from anon` explicitamente também. Migration de correção aplicada, advisor
+  confirmou limpo depois.
+  **Código de resgate**: `redemption_codes` (code único, tier, nota, criado por, resgatado
+  por/quando) + `redeem_code(text)` (SECURITY DEFINER, atômico — valida não usado, marca resgatado,
+  atualiza `account_tier` do próprio perfil). "Parceiro" = alguém ganha acesso especial de graça
+  (não é afiliado com comissão, por decisão do usuário).
+  **Novo módulo** `@qqorvex/module-manager` (`modules/gestao/manager`) e página `/manager`
+  (4 abas: Visão geral, Contas, Códigos, Configurações) — só aparece na Sidebar/paleta de comando
+  quando `profile.role === 'dono'` (`getNavSections()` virou função, não mais constante estática);
+  proteção real é a RLS/SECURITY DEFINER no banco, a UI só não oferece o link à toa. `Perfil.tsx`
+  ganhou badge de `account_tier` + card "Código de resgate" pra qualquer usuário resgatar.
+  Typecheck limpo nos 19 projetos (20 com o novo módulo), build limpo, 87/87 testes. **Ainda não
+  confirmado clicando na UI real** — fica pro usuário testar `/manager` depois de logar.
+
+- **Empacotamento Android (Tauri) — primeiro APK de debug gerado (17/09/2026)**: projeto nunca
+  tinha `src-tauri/` (só existia como aspiração na árvore de pastas de `docs/architecture/
+  overview.md`). Toolchain inteira não estava instalada — JDK, Android SDK/NDK, Rust já estava.
+  Setup automatizado: JDK 17 (winget), Android SDK command-line tools + platform-tools +
+  platform 34 + build-tools 34.0.0 + NDK 27.0.12077973 (download direto do Google), 4 targets
+  Android do Rust (`rustup target add`), `tauri-cli` (`cargo install`).
+  **2 problemas reais encontrados e corrigidos**:
+  1. Aceitar as licenças do SDK via pipe do PowerShell (`"y" | sdkmanager --licenses`) falhou
+     silenciosamente — o "y" não chegava no processo Java por trás do `.bat`, então
+     `build-tools`/`ndk` nunca instalavam mesmo sem erro aparente. Corrigido rodando via `cmd /c`
+     com um arquivo de texto redirecionado pro stdin em vez do pipe do PowerShell.
+  2. `identifier` default do Tauri (`com.tauri.dev`) não é permitido — trocado pra
+     `tech.biocypher.qqorvex`. E o mesmo bug antigo do `pnpm` global quebrado (documentado desde a
+     sessão de 12/09) apareceu de novo no `beforeBuildCommand` do `tauri.conf.json` — precisou
+     apontar pro `node .../pnpm.mjs` direto, igual o `.claude/launch.json` já fazia.
+  Detectou automaticamente uma instalação existente do Android Studio (`%LOCALAPPDATA%\Android\
+  Sdk`) e usou ela em vez do SDK baixado à parte — só o NDK (que a instalação do Android Studio
+  não tinha) veio do download manual.
+  `.gitignore` já tinha `src-tauri/target/` e `src-tauri/gen/` (alguém previu isso antes) — só o
+  scaffold de verdade (`Cargo.toml`, `src/`, `capabilities/`, `icons/`, `tauri.conf.json`,
+  `build.rs`) vai pro commit, não o projeto Android gerado nem os binários.
+  **Resultado**: `app-universal-debug.apk` (140MB, arm64, não otimizado, não assinado — build de
+  debug pra testar no aparelho, não pra publicar) gerado com sucesso e entregue ao usuário.
+  **Próximo passo, se o usuário quiser publicar de verdade**: build `--release` (bem menor,
+  otimizado) + keystore de assinatura própria (não gerado ainda, decisão do usuário quando
+  chegar a hora).
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de
