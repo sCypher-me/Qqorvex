@@ -1504,6 +1504,63 @@
   sessão) e `.superpowers/` adicionados ao `.gitignore`. **Pendências reais**: nada commitado
   ainda (perguntar antes do primeiro commit); decidir o que fazer com `designq.zip` em disco.
 
+- **Vex — cérebro hospedado (Gemini) + busca na web (Tavily) — código pronto, falta ativação
+  manual (17/09/2026)**: até aqui a Vex só falava com Ollama local (`http://localhost:11434`) —
+  fora do computador de quem desenvolve, ela caía direto no `EchoProvider` (fallback burro, padrão
+  de texto). Pesquisei opções gratuitas reais de 2026 (Groq, Gemini, OpenRouter pra LLM; Tavily,
+  Brave pra busca) e o usuário escolheu **Gemini** (camada gratuita generosa, tool calling nativo)
+  + **Tavily** (1.000 buscas grátis/mês, sem cartão, pensado pra IA).
+  **Implementado**: `supabase/functions/vex-chat/` (Edge Function que fala com
+  `generateContent` do Gemini — usei o endpoint "legacy" de propósito, não o novo "Interactions
+  API" lançado em jun/2026, por ser um formato estável que eu já conhecia bem, menos risco de
+  errar um endpoint muito recente; modelo default `gemini-flash-latest`, que se auto-atualiza pra
+  sempre apontar pro Flash mais recente, evitando o problema real que encontrei na pesquisa — o
+  2.0 Flash já foi desligado, o 2.5 Flash desliga em 16/10/2026); `supabase/functions/
+  vex-web-search/` (Edge Function que fala com a Tavily); novo `GeminiProvider` em
+  `packages/vex/src/providers/`; nova ferramenta `search_web` em `packages/vex/src/tools/
+  webTools.ts` (única ferramenta que sai do Qqorvex, todas as outras só falam com módulos
+  internos); cadeia de fallback em `VexConversationView.tsx` virou Gemini → Ollama → Echo (era só
+  Ollama → Echo). `VEX_SYSTEM_PROMPT` atualizado pra ela saber que agora pode buscar na web em vez
+  de arriscar resposta desatualizada. Chaves ficam em `app_secrets` (mesmo padrão do Zoom/VAPID),
+  nunca no bundle do navegador — por isso não dá pra chamar Gemini/Tavily direto do cliente, tem
+  que passar pela Edge Function. Typecheck limpo nos 18 projetos, build limpo, 87/87 testes.
+  **Bloqueado em 2 passos manuais, preciso do usuário**:
+  1. **Deploy das 2 Edge Functions** — a ferramenta `deploy_edge_function` do MCP do Supabase
+     rejeitou todo payload que mandei (até um teste trivial de uma linha), sempre o mesmo erro de
+     validação (`files: expected array, received string`) — é bug da ferramenta, não do código; o
+     código-fonte já está certo em `supabase/functions/vex-chat/index.ts` e `supabase/functions/
+     vex-web-search/index.ts`. Não tenho o Supabase CLI autenticado nesta sessão (exigiria login
+     interativo ou um token de acesso, que não devo manusear). O usuário precisa rodar
+     `npx supabase login`, `npx supabase link --project-ref uowipikbumbaprckdvkg` e
+     `npx supabase functions deploy vex-chat vex-web-search` (ou colar o código de cada função
+     direto no painel do Supabase, Edge Functions → Create function).
+  2. **Cadastrar as chaves** — criar conta grátis em https://aistudio.google.com (Gemini) e
+     https://tavily.com (busca), pegar as chaves, e inserir em `app_secrets` — não faço isso eu
+     mesmo por serem credenciais (regra de segurança: nunca manuseio API keys/tokens). SQL pronta
+     pro usuário rodar no SQL Editor do painel do Supabase:
+     ```sql
+     insert into app_secrets (key, value) values
+       ('gemini_api_key', 'COLE_A_CHAVE_AQUI'),
+       ('tavily_api_key', 'COLE_A_CHAVE_AQUI')
+     on conflict (key) do update set value = excluded.value, updated_at = now();
+     ```
+  Depois dos 2 passos, testar uma conversa real com a Vex e uma pergunta que force `search_web`
+  (ex.: "o que aconteceu hoje nas notícias?").
+
+  **Confirmado funcionando de ponta a ponta (17/09/2026)**: o usuário fez os 2 passos manuais
+  (deploy + chaves). Verifiquei tudo: as 2 Edge Functions estão `ACTIVE` no Supabase, os 2 segredos
+  existem em `app_secrets` com valor. Testado com usuário de teste real
+  (`khyron.box@gmail.com`, apagado ao final): pergunta simples ("qual a capital da Mongólia, e me
+  diga em uma frase quem é você") recebeu resposta real do Gemini, correta e com a personalidade
+  certa — não mais o `EchoProvider`. Chamei `vex-chat` e `vex-web-search` direto (via
+  `fetch` no console do navegador, com o token da sessão real) pra confirmar cada uma
+  isoladamente: `vex-chat` decidiu corretamente chamar `search_web` com os argumentos certos
+  quando a ferramenta foi oferecida; `vex-web-search` devolveu resultados reais e atuais da Tavily
+  (cotação do dólar de fontes de set/2026). No teste pela UI de verdade, a primeira tentativa bateu
+  num erro transitório real do Gemini (503 "high demand", achado ao inspecionar o erro direto via
+  `fetch`) — a cadeia de fallback funcionou como esperado e a conversa se recuperou sozinha (~26s
+  de latência por causa da tentativa+fallback, sem travar). Sem pendência.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

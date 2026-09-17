@@ -4,6 +4,7 @@ import { Button } from "@qqorvex/ui";
 import {
   EchoProvider,
   OllamaProvider,
+  GeminiProvider,
   ResilientProvider,
   runVexTurn,
   confirmVexToolCall,
@@ -16,6 +17,7 @@ import {
   createBibliotecaTools,
   createDocumentosTools,
   createFinancasTools,
+  createWebTools,
   useVexConversations,
   useCreateVexConversation,
   useRenameVexConversation,
@@ -33,7 +35,15 @@ import { useCurrentPageMeta } from "../app/shell/PageMeta";
 import { BRAND_ASSETS } from "../app/shell/navigation";
 
 const ollamaModel = import.meta.env.VITE_OLLAMA_MODEL ?? "qwen2.5:7b";
-const provider = new ResilientProvider(new OllamaProvider(ollamaModel), new EchoProvider());
+/**
+ * Cadeia de fallback: Gemini hospedado (funciona de qualquer lugar) → Ollama local (se o
+ * desenvolvedor tiver rodando, ainda funciona offline/sem chave) → Echo (nunca falha, comandos
+ * por padrão de texto). `ResilientProvider` só aceita 2 providers, por isso o aninhamento.
+ */
+const provider = new ResilientProvider(
+  new GeminiProvider(supabase),
+  new ResilientProvider(new OllamaProvider(ollamaModel), new EchoProvider()),
+);
 
 const GREETING =
   "Oi! Sou a Vex. Posso ajudar com Tarefas, Agenda, Metas & Hábitos, Estudos, Segundo Cérebro, Biblioteca, Documentos e Finanças.";
@@ -60,6 +70,7 @@ export function VexConversationView({ onClose, variant = "panel" }: { onClose?: 
     ...createBibliotecaTools(supabase, userId),
     ...createDocumentosTools(supabase, userId),
     ...createFinancasTools(supabase, userId),
+    ...createWebTools(supabase),
   ];
 
   const { activeConversationId, setActiveConversationId } = useVexSession();
