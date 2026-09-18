@@ -1715,6 +1715,32 @@
   página, auditoria de acessibilidade tela por tela, revisão de textos/CTAs, varredura completa de
   código morto/duplicação nos ~19 módulos restantes.
 
+- **Motion system — transições de página — 3ª rodada da auditoria geral (18/09/2026)**: cada
+  navegação entre páginas trocava de conteúdo sem transição nenhuma (corte seco). Implementado sem
+  dependência nova — o projeto já resolve toda animação com CSS puro (`@keyframes` em
+  `tokens.css`), então segui o mesmo padrão em vez de instalar `framer-motion` só pra isso.
+  **Implementado**: token `--animate-page-in` (`pageIn`, fade + leve deslocamento vertical de 8px,
+  220ms, mesma curva `ease-standard` já usada em outras transições do design system).
+  `apps/qqorvex/src/app/shell/PageTransition.tsx` — substitui o `<Outlet />` direto dentro de
+  `ProtectedLayout.tsx`; usa `key={location.pathname}` pra forçar remount (e a animação tocar de
+  novo) mesmo entre rotas que reaproveitam o mesmo componente com param diferente (trocar de
+  caderno em `/estudos/:notebookId`, de página em `/segundo-cerebro/:pageId`). `AuthLayout.tsx`
+  ganhou a mesma classe no card de login/2FA (sem precisar de `key`, já que Login e Mfa são
+  componentes de rota diferentes — o remount já acontece sozinho ao trocar de rota).
+  **Decisão consciente de escopo**: só transição de entrada, sem saída. `react-router` desmonta a
+  página antiga antes de montar a nova — uma transição de saída de verdade exigiria manter as duas
+  montadas ao mesmo tempo, o que precisaria de uma lib dedicada (`framer-motion` ou
+  `react-transition-group`). Como o app já roda 100% sem essas dependências, não valia trazer uma
+  só pra isso; fade de entrada sozinho já resolve o "corte seco" que era o problema real.
+  Respeita `prefers-reduced-motion` de graça — a regra global em `tokens.css` (Base layer) já
+  desliga toda `animation`/`transition` nesse caso, não precisou de lógica JS extra.
+  **Ainda não coberto**: troca de aba dentro da mesma página (`ChipTabs` — ex. Finanças, Tarefas,
+  Segundo Cérebro, Metas & Hábitos) continua sem transição, já que não é navegação de rota. Fica de
+  fora deste incremento por ser uma mudança maior (tocaria em muitas páginas uma por uma) — próxima
+  rodada se fizer sentido.
+  Typecheck (20 pacotes) e build limpos. Confirmado no navegador: classe `animate-page-in` aplicada
+  na tela de login com a animação/curva/duração corretas via `getComputedStyle`.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

@@ -41,7 +41,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       </section>
 
       <section className="relative flex items-center justify-center p-12">
-        <div className="w-full max-w-[392px] flex flex-col gap-[22px]">
+        <div className="w-full max-w-[392px] flex flex-col gap-[22px] animate-page-in">
           <div className="flex lg:hidden items-center gap-3">
             <img src={BRAND_ASSETS.symbol} alt="" className="w-[26px] h-[26px] object-contain" />
             <img src={BRAND_ASSETS.wordmark} alt="Qqorvex" className="h-[22px] object-contain" />

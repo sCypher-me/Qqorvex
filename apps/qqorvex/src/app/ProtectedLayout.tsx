@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { RequireAuth, useAuth, useProfile } from "@qqorvex/auth";
 import { Sidebar } from "@qqorvex/ui";
 import { VexSessionProvider } from "../vex/VexSessionContext";
@@ -9,6 +9,7 @@ import { PageMetaProvider } from "./shell/PageMeta";
 import { AppHeader } from "./shell/AppHeader";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MobileBottomNav, MoreSheet } from "./shell/MobileNav";
+import { PageTransition } from "./shell/PageTransition";
 import { BRAND_ASSETS, getNavSections } from "./shell/navigation";
 import { supabase } from "./supabase";
 
@@ -78,8 +79,8 @@ function Shell() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         <AppHeader onOpenPalette={() => setPaletteOpen(true)} onToggleVex={toggleVex} />
-        <main className="flex-1 min-w-0 px-4 lg:px-8 pt-5 lg:pt-[30px] pb-24 lg:pb-12 flex flex-col gap-[22px]">
-          <Outlet />
+        <main className="flex-1 min-w-0 px-4 lg:px-8 pt-5 lg:pt-[30px] pb-24 lg:pb-12 flex flex-col">
+          <PageTransition />
         </main>
       </div>
 
