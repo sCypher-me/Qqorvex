@@ -3,7 +3,6 @@ import { useAuth, useUsernameAvailability } from "@qqorvex/auth";
 import { StatusIcon } from "./StatusIcon";
 
 const STATUS_TEXT: Record<string, { label: string; className: string; icon?: boolean } | undefined> = {
-  idle: { label: "Gerado automaticamente se deixar em branco.", className: "text-text-muted" },
   checking: { label: "Verificando…", className: "text-text-muted" },
   available: { label: "Nome disponível", className: "text-success", icon: true },
   taken: { label: "Esse nome de usuário já está em uso.", className: "text-error", icon: true },
