@@ -3,6 +3,7 @@ import { useAuth, useUsernameAvailability } from "@qqorvex/auth";
 import { StatusIcon } from "./StatusIcon";
 
 const STATUS_TEXT: Record<string, { label: string; className: string; icon?: boolean } | undefined> = {
+  idle: { label: "Gerado automaticamente se deixar em branco.", className: "text-text-muted" },
   checking: { label: "Verificando…", className: "text-text-muted" },
   available: { label: "Nome disponível", className: "text-success", icon: true },
   taken: { label: "Esse nome de usuário já está em uso.", className: "text-error", icon: true },
@@ -19,7 +20,7 @@ export function UsernameField({ value, onChange }: { value: string; onChange: (v
     <div className="flex flex-col gap-1.5">
       <Input
         label="Usuário (opcional)"
-        placeholder="gerado automaticamente se deixar em branco"
+        placeholder="usuario"
         value={value}
         onChange={(e) => onChange(e.target.value.toLowerCase())}
         autoComplete="username"

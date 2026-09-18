@@ -9,7 +9,7 @@ export function PhoneField({ value, onChange }: { value: string; onChange: (valu
       label="Telefone (opcional)"
       type="tel"
       inputMode="tel"
-      placeholder="(62) 9 1234-5678"
+      placeholder="(XX) X XXXX-XXXX"
       autoComplete="tel"
       value={value}
       onChange={(e) => onChange(formatBRPhoneInput(e.target.value))}
