@@ -100,27 +100,31 @@ export function RegistrarPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
           <PhoneField value={phone} onChange={setPhone} />
-          <PasswordField
-            label="Senha"
-            value={password}
-            onChange={setPassword}
-            autoComplete="new-password"
-            required
-            showChecklist
-          />
-          <PasswordField
-            label="Confirmar senha"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-            onBlur={() => setConfirmTouched(true)}
-            autoComplete="new-password"
-            required
-          />
-          {(confirmTouched || confirmPassword.length > 0) && confirmPassword.length > 0 && (
-            <span className={`text-xs -mt-2 ${passwordsMatch ? "text-success" : "text-error"}`}>
-              {passwordsMatch ? "✓ As senhas coincidem." : "✕ As senhas não coincidem."}
-            </span>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <PasswordField
+              label="Senha"
+              value={password}
+              onChange={setPassword}
+              autoComplete="new-password"
+              required
+              showChecklist
+            />
+            <div className="flex flex-col gap-2">
+              <PasswordField
+                label="Confirmar senha"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                onBlur={() => setConfirmTouched(true)}
+                autoComplete="new-password"
+                required
+              />
+              {(confirmTouched || confirmPassword.length > 0) && confirmPassword.length > 0 && (
+                <span className={`text-xs ${passwordsMatch ? "text-success" : "text-error"}`}>
+                  {passwordsMatch ? "✓ As senhas coincidem." : "✕ As senhas não coincidem."}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {error && <Notice tone="error">{error}</Notice>}

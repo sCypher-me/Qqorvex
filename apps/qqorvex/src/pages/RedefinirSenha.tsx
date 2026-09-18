@@ -73,20 +73,22 @@ export function RedefinirSenhaPage() {
           <p className="text-[13px] text-text-secondary m-0">Escolha uma nova senha pra sua conta.</p>
         </div>
 
-        <div className="flex flex-col gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <PasswordField label="Nova senha" value={password} onChange={setPassword} autoComplete="new-password" required showChecklist />
-          <PasswordField
-            label="Confirmar nova senha"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-            autoComplete="new-password"
-            required
-          />
-          {confirmPassword.length > 0 && (
-            <span className={`text-xs -mt-2 ${passwordsMatch ? "text-success" : "text-error"}`}>
-              {passwordsMatch ? "✓ As senhas coincidem." : "✕ As senhas não coincidem."}
-            </span>
-          )}
+          <div className="flex flex-col gap-2">
+            <PasswordField
+              label="Confirmar nova senha"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              autoComplete="new-password"
+              required
+            />
+            {confirmPassword.length > 0 && (
+              <span className={`text-xs ${passwordsMatch ? "text-success" : "text-error"}`}>
+                {passwordsMatch ? "✓ As senhas coincidem." : "✕ As senhas não coincidem."}
+              </span>
+            )}
+          </div>
         </div>
 
         {error && <Notice tone="error">{error}</Notice>}
