@@ -184,16 +184,22 @@ export function PerfilPage() {
             <SkeletonCards count={4} className="h-11 w-full rounded-xl" />
           ) : (
             <form onSubmit={handleSaveProfile} className="flex flex-col gap-3.5">
-              <Input label="Nome completo" required value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-              <Input label="Nome de exibição" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+              <span className="qv-eyebrow">Identidade</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <Input label="Nome completo" required value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+                <Input label="Nome de exibição" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+              </div>
               <Input
                 label="Nome de usuário"
                 hint="3–20 caracteres: letras minúsculas, números e _"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
+
+              <span className="qv-eyebrow mt-1.5">Contato</span>
               <PhoneField value={phone} onChange={setPhone} />
               <Textarea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={2} />
+
               <Button type="submit" variant="primary" className="self-start" disabled={profileBusy}>
                 {profileBusy ? "Salvando..." : "Salvar perfil"}
               </Button>

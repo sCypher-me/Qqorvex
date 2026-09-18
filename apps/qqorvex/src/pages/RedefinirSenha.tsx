@@ -4,6 +4,7 @@ import { Button, Notice } from "@qqorvex/ui";
 import { useAuth, isPasswordValid } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordField } from "../components/PasswordField";
+import { StatusIcon } from "../components/StatusIcon";
 
 /**
  * O link do e-mail cai aqui com o token de recuperação na URL — o `supabase-js` já troca isso por
@@ -84,8 +85,9 @@ export function RedefinirSenhaPage() {
               required
             />
             {confirmPassword.length > 0 && (
-              <span className={`text-xs ${passwordsMatch ? "text-success" : "text-error"}`}>
-                {passwordsMatch ? "✓ As senhas coincidem." : "✕ As senhas não coincidem."}
+              <span className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${passwordsMatch ? "text-success" : "text-error"}`}>
+                <StatusIcon ok={passwordsMatch} />
+                {passwordsMatch ? "As senhas coincidem." : "As senhas não coincidem."}
               </span>
             )}
           </div>

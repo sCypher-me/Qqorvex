@@ -1,6 +1,21 @@
 import { useState, type InputHTMLAttributes } from "react";
 import { Input } from "@qqorvex/ui";
-import { getPasswordChecklist, MAX_PASSWORD_LENGTH } from "@qqorvex/auth";
+import { getPasswordChecklist, getPasswordStrength, MAX_PASSWORD_LENGTH, type PasswordStrengthLevel } from "@qqorvex/auth";
+import { StatusIcon } from "./StatusIcon";
+
+const STRENGTH_LABEL: Record<PasswordStrengthLevel, string> = {
+  fraca: "Fraca",
+  media: "Média",
+  forte: "Forte",
+  "muito-forte": "Muito forte",
+};
+
+const STRENGTH_COLOR: Record<PasswordStrengthLevel, string> = {
+  fraca: "var(--color-error)",
+  media: "var(--color-warning)",
+  forte: "var(--color-vex-cyan)",
+  "muito-forte": "var(--color-success)",
+};
 
 /** Olho aberto/fechado em SVG simples — sem ícone lib só por isso. */
 function EyeIcon({ open }: { open: boolean }) {
@@ -32,6 +47,7 @@ interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
 export function PasswordField({ label, value, onChange, onBlur, showChecklist, wrapperClassName, className, ...props }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
   const [touched, setTouched] = useState(false);
+  const strength = getPasswordStrength(value);
 
   return (
     <div className="flex flex-col gap-2">
@@ -61,14 +77,32 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
         {...props}
       />
       {showChecklist && (touched || value.length > 0) && (
-        <ul className="flex flex-col gap-1" aria-live="polite">
-          {getPasswordChecklist(value).map((rule) => (
-            <li key={rule.id} className={`text-xs flex items-center gap-1.5 ${rule.met ? "text-success" : "text-text-muted"}`}>
-              <span aria-hidden="true">{rule.met ? "✓" : "✕"}</span>
-              {rule.label}
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col gap-2.5" aria-live="polite">
+          {value.length > 0 && (
+            <div className="flex items-center gap-2.5">
+              <div className="flex-1 h-[5px] rounded-full bg-vex-border overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-[width,background-color] duration-300"
+                  style={{ width: `${strength.percent}%`, background: STRENGTH_COLOR[strength.level] }}
+                />
+              </div>
+              <span className="text-[11px] font-medium shrink-0 transition-colors duration-300" style={{ color: STRENGTH_COLOR[strength.level] }}>
+                {STRENGTH_LABEL[strength.level]}
+              </span>
+            </div>
+          )}
+          <ul className="flex flex-col gap-1">
+            {getPasswordChecklist(value).map((rule) => (
+              <li
+                key={rule.id}
+                className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${rule.met ? "text-success" : "text-text-muted"}`}
+              >
+                <StatusIcon ok={rule.met} />
+                {rule.label}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

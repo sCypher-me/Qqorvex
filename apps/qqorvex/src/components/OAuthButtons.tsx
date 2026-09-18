@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react";
-import { Button, Notice } from "@qqorvex/ui";
+import { Button, Notice, triggerHaptic } from "@qqorvex/ui";
 import { useAuth, OAUTH_PROVIDERS, type OAuthProviderId } from "@qqorvex/auth";
 
 function GoogleIcon() {
@@ -38,6 +38,7 @@ export function OAuthButtons() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick(provider: OAuthProviderId) {
+    triggerHaptic("light");
     setError(null);
     setPending(provider);
     const { error } = await signInWithOAuth(provider);

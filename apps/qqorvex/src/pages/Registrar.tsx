@@ -8,6 +8,7 @@ import { UsernameField } from "../components/UsernameField";
 import { PhoneField } from "../components/PhoneField";
 import { OAuthButtons } from "../components/OAuthButtons";
 import { VerifyEmailNotice } from "../components/VerifyEmailNotice";
+import { StatusIcon } from "../components/StatusIcon";
 
 export function RegistrarPage() {
   const { session, isLoading, signUpWithPassword } = useAuth();
@@ -82,24 +83,31 @@ export function RegistrarPage() {
         </div>
 
         <div className="flex flex-col gap-3.5">
-          <Input
-            label="Nome completo"
-            required
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            autoComplete="name"
-            maxLength={120}
-          />
-          <UsernameField value={username} onChange={setUsername} />
-          <Input
-            label="E-mail"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <PhoneField value={phone} onChange={setPhone} />
+          <span className="qv-eyebrow">Identidade</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Nome completo"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+              maxLength={120}
+            />
+            <UsernameField value={username} onChange={setUsername} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="E-mail"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <PhoneField value={phone} onChange={setPhone} />
+          </div>
+
+          <span className="qv-eyebrow mt-1.5">Acesso</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <PasswordField
               label="Senha"
@@ -119,8 +127,9 @@ export function RegistrarPage() {
                 required
               />
               {(confirmTouched || confirmPassword.length > 0) && confirmPassword.length > 0 && (
-                <span className={`text-xs ${passwordsMatch ? "text-success" : "text-error"}`}>
-                  {passwordsMatch ? "✓ As senhas coincidem." : "✕ As senhas não coincidem."}
+                <span className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${passwordsMatch ? "text-success" : "text-error"}`}>
+                  <StatusIcon ok={passwordsMatch} />
+                  {passwordsMatch ? "As senhas coincidem." : "As senhas não coincidem."}
                 </span>
               )}
             </div>

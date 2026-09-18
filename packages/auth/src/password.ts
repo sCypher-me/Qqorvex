@@ -23,3 +23,24 @@ export function getPasswordChecklist(password: string): { id: string; label: str
 export function isPasswordValid(password: string): boolean {
   return password.length <= MAX_PASSWORD_LENGTH && PASSWORD_RULES.every((rule) => rule.test(password));
 }
+
+export type PasswordStrengthLevel = "fraca" | "media" | "forte" | "muito-forte";
+
+export interface PasswordStrength {
+  level: PasswordStrengthLevel;
+  /** 0–100, pra largura da barra — a UI decide a cor por nível, isto aqui não sabe de CSS. */
+  percent: number;
+}
+
+/** Pontuação simples: 1 ponto por regra atendida + bônus por comprimento além do mínimo — não é uma estimativa de entropia de verdade, só reforço visual da checklist. */
+export function getPasswordStrength(password: string): PasswordStrength {
+  if (!password) return { level: "fraca", percent: 0 };
+  let score = PASSWORD_RULES.filter((rule) => rule.test(password)).length;
+  if (password.length >= 12) score += 1;
+  if (password.length >= 16) score += 1;
+
+  if (score <= 2) return { level: "fraca", percent: 20 };
+  if (score <= 4) return { level: "media", percent: 50 };
+  if (score <= 6) return { level: "forte", percent: 80 };
+  return { level: "muito-forte", percent: 100 };
+}
