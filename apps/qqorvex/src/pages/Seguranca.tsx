@@ -316,7 +316,7 @@ export function SegurancaPage() {
                   onClick={() => setConfirmDeletePasskeyId(passkey.id)}
                   disabled={passkeyBusy}
                 >
-                  Remover
+                  Excluir
                 </Button>
               </li>
             ))}
@@ -485,8 +485,9 @@ export function SegurancaPage() {
 
       <ConfirmDialog
         isOpen={confirmDeletePasskeyId !== null}
-        title="Remover esta passkey?"
+        title="Excluir esta passkey?"
         description="Você não vai mais poder entrar com ela. Essa ação não pode ser desfeita."
+        confirmLabel="Excluir"
         onConfirm={() => {
           if (confirmDeletePasskeyId) handleDeletePasskey(confirmDeletePasskeyId);
           setConfirmDeletePasskeyId(null);

@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useAuth, useProfile } from "@qqorvex/auth";
-import { Badge, Button, ConfirmDialog, EmptyState, Input, Select, ChipTabs, SkeletonCards, SkeletonList, type BadgeTone } from "@qqorvex/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, Notice, Select, ChipTabs, SkeletonCards, SkeletonList, type BadgeTone } from "@qqorvex/ui";
 import {
   useAllAccounts,
   useCreateRedemptionCode,
@@ -22,6 +22,16 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="font-display text-[17px] font-semibold">{title}</h2>
       {children}
     </section>
+  );
+}
+
+/** Diferencia "não tem nada cadastrado" de "não consegui buscar" — sem isso, uma falha de rede
+ * parece silenciosamente uma lista vazia, o que é enganoso numa tela de administração. */
+function SectionError({ what }: { what: string }) {
+  return (
+    <Notice tone="error" title={`Não foi possível carregar ${what}`}>
+      Os dados continuam existindo — só essa busca que falhou agora. Recarregue a página pra tentar de novo.
+    </Notice>
   );
 }
 
@@ -68,9 +78,10 @@ export function ManagerPage() {
 }
 
 function OverviewSection() {
-  const { overview, isLoading } = useSystemOverview(supabase);
+  const { overview, isLoading, error } = useSystemOverview(supabase);
   if (isLoading) return <Panel title="Visão geral"><SkeletonCards count={5} className="h-14 w-full rounded-xl" /></Panel>;
-  if (!overview) return <Panel title="Visão geral"><EmptyState>Sem dados.</EmptyState></Panel>;
+  if (error) return <Panel title="Visão geral"><SectionError what="a visão geral" /></Panel>;
+  if (!overview) return <Panel title="Visão geral"><EmptyState>Ainda não há dados suficientes pra mostrar aqui.</EmptyState></Panel>;
 
   const stats: [string, number][] = [
     ["Contas", overview.totalUsers],
@@ -94,11 +105,12 @@ function OverviewSection() {
 }
 
 function AccountsSection({ currentUserId }: { currentUserId: string }) {
-  const { accounts, isLoading } = useAllAccounts(supabase);
+  const { accounts, isLoading, error } = useAllAccounts(supabase);
   const deleteAccountMutation = useDeleteAccount(supabase);
   const [confirming, setConfirming] = useState<{ id: string; email: string } | null>(null);
 
   if (isLoading) return <Panel title="Contas"><SkeletonList rows={3} className="py-3" /></Panel>;
+  if (error) return <Panel title="Contas"><SectionError what="as contas" /></Panel>;
 
   return (
     <Panel title={`Contas · ${accounts.length}`}>
@@ -139,7 +151,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
 }
 
 function CodesSection({ userId }: { userId: string }) {
-  const { codes, isLoading } = useRedemptionCodes(supabase);
+  const { codes, isLoading, error } = useRedemptionCodes(supabase);
   const createCode = useCreateRedemptionCode(supabase, userId);
   const [tier, setTier] = useState<Exclude<AccountTier, "padrao">>("parceiro");
   const [note, setNote] = useState("");
@@ -173,6 +185,8 @@ function CodesSection({ userId }: { userId: string }) {
       <Panel title={`Códigos gerados · ${codes.length}`}>
         {isLoading ? (
           <SkeletonList rows={3} className="py-3" />
+        ) : error ? (
+          <SectionError what="os códigos gerados" />
         ) : codes.length === 0 ? (
           <EmptyState>Nenhum código gerado ainda.</EmptyState>
         ) : (
@@ -203,7 +217,7 @@ const SECRET_LABELS: Record<string, string> = {
 };
 
 function SecretsSection() {
-  const { secrets, isLoading } = useSecretKeys(supabase);
+  const { secrets, isLoading, error } = useSecretKeys(supabase);
   const setSecretMutation = useSetSecret(supabase);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
@@ -221,6 +235,8 @@ function SecretsSection() {
         </p>
         {isLoading ? (
           <SkeletonList rows={3} className="py-3" />
+        ) : error ? (
+          <SectionError what="as configurações" />
         ) : secrets.length === 0 ? (
           <EmptyState>Nenhuma configuração cadastrada ainda.</EmptyState>
         ) : (

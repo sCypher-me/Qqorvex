@@ -1834,6 +1834,44 @@
   não "código morto", e entra em outra categoria de trabalho (refatoração deliberada, não
   varredura).
 
+- **Revisão de textos/CTAs — 6ª rodada da auditoria geral, última seção pendente da lista original
+  de 45 (18/09/2026)**: extraí todo o texto estático de `<Button>` e `<EmptyState>` do app inteiro
+  (regex multi-linha, não plugin) pra revisar de uma vez em vez de tela por tela — achei a maior
+  parte já consistente (o padrão "Nenhum(a) X cadastrado(a)/criado(a) ainda. [porquê/como]" se
+  repete corretamente em ~35 EmptyStates; "X mesmo assim" + botão alternativo é um padrão
+  deliberado e bem documentado em 3 módulos diferentes pra confirmação de duplicado/conflito —
+  Biblioteca, Agenda, Documentos). Dois achados reais, corrigidos:
+  **1) `Manager.tsx` confundia "sem dados" com "falha ao buscar"** — as 4 seções (Visão geral,
+  Contas, Códigos, Configurações) já recebem `error` de volta dos hooks (`useManager.ts` sempre
+  expôs `query.error`), mas nenhuma delas checava — uma falha de rede aparecia como "Sem dados."/
+  "Nenhuma conta cadastrada." em vez de avisar que a busca falhou. Isso é especialmente enganoso
+  numa tela de administração só do Dono. Corrigido com um `SectionError` local reutilizável
+  (reaproveita o `Notice` já existente do design system) nas 4 seções.
+  **Achado relacionado, não corrigido nesta rodada (fora de escopo — não é "texto", é lógica de
+  UI)**: o mesmo padrão de hook (`error: query.error` exposto mas descartado pela página) existe em
+  mais 8 módulos — `agenda/useEvents.ts`, `documentos/useDocumentos.ts`, `biblioteca/useLibrary.ts`,
+  `metas-habitos/useGoals.ts` e `useHabits.ts`, `segundo-cerebro/usePages.ts`,
+  `financas/useFinancas.ts`, `estudos/useNotebooks.ts`. Fixei só o Manager porque é a tela mais
+  sensível a esse tipo de confusão (painel de administração); os outros 8 ficam como pendência real
+  — auditar cada um individualmente pra ver se a página já trata o erro de outro jeito (ex.: toast)
+  antes de assumir que é o mesmo bug.
+  **2) Terminologia inconsistente em `Seguranca.tsx`**: excluir uma passkey usava "Remover" (botão
+  + título do `ConfirmDialog`, sem `confirmLabel` — caía no genérico "Confirmar") enquanto as
+  outras ~15 confirmações de exclusão do app inteiro usam "Excluir" de forma consistente, inclusive
+  as outras 2 do mesmo arquivo (`Sair`/`Sair de todos`, ambas com `confirmLabel` explícito).
+  Alinhado pra "Excluir"/`confirmLabel="Excluir"`. ("Remover linha"/"Remover coluna" na tabela do
+  editor de blocos do Segundo Cérebro **não** é o mesmo caso — ação instantânea sem confirmação,
+  mais parecida com editar uma planilha do que excluir uma entidade; mantido como está de
+  propósito.)
+  Typecheck (20 pacotes) e build limpos.
+  **Com isso, as 45 seções do pedido original de auditoria completa (17-18/09/2026) estão todas
+  cobertas** — não no sentido de "cada linha de código revisada", mas no sentido de "cada seção
+  recebeu pelo menos uma passada real com achados verificados, não só uma lista de sugestões".
+  Pendências que ficaram (listadas com honestidade, não escondidas): acessibilidade tela por tela
+  de verdade (não só os componentes de maior reuso), os 8 módulos com erro de fetch potencialmente
+  mascarado como lista vazia, e duplicação de padrão CRUD entre módulos como oportunidade de
+  abstração futura.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de
