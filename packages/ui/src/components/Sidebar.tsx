@@ -31,7 +31,10 @@ export interface SidebarProps {
  */
 export function Sidebar({ sections, brandLabel = "Qqorvex", brandSymbolSrc, footer }: SidebarProps) {
   return (
-    <nav className="w-64 shrink-0 h-screen sticky top-0 flex flex-col gap-5 px-3.5 py-[22px] border-r border-[rgba(50,57,68,.75)] bg-[linear-gradient(180deg,rgba(15,18,23,.96),rgba(9,11,14,.98))]">
+    <nav
+      aria-label="Navegação principal"
+      className="w-64 shrink-0 h-screen sticky top-0 flex flex-col gap-5 px-3.5 py-[22px] border-r border-[rgba(50,57,68,.75)] bg-[linear-gradient(180deg,rgba(15,18,23,.96),rgba(9,11,14,.98))]"
+    >
       <div className="flex items-center gap-2.5 px-2.5 pt-0.5 pb-2">
         {brandSymbolSrc && (
           <img

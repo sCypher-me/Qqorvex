@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import { createPortal } from "react-dom";
 import type { SidebarSection } from "@qqorvex/ui";
@@ -51,22 +51,53 @@ export function MobileBottomNav({ onOpenVex, onOpenMore }: { onOpenVex: () => vo
  * Painel "Mais" — a mesma lista de seções da Sidebar, deslizando de baixo pra cima. Fecha ao
  * navegar (cada link chama `onClose`) ou ao tocar no fundo escurecido.
  */
+const SHEET_FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function MoreSheet({ sections, isOpen, onClose }: { sections: SidebarSection[]; isOpen: boolean; onClose: () => void }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
+
     function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !sheetRef.current) return;
+      const focusable = Array.from(sheetRef.current.querySelectorAll<HTMLElement>(SHEET_FOCUSABLE_SELECTOR));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
+
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    sheetRef.current?.querySelector<HTMLElement>(SHEET_FOCUSABLE_SELECTOR)?.focus();
+
     document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      previouslyFocused.current?.focus();
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end">
+    <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Mais opções">
       <div className="qv-backdrop absolute inset-0" onClick={onClose} />
-      <div className="relative bg-[linear-gradient(180deg,rgba(34,40,49,.98),rgba(19,23,28,.99))] border-t border-[rgba(58,66,78,.9)] rounded-t-[20px] max-h-[80vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+16px)] animate-overlay-in">
+      <div
+        ref={sheetRef}
+        className="relative bg-[linear-gradient(180deg,rgba(34,40,49,.98),rgba(19,23,28,.99))] border-t border-[rgba(58,66,78,.9)] rounded-t-[20px] max-h-[80vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+16px)] animate-overlay-in"
+      >
         <div className="w-9 h-1 rounded-full bg-vex-border mx-auto mt-3 mb-1" />
         <div className="flex flex-col gap-4 p-4">
           {sections.map((section) => (

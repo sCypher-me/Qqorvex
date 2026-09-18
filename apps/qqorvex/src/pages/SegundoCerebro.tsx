@@ -48,7 +48,14 @@ export function SegundoCerebroPage() {
         <NewPageForm onCreate={(title) => createPage.mutate({ title })} />
         <div className="flex items-center gap-[10px]" role="tablist">
           {(Object.keys(VIEW_LABEL) as ViewMode[]).map((view) => (
-            <Chip key={view} role="tab" active={viewMode === view} onClick={() => setViewMode(view)}>
+            <Chip
+              key={view}
+              role="tab"
+              aria-pressed={undefined}
+              aria-selected={viewMode === view}
+              active={viewMode === view}
+              onClick={() => setViewMode(view)}
+            >
               {VIEW_LABEL[view]}
             </Chip>
           ))}

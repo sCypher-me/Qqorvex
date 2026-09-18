@@ -28,6 +28,7 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
 
   const entries = useMemo<PaletteEntry[]>(
     () => [
@@ -49,7 +50,9 @@ export function CommandPalette({
     if (!isOpen) return;
     setQuery("");
     setActiveIndex(0);
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
     requestAnimationFrame(() => inputRef.current?.focus());
+    return () => previouslyFocused.current?.focus();
   }, [isOpen]);
 
   useEffect(() => {
@@ -65,7 +68,12 @@ export function CommandPalette({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center px-6 pt-24 pb-6" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center px-6 pt-24 pb-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Paleta de comandos"
+    >
       <div className="qv-backdrop absolute inset-0" onClick={onClose} />
       <div className="qv-dialog relative w-full max-w-[560px] overflow-hidden">
         <div className="flex items-center gap-3 px-[18px] py-4 border-b border-border">

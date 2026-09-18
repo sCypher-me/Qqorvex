@@ -12,7 +12,7 @@ export const colors = {
   textPrimary: "#F1F3F5",
   textSecondary: "#A5ABB4",
   textSecondaryWarm: "#A5ABB4",
-  textMuted: "#707780",
+  textMuted: "#8A8F97",
 
   brandGold: "#B88A54",
   goldBright: "#D2A66F",
@@ -22,11 +22,11 @@ export const colors = {
   cyanDark: "#246C7B",
 
   cyanMuted: "#246C7B",
-  warmMuted: "#707780",
+  warmMuted: "#8A8F97",
 
   success: "#32C48D",
   error: "#F05D6C",
-  critical: "#D94155",
+  critical: "#DF5F70",
   warning: "#E7A84B",
   info: "#72D8EB",
 } as const;

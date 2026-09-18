@@ -34,7 +34,11 @@
   --color-text-primary: #f1f3f5;
   --color-text-secondary: #a5abb4;
   --color-text-secondary-warm: #a5abb4;
-  --color-text-muted: #707780;
+  /* #8a8f97, não #707780 do design original — o valor original falhava WCAG AA (contraste <4.5:1)
+     nas 4 superfícies do app (texto normal, não “large text”); este clareamento (~18% em direção
+     ao branco, preservando o tom frio azulado) passa em todas com folga, ver auditoria de
+     acessibilidade em docs/decisions/pending.md (18/09/2026). */
+  --color-text-muted: #8a8f97;
 
   /* Marca */
   --color-brand-gold: #b88a54;
@@ -42,7 +46,7 @@
 
   /* Apoio */
   --color-cyan-muted: #246c7b;
-  --color-warm-muted: #707780;
+  --color-warm-muted: #8a8f97;
 
   /* Semânticas */
   --color-success: #32c48d;
@@ -53,7 +57,11 @@
   --color-error-bg: rgb(240 93 108 / 0.14);
   --color-error-border: rgb(240 93 108 / 0.45);
 
-  --color-critical: #d94155;
+  /* #df5f70, não #d94155 do design original — o original falhava WCAG AA como texto normal
+     (14px semibold não conta como "large text") nas superfícies mais claras (qv-raised/graphite);
+     clareado ~16% em direção ao branco, ainda visivelmente mais escuro/saturado que --color-error
+     (mantém a distinção de severidade entre os dois tons de vermelho). */
+  --color-critical: #df5f70;
 
   --color-warning: #e7a84b;
   --color-warning-bg: rgb(231 168 75 / 0.14);

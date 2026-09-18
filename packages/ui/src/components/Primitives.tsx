@@ -22,7 +22,14 @@ export function ChipTabs<T extends string>({ options, value, onChange, className
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className}`} role="tablist">
       {options.map((option) => (
-        <Chip key={option.value} active={option.value === value} role="tab" onClick={() => onChange(option.value)}>
+        <Chip
+          key={option.value}
+          active={option.value === value}
+          role="tab"
+          aria-pressed={undefined}
+          aria-selected={option.value === value}
+          onClick={() => onChange(option.value)}
+        >
           {option.label}
         </Chip>
       ))}

@@ -50,6 +50,19 @@ export function PageMetaProvider({ children }: { children: ReactNode }) {
     setOverride(null);
   }, [location.pathname]);
 
+  const effectiveTitle = (override ?? getRouteMeta(location.pathname)).title;
+
+  /**
+   * `<title>` do navegador nunca mudava entre rotas (React Router não recarrega a página, então
+   * ficava travado no título fixo do `index.html`) — quebra o histórico/abas do navegador e, mais
+   * importante, é como leitores de tela percebem que a "página" trocou numa SPA sem reload real.
+   * O texto já existe pronto em `ROUTE_META`/`usePageMeta()` (mesmo que aparece no cabeçalho), só
+   * faltava espelhar aqui.
+   */
+  useEffect(() => {
+    document.title = `${effectiveTitle} · Qqorvex`;
+  }, [effectiveTitle]);
+
   return <PageMetaContext.Provider value={{ override, setOverride }}>{children}</PageMetaContext.Provider>;
 }
 

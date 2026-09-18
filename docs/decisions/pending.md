@@ -1741,6 +1741,64 @@
   Typecheck (20 pacotes) e build limpos. Confirmado no navegador: classe `animate-page-in` aplicada
   na tela de login com a animação/curva/duração corretas via `getComputedStyle`.
 
+- **Auditoria de acessibilidade — 4ª rodada da auditoria geral (18/09/2026)**: primeira rodada real
+  (não mecânica) — contraste calculado objetivamente (fórmula WCAG de luminância relativa, não
+  "olhômetro"), depois inspeção de foco/teclado/ARIA nos componentes de maior reuso (Modal,
+  paleta de comandos, menu "Mais", Sidebar, ChipTabs), não tela por tela (escopo grande demais pra
+  uma rodada; ver pendência no fim desta entrada).
+  **Contraste (achado real, corrigido)**: calculei a razão de contraste WCAG de cada cor de texto
+  contra as 4 superfícies do app (`vex-black/obsidian/graphite/raised`). `--color-text-muted`
+  (`#707780`) falhava AA (3.49–4.35:1, precisa 4.5:1 pra texto normal) nas 4 — é a cor mais usada
+  do app pra legendas/timestamps/o botão "Adicionar" tracejado, então o impacto real era grande.
+  `--color-critical` (`#d94155`, tom "urgente" do `Notice` de erro) também falhava nas superfícies
+  mais claras (3.64–4.29:1). Clareei os dois mantendo o tom original (`text-muted` → `#8a8f97`,
+  `critical` → `#df5f70`, ~16–18% em direção ao branco) — `critical` continua visivelmente mais
+  escuro/saturado que `--color-error` (`#f05d6c`), preservando a distinção de severidade entre os
+  dois. Atualizado em `tokens.css`, `colors.ts` (mesmo valor, documentado como espelhando o CSS) e
+  `docs/design-system/tokens.md`.
+  **Foco em diálogos (achado real, corrigido)**: `Modal.tsx` (usado por `ConfirmDialog` — toda
+  confirmação de exclusão do app passa por aqui) abria sem mover o foco pra dentro, sem prender
+  Tab lá dentro (dava pra tabular pro conteúdo atrás do fundo escurecido) e sem devolver o foco pro
+  elemento que abriu o modal ao fechar. Implementado foco automático no primeiro elemento
+  focável ao abrir, `Tab`/`Shift+Tab` presos dentro do diálogo, foco restaurado ao fechar, e
+  `aria-labelledby` ligando o `role="dialog"` ao título visível (`aria-label` como alternativa
+  quando não há `title` prop, caso do `ConfirmDialog`). Mesmo tratamento aplicado ao `MoreSheet`
+  (menu "Mais" da barra inferior mobile, que já tinha Esc mas nada de foco) e devolução de foco na
+  paleta de comandos (⌘K) ao fechar.
+  **`<title>` da aba nunca mudava entre rotas (achado real, corrigido)**: `PageMetaProvider` já
+  calculava o título certo de cada rota (usado no cabeçalho visual), mas nunca espelhava isso em
+  `document.title` — o SPA não recarrega a página, então a aba do navegador ficava travada no
+  título fixo do `index.html` a sessão inteira. Além de atrapalhar histórico/abas, é como leitores
+  de tela percebem que a "página" mudou numa SPA. Um `useEffect` a mais no provider já existente
+  resolveu — sem duplicar a lógica de título, só espelhando o valor que já existia.
+  **`ChipTabs`/`Chip role="tab"` com ARIA conflitante (achado real, corrigido)**: `Chip` sempre
+  aplica `aria-pressed` (semântica de botão-toggle); `ChipTabs` sobrescrevia com `role="tab"` mas
+  sem trocar `aria-pressed` por `aria-selected` (o atributo certo pra essa role) — ficava um
+  elemento anunciado como aba mas com o atributo de estado errado. Corrigido nos dois lugares que
+  usam esse padrão (`ChipTabs` genérico e o seletor de visão do Segundo Cérebro).
+  **Navegação por drag-and-drop no Kanban — decisão já documentada, não mudei**: o `TaskCard`
+  arrastável vira um `role="button" tabIndex=0` focável (via `@dnd-kit`) mas sem `KeyboardSensor`
+  configurado, então Enter/setas não movem o card por teclado — só existe o gesto de arrastar. Isso
+  já era uma decisão consciente e documentada no próprio código (`KanbanBoard.tsx`: "os botões
+  'mover para' continuam disponíveis como alternativa acessível") — os botões de mover status
+  cobrem a ação real por teclado, então não mexi na configuração do `@dnd-kit` pra não arriscar
+  regressão numa feature que já funciona, mas fica registrado como aresta menor (o handle de
+  arrastar em si não faz nada com teclado, mesmo focável).
+  **Já estava correto, verificado e não mudei**: `<html lang="pt-BR">`, `alt` em todas as `<img>`
+  (decorativas com `alt=""`, informativas com texto), `Input`/`Select`/`Textarea` já associam
+  `<label htmlFor>` com `id` único via `useId()`, `:focus-visible` global já configurado em
+  `tokens.css`, cor nunca é o único indicador de estado (badges/textos sempre acompanham).
+  Typecheck (20 pacotes) e build limpos. Valores de contraste novos confirmados via
+  `getComputedStyle` no navegador. **Não existe suíte de testes automatizados neste projeto**
+  (nenhum `package.json` define script `test`) — corrigindo uma imprecisão de rodadas anteriores
+  desta auditoria que mencionaram "testes limpos"; só typecheck e build são verificáveis
+  automaticamente hoje.
+  **Pendências reais**: essa rodada cobriu os componentes de maior reuso, não cada tela
+  individualmente — falta auditoria tela por tela de verdade (ordem de heading h1/h2/h3, mais
+  landmarks ARIA em áreas específicas, navegação por teclado em fluxos complexos como o editor de
+  blocos do Segundo Cérebro e o Kanban de verdade com um leitor de tela real). Revisão de
+  textos/CTAs e varredura de código morto nos ~19 módulos restantes também continuam pendentes.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

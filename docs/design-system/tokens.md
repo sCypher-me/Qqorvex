@@ -20,13 +20,16 @@ cyan = ativo/Vex. Verde/vermelho/âmbar são reservados a estados semânticos, n
 
 - Fundação: `vex-black #090b0e` (bg), `vex-obsidian #101318` (surface-1), `vex-graphite #171b21`
   (surface-2), `vex-raised #1e232b` (surface-3), `vex-border #2a3039`.
-- Texto: Primary `#f1f3f5`, Secondary `#a5abb4`, Muted `#707780`.
+- Texto: Primary `#f1f3f5`, Secondary `#a5abb4`, Muted `#8a8f97` (clareado a partir do `#707780`
+  original — falhava WCAG AA como texto normal, ver auditoria de acessibilidade em
+  `docs/decisions/pending.md`, 18/09/2026).
 - Marca: Gold `#b88a54` (bright `#d2a66f`, muted `#73583b`), Cyan `#43b9d2` (bright `#72d8eb`,
   dark `#246c7b`) — mais contidos/dessaturados que a paleta original do Xmind, de propósito
   (feedback: a versão anterior "parecia genérica"/"limpa demais" quando os brainstorms tentaram
   reproduzir isso à mão; a paleta v1.0 veio pronta da sessão de design externa).
-- Semânticas: Success `#32c48d`, Error `#f05d6c` (Critical `#d94155`), Warning `#e7a84b`, Info
-  `#72d8eb`. Cada uma com variante `-bg`/`-border` em opacidade baixa.
+- Semânticas: Success `#32c48d`, Error `#f05d6c` (Critical `#df5f70`, clareado a partir do
+  `#d94155` original pelo mesmo motivo do Muted), Warning `#e7a84b`, Info `#72d8eb`. Cada uma com
+  variante `-bg`/`-border` em opacidade baixa.
 - Categorias (paleta fechada, 10 cores, não estender ad hoc): amber/blue/green/magenta/coral/
   lavender/teal/cyan/bronze/bluegray — ver `tokens.css` pros hex exatos.
 - Raios: controle `12px`, card `16px`, Vex/modais `20px`.
