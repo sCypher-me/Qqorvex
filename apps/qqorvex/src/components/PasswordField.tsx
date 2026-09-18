@@ -53,7 +53,7 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
             onClick={() => setVisible((v) => !v)}
             aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
             tabIndex={-1}
-            className="qv-icon-btn w-7 h-7 text-text-secondary"
+            className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-transparent text-text-muted hover:text-text-secondary cursor-pointer"
           >
             <EyeIcon open={visible} />
           </button>
