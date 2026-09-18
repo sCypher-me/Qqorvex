@@ -1,0 +1,25 @@
+import type { AuthError } from "@qqorvex/database";
+
+/**
+ * Traduz erros do Supabase Auth pra mensagens em português que nunca expõem detalhe técnico nem
+ * ajudam a enumerar contas ("E-mail ou senha incorretos." em vez de dizer qual dos dois está
+ * errado). Login/cadastro passam por aqui sempre — nunca mostramos `error.message` cru pro usuário.
+ */
+export function mapAuthError(error: AuthError): string {
+  const message = error.message.toLowerCase();
+
+  if (message.includes("invalid login credentials")) return "E-mail ou senha incorretos.";
+  if (message.includes("email not confirmed")) return "Confirme seu e-mail antes de entrar — verifique sua caixa de entrada.";
+  if (message.includes("user already registered") || message.includes("already registered"))
+    return "Esse e-mail já está cadastrado. Você pode entrar ou usar \"Esqueci minha senha\".";
+  if (message.includes("rate limit") || message.includes("too many requests") || error.status === 429)
+    return "Muitas tentativas seguidas. Aguarde um pouco antes de tentar de novo.";
+  if (message.includes("password should be at least") || message.includes("password is too short"))
+    return "A senha não atende aos requisitos mínimos.";
+  if (message.includes("same_password"))
+    return "A nova senha precisa ser diferente da atual.";
+  if (message.includes("network"))
+    return "Não foi possível conectar. Verifique sua internet e tente de novo.";
+
+  return "Não foi possível concluir. Tente novamente em instantes.";
+}

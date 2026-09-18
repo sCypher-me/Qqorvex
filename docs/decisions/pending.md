@@ -1872,6 +1872,70 @@
   mascarado como lista vazia, e duplicação de padrão CRUD entre módulos como oportunidade de
   abstração futura.
 
+- **Sistema de autenticação completo — e-mail/senha + Google/Discord/GitHub (18/09/2026)**: o app
+  já usava Supabase Auth (nunca existiu autenticação paralela pra evitar) — a base é 100%
+  aproveitada, não recriada. Peça pra reestruturar o login virou um pedido detalhado cobrindo
+  cadastro completo, OAuth, account linking, recuperação de senha e gestão de identidades.
+  **Decisão-chave**: Supabase Auth já faz *Automatic Linking* nativo — quando um e-mail
+  OAuth bate com um e-mail já verificado de outra identidade, ele vincula à mesma conta sozinho
+  (e descarta identidades não confirmadas concorrentes, prevenindo pre-account-takeover). Não
+  construí nenhuma lógica própria de dedup/linking — seria reinventar o que a plataforma já
+  garante com mais rigor. `linkIdentity`/`unlinkIdentity`/`getUserIdentities` (nativos, desde
+  supabase-js 2.42+) cobrem "conectar mais um provedor logado" e "desconectar" — o próprio
+  Supabase já recusa desconectar a última identidade restante (checado de novo no cliente só por
+  UX antecipada).
+  **Banco** (`auth_registro_completo` + revoke de anon): `profiles.full_name`/`profiles.phone`
+  (E.164, `+5562912345678`) novos, nuláveis (perfis existentes não têm esse dado, nunca quebra
+  quem já tinha conta). `handle_new_user()` agora grava os dois e garante um `username`: o que o
+  usuário digitou (validado de novo no servidor) ou um `qqXXXXX` gerado com loop de colisão real
+  contra a tabela (`generate_qq_username()`, minúsculo pra respeitar a constraint `citext`
+  existente — o exemplo do pedido era `QqXXXXX` maiúsculo, adaptado). RPC nova
+  `is_username_available(candidate)` — `SECURITY DEFINER`, deliberadamente liberada pra `anon`
+  (única exceção consciente: precisa funcionar antes do cadastro existir), só retorna boolean.
+  Achei de novo a mesma pegadinha de privilégio já documentada nesta sessão (função nova ganha
+  EXECUTE de anon/authenticated separado do grant de PUBLIC) — corrigido na hora, confirmado via
+  `information_schema`, não só confiando no advisor.
+  **Pacote `@qqorvex/auth`** (estende o existente, não substitui): `oauth.ts`/`identities.ts`/
+  `useIdentities.ts` (linking), `username.ts`/`useUsernameAvailability.ts` (debounce 400ms),
+  `password.ts` (regras + checklist, mesma validação usada em cadastro e redefinição),
+  `phone.ts` (`libphonenumber-js/min` pra validação/E.164 real — não só contar dígito; a máscara
+  visual "(62) 9 1234-5678" é feita à mão pra bater com o formato pedido, `AsYouType` da lib dava
+  um espaçamento ligeiramente diferente), `authErrors.ts` (mapeia erro do Supabase pra mensagem em
+  português que nunca ajuda a enumerar conta — "E-mail ou senha incorretos.", nunca qual dos dois).
+  `AuthProvider` ganhou `signInWithOAuth`/`resetPasswordForEmail`/`updatePassword`/
+  `resendSignupConfirmation`; `signUpWithPassword` passa a aceitar nome/username/telefone.
+  **Telas**: `Login.tsx` reescrita (login + Passkey + "Esqueci minha senha" + OAuth, cadastro virou
+  rota própria). `Registrar.tsx` nova: nome, usuário (opcional, disponibilidade em tempo real),
+  e-mail, telefone (opcional), senha com checklist ao vivo, confirmação com feedback ao vivo,
+  mostrar/ocultar senha sem perder foco/cursor (ícone de olho vira `trailingAdornment` novo em
+  `Input`, reaproveitável). `EsqueciSenha.tsx`/`RedefinirSenha.tsx` novas — resposta sempre neutra
+  ("se existir uma conta...", nunca confirma/nega), token de recuperação tratado pelo próprio
+  `supabase-js` (`detectSessionInUrl`), redefinir com sucesso revoga as outras sessões
+  (`signOut({scope:"others"})`) sem derrubar a atual. `Seguranca.tsx` ganhou "Contas conectadas"
+  (E-mail verificado + Google/Discord/GitHub, Conectar/Desconectar).
+  Typecheck (20 pacotes) e build limpos. Testado no navegador sem precisar de conta real:
+  checagem de username ao vivo (RPC de verdade, não mock), checklist de senha, confirmação de
+  senha, máscara de telefone, mostrar/ocultar senha, tela de link inválido em `/redefinir-senha`
+  sem sessão — todos funcionando ponta a ponta contra o Supabase real.
+  **Rate limiting, hash de senha (Argon2id/bcrypt), sessões JWT+refresh**: nativos do Supabase
+  Auth, não implementados por fora — seria reinventar o que a plataforma já faz com mais rigor.
+  **Sessão em localStorage (não httpOnly cookie)**: mantido — é o padrão do `supabase-js` em SPA
+  sem backend próprio; migrar pra cookie exigiria um servidor intermediário (BFF) que não existe
+  nesta arquitetura, mudança desproporcional ao pedido. Mitigado pelo que já existe: token de
+  acesso de vida curta + refresh rotativo, e revogação de sessão/2FA/Passkey já implementados.
+  **Credenciais externas que só o usuário pode fornecer** (nenhum código depende delas pra
+  compilar/typar — só pra funcionar de ponta a ponta): no painel do Supabase
+  (Authentication → Providers), habilitar Google/Discord/GitHub e colar o Client ID/Secret de cada
+  um (Google Cloud Console, Discord Developer Portal, GitHub OAuth Apps — redirect URI de todos:
+  `https://uowipikbumbaprckdvkg.supabase.co/auth/v1/callback`); habilitar "Allow manual linking"
+  (Authentication → Sign In / Providers) pro "Conectar" em Configurações funcionar.
+  **Pendências reais**: sem suíte de testes automatizados no projeto (achado já registrado antes),
+  então a lista de casos de teste do pedido (login inválido, token expirado, etc.) foi validada
+  manualmente no que deu pra testar sem OAuth configurado — não vira teste automatizado porque não
+  existe harness de teste nesse repo ainda. `full_name`/`phone` não aparecem ainda na tela de
+  Perfil (`/perfil`) pra edição posterior — só são gravados no cadastro; editar depois é uma
+  extensão natural do `ProfileInput` existente, não fiz por não ter sido pedido.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

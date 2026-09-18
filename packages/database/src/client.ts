@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient, type Session, type User } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type Session, type User, type AuthError } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
 export interface SupabaseConfig {
@@ -18,4 +18,4 @@ export function createSupabaseClient({ url, publishableKey }: SupabaseConfig): S
 }
 
 export type { Database };
-export type { SupabaseClient, Session, User };
+export type { SupabaseClient, Session, User, AuthError };

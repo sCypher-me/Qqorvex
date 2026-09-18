@@ -453,6 +453,9 @@ importers:
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../database
+      libphonenumber-js:
+        specifier: ^1.11.0
+        version: 1.13.13
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -1333,6 +1336,9 @@ packages:
   katex@0.18.7:
     resolution: {integrity: sha512-h+UCwkZ+4Jz8WQ7MLGfj7UVFrRCizGb912fwF4luGdYsC5paYG1vx+jy+KRcC/XkpjGva/P7nAWuxNnPzRvzHw==}
     hasBin: true
+
+  libphonenumber-js@1.13.13:
+    resolution: {integrity: sha512-hV6SmWnyQ8U1QXhhqbqYBHIStNnscG7A5XbGodgdHhf/8N5PwhYpJA5U/yHDjYwPYTd8uNGXqq416XctuvK2PA==}
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -2309,6 +2315,8 @@ snapshots:
   katex@0.18.7:
     dependencies:
       commander: 15.0.0
+
+  libphonenumber-js@1.13.13: {}
 
   lightningcss-android-arm64@1.32.0:
     optional: true

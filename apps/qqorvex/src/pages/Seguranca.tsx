@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Badge, Button, ConfirmDialog, Skeleton, SkeletonList } from "@qqorvex/ui";
+import type { SupabaseClient, Database } from "@qqorvex/database";
 import {
   useAuth,
   useMfaFactors,
@@ -15,7 +16,10 @@ import {
   parseUserAgent,
   usePin,
   setSecurityPin,
+  useIdentities,
+  OAUTH_PROVIDERS,
   type TotpEnrollment,
+  type OAuthProviderId,
 } from "@qqorvex/auth";
 import { useNotifications } from "@qqorvex/notifications";
 import { GoogleCalendarSection } from "@qqorvex/module-agenda";
@@ -55,6 +59,69 @@ function SecurityCard({ title, pill, children }: { title: string; pill?: ReactNo
 
 function CardText({ children }: { children: ReactNode }) {
   return <p className="text-[13px] text-text-secondary leading-relaxed">{children}</p>;
+}
+
+/** E-mail/senha + os 3 provedores OAuth apontam pra uma única identidade (o Supabase já faz o
+ * account linking automático por e-mail verificado) — aqui só gerencia quais estão conectados.
+ * "Conectar" precisa do "Allow manual linking" habilitado no painel do Supabase. */
+function ConnectedAccountsCard({ client, emailConfirmed }: { client: SupabaseClient<Database>; emailConfirmed: boolean }) {
+  const { identities, isLoading, connect, disconnect } = useIdentities(client);
+  const [error, setError] = useState<string | null>(null);
+  const [busyProvider, setBusyProvider] = useState<string | null>(null);
+
+  async function handleConnect(provider: OAuthProviderId) {
+    setError(null);
+    setBusyProvider(provider);
+    const { error } = await connect(provider);
+    setBusyProvider(null);
+    if (error) setError(error);
+  }
+
+  async function handleDisconnect(providerId: OAuthProviderId) {
+    const identity = identities.find((i) => i.provider === providerId);
+    if (!identity) return;
+    setError(null);
+    setBusyProvider(providerId);
+    const { error } = await disconnect(identity);
+    setBusyProvider(null);
+    if (error) setError(error);
+  }
+
+  return (
+    <SecurityCard title="Contas conectadas">
+      {isLoading ? (
+        <SkeletonList rows={2} />
+      ) : (
+        <ul className="flex flex-col">
+          <li className="qv-row-top flex items-center gap-3 py-2.5">
+            <span className="flex-1 text-sm">E-mail</span>
+            <Badge tone={emailConfirmed ? "success" : "outline"}>{emailConfirmed ? "Verificado" : "Não verificado"}</Badge>
+          </li>
+          {OAUTH_PROVIDERS.map(({ id, label }) => {
+            const connected = identities.some((i) => i.provider === id);
+            return (
+              <li key={id} className="qv-row-top flex items-center gap-3 py-2.5">
+                <span className="flex-1 text-sm">{label}</span>
+                {connected ? (
+                  <>
+                    <Badge tone="success">Conectado</Badge>
+                    <Button variant="ghost" size="xs" onClick={() => handleDisconnect(id)} disabled={busyProvider === id}>
+                      Desconectar
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="quiet" size="xs" onClick={() => handleConnect(id)} disabled={busyProvider === id}>
+                    Conectar
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {error && <p className="text-[13px] text-error">{error}</p>}
+    </SecurityCard>
+  );
 }
 
 /** "Central de Segurança" v1 lean: 2FA (TOTP) + Passkey + Sessões + PIN do Cofre + notificações push + integrações. */
@@ -191,6 +258,8 @@ export function SegurancaPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start max-w-[1040px]">
+      <ConnectedAccountsCard client={client} emailConfirmed={session!.user.email_confirmed_at != null} />
+
       <SecurityCard
         title="Verificação em duas etapas"
         pill={

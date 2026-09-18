@@ -25,6 +25,9 @@ import { supabase } from "./supabase";
  */
 const HojePage = lazy(() => import("../pages/Hoje").then((m) => ({ default: m.HojePage })));
 const LoginPage = lazy(() => import("../pages/Login").then((m) => ({ default: m.LoginPage })));
+const RegistrarPage = lazy(() => import("../pages/Registrar").then((m) => ({ default: m.RegistrarPage })));
+const EsqueciSenhaPage = lazy(() => import("../pages/EsqueciSenha").then((m) => ({ default: m.EsqueciSenhaPage })));
+const RedefinirSenhaPage = lazy(() => import("../pages/RedefinirSenha").then((m) => ({ default: m.RedefinirSenhaPage })));
 const MfaPage = lazy(() => import("../pages/Mfa").then((m) => ({ default: m.MfaPage })));
 const SegurancaPage = lazy(() => import("../pages/Seguranca").then((m) => ({ default: m.SegurancaPage })));
 const TarefasPage = lazy(() => import("../pages/Tarefas").then((m) => ({ default: m.TarefasPage })));
@@ -105,6 +108,9 @@ export function App() {
               </Route>
               <Route path="/mfa" element={<MfaPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/criar-conta" element={<RegistrarPage />} />
+              <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+              <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 /**
  * Campo do Design System v1.0 — rótulo acima (12px, texto secundário), campo rebaixado com
@@ -46,14 +46,34 @@ interface FieldExtras {
   wrapperClassName?: string;
 }
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, FieldExtras {}
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, FieldExtras {
+  /** Ícone/botão sobreposto à direita do campo (ex.: alternar mostrar/ocultar senha) — fica dentro do campo, não empurra o layout. */
+  trailingAdornment?: ReactNode;
+  ref?: Ref<HTMLInputElement>;
+}
 
-export function Input({ label, hint, error, wrapperClassName, id, className = "", ...props }: InputProps) {
+export function Input({ label, hint, error, wrapperClassName, id, className = "", trailingAdornment, ref, ...props }: InputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
+  const input = (
+    <input
+      ref={ref}
+      id={inputId}
+      aria-invalid={error ? true : undefined}
+      className={`qv-field ${trailingAdornment ? "pr-11" : ""} ${className}`}
+      {...props}
+    />
+  );
   return (
     <FieldShell label={label} htmlFor={inputId} hint={hint} error={error} className={wrapperClassName}>
-      <input id={inputId} aria-invalid={error ? true : undefined} className={`qv-field ${className}`} {...props} />
+      {trailingAdornment ? (
+        <div className="relative flex items-center">
+          {input}
+          <div className="absolute right-1.5">{trailingAdornment}</div>
+        </div>
+      ) : (
+        input
+      )}
     </FieldShell>
   );
 }

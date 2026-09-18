@@ -2039,7 +2039,9 @@ export type Database = {
           bio: string | null
           created_at: string
           display_name: string | null
+          full_name: string | null
           id: string
+          phone: string | null
           pin_failed_attempts: number
           pin_hash: string | null
           pin_locked_until: string | null
@@ -2053,7 +2055,9 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          full_name?: string | null
           id: string
+          phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
@@ -2067,7 +2071,9 @@ export type Database = {
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          full_name?: string | null
           id?: string
+          phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
@@ -3182,6 +3188,7 @@ export type Database = {
     }
     Functions: {
       delete_account: { Args: { target_user_id: string }; Returns: undefined }
+      generate_qq_username: { Args: never; Returns: string }
       get_system_overview: {
         Args: never
         Returns: {
@@ -3195,6 +3202,7 @@ export type Database = {
       }
       has_security_pin: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      is_username_available: { Args: { candidate: string }; Returns: boolean }
       list_all_accounts: {
         Args: never
         Returns: {
