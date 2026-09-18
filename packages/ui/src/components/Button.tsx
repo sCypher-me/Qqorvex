@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from "react";
+import { triggerHaptic, type HapticLevel } from "../haptics";
 
 export type ButtonVariant =
   | "primary"
@@ -45,11 +46,33 @@ const sizeClasses: Record<ButtonSize, string> = {
   md: "",
 };
 
-export function Button({ variant = "primary", size, className = "", ...props }: ButtonProps) {
+/**
+ * Só os botões de ação "pesada" vibram — nem toda a superfície clicável, senão cada toque vira
+ * ruído tátil. `quiet`/`ghost`/`secondary`/`dashed`/`chip` (navegação, cancelar, ações leves) não
+ * entram aqui de propósito.
+ */
+const HAPTIC_BY_VARIANT: Partial<Record<ButtonVariant, HapticLevel>> = {
+  primary: "light",
+  vex: "light",
+  premium: "light",
+  destructive: "warning",
+  "chip-accent": "light",
+};
+
+export function Button({ variant = "primary", size, className = "", onClick, ...props }: ButtonProps) {
   const resolvedSize = size ?? (variant === "chip" || variant === "chip-accent" ? "sm" : "md");
+  const hapticLevel = HAPTIC_BY_VARIANT[variant];
   return (
     <button
       className={`qv-btn ${variantClasses[variant]} ${sizeClasses[resolvedSize]} ${className}`}
+      onClick={
+        hapticLevel
+          ? (event) => {
+              triggerHaptic(hapticLevel);
+              onClick?.(event);
+            }
+          : onClick
+      }
       {...props}
     />
   );

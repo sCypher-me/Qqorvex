@@ -1649,6 +1649,40 @@
   agora comporta telas pequenas, mas conteúdo específico de cada página pode precisar de ajuste
   pontual conforme for sendo usado de verdade no celular.
 
+- **Auditoria geral + retorno tátil (haptics) — 1ª rodada (17/09/2026)**: usuário pediu uma
+  auditoria completa (bugs, código morto, duplicação, arquitetura, UI/UX, motion, performance,
+  segurança, acessibilidade — lista de 45 itens). Escopo é grande demais pra uma passada só num
+  app de 20 pacotes; comecei pela varredura mecânica (rápida, baixo risco) e já implementei o item
+  de maior valor concreto que realmente não existia ainda.
+  **Varredura mecânica — resultado: já bem limpo**. Grep no monorepo inteiro por `console.log/
+  debug/warn`, `catch {}` vazio, `TODO/FIXME/XXX/HACK`, `any`: zero ocorrências reais (os 2 "TODO"
+  que apareceram eram falso-positivo — "TODOS" em português e o placeholder "QQ-XXXX-XXXX"). Só 1
+  uso de `any` no projeto inteiro (`sync-google-calendar`, array temporário antes de tipar — baixo
+  risco, não corrigido ainda). Checagem de dependências não usadas em 5 pacotes-amostra
+  (ui/vex/auth/financas/tarefas): nenhuma encontrada. Advisor de segurança revisado de novo depois
+  do Painel Manager — mesmo achado de sempre (funções `SECURITY DEFINER` chamáveis por
+  `authenticated`, todas esperadas, cada uma já filtra por `is_owner()`/`auth.uid()`).
+  **Implementado**: `packages/ui/src/haptics.ts` — retorno tátil via Web Vibration API (funciona
+  no WebView Android do APK, sem plugin nativo), 5 níveis (`light/medium/success/warning/error`),
+  progressive enhancement de verdade (nunca lança, nunca bloqueia a ação; desliga também com
+  `prefers-reduced-motion`, não só animação visual). Conectado direto em `Button` (só variantes de
+  ação "pesada" — `primary/vex/premium/destructive` — vibram; `quiet/ghost/secondary/dashed`
+  ficam de fora de propósito, pra não vibrar em cada toque) e em `Switch`. Como `ConfirmDialog` já
+  usa `Button` por baixo, toda confirmação destrutiva do app (~20 componentes da rodada "página
+  por página") ganhou haptics sem precisar tocar em cada um.
+  **Achado à parte, corrigido**: o servidor de dev (`node`/Vite) estava rodando desde 16/09 às
+  23h — mais de 24h sem reiniciar, o HMR corrompeu (erro `NAV_SECTIONS não exportado`, resquício
+  de um rename de horas atrás). Matei o processo antigo e abri um novo — não era bug de código
+  (typecheck/build a partir do zero sempre passaram limpos), só o dev server precisando de
+  restart depois de uma sessão muito longa.
+  Typecheck/build/testes limpos depois da mudança.
+  **Pendências reais desta auditoria (o que ainda falta das 45 seções do pedido)**: motion
+  system/animações de página, skeletons em vez de "Carregando..." (43 ocorrências em 32 arquivos —
+  mudança grande, não cabe numa passada só), auditoria de acessibilidade (contraste, aria, foco)
+  tela por tela, revisão de textos/CTAs, e a varredura completa arquivo-por-arquivo de código
+  morto/duplicação nos ~19 módulos restantes. Fica como próxima(s) rodada(s) — dá pra continuar
+  incrementalmente na mesma sessão.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

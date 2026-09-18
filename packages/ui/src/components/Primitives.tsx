@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import { triggerHaptic } from "../haptics";
 
 /** Chip de filtro/aba em pílula — ativo fica cyan tintado. */
 export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -181,7 +182,10 @@ export function Switch({ checked, onChange, disabled, label }: SwitchProps) {
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={() => {
+        triggerHaptic("light");
+        onChange(!checked);
+      }}
       className={`w-[46px] h-[26px] rounded-full border border-border flex items-center p-0.5 cursor-pointer transition-colors shrink-0 disabled:opacity-50 ${
         checked ? "bg-[rgba(67,185,210,.35)] justify-end" : "bg-vex-raised justify-start"
       }`}
