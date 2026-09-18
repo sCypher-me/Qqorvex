@@ -12,6 +12,9 @@ export interface ProfileInput {
   username?: string | null;
   avatarUrl?: string | null;
   bio?: string | null;
+  fullName?: string | null;
+  /** Já em E.164 (`+55...`) — normalização acontece no formulário, nunca aqui. */
+  phone?: string | null;
 }
 
 export async function getProfile(client: SupabaseClient<Database>, userId: string): Promise<Profile | null> {
@@ -31,11 +34,16 @@ export async function updateProfile(
   if (input.username !== undefined) update.username = input.username;
   if (input.avatarUrl !== undefined) update.avatar_url = input.avatarUrl;
   if (input.bio !== undefined) update.bio = input.bio;
+  if (input.fullName !== undefined) update.full_name = input.fullName;
+  if (input.phone !== undefined) update.phone = input.phone;
 
   const { data, error } = await client.from("profiles").update(update).eq("id", userId).select("*").single();
   if (error) {
     if (error.code === "23505") return { profile: null, error: "Esse nome de usuário já está em uso." };
-    if (error.code === "23514") return { profile: null, error: "Nome de usuário inválido: use 3–20 letras minúsculas, números ou _." };
+    if (error.code === "23514" && error.message.includes("username"))
+      return { profile: null, error: "Nome de usuário inválido: use 3–20 letras minúsculas, números ou _." };
+    if (error.code === "23514" && error.message.includes("phone")) return { profile: null, error: "Telefone inválido." };
+    if (error.code === "23514" && error.message.includes("full_name")) return { profile: null, error: "Nome completo não pode ficar vazio." };
     return { profile: null, error: error.message };
   }
   return { profile: data, error: null };

@@ -40,3 +40,10 @@ export function isBRPhoneValid(raw: string): boolean {
   if (!raw.trim()) return true;
   return normalizeBRPhone(raw) !== null;
 }
+
+/** Caminho inverso — telefone salvo em E.164 (`+5562...`) de volta pra máscara editável no formulário de perfil. */
+export function formatE164ToBRInput(e164: string): string {
+  const parsed = parsePhoneNumberFromString(e164, DEFAULT_COUNTRY);
+  if (!parsed) return "";
+  return formatBRPhoneInput(parsed.nationalNumber);
+}

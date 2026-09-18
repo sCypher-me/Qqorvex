@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Input, SectionTitle, Skeleton, SkeletonCards, Textarea, type BadgeTone } from "@qqorvex/ui";
-import { useAuth, useProfile } from "@qqorvex/auth";
+import { useAuth, useProfile, normalizeBRPhone, isBRPhoneValid, formatE164ToBRInput } from "@qqorvex/auth";
+import { PhoneField } from "../components/PhoneField";
 import { BadgesPanel, formatXp, useGamificationStats, useUnlockedBadges } from "@qqorvex/module-gamificacao";
 import { useRedeemCode, type AccountTier } from "@qqorvex/module-manager";
 
@@ -42,8 +43,10 @@ export function PerfilPage() {
     }
   }
 
+  const [fullName, setFullName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [bio, setBio] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -51,8 +54,10 @@ export function PerfilPage() {
 
   useEffect(() => {
     if (!profile) return;
+    setFullName(profile.full_name ?? "");
     setDisplayName(profile.display_name ?? "");
     setUsername(profile.username ?? "");
+    setPhone(profile.phone ? formatE164ToBRInput(profile.phone) : "");
     setBio(profile.bio ?? "");
   }, [profile]);
 
@@ -60,10 +65,22 @@ export function PerfilPage() {
     event.preventDefault();
     setProfileError(null);
     setProfileSaved(false);
+
+    if (!fullName.trim()) {
+      setProfileError("Nome completo não pode ficar vazio.");
+      return;
+    }
+    if (!isBRPhoneValid(phone)) {
+      setProfileError("Telefone inválido.");
+      return;
+    }
+
     setProfileBusy(true);
     const { error: saveError } = await saveProfile({
+      fullName: fullName.trim(),
       displayName: displayName.trim() || null,
       username: username.trim() || null,
+      phone: normalizeBRPhone(phone),
       bio: bio.trim() || null,
     });
     setProfileBusy(false);
@@ -167,6 +184,7 @@ export function PerfilPage() {
             <SkeletonCards count={4} className="h-11 w-full rounded-xl" />
           ) : (
             <form onSubmit={handleSaveProfile} className="flex flex-col gap-3.5">
+              <Input label="Nome completo" required value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
               <Input label="Nome de exibição" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
               <Input
                 label="Nome de usuário"
@@ -174,6 +192,7 @@ export function PerfilPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
+              <PhoneField value={phone} onChange={setPhone} />
               <Textarea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={2} />
               <Button type="submit" variant="primary" className="self-start" disabled={profileBusy}>
                 {profileBusy ? "Salvando..." : "Salvar perfil"}
