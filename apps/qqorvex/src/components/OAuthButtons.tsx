@@ -53,7 +53,7 @@ export function OAuthButtons() {
         ou continue com
         <span className="flex-1 h-px bg-border" />
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-3 gap-2.5">
         {OAUTH_PROVIDERS.map(({ id, label }) => {
           const Icon = ICONS[id];
           return (
@@ -63,10 +63,15 @@ export function OAuthButtons() {
               variant="secondary"
               onClick={() => handleClick(id)}
               disabled={pending !== null}
-              className="w-full flex items-center justify-center gap-2.5 py-3"
+              title={`Continuar com ${label}`}
+              aria-label={`Continuar com ${label}`}
+              className="flex items-center justify-center py-3"
             >
-              <Icon />
-              {pending === id ? "Redirecionando…" : `Continuar com ${label}`}
+              {pending === id ? (
+                <span className="w-[7px] h-[7px] rounded-full bg-vex-cyan-bright animate-core-glow" aria-hidden="true" />
+              ) : (
+                <Icon />
+              )}
             </Button>
           );
         })}
