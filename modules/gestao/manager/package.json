@@ -12,15 +12,13 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@qqorvex/database": "workspace:*",
-    "@qqorvex/ui": "workspace:*"
+    "@qqorvex/database": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@types/react": "^19.0.0",
     "typescript": "^5.7.0"
   }
 }

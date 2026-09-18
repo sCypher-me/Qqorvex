@@ -1799,6 +1799,41 @@
   blocos do Segundo Cérebro e o Kanban de verdade com um leitor de tela real). Revisão de
   textos/CTAs e varredura de código morto nos ~19 módulos restantes também continuam pendentes.
 
+- **Varredura de código morto nos módulos restantes — 5ª rodada da auditoria geral (18/09/2026)**:
+  a 1ª rodada desta auditoria (17/09) já tinha checado dependências não usadas numa amostra de 5
+  pacotes (ui/vex/auth/financas/tarefas) — sem achado. Esta rodada cobriu os outros 15
+  pacotes/módulos (os 13 que faltavam de `modules/`+`packages/database/design-system/notifications`,
+  mais o app principal e a raiz do workspace) com três checagens mecânicas:
+  **1) Dependências não usadas** (`depcheck` em cada `package.json`): achado real em
+  `modules/gestao/manager` — `@qqorvex/ui` em `dependencies` e `@types/react` em `devDependencies`,
+  nenhum dos dois usado em nenhum arquivo do módulo (confirmado via grep antes de mexer, não só
+  confiando no depcheck). Removidos; `tsc` do módulo e do monorepo inteiro continuam limpos depois
+  — confirma que eram mesmo mortos, não um falso-negativo do typecheck escondendo o uso real.
+  Falsos-positivos descartados (verificados, não é achado real): "vitest ausente" em quase todo
+  módulo (declarado só na raiz do workspace, não por pacote — normal em monorepo pnpm),
+  `@qqorvex/design-system`/`tailwindcss` "não usados" no app principal (na verdade usados via
+  `@import` em CSS, que o depcheck não enxerga), `jsr:@supabase`/`npm:web-push` "faltando" na raiz
+  (specifiers de import estilo Deno usados dentro das Edge Functions do Supabase, fora do grafo de
+  dependências do pnpm/Node).
+  **2) Arquivos órfãos** (heurística: nome do arquivo nunca aparece como especificador de import em
+  nenhum outro arquivo do repo): 109 arquivos `.ts`/`.tsx` checados nos 13 módulos ainda não
+  auditados — zero achados reais (o único "suspeito", `segundo-cerebro/src/css.d.ts`, é uma
+  declaração ambiente de tipos pro `import("katex/dist/katex.min.css")` dinâmico, que por natureza
+  nunca é importado por caminho — falso-positivo esperado desse tipo de arquivo).
+  **3) Arquivos de backup/rascunho esquecidos** (busca por `old`/`backup`/`copy`/`temp`/`.bak` no
+  nome): zero achados reais (só coincidências de substring tipo "F**old**ersPanel.tsx", "K**old**...
+  Bold...").
+  **Conclusão**: a 2ª leva de módulos estava tão limpa quanto a amostra da 1ª rodada — confirma que
+  não é sorte de amostragem, o projeto inteiro (20 pacotes) está genuinamente sem código morto
+  mecânico relevante hoje. Typecheck (20 pacotes) e build limpos depois da remoção em
+  `module-manager`.
+  **Não coberto por este tipo de varredura** (é mecânica, não semântica): exports públicos que
+  existem, são importados por *algum* lugar mas nunca de fato chamados/usados no fluxo real
+  (precisaria de análise por símbolo, não por arquivo/dependência); duplicação de lógica entre
+  módulos parecidos (ex.: padrões repetidos de painel CRUD) — isso é "oportunidade de abstração",
+  não "código morto", e entra em outra categoria de trabalho (refatoração deliberada, não
+  varredura).
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

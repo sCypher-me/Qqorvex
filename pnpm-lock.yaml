@@ -278,9 +278,6 @@ importers:
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
-      '@qqorvex/ui':
-        specifier: workspace:*
-        version: link:../../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.102.8(react@19.2.8)
@@ -288,9 +285,6 @@ importers:
         specifier: ^19.0.0
         version: 19.2.8
     devDependencies:
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.18
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
