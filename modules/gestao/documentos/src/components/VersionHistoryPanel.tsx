@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, EmptyState } from "@qqorvex/ui";
+import { Button, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useDocumentVersions, useRestoreDocumentVersion, useUploadNewVersion } from "../hooks/useDocumentos";
 import type { Document } from "../types";
 
@@ -52,7 +52,9 @@ export function VersionHistoryPanel({
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando histórico...</EmptyState>
+        <div className="qv-well">
+          <SkeletonList rows={2} subtitle={false} className="px-[14px] py-2.5" />
+        </div>
       ) : versions.length === 0 ? (
         <EmptyState>Nenhuma versão anterior ainda. Ao enviar uma nova versão, a atual fica guardada aqui.</EmptyState>
       ) : (

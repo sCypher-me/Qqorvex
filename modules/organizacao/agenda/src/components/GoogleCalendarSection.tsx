@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Notice } from "@qqorvex/ui";
+import { Button, Notice, Skeleton } from "@qqorvex/ui";
 import { useConnectGoogleCalendar, useDisconnectGoogleCalendar, useGoogleCalendarConnection } from "../hooks/useGoogleCalendar";
 
 /**
@@ -46,7 +46,7 @@ export function GoogleCalendarSection({
     );
   }
 
-  if (isLoading) return <p className="text-[13px] text-text-secondary">Carregando...</p>;
+  if (isLoading) return <Skeleton className="h-8 w-64 rounded-full" />;
 
   if (connection) {
     return (

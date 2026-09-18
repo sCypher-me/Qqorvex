@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useAccounts, useCreateAccount, useTransactions } from "../hooks/useFinancas";
 import { computeAccountBalance } from "../service";
 import type { Account } from "../types";
@@ -32,7 +32,7 @@ export function AccountsPanel({ client, userId }: { client: SupabaseClient<Datab
     <div className="qv-card overflow-hidden">
       <CardHeader divider title="Contas" meta={isLoading ? undefined : `${accounts.length}`} />
       {isLoading ? (
-        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
+        <SkeletonList rows={3} />
       ) : accounts.length === 0 ? (
         <EmptyState className="px-[18px] py-4">Nenhuma conta cadastrada. Adicione a primeira abaixo.</EmptyState>
       ) : (

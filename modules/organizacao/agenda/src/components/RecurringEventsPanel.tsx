@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, CardHeader, ConfirmDialog, EmptyState, type BadgeTone } from "@qqorvex/ui";
+import { Button, Badge, CardHeader, ConfirmDialog, EmptyState, SkeletonList, type BadgeTone } from "@qqorvex/ui";
 import { useCreateRecurringEvent, useRecurringEvents, useUpdateRecurringEventStatus } from "../hooks/useRecurringEvents";
 import type { RecurringEventFrequency, RecurringEvent } from "../types";
 
@@ -132,7 +132,7 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
           meta={isLoading ? undefined : `${recurringEvents.length} ${recurringEvents.length === 1 ? "receita" : "receitas"}`}
         />
         {isLoading ? (
-          <EmptyState className="px-5 py-4">Carregando...</EmptyState>
+          <SkeletonList rows={3} className="px-5 py-3.5" />
         ) : recurringEvents.length === 0 ? (
           <EmptyState className="px-5 py-4">Nenhum evento recorrente cadastrado.</EmptyState>
         ) : (

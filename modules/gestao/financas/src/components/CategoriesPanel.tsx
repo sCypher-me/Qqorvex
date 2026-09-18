@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, Skeleton } from "@qqorvex/ui";
 import { useCategories, useCreateCategory } from "../hooks/useFinancas";
 import type { CategoryKind } from "../types";
 import { financeCategoryColor } from "./TransactionList";
@@ -29,7 +29,11 @@ export function CategoriesPanel({ client, userId }: { client: SupabaseClient<Dat
       <CardHeader divider title="Categorias" meta={isLoading ? undefined : `${categories.length}`} />
       <div className="px-[18px] py-[14px] flex flex-col gap-[14px]">
         {isLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <div role="status" aria-label="Carregando" className="flex flex-wrap gap-2">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
         ) : categories.length === 0 ? (
           <EmptyState>Nenhuma categoria cadastrada. Categorias dão cor às transações e permitem orçamentos.</EmptyState>
         ) : (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { ChipTabs, EmptyState } from "@qqorvex/ui";
+import { ChipTabs, EmptyState, SkeletonBlock } from "@qqorvex/ui";
 import {
   useEventsInRange,
   useCreateEvent,
@@ -160,7 +160,7 @@ export function AgendaPage() {
         <RecurringEventsPanel client={supabase} userId={userId} />
       ) : isLoading ? (
         <div className="qv-card p-5">
-          <EmptyState>Carregando...</EmptyState>
+          <SkeletonBlock className="h-[420px] w-full rounded-xl" />
         </div>
       ) : viewMode === "dia" ? (
         <DayAgenda events={dayEvents} onDelete={(id) => deleteEvent.mutate(id)} />

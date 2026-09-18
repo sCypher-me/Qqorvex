@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Button, CardHeader, EmptyState, ProgressBar } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, ProgressBar, SkeletonList } from "@qqorvex/ui";
 import { useAuth } from "@qqorvex/auth";
 import { useHojeSummary } from "@qqorvex/module-hoje";
 import type { HojeItem, HojePriority } from "@qqorvex/module-hoje";
@@ -152,7 +152,7 @@ export function HojePage() {
               }
             />
             {isLoading ? (
-              <EmptyState className="px-5 py-4">Carregando...</EmptyState>
+              <SkeletonList rows={4} className="px-5 py-3" />
             ) : summary.items.length === 0 ? (
               <EmptyState className="px-5 py-4">
                 Nada por aqui ainda — crie uma tarefa para hoje ou com prazo vencido e ela aparece aqui automaticamente.
@@ -194,7 +194,7 @@ export function HojePage() {
               <span className="font-mono text-xs text-text-muted">{shortDate(now)}</span>
             </div>
             {eventsLoading ? (
-              <EmptyState>Carregando...</EmptyState>
+              <SkeletonList rows={2} className="py-2" />
             ) : sortedEvents.length === 0 ? (
               <EmptyState>
                 Nada agendado para hoje.{" "}

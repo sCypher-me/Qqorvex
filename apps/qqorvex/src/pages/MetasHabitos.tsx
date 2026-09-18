@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button, EmptyState, Modal, SectionTitle } from "@qqorvex/ui";
+import { Button, EmptyState, Modal, SectionTitle, Skeleton, SkeletonList } from "@qqorvex/ui";
 import {
   useGoals,
   useCreateGoal,
@@ -47,7 +47,10 @@ export function MetasHabitosPage() {
           Metas
         </SectionTitle>
         {goalsLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <div role="status" aria-label="Carregando" className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+            <Skeleton className="h-36 w-full rounded-2xl" />
+            <Skeleton className="h-36 w-full rounded-2xl" />
+          </div>
         ) : goals.length === 0 ? (
           <EmptyState>Nenhuma meta criada ainda. Use "Nova meta" para definir o primeiro resultado que você quer alcançar.</EmptyState>
         ) : (
@@ -76,7 +79,9 @@ export function MetasHabitosPage() {
           Hábitos
         </SectionTitle>
         {habitsLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <div className="qv-card overflow-hidden">
+            <SkeletonList rows={3} />
+          </div>
         ) : habits.length === 0 ? (
           <EmptyState>Nenhum hábito criado ainda. Use "Novo hábito" para começar.</EmptyState>
         ) : (

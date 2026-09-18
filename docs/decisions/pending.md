@@ -1683,6 +1683,38 @@
   morto/duplicação nos ~19 módulos restantes. Fica como próxima(s) rodada(s) — dá pra continuar
   incrementalmente na mesma sessão.
 
+- **Skeletons de carregamento — 2ª rodada da auditoria geral (18/09/2026)**: converteu as 41
+  ocorrências reais de texto "Carregando..." (de 32 arquivos — 2 a mais eram comentário/doc, não
+  contadas) em placeholders visuais animados, em vez de texto simples.
+  **Implementado**: `packages/design-system/src/tokens/tokens.css` — classe `.qv-skeleton` (bloco
+  cinza com brilho varrendo da esquerda pra direita, `@keyframes skeletonShimmer`, token
+  `--animate-skeleton-shimmer`) — respeita `prefers-reduced-motion` porque a regra global de Base
+  já desliga toda `animation` nesse caso, não precisou de lógica JS extra.
+  `packages/ui/src/components/Skeleton.tsx` — 4 primitivas exportadas: `Skeleton` (bloco avulso,
+  forma livre via `className`), `SkeletonRow`/`SkeletonList` (linha/lista no formato `qv-row-top`,
+  usado pela maioria dos painéis), `SkeletonBlock` (retângulo único) e `SkeletonCards` (pilha de
+  cards de altura fixa, pra colunas/grades que não são listas `qv-row`).
+  Cada uma das 41 ocorrências foi trocada pela primitiva que melhor combina com a forma real do
+  conteúdo que ela substitui (lista → `SkeletonList`; grade de cards/badges/notebooks → blocos em
+  grid; chips/pills → blocos arredondados em `rounded-full`; formulário → `SkeletonCards`) — não
+  foi um find-replace cego, cada arquivo foi lido pra conferir o layout real antes de escolher a
+  forma do placeholder. Imports de `EmptyState` que ficaram sem uso depois da troca foram
+  removidos (`Perfil.tsx`, `Biblioteca.tsx`, `Financas.tsx`, `Gamificacao.tsx`, `Seguranca.tsx`,
+  `DailyCheckinForm.tsx`).
+  **Deixado de propósito sem skeleton**: `apps/qqorvex/src/app/App.tsx` (`PageFallback`) — é o
+  fallback do `Suspense` entre chunks de rota (code-splitting), não sabe qual página está
+  carregando nem que forma ela tem; o indicador atual (ponto cyan pulsando + texto) já é o padrão
+  certo pra esse caso, diferente de um placeholder que precisa imitar conteúdo real.
+  Typecheck (20 pacotes) e build limpos depois da mudança. CSS do skeleton confirmado renderizando
+  (background, animação, `border-radius`) via injeção de elemento de teste no navegador — não deu
+  pra testar a transição de carregamento real ponta a ponta (piscaria rápido demais pra observar,
+  e exigiria login com a conta de teste + confirmação de e-mail do usuário), mas a base (CSS válido
+  + build passando + mesmo padrão de classes já usado e verificado em outras rodadas) dá confiança
+  suficiente pra esse tipo de mudança puramente visual/mecânica.
+  **Pendências reais que ainda restam das 45 seções**: motion system/animações de transição de
+  página, auditoria de acessibilidade tela por tela, revisão de textos/CTAs, varredura completa de
+  código morto/duplicação nos ~19 módulos restantes.
+
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e
    ~~Biblioteca — detecção de duplicados~~ implementados nesta sessão (11/09/2026). Mesclagem de

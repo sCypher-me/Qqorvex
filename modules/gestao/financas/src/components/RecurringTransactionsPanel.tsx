@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Badge, Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Badge, Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import {
   useCreateRecurringTransaction,
   useGenerateOccurrence,
@@ -59,7 +59,7 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
         meta={isLoading ? undefined : `${activeCount} ${activeCount === 1 ? "ativa" : "ativas"}`}
       />
       {isLoading ? (
-        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
+        <SkeletonList rows={3} />
       ) : recurringTransactions.length === 0 ? (
         <EmptyState className="px-[18px] py-4">
           Nenhuma recorrência cadastrada. Contas fixas e assinaturas aparecem aqui e no calendário financeiro.

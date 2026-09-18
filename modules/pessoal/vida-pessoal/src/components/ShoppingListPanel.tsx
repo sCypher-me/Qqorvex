@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ConfirmDialog, EmptyState, Input } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input, SkeletonList } from "@qqorvex/ui";
 import { useCreateShoppingListItem, useDeleteShoppingListItem, useShoppingListItems, useToggleShoppingListItem } from "../hooks/useVidaPratica";
 
 /** Lista de mercado/dia a dia — item + quantidade em texto livre + marcar como comprado. */
@@ -30,7 +30,7 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonList rows={2} subtitle={false} className="py-2" />
       ) : items.length === 0 ? (
         <EmptyState>Lista de compras vazia.</EmptyState>
       ) : (

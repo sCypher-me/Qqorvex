@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button, Chip, EmptyState, Modal } from "@qqorvex/ui";
+import { Button, Chip, Modal, Skeleton } from "@qqorvex/ui";
 import {
   useLibraryItems,
   useCreateLibraryItemWithCreators,
@@ -77,7 +77,11 @@ export function BibliotecaPage() {
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando acervo...</EmptyState>
+        <div role="status" aria-label="Carregando" className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="aspect-[2/3] w-full rounded-xl" />
+          ))}
+        </div>
       ) : (
         <GalleryGrid
           items={visibleItems}

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { AttachDocumentPanel } from "@qqorvex/module-documentos";
 import { useTransactions, computeVehicleSpending } from "@qqorvex/module-financas";
-import { Button, ConfirmDialog, EmptyState, Input } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input, SkeletonList } from "@qqorvex/ui";
 import {
   useAddVehicleImportantDate,
   useCreateVehicle,
@@ -160,7 +160,7 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonList rows={2} className="py-2" />
       ) : vehicles.length === 0 ? (
         <EmptyState>Nenhum veículo cadastrado.</EmptyState>
       ) : (

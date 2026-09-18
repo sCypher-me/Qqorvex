@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useCreateWarranty, useDocuments, useWarranties } from "../hooks/useDocumentos";
 
 function formatDate(isoDate: string): string {
@@ -77,7 +77,7 @@ export function WarrantiesPanel({ client, userId }: { client: SupabaseClient<Dat
       </form>
 
       {isLoading ? (
-        <EmptyState className="px-5 py-4">Carregando garantias...</EmptyState>
+        <SkeletonList rows={3} className="px-5 py-3" />
       ) : warranties.length === 0 ? (
         <EmptyState className="px-5 py-4">
           Nenhuma garantia cadastrada. Informe produto, data da compra e duração — o fim é calculado para você.

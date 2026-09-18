@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { useWarranties } from "@qqorvex/module-documentos";
-import { Button, ConfirmDialog, EmptyState, Input, Select } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input, Select, SkeletonList } from "@qqorvex/ui";
 import { useAssets, useCreateAsset, useDeleteAsset } from "../hooks/useVidaPratica";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -41,7 +41,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonList rows={2} className="py-2" />
       ) : assets.length === 0 ? (
         <EmptyState>Nenhum bem cadastrado.</EmptyState>
       ) : (

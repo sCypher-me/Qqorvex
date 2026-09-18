@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, EmptyState, Input, SectionTitle, Textarea, type BadgeTone } from "@qqorvex/ui";
+import { Badge, Button, Input, SectionTitle, Skeleton, SkeletonCards, Textarea, type BadgeTone } from "@qqorvex/ui";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { BadgesPanel, formatXp, useGamificationStats, useUnlockedBadges } from "@qqorvex/module-gamificacao";
 import { useRedeemCode, type AccountTier } from "@qqorvex/module-manager";
@@ -149,14 +149,22 @@ export function PerfilPage() {
         >
           Badges
         </SectionTitle>
-        {badgesLoading ? <EmptyState>Carregando...</EmptyState> : <BadgesPanel badges={badges} stats={stats} />}
+        {badgesLoading ? (
+          <div role="status" aria-label="Carregando" className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-3">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="aspect-square w-full rounded-2xl" />
+            ))}
+          </div>
+        ) : (
+          <BadgesPanel badges={badges} stats={stats} />
+        )}
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-5 items-start">
         <section className="qv-card p-5 flex flex-col gap-3.5">
           <h2 className="font-display text-[17px] font-semibold">Perfil</h2>
           {profileLoading ? (
-            <EmptyState>Carregando...</EmptyState>
+            <SkeletonCards count={4} className="h-11 w-full rounded-xl" />
           ) : (
             <form onSubmit={handleSaveProfile} className="flex flex-col gap-3.5">
               <Input label="Nome de exibição" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />

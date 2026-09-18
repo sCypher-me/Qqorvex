@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, EmptyState } from "@qqorvex/ui";
+import { Button, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useDocuments } from "../hooks/useDocumentos";
 import { useRelatedDocuments, useAttachDocument, useDetachDocument } from "../hooks/useDocumentRelations";
 import { documentExtension } from "./DocumentCard";
@@ -33,7 +33,9 @@ export function AttachDocumentPanel({
       <span className="qv-eyebrow">Documentos relacionados</span>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <div className="qv-well">
+          <SkeletonList rows={2} subtitle={false} className="px-3 py-2" />
+        </div>
       ) : attached.length === 0 ? (
         <EmptyState>Nenhum documento relacionado.</EmptyState>
       ) : (

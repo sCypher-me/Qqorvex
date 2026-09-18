@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button } from "@qqorvex/ui";
+import { Button, SkeletonList } from "@qqorvex/ui";
 import { useCheckpoints, useCreateCheckpoint, useRestoreCheckpoint } from "../hooks/usePageDetail";
 
 /**
@@ -21,7 +21,7 @@ export function CheckpointsPanel({ client, pageId }: { client: SupabaseClient<Da
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-text-secondary">Carregando...</p>
+        <SkeletonList rows={2} subtitle={false} className="py-2.5" />
       ) : checkpoints.length === 0 ? (
         <p className="text-sm leading-relaxed text-text-secondary">Nenhum checkpoint salvo ainda.</p>
       ) : (

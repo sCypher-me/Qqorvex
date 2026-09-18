@@ -1,4 +1,4 @@
-import { EmptyState, ProgressBar, ProgressRing, SectionTitle } from "@qqorvex/ui";
+import { ProgressBar, ProgressRing, SectionTitle, Skeleton } from "@qqorvex/ui";
 import { useAuth } from "@qqorvex/auth";
 import {
   ActionCountersCard,
@@ -21,8 +21,13 @@ export function GamificacaoPage() {
 
   if (statsLoading || badgesLoading) {
     return (
-      <div className="flex flex-col gap-5 max-w-[1080px]">
-        <EmptyState>Carregando...</EmptyState>
+      <div role="status" aria-label="Carregando" className="flex flex-col gap-5 max-w-[1080px]">
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useAuth, useProfile } from "@qqorvex/auth";
-import { Badge, Button, ConfirmDialog, EmptyState, Input, Select, ChipTabs, type BadgeTone } from "@qqorvex/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Input, Select, ChipTabs, SkeletonCards, SkeletonList, type BadgeTone } from "@qqorvex/ui";
 import {
   useAllAccounts,
   useCreateRedemptionCode,
@@ -69,7 +69,7 @@ export function ManagerPage() {
 
 function OverviewSection() {
   const { overview, isLoading } = useSystemOverview(supabase);
-  if (isLoading) return <Panel title="Visão geral"><EmptyState>Carregando...</EmptyState></Panel>;
+  if (isLoading) return <Panel title="Visão geral"><SkeletonCards count={5} className="h-14 w-full rounded-xl" /></Panel>;
   if (!overview) return <Panel title="Visão geral"><EmptyState>Sem dados.</EmptyState></Panel>;
 
   const stats: [string, number][] = [
@@ -98,7 +98,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
   const deleteAccountMutation = useDeleteAccount(supabase);
   const [confirming, setConfirming] = useState<{ id: string; email: string } | null>(null);
 
-  if (isLoading) return <Panel title="Contas"><EmptyState>Carregando...</EmptyState></Panel>;
+  if (isLoading) return <Panel title="Contas"><SkeletonList rows={3} className="py-3" /></Panel>;
 
   return (
     <Panel title={`Contas · ${accounts.length}`}>
@@ -172,7 +172,7 @@ function CodesSection({ userId }: { userId: string }) {
 
       <Panel title={`Códigos gerados · ${codes.length}`}>
         {isLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <SkeletonList rows={3} className="py-3" />
         ) : codes.length === 0 ? (
           <EmptyState>Nenhum código gerado ainda.</EmptyState>
         ) : (
@@ -220,7 +220,7 @@ function SecretsSection() {
           Valores nunca são mostrados de volta depois de salvos — só é possível sobrescrever, nunca ler o que já está configurado.
         </p>
         {isLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <SkeletonList rows={3} className="py-3" />
         ) : secrets.length === 0 ? (
           <EmptyState>Nenhuma configuração cadastrada ainda.</EmptyState>
         ) : (

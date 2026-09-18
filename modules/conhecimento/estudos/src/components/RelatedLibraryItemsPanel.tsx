@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useLibraryItems } from "@qqorvex/module-biblioteca";
 import { useRelatedLibraryItems, useRelateLibraryItem, useUnrelateLibraryItem } from "../hooks/useEstudosIntegrations";
 
@@ -29,7 +29,7 @@ export function RelatedLibraryItemsPanel({
       <CardHeader title="Itens da Biblioteca" meta={isLoading ? undefined : related.length} />
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonList rows={2} subtitle={false} className="py-2" />
       ) : related.length === 0 ? (
         <EmptyState>Nenhum item da Biblioteca usado neste caderno.</EmptyState>
       ) : (

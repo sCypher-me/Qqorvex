@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Button, Notice } from "@qqorvex/ui";
+import { Button, Notice, Skeleton } from "@qqorvex/ui";
 import { useAuth, useMfaFactors, verifyTotpChallenge, getAssuranceLevel, isMfaPending } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 
@@ -87,7 +87,11 @@ export function MfaPage() {
         </div>
 
         {factorsLoading || pending === null ? (
-          <p className="text-sm text-text-secondary">Carregando...</p>
+          <div role="status" aria-label="Carregando" className="grid grid-cols-6 gap-2.5">
+            {Array.from({ length: CODE_LENGTH }, (_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
+            ))}
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-6 gap-2.5" role="group" aria-label="Código de 6 dígitos">

@@ -101,6 +101,7 @@
   --animate-vex-in: vexIn 280ms cubic-bezier(0, 0, 0, 1);
   --animate-overlay-in: overlayIn 220ms cubic-bezier(0, 0, 0, 1);
   --animate-core-glow: coreGlow 2.4s ease-in-out infinite;
+  --animate-skeleton-shimmer: skeletonShimmer 1.6s ease-in-out infinite;
 
   @keyframes vexIn {
     from { opacity: 0; transform: translateX(24px); }
@@ -113,6 +114,10 @@
   @keyframes coreGlow {
     0%, 100% { opacity: 0.55; }
     50% { opacity: 1; }
+  }
+  @keyframes skeletonShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
   }
 }
 
@@ -283,6 +288,22 @@
     background: var(--color-vex-graphite);
     border: 1px dashed var(--color-vex-border);
     border-radius: 14px;
+  }
+
+  /* Placeholder de carregamento (skeleton) — bloco cinza com brilho varrendo da esquerda pra
+     direita. `prefers-reduced-motion` já desliga toda animação globalmente (regra em Base). */
+  .qv-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(50 57 68 / 0.35);
+    border-radius: 6px;
+  }
+  .qv-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+    animation: var(--animate-skeleton-shimmer);
   }
 
   /* Linhas de lista dentro de cards */

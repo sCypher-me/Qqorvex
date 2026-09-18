@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Badge, Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
+import { Badge, Button, ConfirmDialog, Skeleton, SkeletonList } from "@qqorvex/ui";
 import {
   useAuth,
   useMfaFactors,
@@ -198,7 +198,7 @@ export function SegurancaPage() {
         }
       >
         {isLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <Skeleton className="h-24 w-full rounded-xl" />
         ) : verifiedTotp ? (
           <>
             <CardText>
@@ -266,7 +266,7 @@ export function SegurancaPage() {
         </CardText>
 
         {passkeysLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <SkeletonList rows={2} subtitle={false} className="py-2.5" />
         ) : passkeys.length > 0 ? (
           <ul className="flex flex-col">
             {passkeys.map((passkey) => (
@@ -333,7 +333,7 @@ export function SegurancaPage() {
       <div className="flex flex-col gap-5">
         <SecurityCard title="Sessões ativas">
           {sessionsLoading ? (
-            <EmptyState>Carregando...</EmptyState>
+            <SkeletonList rows={2} />
           ) : (
             <ul className="flex flex-col">
               {sessions.map((deviceSession) => {
@@ -401,7 +401,7 @@ export function SegurancaPage() {
           </CardText>
 
           {pinLoading ? (
-            <EmptyState>Carregando...</EmptyState>
+            <Skeleton className="h-11 w-full rounded-xl" />
           ) : (
             <form onSubmit={handleSetPin} className="flex flex-col gap-3">
               <div className="flex gap-2.5 items-center flex-wrap">
@@ -459,7 +459,7 @@ export function SegurancaPage() {
           {!notifications.supported ? (
             <CardText>Este navegador não suporta notificações push.</CardText>
           ) : notifications.isLoading ? (
-            <EmptyState>Carregando...</EmptyState>
+            <Skeleton className="h-9 w-48 rounded-full" />
           ) : notifications.isSubscribed ? (
             <>
               <CardText>Notificações ativadas neste dispositivo.</CardText>

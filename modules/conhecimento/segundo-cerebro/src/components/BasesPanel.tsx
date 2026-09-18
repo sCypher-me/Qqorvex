@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { usePages } from "../hooks/usePages";
 import {
   useAddPageToBase,
@@ -72,7 +72,9 @@ export function BasesPanel({ client, userId }: { client: SupabaseClient<Database
       </form>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <div className="qv-card overflow-hidden">
+          <SkeletonList rows={3} />
+        </div>
       ) : bases.length === 0 ? (
         <EmptyState>Nenhuma Base criada ainda. Uma Base agrupa páginas numa tabela com fórmulas.</EmptyState>
       ) : (

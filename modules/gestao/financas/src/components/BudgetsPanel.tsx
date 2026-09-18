@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, EmptyState } from "@qqorvex/ui";
+import { Button, EmptyState, SkeletonCards } from "@qqorvex/ui";
 import { useBudgets, useCategories, useCreateBudget, useTransactions } from "../hooks/useFinancas";
 import { financeCategoryColor, parseBRLInput } from "./TransactionList";
 
@@ -76,7 +76,7 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
         <span className="font-mono text-xs text-text-muted">{formatYearMonth(thisMonth)}</span>
       </div>
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonCards count={2} className="h-10 w-full rounded-lg" />
       ) : sortedBudgets.length === 0 ? (
         <EmptyState>Nenhum orçamento cadastrado. Defina um limite por categoria abaixo.</EmptyState>
       ) : (

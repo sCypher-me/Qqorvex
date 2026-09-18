@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Chip } from "@qqorvex/ui";
+import { Button, Chip, Skeleton } from "@qqorvex/ui";
 import { useCreateFolder, useDeleteFolder, useFolders } from "../hooks/useDocumentos";
 
 /**
@@ -40,7 +40,10 @@ export function FoldersPanel({
         Todos
       </Chip>
       {isLoading ? (
-        <span className="text-[13px] text-text-muted">Carregando pastas...</span>
+        <span role="status" aria-label="Carregando" className="flex gap-2">
+          <Skeleton className="h-7 w-20 rounded-full" />
+          <Skeleton className="h-7 w-24 rounded-full" />
+        </span>
       ) : (
         folders.map((folder) =>
           selectedFolderId === folder.id ? (

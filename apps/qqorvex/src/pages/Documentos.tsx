@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, EmptyState } from "@qqorvex/ui";
+import { Button, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useAuth, verifySecurityPin } from "@qqorvex/auth";
 import {
   useDocuments,
@@ -198,7 +198,7 @@ export function DocumentosPage() {
         ) : (
           <div className="qv-card overflow-hidden">
             {isLoading ? (
-              <EmptyState className="px-5 py-4">Carregando documentos...</EmptyState>
+              <SkeletonList rows={4} className="px-5 py-3" />
             ) : documents.length === 0 ? (
               <EmptyState className="px-5 py-4">
                 {allDocuments.length === 0

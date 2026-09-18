@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useCards, useCreateCard } from "../hooks/useFinancas";
 import { CardStatementPanel } from "./CardStatementPanel";
 
@@ -30,7 +30,7 @@ export function CardsPanel({ client, userId }: { client: SupabaseClient<Database
     <div className="qv-card overflow-hidden">
       <CardHeader divider title="Cartões" meta={isLoading ? undefined : `${cards.length}`} />
       {isLoading ? (
-        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
+        <SkeletonList rows={3} />
       ) : cards.length === 0 ? (
         <EmptyState className="px-[18px] py-4">Nenhum cartão cadastrado. Adicione um para acompanhar faturas.</EmptyState>
       ) : (

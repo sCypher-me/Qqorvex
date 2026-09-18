@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useCreateInstallmentPurchase, useInstallments } from "../hooks/useFinancas";
 import { formatBRL, parseBRLInput } from "./TransactionList";
 
@@ -38,7 +38,7 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
     <div className="qv-card overflow-hidden">
       <CardHeader divider title="Parcelamentos" meta={isLoading ? undefined : `${installments.length}`} />
       {isLoading ? (
-        <EmptyState className="px-[18px] py-4">Carregando...</EmptyState>
+        <SkeletonList rows={3} />
       ) : installments.length === 0 ? (
         <EmptyState className="px-[18px] py-4">
           Nenhum parcelamento cadastrado. Ao parcelar, cada parcela vira uma transação futura.

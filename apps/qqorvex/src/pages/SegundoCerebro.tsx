@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@qqorvex/auth";
-import { Chip, EmptyState } from "@qqorvex/ui";
+import { Chip, EmptyState, Skeleton } from "@qqorvex/ui";
 import {
   usePages,
   useAllPageLinks,
@@ -58,7 +58,11 @@ export function SegundoCerebroPage() {
       {viewMode === "bases" ? (
         <BasesPanel client={supabase} userId={userId} />
       ) : isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <div role="status" aria-label="Carregando" className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
+        </div>
       ) : viewMode === "grafo" ? (
         <GraphView pages={pages} links={links} onSelectPage={(pageId) => navigate(`/segundo-cerebro/${pageId}`)} />
       ) : pages.length === 0 ? (

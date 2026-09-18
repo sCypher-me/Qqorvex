@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { ChipTabs, EmptyState } from "@qqorvex/ui";
+import { ChipTabs, Skeleton, SkeletonCards } from "@qqorvex/ui";
 import {
   useTasks,
   useAllTasks,
@@ -46,7 +46,11 @@ export function TarefasPage() {
 
       {viewMode === "kanban" ? (
         isLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <div role="status" aria-label="Carregando" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-64 w-full rounded-2xl" />
+            ))}
+          </div>
         ) : (
           <KanbanBoard
             tasks={tasks}
@@ -59,7 +63,7 @@ export function TarefasPage() {
         )
       ) : viewMode === "todas" ? (
         allTasksLoading ? (
-          <EmptyState>Carregando...</EmptyState>
+          <SkeletonCards count={4} className="h-14 w-full rounded-xl" />
         ) : (
           <TaskListView
             tasks={allTasks}

@@ -1,5 +1,5 @@
 import { useAuth } from "@qqorvex/auth";
-import { EmptyState } from "@qqorvex/ui";
+import { EmptyState, Skeleton } from "@qqorvex/ui";
 import { useNotebooks, useCreateNotebook, useDeleteNotebook, NewNotebookForm, NotebookCard } from "@qqorvex/module-estudos";
 import { supabase } from "../app/supabase";
 
@@ -16,7 +16,11 @@ export function EstudosPage() {
       <NewNotebookForm onCreate={(name) => createNotebook.mutate({ name })} />
 
       {isLoading ? (
-        <EmptyState>Carregando cadernos...</EmptyState>
+        <div role="status" aria-label="Carregando" className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(248px,1fr))]">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
+        </div>
       ) : notebooks.length === 0 ? (
         <EmptyState>Nenhum caderno ainda. Crie o primeiro com o nome de uma matéria, curso ou prova.</EmptyState>
       ) : (

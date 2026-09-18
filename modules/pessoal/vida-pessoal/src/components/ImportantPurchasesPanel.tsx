@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, ConfirmDialog, EmptyState, Input, Select, type BadgeTone } from "@qqorvex/ui";
+import { Button, Badge, ConfirmDialog, EmptyState, Input, Select, SkeletonList, type BadgeTone } from "@qqorvex/ui";
 import { useCreateImportantPurchase, useDeleteImportantPurchase, useImportantPurchases, useToggleImportantPurchase } from "../hooks/useVidaPratica";
 import type { PurchasePriority } from "../types";
 
@@ -40,7 +40,7 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonList rows={2} className="py-2" />
       ) : purchases.length === 0 ? (
         <EmptyState>Nenhuma compra planejada.</EmptyState>
       ) : (

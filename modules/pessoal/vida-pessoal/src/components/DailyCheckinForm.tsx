@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, EmptyState, ProgressBar } from "@qqorvex/ui";
+import { Button, ProgressBar, SkeletonCards } from "@qqorvex/ui";
 import { useTodayCheckin, useUpsertCheckin } from "../hooks/useVidaPessoal";
 
 const SCALE = [1, 2, 3, 4, 5];
@@ -81,7 +81,7 @@ export function DailyCheckinForm({ client, userId }: { client: SupabaseClient<Da
   if (isLoading) {
     return (
       <CheckinCard>
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonCards count={3} className="h-16 w-full rounded-xl" />
       </CheckinCard>
     );
   }

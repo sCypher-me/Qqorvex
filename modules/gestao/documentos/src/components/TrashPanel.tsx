@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, ConfirmDialog, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, ConfirmDialog, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useRestoreDocument, usePurgeDocument, useTrashedDocuments } from "../hooks/useDocumentos";
 import { TRASH_RETENTION_DAYS, daysUntilTrashExpiry } from "../service";
 
@@ -25,7 +25,7 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
         meta={isLoading ? undefined : `${documents.length} ${documents.length === 1 ? "arquivo" : "arquivos"}`}
       />
       {isLoading ? (
-        <EmptyState className="px-5 py-4">Carregando lixeira...</EmptyState>
+        <SkeletonList rows={3} className="px-5 py-3" />
       ) : documents.length === 0 ? (
         <EmptyState className="px-5 py-4">
           Lixeira vazia. Documentos excluídos ficam aqui por {TRASH_RETENTION_DAYS} dias antes de sumirem de vez.

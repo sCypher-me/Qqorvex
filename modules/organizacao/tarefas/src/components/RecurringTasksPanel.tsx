@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, ConfirmDialog, EmptyState, type BadgeTone } from "@qqorvex/ui";
+import { Button, Badge, ConfirmDialog, EmptyState, SkeletonList, type BadgeTone } from "@qqorvex/ui";
 import { useCreateRecurringTask, useRecurringTasks, useUpdateRecurringTaskStatus } from "../hooks/useTasks";
 import type { TaskRecurrenceFrequency, RecurringTask } from "../types";
 
@@ -58,7 +58,7 @@ export function RecurringTasksPanel({ client, userId }: { client: SupabaseClient
       </div>
 
       {isLoading ? (
-        <EmptyState className="px-[18px] pb-4">Carregando...</EmptyState>
+        <SkeletonList rows={3} />
       ) : recurringTasks.length === 0 ? (
         <EmptyState className="px-[18px] pb-4">Nenhuma tarefa recorrente cadastrada.</EmptyState>
       ) : (

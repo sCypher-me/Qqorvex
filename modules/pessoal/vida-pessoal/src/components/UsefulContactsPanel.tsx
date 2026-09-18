@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ConfirmDialog, EmptyState, Input } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input, SkeletonList } from "@qqorvex/ui";
 import { useCreateUsefulContact, useDeleteUsefulContact, useUsefulContacts } from "../hooks/useVidaPratica";
 
 /** NÃO é uma agenda de contatos genérica (decisão explícita do usuário) — só profissionais/serviços úteis. */
@@ -33,7 +33,7 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
       </div>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <SkeletonList rows={2} subtitle={false} className="py-2" />
       ) : contacts.length === 0 ? (
         <EmptyState>Nenhum contato útil cadastrado.</EmptyState>
       ) : (

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ConfirmDialog, EmptyState } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Skeleton } from "@qqorvex/ui";
 import { useHabits } from "../hooks/useHabits";
 import {
   useAddHabitToRoutine,
@@ -49,7 +49,10 @@ export function RoutinesPanel({ client, userId }: { client: SupabaseClient<Datab
       <span className="font-display text-base font-semibold">Rotinas</span>
 
       {isLoading ? (
-        <EmptyState>Carregando...</EmptyState>
+        <div role="status" aria-label="Carregando" className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
       ) : routines.length === 0 ? (
         <EmptyState>Nenhuma rotina criada ainda.</EmptyState>
       ) : (

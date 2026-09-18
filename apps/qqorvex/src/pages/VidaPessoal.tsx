@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button, ChipTabs, EmptyState } from "@qqorvex/ui";
+import { Button, ChipTabs, EmptyState, SkeletonCards } from "@qqorvex/ui";
 import {
   useCreateIdea,
   useCreatePlan,
@@ -197,7 +197,13 @@ function PlanningColumn({
         {!isLoading && <span className="font-mono text-xs text-text-muted">{count}</span>}
       </div>
 
-      {isLoading ? <EmptyState>Carregando...</EmptyState> : count === 0 && !formOpen ? <EmptyState>{emptyText}</EmptyState> : children}
+      {isLoading ? (
+        <SkeletonCards count={2} className="h-20 w-full rounded-2xl" />
+      ) : count === 0 && !formOpen ? (
+        <EmptyState>{emptyText}</EmptyState>
+      ) : (
+        children
+      )}
 
       {formOpen ? (
         <div className="qv-card p-4">{form}</div>

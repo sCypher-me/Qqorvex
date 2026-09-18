@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { ChipTabs, EmptyState } from "@qqorvex/ui";
+import { ChipTabs, SkeletonList } from "@qqorvex/ui";
 import {
   useAccounts,
   useCards,
@@ -76,8 +76,8 @@ export function FinancasPage() {
 
       <div className="grid gap-5 items-start grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         {isLoading ? (
-          <div className="qv-card">
-            <EmptyState className="px-[18px] py-4">Carregando transações...</EmptyState>
+          <div className="qv-card overflow-hidden">
+            <SkeletonList rows={4} />
           </div>
         ) : (
           <TransactionList
