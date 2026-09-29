@@ -86,40 +86,30 @@ function AchievementBadgeArt({ imageSrc, badgeKey, label, locked }: { imageSrc: 
 /** Tile de conquista: a insígnia fica visível desde o início, mas bloqueada até o marco ser atingido. */
 export function BadgeTile({ badge, stats }: { badge: BadgeWithStatus; stats?: GamificationStats }) {
   const got = badge.isUnlockedForUser;
-  const current = stats && badge.counterField && badge.target
-    ? Math.min(Number(stats[badge.counterField] ?? 0), badge.target)
-    : 0;
+  const current = stats && badge.counterField && badge.target ? Math.min(Number(stats[badge.counterField] ?? 0), badge.target) : 0;
   const percentage = got ? 100 : badge.progressHint ? 0 : badge.target ? Math.min(100, Math.round((current / badge.target) * 100)) : 0;
   return (
-    <div
-      className={`relative overflow-hidden rounded-[16px] border p-4 transition-colors ${
-        got ? "border-gold/80 bg-[linear-gradient(145deg,rgba(54,40,25,0.8),rgba(17,20,24,0.96))]" : "border-line bg-canvas/80"
-      }`}
-    >
+    <div className={`relative flex min-w-0 flex-col gap-3 overflow-hidden rounded-xl border p-4 transition-colors ${got ? "border-gold-line bg-[linear-gradient(160deg,var(--q-gold-soft),var(--q-surface)_65%)]" : "border-line bg-surface"}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="h-20 w-20 shrink-0">
+        <div className="h-16 w-16 shrink-0">
           {badge.subscriptionMonths != null ? (
             <SpecialBadgeArt badge={badge} locked={!got} className="h-full w-full" />
           ) : (
             <AchievementBadgeArt imageSrc={badge.imageSrc} badgeKey={badge.key} label={badge.label} locked={!got} />
           )}
         </div>
-        <span className={`rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${got ? "border-success/40 bg-success-soft text-success" : "border-line bg-surface text-fg-3"}`}>
-          {got ? "Conquistada" : "Bloqueada"}
-        </span>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${got ? "bg-success-soft text-success" : "bg-hover text-fg-3"}`}>{got ? "Conquistada" : "Bloqueada"}</span>
       </div>
-      <div className="mt-3 flex flex-col gap-1">
-        <span className="text-sm font-semibold leading-[1.3] text-fg">{badge.label}</span>
-        <div className="flex flex-wrap items-center gap-1.5"><span className="text-[10px] text-fg-3">Título</span><TitleBadge title={badge.title} size="sm" /></div>
-        <span className="text-xs leading-[1.45] text-fg-2">{badge.description}</span>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[14px] font-semibold leading-snug text-fg">{badge.label}</span>
+        <span className="text-xs leading-relaxed text-fg-3">{badge.description}</span>
+        <TitleBadge title={badge.title} size="sm" />
       </div>
-      <div className="mt-3 flex flex-col gap-2">
-        <div className="h-1.5 overflow-hidden rounded-full bg-raised">
-          <div className={`h-full rounded-full transition-[width] ${got ? "bg-gold" : "bg-gold"}`} style={{ width: `${got ? 100 : percentage}%` }} />
+      <div className="mt-auto flex flex-col gap-1.5">
+        <div className="h-1.5 overflow-hidden rounded-full bg-selected">
+          <div className={`h-full rounded-full transition-[width] ${got ? "bg-success" : "bg-gold"}`} style={{ width: `${percentage}%` }} />
         </div>
-        <span className={`font-mono text-[11px] ${got ? "text-gold-fg" : "text-fg-2"}`}>
-        {badgeStatus(badge, stats)}
-        </span>
+        <span className={`text-[11px] tabular-nums ${got ? "text-success" : "text-fg-3"}`}>{badgeStatus(badge, stats)}</span>
       </div>
     </div>
   );
@@ -131,7 +121,7 @@ export function BadgeTile({ badge, stats }: { badge: BadgeWithStatus; stats?: Ga
  */
 export function BadgesPanel({ badges, stats }: { badges: BadgeWithStatus[]; stats?: GamificationStats }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(176px,1fr))] gap-3.5">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
       {badges.map((badge) => (
         <BadgeTile key={badge.key} badge={badge} stats={stats} />
       ))}

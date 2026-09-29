@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useSearchParams } from "react-router-dom";
 import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowClockwiseIcon, CheckCircleIcon, CrownIcon, SparkleIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, CheckCircleIcon, CrownIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile } from "@qqorvex/auth";
-import { Badge, Button, Notice, ProgressBar } from "@qqorvex/ui";
+import { Badge, Button, ExternalButtonLink, IconButton, Notice, PageContainer, PageHeader, ProgressBar, Segmented, cx } from "@qqorvex/ui";
 import { BILLING_PLANS, currentBillingMonthSaoPaulo, type BillingPeriod } from "../billing/plans";
 import { hasPlusEntitlement } from "../billing/entitlements";
 import { supabase } from "../app/supabase";
+import { usePageMeta } from "../app/shell/PageMeta";
 
 type Subscription = {
   billing_period: string;
@@ -57,6 +58,7 @@ export function AssinaturaPage() {
   const userId = session!.user.id;
   const { profile } = useProfile(supabase, userId);
   const isOwner = profile?.role === "dono";
+  usePageMeta({ title: "Plano e assinatura" });
   const [searchParams, setSearchParams] = useSearchParams();
   const checkoutStatus = searchParams.get("checkout");
   const [checkoutOutcome, setCheckoutOutcome] = useState<string | null>(null);
@@ -187,119 +189,150 @@ export function AssinaturaPage() {
   }
 
   const statusText = !hasPlus ? "Plano Free" : isOwner && !subscription ? "Plus permanente · Dono" : subscription?.cancel_at_period_end ? "Plus · cancelamento agendado" : "Qqorvex Plus ativo";
+  const price = period === "monthly" ? BILLING_PLANS.plus.monthlyPrice : BILLING_PLANS.plus.annualPrice;
+  const nearLimit = !hasPlus && !loading && (snapshot.vexResponses / monthLimit >= 0.8 || snapshot.activeGoals >= BILLING_PLANS.free.goals || snapshot.activeHabits >= BILLING_PLANS.free.habits);
+
+  let plusAction: ReactNode;
+  if (isOwner && !subscription) plusAction = <Button variant="secondary" disabled fullWidth>Plus permanente da conta Dono</Button>;
+  else if (hasPlus && subscription?.provider === "stripe" && stripeActionsEnabled) plusAction = <Button variant="secondary" fullWidth loading={busy} onClick={() => void openBillingPortal()}>{directApkNative ? "Gerenciar no navegador" : "Gerenciar assinatura"}</Button>;
+  else if (hasPlus && subscription?.provider === "stripe") plusAction = <Button variant="secondary" disabled fullWidth>Gerencie pelo site</Button>;
+  else if (hasPlus && subscription?.provider === "google_play") plusAction = <ExternalButtonLink href="https://play.google.com/store/account/subscriptions" variant="secondary" fullWidth>Gerenciar na Google Play</ExternalButtonLink>;
+  else if (hasPlus) plusAction = <Button variant="secondary" disabled fullWidth>Seu plano atual</Button>;
+  else if (isPlayBuild) plusAction = <Button disabled fullWidth>Em breve pela Google Play</Button>;
+  else if (isDirectApk && !directApkNative) plusAction = <Button disabled fullWidth>Disponível no app instalado</Button>;
+  else if (!stripeActionsEnabled) plusAction = <Button disabled fullWidth>Assinaturas indisponíveis nesta versão</Button>;
+  else plusAction = <Button fullWidth leadingIcon={<CrownIcon size={16} weight="fill" />} loading={busy} disabled={loading} onClick={() => void beginCheckout()}>{`Assinar por ${money.format(price)}`}</Button>;
 
   return (
-    <div className=" mx-auto flex w-full max-w-[1120px] flex-col gap-6 pb-8">
-      <header className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">SEU ESPAÇO, NO SEU RITMO</p>
-          <h1 className="mt-2 font-display text-3xl font-bold tracking-[-.045em] text-fg sm:text-4xl">Planos e assinatura</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-2">Todos os módulos continuam acessíveis no Free. O Plus amplia seus limites e o uso da Vex.</p>
-        </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Badge tone={hasPlus ? "premium" : "neutral"}>{statusText}</Badge>
-          <Button type="button" variant="quiet" size="xs" onClick={() => void refresh()} aria-label="Atualizar status do plano"><ArrowClockwiseIcon size={17} /></Button>
-        </div>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Plano e assinatura"
+        description="Todos os módulos são seus no Free. O Plus amplia limites e o uso da Vex."
+        actions={
+          <>
+            <Badge tone={hasPlus ? "gold" : "neutral"}>{statusText}</Badge>
+            <IconButton label="Atualizar status do plano" onClick={() => void refresh()}>
+              <ArrowClockwiseIcon />
+            </IconButton>
+          </>
+        }
+      />
 
-      {checkoutNotice && <Notice tone={checkoutNotice.tone} title={checkoutNotice.tone === "success" ? "Retorno do checkout" : "Checkout cancelado"}>{checkoutNotice.text}</Notice>}
-      {externalFlow && <Notice tone="info" title={externalFlow === "checkout" ? "Checkout aberto no navegador" : "Portal Stripe aberto no navegador"}>{externalFlow === "checkout" ? "Conclua ou cancele o pagamento no navegador. Ao voltar ao Qqorvex, o app consultará a confirmação enviada pelo webhook." : "Gerencie ou cancele sua assinatura no portal. Depois, volte ao Qqorvex para atualizar o status."}</Notice>}
+      {checkoutNotice && <Notice tone={checkoutNotice.tone} title={checkoutNotice.tone === "success" ? "Pagamento recebido" : "Checkout fechado"}>{checkoutNotice.text}</Notice>}
+      {externalFlow && <Notice tone="info" title={externalFlow === "checkout" ? "Checkout aberto no navegador" : "Portal aberto no navegador"}>{externalFlow === "checkout" ? "Conclua ou cancele o pagamento no navegador. Ao voltar, o Qqorvex confere a confirmação." : "Gerencie ou cancele a assinatura no portal e volte para atualizar o status."}</Notice>}
       {loadError && <Notice tone="warning" title="Status do plano indisponível">{loadError}</Notice>}
-      {actionError && <Notice tone="error" title="Não foi possível continuar">{actionError}</Notice>}
-      {isPlayBuild && <Notice tone="info" title="Cobrança pela Google Play ainda não foi ativada">Esta versão está configurada para a Play Store. As compras só serão habilitadas após integrar Play Billing e validar recibos no servidor. Sua conta e seus dados permanecem intactos.</Notice>}
-      {isDirectApk && !directApkNative && <Notice tone="info" title="Use o APK instalado para assinar">O checkout externo e o retorno por link do app só ficam disponíveis no APK direto; este preview web não inicia essa compra.</Notice>}
-      {directApkNative && <Notice tone="info" title="Pagamento seguro no navegador">O Qqorvex abrirá o Stripe no navegador do sistema e retornará ao app. O plano só muda após confirmação do webhook.</Notice>}
-      {billingChannel === "disabled" && <Notice tone="info" title="Canal de cobrança não configurado">Configure VITE_BILLING_CHANNEL=web para a versão web ou direct_apk para o APK distribuído diretamente.</Notice>}
+      {actionError && <Notice title="Não foi possível continuar">{actionError}</Notice>}
+      {isPlayBuild && <Notice tone="info" title="Compras pela Google Play em breve">Sua conta e seus dados continuam intactos enquanto a cobrança pela loja é ativada.</Notice>}
+      {isDirectApk && !directApkNative && <Notice tone="info" title="Assine pelo app instalado">O checkout desta versão abre a partir do aplicativo instalado.</Notice>}
+      {billingChannel === "disabled" && import.meta.env.DEV && <Notice tone="info" title="Canal de cobrança não configurado">Defina VITE_BILLING_CHANNEL=web (site) ou direct_apk (APK) para habilitar o checkout.</Notice>}
+      {nearLimit && <Notice tone="warning" title="Você está perto dos limites do Free">O Plus libera metas, hábitos e cadernos ilimitados e 6× mais conversas com a Vex.</Notice>}
 
-      <section className="grid min-w-0 gap-4 lg:grid-cols-2" aria-label="Planos disponíveis">
-        <article className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-5 p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div><p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">PARA COMEÇAR</p><h2 className="mt-1 font-display text-2xl font-semibold text-fg">Free</h2></div>
-            {!hasPlus && <Badge tone="info">Seu plano atual</Badge>}
-          </div>
-          <p className="text-sm leading-relaxed text-fg-2">O essencial para organizar sua vida com acesso a todos os módulos principais.</p>
-          <ul className="flex flex-col gap-3 text-sm text-fg-2">
-            <Feature>Todos os módulos centrais do Qqorvex</Feature>
-            <Feature>{BILLING_PLANS.free.goals} metas ativas e {BILLING_PLANS.free.habits} hábitos ativos</Feature>
-            <Feature>{BILLING_PLANS.free.notebooks} cadernos e {BILLING_PLANS.free.mindMaps} mapas mentais</Feature>
-            <Feature>{BILLING_PLANS.free.vexInteractions} interações de texto com a Vex por mês</Feature>
-            <Feature>{BILLING_PLANS.free.webSearches} buscas na internet por mês</Feature>
-            <Feature>{formatStorage(BILLING_PLANS.free.documentStorageBytes)} de armazenamento na nuvem · arquivo de até {formatStorage(BILLING_PLANS.free.maxDocumentFileBytes)}</Feature>
-          </ul>
-          <div className="mt-auto border-t border-line pt-4 text-xs leading-relaxed text-fg-3">Continuar no Free não remove seus conteúdos. Mesmo após um cancelamento, seus dados continuam acessíveis.</div>
-        </article>
-
-        <article className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 relative flex min-w-0 flex-col gap-5 overflow-hidden border-gold/50 p-5 sm:p-6">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-vex-gold-bright/70 to-transparent" />
-          <div className="flex items-start justify-between gap-3">
-            <div><p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">MAIS ESPAÇO PARA SUA ROTINA</p><h2 className="mt-1 flex items-center gap-2 font-display text-2xl font-semibold text-fg"><CrownIcon size={23} className="text-gold-fg" /> Qqorvex Plus</h2></div>
-            {hasPlus && <Badge tone="premium">Seu plano atual</Badge>}
-          </div>
-          <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-            <span className="font-display text-4xl font-bold tracking-[-.04em] text-fg">{money.format(period === "monthly" ? BILLING_PLANS.plus.monthlyPrice : BILLING_PLANS.plus.annualPrice)}</span>
-            <span className="pb-1 text-sm text-fg-3">/ {period === "monthly" ? "mês" : "ano"}</span>
-            {period === "annual" && <Badge tone="premium">Economize {money.format(annualSavings)} por ano</Badge>}
-          </div>
-          <div className="flex w-fit rounded-xl border border-line bg-canvas p-1" role="group" aria-label="Periodicidade da assinatura">
-            <button type="button" aria-pressed={period === "monthly"} onClick={() => setPeriod("monthly")} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${period === "monthly" ? "bg-raised text-fg" : "text-fg-3 hover:text-fg"}`}>Mensal</button>
-            <button type="button" aria-pressed={period === "annual"} onClick={() => setPeriod("annual")} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${period === "annual" ? "bg-raised text-fg" : "text-fg-3 hover:text-fg"}`}>Anual · 10% off</button>
-          </div>
-          <ul className="flex flex-col gap-3 text-sm text-fg-2">
-            <Feature>Metas, hábitos, cadernos e mapas mentais ilimitados</Feature>
-            <Feature>{BILLING_PLANS.plus.vexInteractions} interações de texto com a Vex por mês</Feature>
-            <Feature>{BILLING_PLANS.plus.webSearches} buscas na internet por mês</Feature>
-            <Feature>{formatStorage(BILLING_PLANS.plus.documentStorageBytes)} de armazenamento na nuvem · arquivo de até {formatStorage(BILLING_PLANS.plus.maxDocumentFileBytes)}</Feature>
-            <Feature>{isOwner && !subscription ? "Benefício Plus permanente da conta Dono · sem cobrança ou renovação" : isPlayBuild ? "Cobrança pela Google Play (integração ainda não habilitada)" : isDirectApk ? "Checkout no navegador externo, com retorno ao app" : stripeCheckoutEnabled ? "Assinatura gerenciada com segurança pela Stripe" : "Checkout Stripe disponível na versão web"}</Feature>
-          </ul>
-          {isOwner && !subscription && <p className="text-xs leading-relaxed text-fg-3">Sua conta de Dono tem acesso Plus permanente. Esse benefício não cria uma assinatura Stripe nem exige método de pagamento.</p>}
-          {hasPlus && subscription?.current_period_end && <p className="text-xs text-fg-3">{subscription.cancel_at_period_end ? "Acesso disponível até " : "Próxima renovação em "}{dateFormat.format(new Date(subscription.current_period_end))}.</p>}
-          {isOwner && !subscription ? (
-            <Button type="button" variant="secondary" disabled className="mt-auto">Plus permanente da conta Dono</Button>
-          ) : hasPlus && subscription?.provider === "stripe" && stripeActionsEnabled ? (
-            <Button type="button" variant="premium" onClick={() => void openBillingPortal()} disabled={busy} className="mt-auto">{busy ? "Abrindo…" : directApkNative ? "Gerenciar no navegador" : "Gerenciar assinatura"}</Button>
-          ) : hasPlus && subscription?.provider === "stripe" ? (
-            <Button type="button" variant="secondary" disabled className="mt-auto">Gerenciamento pelo site</Button>
-          ) : hasPlus && subscription?.provider === "google_play" ? (
-            <a className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 h-9 px-3.5 text-[13.5px] border border-line bg-raised text-fg hover:border-line-strong hover:bg-overlay mt-auto justify-center" href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noreferrer">Gerenciar na Google Play</a>
-          ) : isPlayBuild ? (
-            <Button type="button" variant="premium" disabled className="mt-auto">Play Billing em configuração</Button>
-          ) : isDirectApk && !directApkNative ? (
-            <Button type="button" variant="premium" disabled className="mt-auto">Disponível no APK direto</Button>
-          ) : !stripeActionsEnabled ? (
-            <Button type="button" variant="premium" disabled className="mt-auto">Canal de cobrança não configurado</Button>
-          ) : (
-            <Button type="button" variant="premium" onClick={() => void beginCheckout()} disabled={busy || loading} className="mt-auto">{busy ? "Preparando checkout…" : `Assinar por ${money.format(period === "monthly" ? BILLING_PLANS.plus.monthlyPrice : BILLING_PLANS.plus.annualPrice)}`}</Button>
-          )}
-          <p className="text-[11px] leading-relaxed text-fg-3">Pagamento recorrente. Você pode gerenciar ou cancelar a assinatura no portal de cobrança; o acesso pago permanece até o fim do período quitado.</p>
-        </article>
-      </section>
-
-      <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex flex-col gap-5 p-5 sm:p-6" aria-labelledby="billing-usage-title">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div><p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">ACOMPANHAMENTO</p><h2 id="billing-usage-title" className="mt-1 font-display text-xl font-semibold text-fg">Seu uso neste mês</h2></div>
-          <span className="text-xs text-fg-3">Reinicia no primeiro dia do mês, no horário de Brasília</span>
+      <section className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5" aria-labelledby="usage-title">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="usage-title" className="text-[15px] font-semibold text-fg">Seu uso neste mês</h2>
+          <span className="text-xs text-fg-3">Reinicia no dia 1º, horário de Brasília</span>
         </div>
-        <p className="-mt-2 text-xs leading-relaxed text-fg-3">A Vex é uma assistente de texto. Uma mensagem pode consumir mais de uma chamada se ela precisar executar uma ação; buscas na internet usam uma cota separada.</p>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <UsageMeter label="Interações de texto com a Vex" used={snapshot.vexResponses} limit={monthLimit} loading={loading} />
+        <div className="grid gap-5 md:grid-cols-3">
+          <UsageMeter label="Conversas com a Vex" used={snapshot.vexResponses} limit={monthLimit} loading={loading} />
           <UsageMeter label="Buscas na internet" used={snapshot.webSearches} limit={searchLimit} loading={loading} />
+          <UsageMeter label="Armazenamento" used={snapshot.documentStorageBytes} limit={snapshot.documentStorageQuotaBytes} loading={loading} format={formatStorage} />
         </div>
-        <StorageMeter used={snapshot.documentStorageBytes} limit={snapshot.documentStorageQuotaBytes} loading={loading} />
-        <div className="grid grid-cols-2 gap-3 border-t border-line pt-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Count label="Metas ativas" used={snapshot.activeGoals} limit={hasPlus ? null : BILLING_PLANS.free.goals} loading={loading} />
           <Count label="Hábitos ativos" used={snapshot.activeHabits} limit={hasPlus ? null : BILLING_PLANS.free.habits} loading={loading} />
           <Count label="Cadernos" used={snapshot.notebooks} limit={hasPlus ? null : BILLING_PLANS.free.notebooks} loading={loading} />
           <Count label="Mapas mentais" used={snapshot.mindMaps} limit={hasPlus ? null : BILLING_PLANS.free.mindMaps} loading={loading} />
         </div>
+        <p className="text-xs leading-relaxed text-fg-3">Uma mensagem à Vex pode usar mais de uma interação quando ela executa uma ação. O armazenamento inclui versões anteriores e a lixeira.</p>
       </section>
 
-      <p className="text-center text-xs leading-relaxed text-fg-3">{isOwner ? "O benefício Plus da conta Dono permanece ativo sem cobrança." : "Seus dados são seus. Se o Plus terminar, você continua podendo consultar, editar e exportar o que criou; apenas novas criações acima dos limites do Free ficam bloqueadas."}</p>
-    </div>
+      <section className="flex flex-col gap-4" aria-label="Planos">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[15px] font-semibold text-fg">Planos</h2>
+          <Segmented<BillingPeriod>
+            label="Periodicidade"
+            size="sm"
+            value={period}
+            onChange={setPeriod}
+            options={[
+              { value: "monthly", label: "Mensal" },
+              { value: "annual", label: `Anual · economize ${money.format(annualSavings)}` },
+            ]}
+          />
+        </div>
+        <div className="grid items-stretch gap-4 lg:grid-cols-2">
+          <article className="flex min-w-0 flex-col gap-5 rounded-xl border border-line bg-surface p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-[22px] font-semibold text-fg">Free</h3>
+                <p className="mt-1 text-[13px] text-fg-3">O essencial, com todos os módulos.</p>
+              </div>
+              {!hasPlus && <Badge tone="neutral">Seu plano</Badge>}
+            </div>
+            <p className="flex items-baseline gap-1.5">
+              <span className="font-display text-[32px] font-semibold leading-none text-fg">{money.format(0)}</span>
+              <span className="text-sm text-fg-3">para sempre</span>
+            </p>
+            <ul className="flex flex-col gap-2.5 text-[13.5px] text-fg-2">
+              <Feature>Todos os módulos do Qqorvex</Feature>
+              <Feature>{BILLING_PLANS.free.goals} metas e {BILLING_PLANS.free.habits} hábitos ativos</Feature>
+              <Feature>{BILLING_PLANS.free.notebooks} cadernos e {BILLING_PLANS.free.mindMaps} mapas mentais</Feature>
+              <Feature>{BILLING_PLANS.free.vexInteractions} conversas com a Vex por mês</Feature>
+              <Feature>{BILLING_PLANS.free.webSearches} buscas na internet por mês</Feature>
+              <Feature>{formatStorage(BILLING_PLANS.free.documentStorageBytes)} na nuvem · arquivos de até {formatStorage(BILLING_PLANS.free.maxDocumentFileBytes)}</Feature>
+            </ul>
+          </article>
+
+          <article className="relative flex min-w-0 flex-col gap-5 overflow-hidden rounded-xl border border-gold-line bg-[linear-gradient(160deg,var(--q-gold-soft),var(--q-surface)_60%)] p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 font-display text-[22px] font-semibold text-fg">
+                  <CrownIcon size={22} weight="fill" className="text-gold-fg" /> Plus
+                </h3>
+                <p className="mt-1 text-[13px] text-fg-3">Sem limites para a sua rotina.</p>
+              </div>
+              {hasPlus ? <Badge tone="gold">Seu plano</Badge> : <Badge tone="gold">Recomendado</Badge>}
+            </div>
+            <p className="flex flex-wrap items-baseline gap-x-1.5">
+              <span className="font-display text-[32px] font-semibold leading-none text-fg">{money.format(price)}</span>
+              <span className="text-sm text-fg-3">/ {period === "monthly" ? "mês" : "ano"}</span>
+              {period === "annual" && <span className="w-full pt-1 text-xs text-gold-fg">equivale a {money.format(BILLING_PLANS.plus.annualPrice / 12)} por mês</span>}
+            </p>
+            <ul className="flex flex-col gap-2.5 text-[13.5px] text-fg-2">
+              <Feature gold>Metas, hábitos, cadernos e mapas mentais ilimitados</Feature>
+              <Feature gold>{BILLING_PLANS.plus.vexInteractions} conversas com a Vex por mês</Feature>
+              <Feature gold>{BILLING_PLANS.plus.webSearches} buscas na internet por mês</Feature>
+              <Feature gold>{formatStorage(BILLING_PLANS.plus.documentStorageBytes)} na nuvem · arquivos de até {formatStorage(BILLING_PLANS.plus.maxDocumentFileBytes)}</Feature>
+              <Feature gold>Cor de destaque exclusiva Coroa Vex e selos de fidelidade</Feature>
+            </ul>
+            <div className="mt-auto flex flex-col gap-2">
+              {hasPlus && subscription?.current_period_end && (
+                <p className="text-xs text-fg-3">
+                  {subscription.cancel_at_period_end ? "Acesso até " : "Renova em "}
+                  {dateFormat.format(new Date(subscription.current_period_end))}.
+                </p>
+              )}
+              {plusAction}
+              <p className="text-[11px] leading-relaxed text-fg-3">Pagamento recorrente e seguro. Cancele quando quiser; o acesso continua até o fim do período pago.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <p className="text-center text-xs leading-relaxed text-fg-3">
+        {isOwner ? "O benefício Plus da conta Dono permanece ativo sem cobrança." : "Seus dados são seus. Se o Plus terminar, você continua consultando, editando e exportando tudo; só novas criações acima dos limites do Free ficam bloqueadas."}
+      </p>
+    </PageContainer>
   );
 }
 
-function Feature({ children }: { children: ReactNode }) {
-  return <li className="flex items-start gap-2.5"><CheckCircleIcon size={17} weight="fill" className="mt-0.5 shrink-0 text-success" aria-hidden="true" /><span>{children}</span></li>;
+function Feature({ children, gold = false }: { children: ReactNode; gold?: boolean }) {
+  return (
+    <li className="flex items-start gap-2.5">
+      <CheckCircleIcon size={17} weight="fill" className={cx("mt-0.5 shrink-0", gold ? "text-gold-fg" : "text-fg-4")} aria-hidden="true" />
+      <span>{children}</span>
+    </li>
+  );
 }
 
 function formatStorage(bytes: number): string {
@@ -307,26 +340,28 @@ function formatStorage(bytes: number): string {
   return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
 }
 
-function StorageMeter({ used, limit, loading }: { used: number; limit: number; loading: boolean }) {
+function UsageMeter({ label, used, limit, loading, format = (value) => value.toLocaleString("pt-BR") }: { label: string; used: number; limit: number; loading: boolean; format?: (value: number) => string }) {
   const percentage = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-  return <div className="flex flex-col gap-2 border-t border-line pt-4">
-    <div className="flex justify-between gap-3 text-sm"><span className="text-fg-2">Armazenamento na nuvem</span><span className="font-mono text-fg">{loading ? "—" : `${formatStorage(used)} / ${formatStorage(limit)}`}</span></div>
-    <ProgressBar value={loading ? 0 : percentage} tone={percentage >= 90 ? "gold" : "cyan"} height={6} aria-label={`Armazenamento na nuvem: ${formatStorage(used)} de ${formatStorage(limit)}`} />
-    <span className="text-xs text-fg-3">O uso inclui documentos, versões anteriores e itens ainda na lixeira.</span>
-  </div>;
-}
-
-function UsageMeter({ label, used, limit, loading }: { label: string; used: number; limit: number; loading: boolean }) {
-  const percentage = Math.min(100, (used / limit) * 100);
-  return <div className="flex flex-col gap-2">
-    <div className="flex justify-between gap-3 text-sm"><span className="text-fg-2">{label}</span><span className="font-mono text-fg">{loading ? "—" : `${used} / ${limit}`}</span></div>
-    <ProgressBar value={loading ? 0 : percentage} tone={percentage >= 90 ? "gold" : "cyan"} height={6} aria-label={`${label}: ${used} de ${limit}`} />
-  </div>;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px] text-fg-2">{label}</span>
+        <span className="text-[13px] tabular-nums text-fg">{loading ? "—" : `${format(used)} / ${format(limit)}`}</span>
+      </div>
+      <ProgressBar value={loading ? 0 : percentage} tone={percentage >= 90 ? "danger" : percentage >= 75 ? "warning" : "gold"} height={6} label={`${label}: ${format(used)} de ${format(limit)}`} />
+    </div>
+  );
 }
 
 function Count({ label, used, limit, loading }: { label: string; used: number; limit: number | null; loading: boolean }) {
-  return <div className="rounded-xl border border-line bg-canvas p-3">
-    <span className="block text-[11px] text-fg-3">{label}</span>
-    <strong className="mt-1 block font-mono text-base text-fg">{loading ? "—" : `${used}${limit === null ? "" : ` / ${limit}`}`}</strong>
-  </div>;
+  const full = limit !== null && used >= limit;
+  return (
+    <div className={cx("rounded-lg border px-3 py-2.5", full ? "border-warning/40 bg-warning-soft" : "border-line-soft bg-canvas/40")}>
+      <span className="block text-xs text-fg-3">{label}</span>
+      <strong className="mt-0.5 block text-[15px] font-semibold tabular-nums text-fg">
+        {loading ? "—" : used}
+        {!loading && <span className="text-xs font-normal text-fg-3">{limit === null ? " · ilimitado" : ` de ${limit}`}</span>}
+      </strong>
+    </div>
+  );
 }

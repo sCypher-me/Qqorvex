@@ -1,444 +1,419 @@
-import { Button, Notice, ProgressBar, SectionTitle, Skeleton } from "@qqorvex/ui";
-import { useAuth, useProfile } from "@qqorvex/auth";
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { LEVEL_THEMES, VIP_THEME, useTheme, type AppSkin } from "../app/ThemeContext";
-import { ThemeRewardCard } from "../components/ThemeRewardCard";
-import { hasPlusEntitlement } from "../billing/entitlements";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowRightIcon, CheckCircleIcon, ClockCountdownIcon, LightningIcon, PaletteIcon, SealCheckIcon, TrophyIcon } from "@phosphor-icons/react";
+import { useAuth } from "@qqorvex/auth";
 import {
+  ActionCountersCard,
   BadgesPanel,
+  SpecialBadgeArt,
+  TitleBadge,
   formatDailyCountdown,
   formatXp,
   getDailyChallenges,
   localDateKey,
   summarizeDailyChallengeHistory,
-  TitleBadge,
   useDailyChallengeHistory,
   useDailyChallengeProgress,
   useGamificationStats,
   useUnlockedBadges,
+  type BadgeWithStatus,
   type DailyChallengeDefinition,
   type DailyChallengeProgress,
+  type GamificationStats,
 } from "@qqorvex/module-gamificacao";
+import { Button, ButtonLink, Notice, PageContainer, PageHeader, ProgressBar, Segmented, SkeletonBlock, Tabs, cx } from "@qqorvex/ui";
+import { useAccount } from "../app/account";
+import { usePageMeta } from "../app/shell/PageMeta";
+import { LEVEL_THEMES, VIP_THEME } from "../app/ThemeContext";
 
-/** Gamificação: progresso real de XP, níveis, desafios diários rotativos e conquistas permanentes. */
+type Tab = "visao" | "conquistas" | "niveis";
+const TABS: Tab[] = ["visao", "conquistas", "niveis"];
+const MAX_LEVEL = 50;
+
+/** Conquistas: nível e XP, desafios do dia, insígnias permanentes e a trilha de 50 níveis. */
 export function GamificacaoPage() {
   const { client, session } = useAuth();
+  const { profile, isOwner } = useAccount();
   const userId = session!.user.id;
-  const { profile, isLoading: profileLoading } = useProfile(client, userId);
-  const isOwner = profile?.role === "dono";
-  const { skin, setSkin } = useTheme();
-  const [now, setNow] = useState(() => new Date());
-  const [skinSaving, setSkinSaving] = useState(false);
-  const [skinSaveMessage, setSkinSaveMessage] = useState<string | null>(null);
-  const [hasPlus, setHasPlus] = useState(false);
-  const [plusLoading, setPlusLoading] = useState(true);
-  const [plusLoadError, setPlusLoadError] = useState(false);
-  const levelCarouselRef = useRef<HTMLDivElement>(null);
-  const [levelsPerPage, setLevelsPerPage] = useState(10);
-  const { stats, progress, title, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useGamificationStats(client, userId);
-  const { badges, isLoading: badgesLoading, error: badgesError } = useUnlockedBadges(client, userId, profile?.role === "dono");
-  const dateKey = localDateKey(now);
-  const { progressByKey, isLoading: challengeProgressLoading, error: challengeProgressError } = useDailyChallengeProgress(client, userId, dateKey);
-  const [showDailyHistory, setShowDailyHistory] = useState(false);
-  const { progress: historyProgress, isLoading: historyLoading, error: historyError } = useDailyChallengeHistory(
-    client,
-    userId,
-    dateKey,
-    showDailyHistory,
-  );
+  usePageMeta({ title: "Conquistas" });
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = TABS.includes(params.get("aba") as Tab) ? (params.get("aba") as Tab) : "visao";
+  const setTab = (next: Tab) =>
+    setParams(
+      (current) => {
+        const copy = new URLSearchParams(current);
+        if (next === "visao") copy.delete("aba");
+        else copy.set("aba", next);
+        return copy;
+      },
+      { replace: true },
+    );
 
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const tick = () => setNow(new Date());
-    const interval = window.setInterval(tick, 1000);
+    const interval = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const refreshPlus = async () => {
-      if (profileLoading) return;
-      if (isOwner) {
-        setHasPlus(true);
-        setPlusLoadError(false);
-        setPlusLoading(false);
-        return;
-      }
-      const { data, error } = await client
-        .from("billing_subscriptions")
-        .select("plan_key,status,current_period_end")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) {
-        setPlusLoadError(true);
-        setPlusLoading(false);
-        return;
-      }
-      setHasPlus(hasPlusEntitlement(data));
-      setPlusLoadError(false);
-      setPlusLoading(false);
-    };
+  const { stats, progress, title, isLoading, refetch } = useGamificationStats(client, userId);
+  const { badges, isLoading: badgesLoading, error: badgesError } = useUnlockedBadges(client, userId, isOwner);
+  const dateKey = localDateKey(now);
+  const { progressByKey, isLoading: challengesLoading, error: challengesError } = useDailyChallengeProgress(client, userId, dateKey);
 
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") void refreshPlus();
-    };
-    void refreshPlus();
-    window.addEventListener("focus", handleVisibility);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleVisibility);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [client, isOwner, profileLoading, userId]);
-
-  useEffect(() => {
-    const container = levelCarouselRef.current;
-    if (!container || typeof ResizeObserver === "undefined") return;
-
-    const updatePageSize = () => {
-      const width = container.clientWidth;
-      const count = width >= 1400 ? 10 : width >= 900 ? 6 : width >= 640 ? 5 : width >= 480 ? 4 : width >= 360 ? 3 : 2;
-      setLevelsPerPage((current) => current === count ? current : count);
-    };
-
-    const observer = new ResizeObserver(updatePageSize);
-    observer.observe(container);
-    updatePageSize();
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!progress) return;
-    const currentLevel = Math.max(1, Math.min(progress.level, 50));
-    const container = levelCarouselRef.current;
-    const pageIndex = Math.floor((currentLevel - 1) / levelsPerPage);
-    const page = container?.querySelector<HTMLElement>(`[data-level-page="${pageIndex}"]`);
-    if (!container || !page) return;
-    const containerBounds = container.getBoundingClientRect();
-    const pageBounds = page.getBoundingClientRect();
-    const left = container.scrollLeft + pageBounds.left - containerBounds.left;
-    container.scrollTo({ left: Math.max(0, left), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }, [progress?.level, levelsPerPage]);
-
-  useEffect(() => {
-    if (profileLoading || plusLoading || plusLoadError || hasPlus || skin !== VIP_THEME.id) return;
-    setSkin("default");
-    const savedPreferences = session!.user.user_metadata.qqorvex_preferences;
-    const preferences = savedPreferences && typeof savedPreferences === "object"
-      ? savedPreferences as Record<string, unknown>
-      : {};
-    void client.auth.updateUser({ data: { qqorvex_preferences: { ...preferences, skin: "default" } } });
-  }, [client, hasPlus, plusLoadError, plusLoading, profileLoading, session, setSkin, skin]);
-
-  if (statsLoading && (!progress || !title || !stats)) {
+  if (isLoading && !progress) {
     return (
-      <div role="status" aria-label="Carregando" className="flex w-full flex-col gap-5 desktop:pr-12">
-        <Skeleton className="h-64 w-full rounded-[20px]" />
-        <Skeleton className="h-36 w-full rounded-[18px]" />
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
-          {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-36 w-full rounded-[16px]" />)}
-        </div>
-      </div>
+      <PageContainer>
+        <PageHeader title="Conquistas" description="Carregando sua jornada…" />
+        <SkeletonBlock className="h-44 w-full rounded-xl" />
+        <SkeletonBlock className="h-56 w-full rounded-xl" />
+      </PageContainer>
     );
   }
-
-  if (!progress || !title || !stats) {
+  if (!progress || !stats) {
     return (
-      <div className=" editorial-gamification flex w-full flex-col gap-5 pb-8">
-        <Notice tone="error" title="Sua jornada não carregou">
-          <span className="block">Não foi possível buscar seu nível e XP agora. Seu progresso continua salvo.</span>
-          <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => void refetchStats()}>
-            Tentar novamente
-          </Button>
+      <PageContainer>
+        <PageHeader title="Conquistas" />
+        <Notice title="Sua jornada não carregou" actions={<Button size="sm" variant="secondary" onClick={() => void refetch()}>Tentar de novo</Button>}>
+          Não foi possível buscar seu nível e XP agora. Seu progresso continua salvo.
         </Notice>
-      </div>
+      </PageContainer>
     );
   }
 
-  const unlockedCount = badges.filter((badge) => badge.isUnlockedForUser).length;
-  const currentLevelXp = progress.xp - progress.xpForCurrentLevel;
-  const xpRemaining = Math.max(0, progress.xpForNextLevel - progress.xp);
-  const currentLevel = progress.level;
-  const activityCount = stats.tasks_completed + stats.habit_or_goal_checkins + stats.quizzes_completed + stats.library_items_completed;
-  const levelNumbers = Array.from({ length: 50 }, (_, index) => index + 1);
-  const displayedCurrentLevel = Math.min(progress.level, levelNumbers.length);
-  const levelPages = Array.from({ length: Math.ceil(levelNumbers.length / levelsPerPage) }, (_, pageIndex) =>
-    levelNumbers.slice(pageIndex * levelsPerPage, (pageIndex + 1) * levelsPerPage),
-  );
-  const dailyChallenges = getDailyChallenges(dateKey);
-  const completedChallengesToday = dailyChallenges.filter((challenge) => Boolean(progressByKey.get(challenge.key)?.completed_at)).length;
-  const dailyHistory = summarizeDailyChallengeHistory(dateKey, historyProgress);
-  const unlockedThemeCount = LEVEL_THEMES.filter((theme) => progress.level >= theme.level).length;
-
-  async function chooseLevelTheme(nextSkin: AppSkin) {
-    const reward = LEVEL_THEMES.find((theme) => theme.id === nextSkin);
-    if ((reward && currentLevel < reward.level) || (nextSkin === VIP_THEME.id && !hasPlus) || skinSaving || nextSkin === skin) return;
-
-    setSkinSaveMessage(null);
-    setSkin(nextSkin);
-    setSkinSaving(true);
-    const preferences = session!.user.user_metadata.qqorvex_preferences;
-    const savedPreferences = preferences && typeof preferences === "object"
-      ? preferences as Record<string, unknown>
-      : {};
-
-    try {
-      const { error } = await client.auth.updateUser({
-        data: { qqorvex_preferences: { ...savedPreferences, skin: nextSkin } },
-      });
-      if (error) setSkinSaveMessage("O tema foi aplicado neste dispositivo, mas não consegui sincronizá-lo com sua conta. Tente novamente quando estiver online.");
-    } catch {
-      setSkinSaveMessage("O tema foi aplicado neste dispositivo, mas não consegui sincronizá-lo com sua conta. Tente novamente quando estiver online.");
-    } finally {
-      setSkinSaving(false);
-    }
-  }
+  const unlocked = badges.filter((badge) => badge.isUnlockedForUser).length;
+  const challenges = getDailyChallenges(dateKey);
+  const doneToday = challenges.filter((challenge) => Boolean(progressByKey.get(challenge.key)?.completed_at)).length;
 
   return (
-    <div className=" editorial-gamification flex w-full flex-col gap-8 pb-4">
-      {statsError && (
-        <Notice tone="error" title="Não foi possível atualizar sua jornada">
-          Os dados exibidos podem estar desatualizados. Seu progresso continua salvo.
-          <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => void refetchStats()}>
-            Atualizar agora
-          </Button>
-        </Notice>
+    <PageContainer>
+      <PageHeader title="Conquistas" description={`Nível ${progress.level} · ${formatXp(progress.xp)} XP · ${badgesLoading ? "…" : `${unlocked} de ${badges.length}`} insígnias`}>
+        <Tabs<Tab>
+          label="Seções"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "visao", label: "Visão geral" },
+            { value: "conquistas", label: "Insígnias", count: badgesLoading ? null : unlocked },
+            { value: "niveis", label: "Níveis" },
+          ]}
+        />
+      </PageHeader>
+
+      {tab === "visao" && (
+        <div className="flex flex-col gap-6">
+          <LevelHero level={progress.level} xp={progress.xp} percent={progress.progressPercent} xpForCurrent={progress.xpForCurrentLevel} xpForNext={progress.xpForNextLevel} title={profile?.selected_title || title || "Iniciante"} stats={stats} unlocked={unlocked} totalBadges={badges.length} doneToday={doneToday} />
+
+          <section className="flex flex-col gap-3" aria-labelledby="daily-title">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 id="daily-title" className="text-[15px] font-semibold text-fg">
+                  Desafios de hoje <span className="ml-1 text-xs font-normal tabular-nums text-fg-3">{challengesLoading ? "" : `${doneToday}/${challenges.length}`}</span>
+                </h2>
+                <p className="text-xs text-fg-3">Quatro por dia, do fácil ao difícil. Recompensa em XP.</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs text-fg-2">
+                <ClockCountdownIcon size={14} className="text-fg-3" />
+                Novos em <time className="font-medium tabular-nums text-fg">{formatDailyCountdown(now)}</time>
+              </span>
+            </div>
+            {challengesError && <Notice compact>Os registros de hoje não puderam ser confirmados.</Notice>}
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {challenges.map((challenge) => (
+                <ChallengeCard key={challenge.key} challenge={challenge} progress={progressByKey.get(challenge.key)} available={!challengesError && !challengesLoading} />
+              ))}
+            </div>
+            <ChallengeHistory userId={userId} dateKey={dateKey} />
+          </section>
+
+          <div className="grid items-start gap-5 lg:grid-cols-2">
+            <NextBadges badges={badges} stats={stats} loading={badgesLoading} onSeeAll={() => setTab("conquistas")} />
+            <ActionCountersCard stats={stats} />
+          </div>
+        </div>
       )}
-      <section className="editorial-gamification-header">
-        <div className="editorial-gamification-identity">
-          <LevelBadge level={Math.min(progress.level, 50)} alt={progress.level > 50 ? "Última insígnia disponível, do nível 50" : `Insígnia atual do nível ${progress.level}`} className="h-24 w-24 shrink-0" />
-          <div className="min-w-0">
-            <span className="editorial-eyebrow">SUA JORNADA / {progress.level > 50 ? "INSÍGNIA MÁXIMA" : "INSÍGNIA ATUAL"}</span>
-            <h1 className="m-0 mt-2 font-display text-[clamp(42px,5.5vw,76px)] font-bold leading-none tracking-[-0.07em] text-fg">Nível {progress.level}</h1>
-            <div className="mt-3"><TitleBadge title={profile?.selected_title || title} size="lg" /></div>
-          </div>
-        </div>
-        <div className="editorial-gamification-progress">
-          <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-fg-3">
-            <span>{formatXp(currentLevelXp)} XP neste nível</span>
-            <span>Próximo patamar · {formatXp(progress.xpForNextLevel)} XP acumulados</span>
-          </div>
-          <ProgressBar value={progress.progressPercent} tone="cyan" height={6} />
-          <p className="m-0 mt-2 text-xs text-fg-3">{formatXp(xpRemaining)} XP restantes para subir de nível</p>
-          {progress.level >= 50 && <p className="m-0 mt-2 text-xs text-fg-2">As 50 insígnias estão completas; sua jornada de XP continua.</p>}
-        </div>
-      </section>
 
-      <section className="editorial-gamification-summary grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumo da jornada">
-        <JourneyMetric label="XP total" value={formatXp(progress.xp)} detail="somado em toda a jornada" />
-        <JourneyMetric label="Ações registradas" value={formatXp(activityCount)} detail="tarefas, check-ins, quizzes e biblioteca" />
-        <JourneyMetric label="Desafios de hoje" value={challengeProgressLoading || challengeProgressError ? "—" : `${completedChallengesToday}/4`} detail="recompensa somente em XP" />
-        <JourneyMetric label="Conquistas" value={badgesLoading || badgesError ? "—" : `${unlockedCount}/${badges.length}`} detail="badges e títulos permanentes" />
-      </section>
+      {tab === "conquistas" && <BadgesTab badges={badges} stats={stats} loading={badgesLoading} error={Boolean(badgesError)} />}
 
-      <section className="flex flex-col gap-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle meta="50 níveis · deslize para explorar">Insígnias de nível</SectionTitle>
-          <div className="flex items-center gap-2">
-            <button type="button" className="editorial-carousel-arrow" onClick={() => { const carousel = levelCarouselRef.current; if (carousel) carousel.scrollBy({ left: -carousel.clientWidth, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }} aria-label="Ver níveis anteriores" title="Níveis anteriores">
-              <svg viewBox="0 0 20 20" className="h-4 w-4 rotate-180" fill="none" aria-hidden="true"><path d="m7 4 6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" /></svg>
-            </button>
-            <button type="button" className="editorial-carousel-arrow" onClick={() => { const carousel = levelCarouselRef.current; if (carousel) carousel.scrollBy({ left: carousel.clientWidth, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }} aria-label="Ver próximos níveis" title="Próximos níveis">
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true"><path d="m7 4 6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" /></svg>
-            </button>
+      {tab === "niveis" && <LevelsTab level={progress.level} />}
+    </PageContainer>
+  );
+}
+
+function LevelHero({ level, xp, percent, xpForCurrent, xpForNext, title, stats, unlocked, totalBadges, doneToday }: { level: number; xp: number; percent: number; xpForCurrent: number; xpForNext: number; title: string; stats: GamificationStats; unlocked: number; totalBadges: number; doneToday: number }) {
+  const remaining = Math.max(0, xpForNext - xp);
+  const actions = stats.tasks_completed + stats.habit_or_goal_checkins + stats.quizzes_completed + stats.library_items_completed;
+  const metrics = [
+    { label: "XP total", value: formatXp(xp) },
+    { label: "Ações registradas", value: formatXp(actions) },
+    { label: "Desafios hoje", value: `${doneToday}/4` },
+    { label: "Insígnias", value: `${unlocked}/${totalBadges}` },
+  ];
+  return (
+    <section className="overflow-hidden rounded-xl border border-line bg-[linear-gradient(135deg,var(--q-gold-soft),var(--q-surface)_55%)]" aria-label="Seu nível">
+      <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
+        <LevelBadge level={Math.min(level, MAX_LEVEL)} alt={`Insígnia do nível ${level}`} className="h-24 w-24 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="font-display text-[34px] font-semibold leading-none tracking-[-0.02em] text-fg">Nível {level}</h2>
+            <TitleBadge title={title} />
+          </div>
+          <div className="mt-4 flex max-w-xl flex-col gap-1.5">
+            <ProgressBar value={percent} height={8} label="Progresso para o próximo nível" />
+            <div className="flex justify-between text-xs text-fg-3">
+              <span className="tabular-nums">
+                {formatXp(xp - xpForCurrent)} / {formatXp(xpForNext - xpForCurrent)} XP neste nível
+              </span>
+              <span className="tabular-nums">{level >= MAX_LEVEL ? "Todas as insígnias de nível conquistadas" : `faltam ${formatXp(remaining)} XP`}</span>
+            </div>
           </div>
         </div>
-        <div ref={levelCarouselRef} className="editorial-level-carousel" role="region" aria-roledescription="carrossel" aria-label="Galeria de insígnias de nível" tabIndex={0}>
-          {levelPages.map((pageLevels, pageIndex) => (
-            <div key={pageIndex} className="editorial-level-page" data-level-page={pageIndex} role="list" aria-label={`Níveis ${pageLevels[0]} a ${pageLevels[pageLevels.length - 1]}`} style={{ gridTemplateColumns: `repeat(${levelsPerPage}, minmax(0, 1fr))` }}>
-              {pageLevels.map((level) => {
-                const isCurrent = level === displayedCurrentLevel;
-                const isComplete = level < displayedCurrentLevel;
-                return (
-                  <div
-                    key={level}
-                    data-level={level}
-                    role="listitem"
-                    aria-current={isCurrent ? "step" : undefined}
-                    className={`editorial-level-card border px-3 py-3 text-center transition-colors ${
-                      isCurrent
-                        ? "border-gold-line bg-gold-soft text-gold-fg shadow-[0_0_0_1px_var(--qv-brand-primary)]"
-                        : isComplete
-                          ? "border-line bg-surface text-fg-2"
-                          : "border-line bg-surface/50 text-fg-3"
-                    }`}
-                  >
-                    <LevelBadge
-                      level={level}
-                      alt={`Insígnia do nível ${level}`}
-                      className={`h-[72px] w-[72px] shrink-0 ${isCurrent ? "" : isComplete ? "opacity-80" : "opacity-35 grayscale"}`}
-                    />
-                    <div className="min-w-0 w-full">
-                      <span className="block text-xs font-semibold text-fg">Nível {level}</span>
-                      <span className="mt-1 block truncate text-[9px] text-fg-3">
-                        {isCurrent
-                          ? progress.level > 50 ? `Insígnia máxima · você está no nível ${progress.level}` : "Seu nível atual"
-                          : isComplete ? "Nível concluído" : "Ainda não desbloqueado"}
-                      </span>
-                    </div>
-                    <span className={`mt-2 shrink-0 rounded-full border px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${
-                      isCurrent ? "border-brand-primary/40 bg-brand-primary/10 text-gold-fg" : isComplete ? "border-line text-fg-2" : "border-line/70 text-fg-3"
-                    }`}>
-                      {isCurrent ? "Atual" : isComplete ? "Concluído" : "Bloqueado"}
+      </div>
+      <dl className="grid grid-cols-2 border-t border-line-soft sm:grid-cols-4">
+        {metrics.map((metric, index) => (
+          <div key={metric.label} className={cx("px-5 py-3.5 sm:px-6", index % 2 === 1 && "border-l border-line-soft", index >= 2 && "border-t border-line-soft sm:border-t-0", index === 2 && "sm:border-l")}>
+            <dt className="text-xs text-fg-3">{metric.label}</dt>
+            <dd className="mt-0.5 text-[18px] font-semibold tabular-nums text-fg">{metric.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+const DIFFICULTY: Record<DailyChallengeDefinition["difficulty"], string> = {
+  Fácil: "bg-success-soft text-success",
+  Médio: "bg-warning-soft text-warning",
+  Difícil: "bg-danger-soft text-danger",
+  Especial: "bg-ai-soft text-ai-fg",
+};
+
+function ChallengeCard({ challenge, progress, available }: { challenge: DailyChallengeDefinition; progress?: DailyChallengeProgress; available: boolean }) {
+  const current = Math.min(progress?.progress ?? 0, challenge.target);
+  const done = available && Boolean(progress?.completed_at);
+  return (
+    <article className={cx("flex min-w-0 flex-col gap-3 rounded-xl border p-4", done ? "border-success/35 bg-success-soft" : "border-line bg-surface")}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", DIFFICULTY[challenge.difficulty] ?? "bg-hover text-fg-2")}>{challenge.difficulty}</span>
+        <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-gold-fg">
+          <LightningIcon size={13} weight="fill" />+{challenge.rewardXp} XP
+        </span>
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-[14px] font-semibold leading-snug text-fg">{challenge.title}</h3>
+        <p className="mt-1 text-xs leading-relaxed text-fg-3">{challenge.description}</p>
+      </div>
+      <div className="mt-auto flex flex-col gap-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className={done ? "font-medium text-success" : "tabular-nums text-fg-2"}>{!available ? "—" : done ? "Concluído" : `${current} de ${challenge.target} ${challenge.unit}`}</span>
+          {!done && (
+            <Link to={challenge.href} className="inline-flex items-center gap-1 font-medium text-gold-fg hover:underline">
+              {challenge.actionLabel} <ArrowRightIcon size={12} />
+            </Link>
+          )}
+          {done && <CheckCircleIcon size={16} weight="fill" className="text-success" />}
+        </div>
+        <ProgressBar value={available ? (current / challenge.target) * 100 : 0} height={4} tone={done ? "success" : "gold"} />
+      </div>
+    </article>
+  );
+}
+
+function ChallengeHistory({ userId, dateKey }: { userId: string; dateKey: string }) {
+  const { client } = useAuth();
+  const [open, setOpen] = useState(false);
+  const { progress, isLoading, error } = useDailyChallengeHistory(client, userId, dateKey, open);
+  const days = summarizeDailyChallengeHistory(dateKey, progress);
+  return (
+    <div className="flex flex-col gap-3">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="self-start text-xs font-medium text-fg-3 hover:text-fg">
+        {open ? "Ocultar os últimos 7 dias" : "Ver os últimos 7 dias"}
+      </button>
+      {open &&
+        (isLoading ? (
+          <SkeletonBlock className="h-24 w-full rounded-xl" />
+        ) : error ? (
+          <Notice compact>Não foi possível carregar o histórico.</Notice>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            {days.map((day) => {
+              const date = new Date(`${day.dateKey}T12:00:00`);
+              const complete = day.completedCount === day.totalCount;
+              return (
+                <div key={day.dateKey} className="flex flex-col gap-1.5 rounded-lg border border-line bg-surface px-3 py-2.5" title={day.completedTitles.join(" · ") || "Nenhum desafio concluído"}>
+                  <span className="text-xs font-medium capitalize text-fg-2">{new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit" }).format(date).replace(".", "")}</span>
+                  <ProgressBar value={(day.completedCount / day.totalCount) * 100} height={4} tone={complete ? "success" : "gold"} />
+                  <span className="text-[11px] tabular-nums text-fg-3">
+                    {day.completedCount}/{day.totalCount} · +{day.rewardXp} XP
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function badgePercent(badge: BadgeWithStatus, stats: GamificationStats): number {
+  if (badge.isUnlockedForUser) return 100;
+  if (!badge.counterField || !badge.target) return 0;
+  return Math.min(100, Math.round((Number(stats[badge.counterField] ?? 0) / badge.target) * 100));
+}
+
+function NextBadges({ badges, stats, loading, onSeeAll }: { badges: BadgeWithStatus[]; stats: GamificationStats; loading: boolean; onSeeAll: () => void }) {
+  const next = badges
+    .filter((badge) => !badge.isUnlockedForUser && badge.counterField && badge.target)
+    .map((badge) => ({ badge, percent: badgePercent(badge, stats) }))
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 4);
+  return (
+    <section className="flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface p-4 sm:p-5">
+      <div className="flex items-center gap-2">
+        <h3 className="flex-1 text-[14.5px] font-semibold text-fg">Mais perto de conquistar</h3>
+        <Button size="xs" variant="ghost" onClick={onSeeAll}>
+          Ver todas
+        </Button>
+      </div>
+      {loading ? (
+        <SkeletonBlock className="h-32 w-full rounded-lg" />
+      ) : next.length === 0 ? (
+        <p className="flex items-center gap-2 py-3 text-[13px] text-fg-3">
+          <SealCheckIcon size={16} className="text-success" /> Você conquistou todas as insígnias com meta.
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-line-soft">
+          {next.map(({ badge, percent }) => {
+            const current = Math.min(Number(stats[badge.counterField!] ?? 0), badge.target!);
+            return (
+              <li key={badge.key} className="flex items-center gap-3 py-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold-soft text-gold-fg">
+                  <TrophyIcon size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-[13.5px] font-medium text-fg">{badge.label}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-fg-3">
+                      {current}/{badge.target}
                     </span>
                   </div>
-                );
-              })}
-              {pageLevels.length < levelsPerPage && (
-                <div
-                  className="editorial-level-upcoming"
-                  style={{ gridColumn: `span ${levelsPerPage - pageLevels.length}` }}
-                  role="note"
-                  aria-label="Novos níveis em breve"
-                >
-                  <span className="editorial-eyebrow">EXPANSÃO DA JORNADA</span>
-                  <strong>Novos níveis em breve</strong>
-                  <span>Continue acumulando XP. Mais marcos estão a caminho.</span>
+                  <ProgressBar value={percent} height={4} className="mt-1.5" />
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <p className="m-0 text-[11px] text-fg-3">Deslize ou use as setas para avançar por páginas completas de níveis. Nenhuma insígnia fica cortada.</p>
-      </section>
-
-      <section className="flex flex-col gap-4" aria-label="Temas da jornada">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <SectionTitle meta={`${unlockedThemeCount} de ${LEVEL_THEMES.length} níveis · ${plusLoading ? "verificando Plus…" : hasPlus ? isOwner ? "Plus permanente · Dono" : "VIP desbloqueado" : "VIP exclusivo Plus"}`}>Temas da jornada</SectionTitle>
-            <p className="m-0 mt-2 max-w-2xl text-sm leading-relaxed text-fg-3">Uma identidade visual a cada 10 níveis; assinantes Plus liberam automaticamente o tema VIP.</p>
-          </div>
-          <Button type="button" variant="secondary" size="sm" disabled={skinSaving || skin === "default"} onClick={() => void chooseLevelTheme("default")}>
-            {skin === "default" ? "Tema original ativo" : "Restaurar tema original"}
-          </Button>
-        </div>
-        {skinSaveMessage && <Notice tone="info" title="Tema aplicado neste dispositivo">{skinSaveMessage}</Notice>}
-        {plusLoadError && <Notice tone="warning" title="Não foi possível validar sua assinatura Plus">O tema VIP só será liberado após confirmação do status da assinatura. A tela tentará verificar novamente quando voltar ao foco.</Notice>}
-        <div className="qv-level-themes-grid">
-          {LEVEL_THEMES.map((reward) => (
-            <ThemeRewardCard
-              key={reward.id}
-              theme={reward}
-              requirement={`RECOMPENSA · NÍVEL ${reward.level}`}
-              unlocked={progress.level >= reward.level}
-              active={skin === reward.id}
-              busy={skinSaving}
-              lockedMessage={`Desbloqueie no nível ${reward.level}`}
-              onChoose={() => void chooseLevelTheme(reward.id)}
-            />
-          ))}
-          <ThemeRewardCard
-            theme={VIP_THEME}
-            requirement="EXCLUSIVO · QQRVEX PLUS"
-            unlocked={hasPlus}
-            active={skin === VIP_THEME.id}
-            busy={skinSaving}
-            checking={plusLoading}
-            lockedMessage={plusLoadError ? "Não foi possível verificar o Plus" : "Exclusivo para assinantes Plus"}
-            onChoose={() => void chooseLevelTheme(VIP_THEME.id)}
-          />
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-3.5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle meta="2 fáceis · 1 médio · 1 difícil">Desafios do dia</SectionTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="editorial-text-link"
-              aria-expanded={showDailyHistory}
-              aria-controls="daily-challenge-history"
-              onClick={() => setShowDailyHistory((shown) => !shown)}
-            >
-              {showDailyHistory ? "Ocultar histórico" : "Últimos 7 dias"}
-            </button>
-            <div className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-fg-3">NOVOS EM</span>
-              <time className="font-mono text-sm font-semibold tabular-nums text-gold-fg">{formatDailyCountdown(now)}</time>
-            </div>
-          </div>
-        </div>
-        {challengeProgressError && <Notice tone="error" title="Progresso dos desafios indisponível">As missões continuam visíveis, mas os registros atuais não puderam ser confirmados.</Notice>}
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
-          {dailyChallenges.map((challenge) => (
-            <DailyChallengeCard
-              key={challenge.key}
-              challenge={challenge}
-              progress={progressByKey.get(challenge.key)}
-              progressAvailable={!challengeProgressError && !challengeProgressLoading}
-            />
-          ))}
-        </div>
-
-        {showDailyHistory && (
-          <section id="daily-challenge-history" className="editorial-daily-history flex flex-col gap-3" aria-label="Histórico de desafios dos últimos sete dias">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="m-0 text-sm font-semibold text-fg">Seu ritmo recente</h3>
-              <span className="text-xs text-fg-3">Desafios anteriores · recompensas em XP</span>
-            </div>
-            {historyLoading ? (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3" role="status" aria-label="Carregando histórico">
-                {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-28 w-full rounded-xl" />)}
-              </div>
-            ) : historyError ? (
-              <Notice tone="error" title="Não foi possível carregar o histórico">Seu progresso atual não foi afetado.</Notice>
-            ) : (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-                {dailyHistory.map((day) => <DailyHistoryCard key={day.dateKey} day={day} />)}
-              </div>
-            )}
-          </section>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-3.5">
-        <SectionTitle meta={`${unlockedCount} de ${badges.length} conquistadas · badge + título`}>Conquistas</SectionTitle>
-        <p className="-mt-1 m-0 max-w-[760px] text-sm leading-relaxed text-fg-2">
-          Marcos permanentes da sua jornada. Complete cada requisito para liberar a insígnia visual e o título correspondente.
-        </p>
-        {badgesError ? (
-          <Notice tone="error" title="Conquistas indisponíveis">Não foi possível confirmar quais badges você já desbloqueou. Atualize a tela para tentar novamente.</Notice>
-        ) : badgesLoading ? (
-          <div role="status" aria-label="Carregando conquistas" className="grid grid-cols-[repeat(auto-fit,minmax(176px,1fr))] gap-3.5">
-            {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-64 w-full rounded-[16px]" />)}
-          </div>
-        ) : (
-          <BadgesPanel badges={badges} stats={stats} />
-        )}
-      </section>
-    </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
-function JourneyMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div className="editorial-gamification-metric min-w-0 border border-line bg-canvas/70 px-4 py-3.5">
-      <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-fg-3">{label}</span>
-      <strong className="mt-1 block font-mono text-xl font-semibold tabular-nums text-fg">{value}</strong>
-      <span className="mt-1 block truncate text-[11px] text-fg-2">{detail}</span>
-    </div>
-  );
-}
+type BadgeFilter = "todas" | "conquistadas" | "bloqueadas";
 
-function DailyHistoryCard({ day }: { day: ReturnType<typeof summarizeDailyChallengeHistory>[number] }) {
-  const date = new Date(`${day.dateKey}T12:00:00`);
-  const label = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).format(date);
-
+function BadgesTab({ badges, stats, loading, error }: { badges: BadgeWithStatus[]; stats: GamificationStats; loading: boolean; error: boolean }) {
+  const [filter, setFilter] = useState<BadgeFilter>("todas");
+  const unlocked = badges.filter((badge) => badge.isUnlockedForUser);
+  const visible = filter === "todas" ? badges : filter === "conquistadas" ? unlocked : badges.filter((badge) => !badge.isUnlockedForUser);
+  const milestones = visible.filter((badge) => badge.subscriptionMonths == null);
+  const loyalty = visible.filter((badge) => badge.subscriptionMonths != null);
+  if (error) return <Notice title="Insígnias indisponíveis">Atualize a página para tentar de novo.</Notice>;
   return (
-    <article className="editorial-daily-history-card flex min-w-0 flex-col gap-2 border border-line bg-canvas/60 p-3.5">
-      <div className="flex items-center justify-between gap-2">
-        <time dateTime={day.dateKey} className="text-xs font-semibold capitalize text-fg">{label}</time>
-        <span className="font-mono text-[11px] text-fg-2">{day.completedCount}/{day.totalCount}</span>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-[13px] text-fg-3">Marcos permanentes. Cada insígnia libera um título para a sua vitrine em Configurações › Perfil.</p>
+        <Segmented<BadgeFilter>
+          label="Filtrar insígnias"
+          size="sm"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "todas", label: "Todas", count: badges.length },
+            { value: "conquistadas", label: "Conquistadas", count: unlocked.length },
+            { value: "bloqueadas", label: "A conquistar", count: badges.length - unlocked.length },
+          ]}
+        />
       </div>
-      <ProgressBar value={(day.completedCount / day.totalCount) * 100} tone={day.completedCount === day.totalCount ? "success" : "cyan"} height={4} />
-      <span className="font-mono text-[11px] font-semibold text-gold-fg">+{day.rewardXp} XP em bônus</span>
-      <p className="m-0 text-[11px] leading-relaxed text-fg-3">
-        {day.completedTitles.length ? day.completedTitles.join(" · ") : "Nenhum desafio concluído nesse dia."}
-      </p>
-    </article>
+      {loading ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+          {Array.from({ length: 4 }, (_, index) => (
+            <SkeletonBlock key={index} className="h-56 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : visible.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line px-5 py-10 text-center text-[13px] text-fg-3">{filter === "conquistadas" ? "Sua primeira insígnia está a caminho. Veja na Visão geral qual está mais perto." : "Nada por aqui."}</p>
+      ) : (
+        <>
+          {milestones.length > 0 && <BadgesPanel badges={milestones} stats={stats} />}
+          {loyalty.length > 0 && (
+            <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:p-5" aria-labelledby="loyalty-title">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 id="loyalty-title" className="text-[14.5px] font-semibold text-fg">Fidelidade Plus</h3>
+                <span className="text-xs tabular-nums text-fg-3">
+                  {loyalty.filter((badge) => badge.isUnlockedForUser).length} de {loyalty.length} · um selo por mês de assinatura
+                </span>
+              </div>
+              <ul className="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2">
+                {loyalty.map((badge) => (
+                  <li key={badge.key} title={`${badge.label}${badge.isUnlockedForUser ? " · conquistado" : ""}`} className={cx("flex flex-col items-center gap-1 rounded-lg border p-2", badge.isUnlockedForUser ? "border-gold-line bg-gold-soft" : "border-line-soft")}>
+                    <SpecialBadgeArt badge={badge} locked={!badge.isUnlockedForUser} className="h-10 w-10" />
+                    <span className={cx("whitespace-nowrap text-[11px] tabular-nums", badge.isUnlockedForUser ? "text-fg-2" : "text-fg-4")}>
+                      {badge.subscriptionMonths} {badge.subscriptionMonths === 1 ? "mês" : "meses"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function LevelsTab({ level }: { level: number }) {
+  const current = Math.min(level, MAX_LEVEL);
+  const rewards = new Map<number, (typeof LEVEL_THEMES)[number]>(LEVEL_THEMES.map((theme) => [theme.level, theme]));
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-[13px] text-fg-3">50 insígnias de nível. A cada 10 níveis você libera uma nova cor de destaque para o app; a {VIP_THEME.name} acompanha o Plus.</p>
+        <ButtonLink to="/configuracoes/aparencia" size="sm" variant="secondary" leadingIcon={<PaletteIcon size={15} />}>
+          Escolher cor
+        </ButtonLink>
+      </div>
+      <ol className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+        {Array.from({ length: MAX_LEVEL }, (_, index) => index + 1).map((value) => {
+          const reached = value <= current;
+          const isCurrent = value === current;
+          const reward = rewards.get(value);
+          return (
+            <li
+              key={value}
+              aria-current={isCurrent ? "step" : undefined}
+              title={reward ? `Nível ${value} · libera a cor ${reward.name}` : `Nível ${value}`}
+              className={cx("relative flex flex-col items-center gap-1 rounded-lg border px-1 py-2", isCurrent ? "border-gold-line bg-gold-soft ring-1 ring-gold-line" : reached ? "border-line-soft bg-surface" : "border-transparent")}
+            >
+              <LevelBadge level={value} alt={`Insígnia do nível ${value}`} className={cx("h-10 w-10", !reached && "opacity-30 grayscale")} />
+              <span className={cx("text-[11px] tabular-nums", isCurrent ? "font-semibold text-gold-fg" : reached ? "text-fg-2" : "text-fg-4")}>{value}</span>
+              {reward && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-2 ring-surface" style={{ backgroundColor: reward.preview.accent }} aria-hidden="true" />}
+            </li>
+          );
+        })}
+      </ol>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {LEVEL_THEMES.map((theme) => {
+          const reached = level >= theme.level;
+          return (
+            <div key={theme.id} className={cx("flex items-center gap-3 rounded-xl border p-3", reached ? "border-line bg-surface" : "border-line-soft")}>
+              <span className="h-8 w-8 shrink-0 rounded-full" style={{ background: `radial-gradient(circle at 35% 30%, ${theme.preview.glow}, ${theme.preview.accent} 55%, ${theme.preview.panel})`, opacity: reached ? 1 : 0.4 }} aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-fg">{theme.name}</p>
+                <p className="text-xs text-fg-3">{reached ? "Liberada" : `Nível ${theme.level}`}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -458,18 +433,10 @@ function starPoints(points: number, outerRadius: number, innerRadius: number): s
   }).join(" ");
 }
 
-function LevelBadge({
-  level,
-  alt,
-  className,
-}: {
-  level: number;
-  alt: string;
-  className: string;
-}) {
-  const badgeLevel = Math.max(1, Math.min(50, level));
-  const tier = Math.floor((badgeLevel - 1) / 10);
-  const palette = LEVEL_BADGE_PALETTES[tier]!;
+/** Insígnia de nível: estrela metálica com a cor da faixa (1–10, 11–20…). */
+function LevelBadge({ level, alt, className }: { level: number; alt: string; className: string }) {
+  const badgeLevel = Math.max(1, Math.min(MAX_LEVEL, level));
+  const palette = LEVEL_BADGE_PALETTES[Math.floor((badgeLevel - 1) / 10)]!;
   const id = `level-badge-${badgeLevel}`;
   return (
     <svg viewBox="0 0 100 100" role="img" aria-label={alt} className={className}>
@@ -486,61 +453,11 @@ function LevelBadge({
       </defs>
       <polygon points={starPoints(12, 47, 39)} fill={`url(#${id}-metal)`} stroke={palette.glint} strokeWidth="1.3" />
       <polygon points={starPoints(12, 40, 35)} fill={`url(#${id}-core)`} stroke={palette.edge} strokeWidth="1.5" />
-      <polygon points={starPoints(8, 32, 29)} fill="none" stroke={palette.shadow} strokeWidth="1" />
       <circle cx="50" cy="50" r="25" fill={palette.core} stroke={palette.glint} strokeWidth="1.5" />
       <circle cx="50" cy="50" r="21.5" fill="none" stroke={palette.edge} strokeOpacity=".82" strokeWidth=".8" />
-      <path d="M50 21v6M50 73v6M21 50h6M73 50h6M29.5 29.5l4.2 4.2M66.3 66.3l4.2 4.2M70.5 29.5l-4.2 4.2M33.7 66.3l-4.2 4.2" stroke={palette.glint} strokeLinecap="round" strokeWidth="1.3" />
-      <text x="50" y="57" textAnchor="middle" fill={palette.glint} stroke={palette.core} strokeWidth="2.4" paintOrder="stroke" fontFamily="Inter, ui-sans-serif, system-ui, sans-serif" fontSize={badgeLevel > 9 ? "25" : "30"} fontWeight="800" letterSpacing="-1">{badgeLevel}</text>
-      <circle cx="50" cy="8" r="1.4" fill={palette.glint} />
-      <circle cx="92" cy="50" r="1.4" fill={palette.glint} />
-      <circle cx="50" cy="92" r="1.4" fill={palette.glint} />
-      <circle cx="8" cy="50" r="1.4" fill={palette.glint} />
+      <text x="50" y="57" textAnchor="middle" fill={palette.glint} fontFamily="Inter, ui-sans-serif, system-ui, sans-serif" fontSize={badgeLevel > 9 ? "25" : "30"} fontWeight="800" letterSpacing="-1">
+        {badgeLevel}
+      </text>
     </svg>
   );
-}
-
-function DailyChallengeCard({
-  challenge,
-  progress,
-  progressAvailable = true,
-}: {
-  challenge: DailyChallengeDefinition;
-  progress?: DailyChallengeProgress;
-  progressAvailable?: boolean;
-}) {
-  const current = Math.min(progress?.progress ?? 0, challenge.target);
-  const completed = progressAvailable && Boolean(progress?.completed_at);
-  return (
-    <article className={`editorial-challenge-card flex min-h-[190px] flex-col gap-4 border p-4 transition-colors ${completed ? "border-success-border/80 bg-success-bg/20" : "border-line hover:border-gold-line"}`}>
-      <div className="flex items-start justify-between gap-3">
-        <span className={`rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${difficultyClassName(challenge.difficulty)}`}>
-          {challenge.difficulty}
-        </span>
-        <span className="rounded-full border border-warning/40 bg-warning-soft px-2 py-1 font-mono text-[11px] font-semibold text-gold-fg">
-          +{challenge.rewardXp} XP
-        </span>
-      </div>
-      <div className="min-w-0">
-        <h3 className="m-0 text-sm font-semibold text-fg">{challenge.title}</h3>
-        <p className="m-0 mt-1 text-xs leading-relaxed text-fg-2">{challenge.description}</p>
-      </div>
-      <div className="mt-auto border-t border-line/70 pt-3">
-        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-fg-3">
-          <span>{!progressAvailable ? "Progresso indisponível" : completed ? "Concluído" : `${current} / ${challenge.target} ${challenge.unit}`}</span>
-          <span>Somente XP</span>
-        </div>
-        <ProgressBar value={progressAvailable ? (current / challenge.target) * 100 : 0} tone={completed ? "success" : "cyan"} height={5} />
-        <Link to={challenge.href} className="mt-3 inline-block text-xs font-semibold text-gold-fg transition-colors hover:text-fg">
-          {completed ? "Desafio concluído" : challenge.actionLabel} <span aria-hidden="true">→</span>
-        </Link>
-      </div>
-    </article>
-  );
-}
-
-function difficultyClassName(difficulty: DailyChallengeDefinition["difficulty"]): string {
-  if (difficulty === "Difícil") return "border-danger/40 bg-danger-soft text-danger";
-  if (difficulty === "Médio") return "border-warning/40 bg-warning-soft text-gold-fg";
-  if (difficulty === "Especial") return "border-violet-400/50 bg-violet-400/10 text-violet-200";
-  return "border-gold-line bg-gold-soft text-gold-fg";
 }

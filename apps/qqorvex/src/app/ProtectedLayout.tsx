@@ -8,6 +8,7 @@ import { CurrentItemProvider } from "../vex/CurrentItemContext";
 import { VexPanel } from "../vex/VexPanel";
 import { VexLauncherContext } from "../vex/VexLauncher";
 import { AccountProvider } from "./account";
+import { useVipSkinGuard } from "./useVipSkinGuard";
 import { PageMetaProvider } from "./shell/PageMeta";
 import { Sidebar } from "./shell/Sidebar";
 import { TopBar } from "./shell/TopBar";
@@ -92,6 +93,7 @@ function Shell() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const { setPreference, setSkin } = useTheme();
+  useVipSkinGuard();
   const { setPendingPrompt } = useVexSession();
   const isVexPage = location.pathname === "/vex";
   const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSED_KEY));

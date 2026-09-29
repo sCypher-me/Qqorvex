@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CheckIcon, DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useAuth } from "@qqorvex/auth";
 import { useGamificationStats } from "@qqorvex/module-gamificacao";
@@ -79,14 +79,6 @@ export function AppearanceSettings() {
     setSkin(next);
     void persist({ skin: next });
   }
-
-  // A cor VIP só vale enquanto o Plus estiver ativo.
-  useEffect(() => {
-    if (planLoading || isPlus || skin !== VIP_THEME.id) return;
-    setSkin("default");
-    void persist({ skin: "default" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planLoading, isPlus, skin]);
 
   return (
     <div className="flex flex-col gap-5">
