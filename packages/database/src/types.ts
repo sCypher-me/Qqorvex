@@ -3368,6 +3368,17 @@ export type Database = {
           total_users: number
         }[]
       }
+      search_everything: {
+        Args: { query: string; per_kind?: number }
+        Returns: {
+          kind: string
+          id: string
+          title: string
+          snippet: string | null
+          parent_id: string | null
+          sort_date: string | null
+        }[]
+      }
       has_security_pin: { Args: never; Returns: boolean }
       has_google_calendar_connection: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
