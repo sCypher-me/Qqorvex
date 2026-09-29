@@ -242,11 +242,11 @@ export async function listAssessments(client: Client, notebookId: string): Promi
 export async function createAssessment(
   client: Client,
   notebookId: string,
-  input: { name: string; assessmentDate?: string },
+  input: { name: string; assessmentDate?: string; expectedContent?: string },
 ): Promise<Assessment> {
   const { data, error } = await client
     .from("assessments")
-    .insert({ notebook_id: notebookId, name: input.name, assessment_date: input.assessmentDate ?? null })
+    .insert({ notebook_id: notebookId, name: input.name, assessment_date: input.assessmentDate ?? null, expected_content: input.expectedContent ?? null })
     .select("*")
     .single();
   if (error) throw error;
@@ -256,11 +256,11 @@ export async function createAssessment(
 export async function createStudySession(
   client: Client,
   notebookId: string,
-  input: { note?: string; durationMinutes?: number },
+  input: { note?: string; durationMinutes?: number; occurredAt?: string },
 ): Promise<StudySession> {
   const { data, error } = await client
     .from("study_sessions")
-    .insert({ notebook_id: notebookId, note: input.note ?? null, duration_minutes: input.durationMinutes ?? null })
+    .insert({ notebook_id: notebookId, note: input.note ?? null, duration_minutes: input.durationMinutes ?? null, ...(input.occurredAt ? { occurred_at: input.occurredAt } : {}) })
     .select("*")
     .single();
   if (error) throw error;
@@ -431,6 +431,77 @@ export async function listRelatedLibraryItems(client: Client, notebookId: string
     .from("library_items")
     .select("*")
     .in("id", relations.map((r) => r.library_item_id));
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSummary(client: Client, summaryId: string): Promise<void> {
+  const { error } = await client.from("summaries").delete().eq("id", summaryId);
+  if (error) throw error;
+}
+
+export async function updateFlashcard(client: Client, flashcardId: string, input: { front: string; back: string }): Promise<Flashcard> {
+  const { data, error } = await client.from("flashcards").update({ front: input.front, back: input.back }).eq("id", flashcardId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteFlashcard(client: Client, flashcardId: string): Promise<void> {
+  const { error } = await client.from("flashcards").delete().eq("id", flashcardId);
+  if (error) throw error;
+}
+
+export async function deleteTopic(client: Client, topicId: string): Promise<void> {
+  const { error } = await client.from("topics").delete().eq("id", topicId);
+  if (error) throw error;
+}
+
+export async function deleteErrorDoubt(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("errors_doubts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteAssessment(client: Client, assessmentId: string): Promise<void> {
+  const { error } = await client.from("assessments").delete().eq("id", assessmentId);
+  if (error) throw error;
+}
+
+export async function deleteStudySession(client: Client, sessionId: string): Promise<void> {
+  const { error } = await client.from("study_sessions").delete().eq("id", sessionId);
+  if (error) throw error;
+}
+
+export interface NotebookStats {
+  summaries: number;
+  flashcards: number;
+  due: number;
+}
+
+/**
+ * Contagens por caderno em duas consultas leves (só ids), para os cartões da lista não fazerem
+ * uma consulta por caderno.
+ */
+export async function listNotebookStats(client: Client, today: string): Promise<Record<string, NotebookStats>> {
+  const [summaries, flashcards] = await Promise.all([
+    client.from("summaries").select("notebook_id"),
+    client.from("flashcards").select("notebook_id, next_review_date"),
+  ]);
+  if (summaries.error) throw summaries.error;
+  if (flashcards.error) throw flashcards.error;
+  const stats: Record<string, NotebookStats> = {};
+  const entry = (id: string) => (stats[id] ??= { summaries: 0, flashcards: 0, due: 0 });
+  for (const row of summaries.data) entry(row.notebook_id).summaries += 1;
+  for (const row of flashcards.data) {
+    const current = entry(row.notebook_id);
+    current.flashcards += 1;
+    if (row.next_review_date <= today) current.due += 1;
+  }
+  return stats;
+}
+
+/** Sessões de estudo de todos os cadernos a partir de uma data (ISO), para o resumo da semana. */
+export async function listStudySessionsSince(client: Client, fromIso: string): Promise<StudySession[]> {
+  const { data, error } = await client.from("study_sessions").select("*").gte("occurred_at", fromIso).order("occurred_at", { ascending: true });
   if (error) throw error;
   return data;
 }

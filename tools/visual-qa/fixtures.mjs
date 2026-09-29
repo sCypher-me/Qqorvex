@@ -140,7 +140,7 @@ const budgets = [
 ].map(([name, limit]) => ({ ...base, id: id("b0000000"), category_id: cat[name], limit_amount: limit, year_month: monthKey(0) }));
 
 const notebooks = [
-  { name: "Estatística Aplicada", notebook_type: "materia", area: "Exatas", status: "ativo", institution: "USP", is_favorite: true },
+  { name: "Estatística Aplicada", notebook_type: "materia", area: "Exatas", status: "ativo", institution: "USP", is_favorite: true, description: "Base para a disciplina do semestre e para a prova de outubro." },
   { name: "AWS Solutions Architect", notebook_type: "certificacao", area: "Cloud", status: "ativo" },
   { name: "Inglês — Business", notebook_type: "curso", area: "Idiomas", status: "ativo" },
 ].map((n) => ({ ...base, id: id("n0000000"), tags: [], ...n }));
@@ -151,6 +151,54 @@ const flashcards = [
   ["S3 Standard-IA serve para?", "Dados acessados com pouca frequência, mas que exigem acesso rápido.", 0],
   ["Diferença entre SQS e SNS", "SQS = fila (pull); SNS = pub/sub (push).", 2],
 ].map(([front, back, due], i) => ({ id: id("f0000000"), notebook_id: notebooks[i < 2 ? 0 : 1].id, front, back, next_review_date: dateKey(due), ease_factor: 2.5, interval_days: 1, repetitions: 1, tags: [], created_at: at(-5, 10), updated_at: now, summary_id: null, topic_id: null }));
+
+const topics = [
+  { notebook_id: notebooks[0].id, title: "Medidas de dispersão", order_index: 0 },
+  { notebook_id: notebooks[0].id, title: "Probabilidade", order_index: 1 },
+].map((t) => ({ id: id("p0000000"), parent_topic_id: null, created_at: at(-9, 10), ...t }));
+
+const summaries = [
+  {
+    notebook_id: notebooks[0].id,
+    topic_id: topics[0].id,
+    title: "Variância e desvio padrão",
+    content: "## Ideia central\n\nA **variância** mede o quanto os valores se afastam da média; o **desvio padrão** é a raiz quadrada dela, na mesma unidade dos dados.\n\n## Fórmulas\n\n- Variância amostral: `s² = Σ(xᵢ − x̄)² / (n − 1)`\n- Desvio padrão: `s = √s²`\n\n> Use n − 1 na amostra para não subestimar a dispersão da população.\n\n## Quando usar\n\n1. Comparar a estabilidade de dois processos\n2. Detectar valores atípicos (mais de 2 desvios da média)",
+    origin: "manual",
+    updated_at: at(-1, 20),
+  },
+  { notebook_id: notebooks[0].id, topic_id: topics[1].id, title: "Probabilidade condicional", content: "P(A|B) = P(A ∩ B) / P(B).\n\nExemplo: chance de chover dado que está nublado.", origin: "vex", updated_at: at(-3, 19) },
+  { notebook_id: notebooks[1].id, topic_id: null, title: "Pilares do Well-Architected", content: "- Excelência operacional\n- Segurança\n- Confiabilidade\n- Eficiência de performance\n- Otimização de custos\n- Sustentabilidade", origin: "manual", updated_at: at(-6, 21) },
+].map((s) => ({ id: id("s0000000"), created_at: at(-8, 10), ...s }));
+
+const assessments = [
+  { notebook_id: notebooks[0].id, name: "Prova 1 — Estatística descritiva", assessment_date: dateKey(3), expected_content: "Capítulos 1 a 4, medidas de posição e dispersão" },
+  { notebook_id: notebooks[1].id, name: "Simulado oficial AWS", assessment_date: dateKey(12), expected_content: null },
+  { notebook_id: notebooks[0].id, name: "Lista de exercícios 1", assessment_date: dateKey(-6), expected_content: null },
+].map((a) => ({ id: id("a0000000"), notes: null, created_at: at(-10, 9), updated_at: now, ...a }));
+
+const studySessions = [
+  [notebooks[0].id, -6, 50, "Capítulo 3"],
+  [notebooks[1].id, -5, 35, "Módulo de redes"],
+  [notebooks[0].id, -3, 70, "Exercícios de variância"],
+  [notebooks[2].id, -2, 25, "Listening"],
+  [notebooks[0].id, -1, 45, "Revisão para a prova"],
+  [notebooks[1].id, 0, 30, null],
+].map(([notebook_id, day, minutes, note]) => ({ id: id("e0000000"), notebook_id, occurred_at: at(day, 20), duration_minutes: minutes, note, created_at: at(day, 21) }));
+
+const quizzes = [{ id: id("q0000000"), notebook_id: notebooks[0].id, title: "Quiz — Medidas de dispersão", created_at: at(-2, 18) }];
+const quizQuestions = [
+  ["O desvio padrão é:", ["A média dos quadrados", "A raiz quadrada da variância", "O maior valor menos o menor", "A mediana dos desvios"], 1],
+  ["Por que usar n − 1 na variância amostral?", ["Para simplificar a conta", "Para corrigir o viés da estimativa", "Porque n é sempre par", "Não há motivo"], 1],
+  ["Uma amostra com desvio padrão 0 tem:", ["Valores todos iguais", "Média zero", "Mediana zero", "Valores negativos"], 0],
+  ["Qual medida é mais sensível a valores extremos?", ["Mediana", "Moda", "Média", "Quartil"], 2],
+  ["A unidade da variância é:", ["A mesma dos dados", "O quadrado da unidade dos dados", "Adimensional", "Percentual"], 1],
+].map(([question_text, options, correct_option_index], index) => ({ id: id("r0000000"), quiz_id: quizzes[0].id, question_text, options, correct_option_index, order_index: index, created_at: at(-2, 18) }));
+const quizAttempts = [{ id: id("k0000000"), quiz_id: quizzes[0].id, user_id: USER_ID, answers: [1, 0, 0, 2, 1], score: 4, completed_at: at(-2, 19) }];
+
+const errorsDoubts = [
+  { notebook_id: notebooks[0].id, description: "Quando usar desvio padrão populacional vs. amostral?", is_resolved: false },
+  { notebook_id: notebooks[0].id, description: "Errei o cálculo da variância esquecendo de elevar ao quadrado", is_resolved: true },
+].map((e) => ({ id: id("d0000000"), created_at: at(-4, 20), ...e }));
 
 const pages = [
   { title: "Ideias para o produto", page_type: "nota", is_favorite: true },
@@ -213,6 +261,14 @@ export const fixtures = {
   budgets,
   notebooks,
   flashcards,
+  topics,
+  summaries,
+  assessments,
+  study_sessions: studySessions,
+  quizzes,
+  quiz_questions: quizQuestions,
+  quiz_attempts: quizAttempts,
+  errors_doubts: errorsDoubts,
   pages,
   blocks,
   library_items: library,

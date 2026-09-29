@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
-import { cx } from "@qqorvex/ui";
-import { parseMarkdown, type Block, type Inline } from "./markdown";
+import { cx } from "../cx";
+import { parseMarkdown, type Block, type Inline } from "../markdown";
 
 function renderInline(nodes: Inline[]): ReactNode[] {
   return nodes.map((node, index) => {
@@ -83,8 +83,11 @@ function renderBlock(block: Block, key: number): ReactNode {
   }
 }
 
-/** Resposta da Vex formatada (listas, negrito, títulos) sem nunca injetar HTML. */
-export function VexMarkdown({ text, className }: { text: string; className?: string }) {
+/**
+ * Texto em markdown (respostas da Vex, resumos de estudo) renderizado com a tipografia `q-prose`
+ * — sem nunca injetar HTML: o conteúdo vira elementos React.
+ */
+export function Markdown({ text, className }: { text: string; className?: string }) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
-  return <div className={cx("q-prose q-prose-chat", className)}>{blocks.map(renderBlock)}</div>;
+  return <div className={cx("q-prose", className)}>{blocks.map(renderBlock)}</div>;
 }

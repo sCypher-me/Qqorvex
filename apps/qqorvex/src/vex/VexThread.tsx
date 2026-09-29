@@ -19,11 +19,9 @@ import {
   type IconProps,
 } from "@phosphor-icons/react";
 import { createBlock, createPage } from "@qqorvex/module-segundo-cerebro";
-import { Button, ButtonLink, IconButton, Notice, VexAvatar, cx, useToast } from "@qqorvex/ui";
+import { Button, ButtonLink, IconButton, Markdown, Notice, VexAvatar, cx, markdownToPlainText, useToast } from "@qqorvex/ui";
 import type { VexActionPreview, VexStep } from "@qqorvex/vex";
 import { supabase } from "../app/supabase";
-import { markdownToPlainText } from "./markdown";
-import { VexMarkdown } from "./VexMarkdown";
 import type { ActionStatus, DisplayMessage, PendingAction, ProviderIssue, VexNotice } from "./useVexChat";
 
 type Icon = ComponentType<IconProps>;
@@ -196,7 +194,7 @@ function AssistantMessage({ content, steps, variant }: { content: string; steps?
       <VexAvatar size={variant === "page" ? 30 : 26} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         {steps && <StepsLine steps={steps} />}
-        <VexMarkdown text={content} className={variant === "page" ? "text-[15px]" : "text-[14px]"} />
+        <Markdown text={content} className={variant === "page" ? "text-[15px]" : "text-[14px]"} />
         <div className="mt-1.5 flex gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
           <IconButton label="Copiar resposta" size="sm" onClick={() => void copy()}>
             <CopyIcon />

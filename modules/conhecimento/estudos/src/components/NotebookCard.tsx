@@ -1,26 +1,11 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ConfirmDialog } from "@qqorvex/ui";
+import { ArchiveIcon, CheckCircleIcon, DotsThreeIcon, PauseIcon, PencilSimpleIcon, PlayIcon, StarIcon, TrashIcon } from "@phosphor-icons/react";
+import { categoryColor } from "@qqorvex/design-system";
+import { Badge, DropdownMenu, cx, type BadgeTone } from "@qqorvex/ui";
+import type { NotebookStats } from "../repository";
 import type { Notebook, NotebookStatus, NotebookType } from "../types";
 
-/**
- * Cores de categoria consumidas pelo módulo a partir dos tokens globais — a cor do caderno é
- * derivada do id, então é estável entre sessões e telas.
- */
-const CATEGORY_COLORS = [
-  "var(--color-category-cyan)",
-  "var(--color-category-green)",
-  "var(--color-vex-gold-bright)",
-  "var(--color-category-lavender)",
-  "var(--color-category-blue)",
-  "var(--color-category-amber)",
-  "var(--color-category-coral)",
-  "var(--color-category-magenta)",
-  "var(--color-category-teal)",
-  "var(--color-category-bluegray)",
-] as const;
-
-const NOTEBOOK_TYPE_LABEL: Record<NotebookType, string> = {
+export const NOTEBOOK_TYPE_LABEL: Record<NotebookType, string> = {
   materia: "Matéria",
   curso: "Curso",
   certificacao: "Certificação",
@@ -29,90 +14,98 @@ const NOTEBOOK_TYPE_LABEL: Record<NotebookType, string> = {
   outro: "Outro",
 };
 
-const NOTEBOOK_STATUS_LABEL: Record<NotebookStatus, string> = {
-  ativo: "Ativo",
-  pausado: "Pausado",
-  concluido: "Concluído",
-  arquivado: "Arquivado",
+export const NOTEBOOK_STATUS: Record<NotebookStatus, { label: string; tone: BadgeTone }> = {
+  ativo: { label: "Ativo", tone: "success" },
+  pausado: { label: "Pausado", tone: "warning" },
+  concluido: { label: "Concluído", tone: "info" },
+  arquivado: { label: "Arquivado", tone: "neutral" },
 };
 
+/** Cor estável do caderno, derivada do id (mesma em todas as telas). */
 export function notebookColor(notebookId: string): string {
-  let hash = 0;
-  for (let i = 0; i < notebookId.length; i++) {
-    hash = (hash * 31 + notebookId.charCodeAt(i)) | 0;
-  }
-  return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length]!;
+  return categoryColor(notebookId);
 }
 
-export function notebookInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const significant = words.filter((word) => word.length > 2);
-  const source = significant.length > 0 ? significant : words;
-  if (source.length === 0) return "?";
-  if (source.length === 1) return source[0]!.slice(0, 2).toUpperCase();
-  return (source[0]![0]! + source[1]![0]!).toUpperCase();
+export interface NotebookCardProps {
+  notebook: Notebook;
+  stats?: NotebookStats;
+  onToggleFavorite: () => void;
+  onEdit: () => void;
+  onSetStatus: (status: NotebookStatus) => void;
+  onDelete: () => void;
 }
 
-export function NotebookCard({ notebook, onDelete, onToggleFavorite }: { notebook: Notebook; onDelete: () => void; onToggleFavorite: () => void }) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
+/** Cartão de caderno: tipo e contexto, o que há dentro e quanto falta revisar. */
+export function NotebookCard({ notebook, stats, onToggleFavorite, onEdit, onSetStatus, onDelete }: NotebookCardProps) {
   const color = notebookColor(notebook.id);
-  const meta = [NOTEBOOK_TYPE_LABEL[notebook.notebook_type], NOTEBOOK_STATUS_LABEL[notebook.status], notebook.area]
-    .filter(Boolean)
-    .join(" · ");
+  const context = [notebook.area, notebook.institution].filter(Boolean).join(" · ");
+  const status = NOTEBOOK_STATUS[notebook.status];
 
   return (
-    <div className="group relative transition-transform duration-200 hover:-translate-y-1">
-      <Link
-        to={`/conhecimento/estudos/${notebook.id}`}
-        className="qv-card p-5 min-h-[190px] flex flex-col gap-4 text-left transition-[border-color,background,box-shadow] duration-200 group-hover:border-text-muted group-hover:bg-vex-raised"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <span className="w-10 h-10 rounded-[12px] flex items-center justify-center font-mono text-[13px] font-semibold" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
-            {notebookInitials(notebook.name)}
+    <article className="group relative flex flex-col overflow-hidden rounded-xl border border-line bg-surface transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-sm">
+      <span aria-hidden="true" className="h-1 w-full" style={{ background: color }} />
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex items-start gap-3">
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-display text-[15px] font-semibold" style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}>
+            {notebook.name.charAt(0).toUpperCase()}
           </span>
+          <div className="min-w-0 flex-1">
+            <Link to={`/conhecimento/estudos/${notebook.id}`} className="line-clamp-2 text-[15px] font-semibold leading-snug text-fg after:absolute after:inset-0 after:content-['']">
+              {notebook.name}
+            </Link>
+            <p className="mt-0.5 truncate text-xs text-fg-3">{[NOTEBOOK_TYPE_LABEL[notebook.notebook_type], context].filter(Boolean).join(" · ")}</p>
+          </div>
+          <div className="relative z-[1] flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              aria-pressed={notebook.is_favorite}
+              aria-label={notebook.is_favorite ? "Remover dos favoritos" : "Favoritar"}
+              className={cx("flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-hover", notebook.is_favorite ? "text-gold-fg" : "text-fg-4 hover:text-fg sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100")}
+            >
+              <StarIcon size={16} weight={notebook.is_favorite ? "fill" : "regular"} />
+            </button>
+            <DropdownMenu
+              label={`Ações para ${notebook.name}`}
+              items={[
+                { label: "Editar caderno", icon: <PencilSimpleIcon />, onSelect: onEdit },
+                notebook.status === "ativo"
+                  ? { label: "Pausar", icon: <PauseIcon />, onSelect: () => onSetStatus("pausado") }
+                  : { label: "Retomar", icon: <PlayIcon />, onSelect: () => onSetStatus("ativo") },
+                ...(notebook.status !== "concluido" ? [{ label: "Marcar como concluído", icon: <CheckCircleIcon />, onSelect: () => onSetStatus("concluido") }] : []),
+                ...(notebook.status !== "arquivado" ? [{ label: "Arquivar", icon: <ArchiveIcon />, onSelect: () => onSetStatus("arquivado") }] : []),
+                "separator",
+                { label: "Excluir", icon: <TrashIcon />, danger: true, onSelect: onDelete },
+              ]}
+              trigger={(props) => (
+                <button type="button" {...props} aria-label={`Ações para ${notebook.name}`} className="flex h-7 w-7 items-center justify-center rounded-md text-fg-4 hover:bg-hover hover:text-fg">
+                  <DotsThreeIcon size={18} weight="bold" />
+                </button>
+              )}
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-2 pr-8 min-w-0">
-          <span className="text-[16px] font-semibold text-text-primary truncate" title={notebook.name}>
-            {notebook.name}{notebook.is_favorite && <span className="text-vex-gold ml-1.5 text-[13px]" aria-label="Favorito">★</span>}
+
+        {notebook.description && <p className="line-clamp-2 text-[13px] leading-relaxed text-fg-2">{notebook.description}</p>}
+
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1 text-xs text-fg-3">
+          <span>
+            <strong className="font-semibold text-fg-2 tabular-nums">{stats?.summaries ?? 0}</strong> {stats?.summaries === 1 ? "resumo" : "resumos"}
           </span>
-          <span className="text-xs text-text-muted truncate">{meta}</span>
-          {notebook.description && <span className="text-[13px] leading-relaxed text-text-secondary line-clamp-2">{notebook.description}</span>}
+          <span>
+            <strong className="font-semibold text-fg-2 tabular-nums">{stats?.flashcards ?? 0}</strong> {stats?.flashcards === 1 ? "cartão" : "cartões"}
+          </span>
+          {notebook.status !== "ativo" ? (
+            <Badge tone={status.tone} className="ml-auto">
+              {status.label}
+            </Badge>
+          ) : stats && stats.due > 0 ? (
+            <Badge tone="gold" className="ml-auto">
+              {stats.due} para revisar
+            </Badge>
+          ) : null}
         </div>
-        <div className="mt-auto flex items-center justify-between gap-3 text-[11px] text-text-muted font-mono">
-          <span>{notebook.start_date ? `desde ${notebook.start_date.split("-").reverse().join("/")}` : "pronto"}</span>
-          <span className="text-vex-cyan opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
-        </div>
-      </Link>
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        className={`qv-icon-btn absolute top-[14px] right-[52px] ${notebook.is_favorite ? "text-vex-gold-bright" : "text-text-muted"}`}
-        aria-label={notebook.is_favorite ? `Remover ${notebook.name} dos favoritos` : `Adicionar ${notebook.name} aos favoritos`}
-        aria-pressed={notebook.is_favorite}
-        title={notebook.is_favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-      >
-        {notebook.is_favorite ? "★" : "☆"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setConfirmOpen(true)}
-        className="qv-icon-btn absolute top-[14px] right-[14px]"
-        aria-label={`Excluir caderno ${notebook.name}`}
-        title="Excluir caderno"
-      >
-        ✕
-      </button>
-      <ConfirmDialog
-        isOpen={confirmOpen}
-        title={`Excluir "${notebook.name}"?`}
-        description="Essa ação não pode ser desfeita."
-        confirmLabel="Excluir"
-        onConfirm={() => {
-          setConfirmOpen(false);
-          onDelete();
-        }}
-        onCancel={() => setConfirmOpen(false)}
-      />
-    </div>
+      </div>
+    </article>
   );
 }

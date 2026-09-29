@@ -145,7 +145,7 @@ try {
         // Passos opcionais: --steps='[{"click":"Texto"},{"press":"Escape"},{"wait":400},{"fill":["placeholder","texto"]}]'
         for (const step of args.steps ? JSON.parse(args.steps) : []) {
           if (step.click) await page.getByText(step.click, { exact: step.exact ?? false }).first().click();
-          if (step.clickRole) await page.getByRole(step.clickRole[0], { name: step.clickRole[1] }).first().click();
+          if (step.clickRole) await page.getByRole(step.clickRole[0], { name: step.clickRole[1], exact: step.exact ?? false }).first().click();
           if (step.press) await page.keyboard.press(step.press);
           if (step.fill) await page.getByPlaceholder(step.fill[0]).first().fill(step.fill[1]);
           await page.waitForTimeout(step.wait ?? 450);

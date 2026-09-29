@@ -15,5 +15,7 @@ export * from "./components/Display";
 export * from "./components/Charts";
 export * from "./components/Layout";
 export * from "./components/Brand";
+export * from "./components/Markdown";
+export { parseMarkdown, parseInline, markdownToPlainText, type Block as MarkdownBlock, type Inline as MarkdownInline } from "./markdown";
 export * from "./components/Sidebar";
 export { ArrowRightIcon, CalendarBlankIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, ClockIcon, DotsSixVerticalIcon, PlusIcon, XIcon } from "@phosphor-icons/react";

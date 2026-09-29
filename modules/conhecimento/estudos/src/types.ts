@@ -52,6 +52,8 @@ export function toNotebookInsert(userId: string, input: NewNotebookInput): Table
 export interface NewStudySessionInput {
   note?: string;
   durationMinutes?: number;
+  /** ISO; padrão: agora. */
+  occurredAt?: string;
 }
 
 export interface NewFlashcardInput {

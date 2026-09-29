@@ -53,7 +53,7 @@ export function NewNotebookForm({ onSave, onCancel, isSubmitting = false, initia
           {TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
         </Select>
       </div>
-      <p className="qv-eyebrow m-0">Contexto do estudo</p>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Contexto do estudo</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input label="Área ou disciplina" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ex.: Tecnologia" />
         <Input label="Instituição (opcional)" value={institution} onChange={(e) => setInstitution(e.target.value)} placeholder="Ex.: Alura" />
