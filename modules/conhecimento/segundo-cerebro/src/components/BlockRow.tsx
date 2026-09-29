@@ -764,7 +764,7 @@ function MediaBlockBody({
           disabled={isUploading}
           onChange={handleFileChange}
           aria-label={isImage ? "Enviar imagem" : "Enviar arquivo"}
-          className="min-w-0 flex-1 text-sm text-fg-2 file:mr-3 file:cursor-pointer file:rounded-[10px] file:border file:border-solid file:border-line file:bg-transparent file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-fg hover:file:border-text-muted"
+          className="min-w-0 flex-1 text-sm text-fg-2 file:mr-3 file:cursor-pointer file:rounded-[10px] file:border file:border-solid file:border-line file:bg-transparent file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-fg hover:file:border-line-strong"
         />
         {isUploading && <span className="shrink-0 text-xs text-fg-2">Enviando...</span>}
         {error && <span className="text-xs text-danger shrink-0">{error}</span>}

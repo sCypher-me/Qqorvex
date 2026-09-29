@@ -241,7 +241,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
                           onClick={() => setFocusArea(option.value)}
                           className={`flex min-h-[82px] items-start gap-3 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${focusArea === option.value ? "border-gold-line bg-gold-soft" : "border-line bg-surface-0 hover:bg-hover"}`}
                         >
-                          <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${focusArea === option.value ? "border-gold-line text-gold-fg" : "border-text-muted text-transparent"}`}>
+                          <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${focusArea === option.value ? "border-gold-line text-gold-fg" : "border-line-strong text-transparent"}`}>
                             {focusArea === option.value && <span className="h-2 w-2 rounded-full bg-gold" />}
                           </span>
                           <span className="min-w-0">
@@ -273,7 +273,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
                   <div className="mt-8 flex flex-col items-center rounded-2xl border border-dashed border-line bg-surface-0 px-5 py-8 text-center sm:py-10">
                     <div className="relative grid h-28 w-28 place-items-center overflow-hidden rounded-full border border-gold-line bg-surface shadow-[0_0_34px_rgba(74,200,216,.12)]">
                       {currentAvatar ? <img src={currentAvatar} alt={`Foto de perfil de ${displayName}`} className="h-full w-full object-cover" /> : <span className="font-display text-3xl font-semibold text-fg-2">{initials}</span>}
-                      <span className="absolute bottom-0 right-0 grid h-9 w-9 place-items-center rounded-full border-2 border-surface-1 bg-gold text-fg"><CameraIcon size={17} /></span>
+                      <span className="absolute bottom-0 right-0 grid h-9 w-9 place-items-center rounded-full border-2 border-surface bg-gold text-on-gold"><CameraIcon size={17} /></span>
                     </div>
                     <p className="mt-4 text-sm font-semibold">{currentAvatar ? "Sua foto está pronta" : displayName}</p>
                     <p className="mt-1 text-xs text-fg-3">JPG, PNG ou WebP · até 5 MB</p>
@@ -371,7 +371,7 @@ function ThemeChoice({ icon, label, selected, onClick }: { icon: ReactNode; labe
   return (
     <button type="button" aria-pressed={selected} onClick={onClick} className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${selected ? "border-gold-line bg-gold-soft text-fg" : "border-line bg-surface-0 text-fg-2 hover:bg-hover"}`}>
       <span className="text-gold-fg">{icon}</span>{label}
-      <span className={`ml-auto h-4 w-4 rounded-full border ${selected ? "border-gold-line bg-gold shadow-[inset_0_0_0_3px_var(--q-canvas)]" : "border-text-muted"}`} />
+      <span className={`ml-auto h-4 w-4 rounded-full border ${selected ? "border-gold-line bg-gold shadow-[inset_0_0_0_3px_var(--q-canvas)]" : "border-line-strong"}`} />
     </button>
   );
 }

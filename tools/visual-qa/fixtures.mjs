@@ -353,6 +353,10 @@ export const fixtures = {
     { ...base, id: "o0000000-0000-4000-8000-000000000901", title: "Virar designer de produto", description: "Migrar de carreira com portfólio e certificação.", plan_type: "anual", status: "ativo", period_start: `${new Date().getFullYear()}-01-01`, period_end: `${new Date().getFullYear()}-12-31` },
     { ...base, id: "o0000000-0000-4000-8000-000000000902", title: "Plano de outubro", description: null, plan_type: "mensal", status: "ativo", period_start: dateKey(2), period_end: dateKey(32) },
   ],
+  redemption_codes: [
+    { id: id("x0000000"), code: "QQ-PARC-7K2M", tier: "parceiro", note: "Convite para o Bruno", created_by: USER_ID, redeemed_by: "22222222-0000-4000-8000-000000000001", redeemed_at: at(-40, 9), created_at: at(-42, 9) },
+    { id: id("x0000000"), code: "QQ-LIFE-9XQ4", tier: "lifetime", note: null, created_by: USER_ID, redeemed_by: null, redeemed_at: null, created_at: at(-2, 16) },
+  ],
   plan_goals: [
     { id: id("q0000000"), plan_id: "o0000000-0000-4000-8000-000000000901", goal_id: goals[2].id, user_id: USER_ID, created_at: now },
     { id: id("q0000000"), plan_id: "o0000000-0000-4000-8000-000000000901", goal_id: goals[0].id, user_id: USER_ID, created_at: now },
@@ -379,6 +383,19 @@ export const fixtures = {
 };
 
 export const rpcFixtures = {
+  list_all_accounts: [
+    { id: USER_ID, email: "ana.souza@exemplo.com", display_name: "Ana", username: "ana.souza", role: "dono", account_tier: "padrao", created_at: at(-60, 9) },
+    { id: "22222222-0000-4000-8000-000000000001", email: "bruno.lima@exemplo.com", display_name: "Bruno Lima", username: "bruno", role: "usuario", account_tier: "parceiro", created_at: at(-41, 14) },
+    { id: "22222222-0000-4000-8000-000000000002", email: "carol@exemplo.com", display_name: "Carol Mendes", username: null, role: "usuario", account_tier: "lifetime", created_at: at(-12, 10) },
+    { id: "22222222-0000-4000-8000-000000000003", email: "diego.alves@exemplo.com", display_name: null, username: "diegoa", role: "usuario", account_tier: "padrao", created_at: at(-3, 18) },
+  ],
+  get_system_overview: [{ total_users: 4, total_tasks: 318, total_events: 142, total_transactions: 906, total_documents: 57, total_pages: 214 }],
+  list_secret_keys: [
+    { key: "gemini_api_key", has_value: true, updated_at: at(-20, 9) },
+    { key: "gemini_model", has_value: true, updated_at: at(-20, 9) },
+    { key: "tavily_api_key", has_value: false, updated_at: null },
+    { key: "google_client_id", has_value: true, updated_at: at(-30, 9) },
+  ],
   get_my_document_storage_quota: [{ used_bytes: 1_462_000, quota_bytes: 25 * 1024 * 1024, max_file_bytes: 10 * 1024 * 1024, is_plus: false }],
   has_google_calendar_connection: false,
   has_security_pin: false,

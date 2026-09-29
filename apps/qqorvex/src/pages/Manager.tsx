@@ -1,6 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ArrowRightIcon, CopyIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile, type Profile } from "@qqorvex/auth";
-import { Badge, Button, ConfirmDialog, EmptyState, Input, Notice, Select, ChipTabs, SkeletonCards, SkeletonList, type BadgeTone } from "@qqorvex/ui";
+import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
   useAllAccounts,
   useCreateRedemptionCode,
@@ -12,54 +14,26 @@ import {
   type AccountTier,
 } from "@qqorvex/module-manager";
 import { supabase } from "../app/supabase";
+import { usePageMeta } from "../app/shell/PageMeta";
 
 const TIER_LABEL: Record<AccountTier, string> = { padrao: "Padrão", parceiro: "Parceiro", lifetime: "Lifetime", vip: "VIP" };
-const TIER_TONE: Record<AccountTier, BadgeTone> = { padrao: "neutral", parceiro: "info", lifetime: "premium", vip: "premium" };
+const TIER_TONE: Record<AccountTier, BadgeTone> = { padrao: "neutral", parceiro: "info", lifetime: "gold", vip: "gold" };
 
 type ManagerTab = "visao-geral" | "contas" | "codigos" | "config";
 
-function Panel({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
+const TABS: ManagerTab[] = ["visao-geral", "contas", "codigos", "config"];
+
+function Panel({ title, description, aside, children, className = "" }: { title: string; description?: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-4 p-5 sm:p-6 ${className}`}>
-      <h2 className="font-display text-lg font-semibold text-fg">{title}</h2>
+    <section className={`flex min-w-0 flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5 ${className}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold text-fg">{title}</h2>
+          {description && <p className="mt-0.5 text-[13px] leading-relaxed text-fg-3">{description}</p>}
+        </div>
+        {aside}
+      </div>
       {children}
-    </section>
-  );
-}
-
-function OwnerHero({ profile, email }: { profile: Profile; email: string }) {
-  const name = profile.display_name || profile.full_name || profile.username || "Dono";
-  const username = profile.username ? `@${profile.username}` : email;
-  const tier = (profile.account_tier in TIER_LABEL ? profile.account_tier : "padrao") as AccountTier;
-
-  return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 grid min-w-0 gap-5 border-gold/40 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,.55fr)] lg:items-center lg:p-7">
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">ESPAÇO ADMINISTRATIVO</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-fg sm:text-4xl">Central do Dono</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-2">
-          Contas, convites e configurações globais, organizados em um único painel privado.
-        </p>
-      </div>
-      <div className="flex min-w-0 items-center gap-3.5 rounded-2xl border border-line bg-canvas p-3.5 sm:p-4">
-        <div className="relative shrink-0">
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="h-12 w-12 rounded-full border border-gold/70 object-cover" />
-          ) : (
-            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-gold/70 bg-raised font-mono text-sm font-semibold text-gold-fg">
-              {name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
-            </span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-fg">{name}</p>
-          <p className="truncate text-xs text-fg-3">{username}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge tone="premium">Dono</Badge>
-            <span className="text-[11px] text-fg-3">Conta {TIER_LABEL[tier]}</span>
-          </div>
-        </div>
-      </div>
     </section>
   );
 }
@@ -68,8 +42,8 @@ function OwnerHero({ profile, email }: { profile: Profile; email: string }) {
  * parece silenciosamente uma lista vazia, o que é enganoso numa tela de administração. */
 function SectionError({ what }: { what: string }) {
   return (
-    <Notice tone="error" title={`Não foi possível carregar ${what}`}>
-      Os dados continuam existindo — só essa busca que falhou agora. Recarregue a página pra tentar de novo.
+    <Notice title={`Não foi possível carregar ${what}`}>
+      Os dados continuam existindo — só a busca falhou. Recarregue a página para tentar de novo.
     </Notice>
   );
 }
@@ -86,44 +60,65 @@ export function ManagerPage() {
   const { session } = useAuth();
   const userId = session!.user.id;
   const { profile, isLoading: profileLoading } = useProfile(supabase, userId);
-  const [tab, setTab] = useState<ManagerTab>("visao-geral");
+  usePageMeta({ title: "Central do Dono" });
+  const [params, setParams] = useSearchParams();
+  const tab: ManagerTab = TABS.includes(params.get("aba") as ManagerTab) ? (params.get("aba") as ManagerTab) : "visao-geral";
+  const setTab = (next: ManagerTab) =>
+    setParams(
+      (current) => {
+        const copy = new URLSearchParams(current);
+        if (next === "visao-geral") copy.delete("aba");
+        else copy.set("aba", next);
+        return copy;
+      },
+      { replace: true },
+    );
 
   if (profileLoading) {
-    return <div className=" mx-auto flex w-full max-w-[1440px] flex-col gap-5"><SkeletonCards count={3} className="h-28 rounded-[20px]" /></div>;
+    return (
+      <PageContainer>
+        <SkeletonCards count={3} className="h-28 rounded-xl" />
+      </PageContainer>
+    );
   }
 
   if (!profile || profile.role !== "dono") {
     return (
-      <div className=" mx-auto w-full max-w-[900px]">
-        <Panel title="Área restrita">
-          <Notice tone="warning" title="Acesso exclusivo ao Dono">Esta conta não possui permissão para abrir a Central do Dono.</Notice>
-        </Panel>
-      </div>
+      <PageContainer>
+        <PageHeader title="Central do Dono" />
+        <Notice tone="warning" title="Acesso exclusivo ao Dono">
+          Esta conta não tem permissão para abrir a Central do Dono.
+        </Notice>
+      </PageContainer>
     );
   }
 
   return (
-    <div className=" mx-auto flex w-full max-w-[1440px] flex-col gap-5 pb-8">
-      <OwnerHero profile={profile} email={session!.user.email ?? ""} />
-      <div className="-mx-1 overflow-x-auto border-b border-line px-1 pb-3">
-      <ChipTabs value={tab} onChange={setTab} className="min-w-max flex-nowrap" options={[
-        { value: "visao-geral", label: "Visão geral" },
-        { value: "contas", label: "Contas" },
-        { value: "codigos", label: "Códigos" },
-        { value: "config", label: "Configurações" },
-      ]} />
-      </div>
+    <PageContainer>
+      <PageHeader title="Central do Dono" description="Contas, convites e configurações globais do Qqorvex." actions={<Badge tone="gold">Dono</Badge>}>
+        <Tabs<ManagerTab>
+          label="Seções"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "visao-geral", label: "Visão geral" },
+            { value: "contas", label: "Contas" },
+            { value: "codigos", label: "Códigos" },
+            { value: "config", label: "Integrações" },
+          ]}
+        />
+      </PageHeader>
       {tab === "visao-geral" && <OverviewSection onNavigate={setTab} />}
       {tab === "contas" && <AccountsSection currentUserId={userId} />}
       {tab === "codigos" && <CodesSection userId={userId} />}
       {tab === "config" && <SecretsSection />}
-    </div>
+    </PageContainer>
   );
 }
 
 function OverviewSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void }) {
   const { overview, isLoading, error } = useSystemOverview(supabase);
-  if (isLoading) return <Panel title="Visão do sistema"><SkeletonCards count={6} className="h-24 w-full rounded-xl" /></Panel>;
+  if (isLoading) return <Panel title="Números do sistema"><SkeletonCards count={3} className="h-20 w-full rounded-lg" /></Panel>;
   if (error) return <Panel title="Visão geral"><SectionError what="a visão geral" /></Panel>;
   if (!overview) return <Panel title="Visão geral"><EmptyState>Ainda não há dados suficientes pra mostrar aqui.</EmptyState></Panel>;
 
@@ -137,30 +132,36 @@ function OverviewSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
   ];
 
   return (
-    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.75fr)]">
-      <Panel title="Visão do sistema" className="min-w-0">
-        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Indicadores gerais dos dados registrados no Qqorvex.</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.75fr)]">
+      <Panel title="Números do sistema" description="Totais de registros em todas as contas.">
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {stats.map(([label, value]) => (
-            <div key={label} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong flex min-h-[104px] min-w-0 flex-col justify-between gap-3 p-4 sm:p-5">
-              <span className="truncate text-[10px] font-medium uppercase tracking-[.12em] text-fg-3 sm:text-[11px]">{label}</span>
-              <span className="font-display text-2xl font-semibold text-fg tabular-nums sm:text-3xl">{value.toLocaleString("pt-BR")}</span>
+            <div key={label} className="flex min-w-0 flex-col gap-1 rounded-lg border border-line-soft bg-canvas/40 px-4 py-3">
+              <dt className="truncate text-xs text-fg-3">{label}</dt>
+              <dd className="font-display text-[26px] font-semibold tabular-nums text-fg">{value.toLocaleString("pt-BR")}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       </Panel>
-      <Panel title="Atalhos de gestão" className="min-w-0">
-        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Acesse rapidamente as tarefas mais comuns do painel.</p>
-        {[
-          { title: "Gerenciar contas", description: "Consultar acessos e contas", tab: "contas" as const },
-          { title: "Criar código", description: "Gerar um convite de acesso", tab: "codigos" as const },
-          { title: "Configurar integrações", description: "Gerenciar chaves do sistema", tab: "config" as const },
-        ].map((action) => (
-          <button key={action.tab} type="button" onClick={() => onNavigate(action.tab)} className="border-b border-line-soft last:border-b-0 group flex w-full items-center justify-between gap-3 rounded-xl px-3.5 py-3.5 text-left transition-colors hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold">
-            <span className="min-w-0"><strong className="block text-sm font-semibold text-fg">{action.title}</strong><span className="mt-0.5 block text-xs text-fg-3">{action.description}</span></span>
-            <span aria-hidden="true" className="shrink-0 text-lg text-gold-fg transition-transform group-hover:translate-x-0.5">→</span>
-          </button>
-        ))}
+      <Panel title="Atalhos">
+        <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
+          {[
+            { title: "Gerenciar contas", description: "Buscar, consultar e remover contas", tab: "contas" as const, icon: <UsersIcon /> },
+            { title: "Criar código de convite", description: "Parceiro, Lifetime ou Beta Tester", tab: "codigos" as const, icon: <TicketIcon /> },
+            { title: "Configurar integrações", description: "Chaves usadas pelas funções do servidor", tab: "config" as const, icon: <KeyIcon /> },
+          ].map((action) => (
+            <li key={action.tab}>
+              <button type="button" onClick={() => onNavigate(action.tab)} className="group flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover sm:px-5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hover text-fg-2 [&_svg]:size-[18px]">{action.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13.5px] font-medium text-fg">{action.title}</span>
+                  <span className="block text-xs text-fg-3">{action.description}</span>
+                </span>
+                <ArrowRightIcon size={15} className="shrink-0 text-fg-4 transition-transform group-hover:translate-x-0.5 group-hover:text-gold-fg" />
+              </button>
+            </li>
+          ))}
+        </ul>
       </Panel>
     </div>
   );
@@ -172,7 +173,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
   const [confirming, setConfirming] = useState<{ id: string; email: string } | null>(null);
   const [search, setSearch] = useState("");
 
-  if (isLoading) return <Panel title="Contas"><SkeletonList rows={3} className="py-3" /></Panel>;
+  if (isLoading) return <Panel title="Contas"><SkeletonList rows={4} leading /></Panel>;
   if (error) return <Panel title="Contas"><SectionError what="as contas" /></Panel>;
 
   const normalizedSearch = search.trim().toLowerCase();
@@ -181,54 +182,58 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
   );
 
   return (
-    <Panel title="Contas e acessos">
-      <div className="flex min-w-0 flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <Input label="Buscar uma conta" placeholder="Nome, usuário ou e-mail" value={search} onChange={(event) => setSearch(event.target.value)} wrapperClassName="w-full sm:max-w-xl" />
-        <div className="flex flex-wrap gap-2 pb-0.5">
-          <Badge tone="info">{accounts.length} no total</Badge>
-          <Badge tone="outline">{filteredAccounts.length} exibida{filteredAccounts.length === 1 ? "" : "s"}</Badge>
-        </div>
-      </div>
-      {deleteAccountMutation.isError && <Notice tone="error" title="Não foi possível excluir a conta">A operação falhou. A conta e os dados associados foram mantidos.</Notice>}
+    <Panel title="Contas" description="Todas as contas do Qqorvex." aside={<span className="text-xs tabular-nums text-fg-3">{normalizedSearch ? `${filteredAccounts.length} de ${accounts.length}` : `${accounts.length} no total`}</span>}>
+      <Input placeholder="Buscar por nome, usuário ou e-mail" aria-label="Buscar uma conta" value={search} onChange={(event) => setSearch(event.target.value)} leadingIcon={<MagnifyingGlassIcon />} wrapperClassName="w-full sm:max-w-md" />
+      {deleteAccountMutation.isError && <Notice title="Não foi possível excluir a conta">A operação falhou. A conta e os dados foram mantidos.</Notice>}
       {accounts.length === 0 ? (
         <EmptyState>Nenhuma conta cadastrada.</EmptyState>
       ) : filteredAccounts.length === 0 ? (
         <EmptyState>Nenhuma conta corresponde à busca.</EmptyState>
       ) : (
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-          {filteredAccounts.map((account) => (
-            <article key={account.id} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong flex min-w-0 flex-col gap-4 p-4 sm:p-5">
-              <div className="flex min-w-0 items-start gap-3">
-                <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line bg-surface font-display text-sm font-semibold text-fg-2">
-                  {(account.displayName || account.username || account.email).trim().slice(0, 1).toUpperCase()}
-                </span>
+        <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
+          {filteredAccounts.map((account) => {
+            const name = account.displayName || account.username || "Sem nome definido";
+            return (
+              <li key={account.id} className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+                <Avatar name={name} size={36} />
                 <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm font-semibold text-fg">{account.displayName || account.username || "Sem nome definido"}</p>
-                  <p className="mt-1 break-all text-xs text-fg-3">{account.email}</p>
-                  {account.username && <p className="mt-1 truncate text-xs text-gold-fg">@{account.username}</p>}
+                  <p className="truncate text-[13.5px] font-medium text-fg">
+                    {name}
+                    {account.username && <span className="ml-1.5 font-normal text-fg-3">@{account.username}</span>}
+                  </p>
+                  <p className="truncate text-xs text-fg-3">
+                    {account.email} · desde {shortDate.format(new Date(account.createdAt))}
+                  </p>
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {account.role === "dono" && <Badge tone="premium">Dono</Badge>}
-                {account.id === currentUserId && <Badge tone="info">Sua conta</Badge>}
-                <Badge tone={TIER_TONE[account.accountTier]}>{TIER_LABEL[account.accountTier]}</Badge>
-              </div>
-              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-                <span className="text-[11px] text-fg-3">Membro desde {shortDate.format(new Date(account.createdAt))}</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {account.role === "dono" && <Badge tone="gold">Dono</Badge>}
+                  {account.id === currentUserId && <Badge tone="info">Você</Badge>}
+                  <Badge tone={TIER_TONE[account.accountTier]}>{TIER_LABEL[account.accountTier]}</Badge>
+                </div>
                 {account.id !== currentUserId && (
-                  <Button variant="destructive" size="sm" disabled={deleteAccountMutation.isPending} onClick={() => { deleteAccountMutation.reset(); setConfirming({ id: account.id, email: account.email }); }}>
-                    {deleteAccountMutation.isPending && deleteAccountMutation.variables === account.id ? "Excluindo…" : "Excluir conta"}
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="text-danger"
+                    loading={deleteAccountMutation.isPending && deleteAccountMutation.variables === account.id}
+                    disabled={deleteAccountMutation.isPending}
+                    onClick={() => {
+                      deleteAccountMutation.reset();
+                      setConfirming({ id: account.id, email: account.email });
+                    }}
+                  >
+                    Excluir
                   </Button>
                 )}
-              </div>
-            </article>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
       <ConfirmDialog
         isOpen={confirming !== null}
         title="Excluir esta conta?"
-        description={confirming ? `${confirming.email} perde acesso e todos os dados dessa conta são apagados. Isso não pode ser desfeito.` : ""}
+        description={confirming ? `${confirming.email} perde o acesso e todos os dados dessa conta são apagados. Isso não pode ser desfeito.` : ""}
         confirmLabel="Excluir conta"
         onCancel={() => setConfirming(null)}
         onConfirm={() => {
@@ -241,6 +246,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
 }
 
 function CodesSection({ userId }: { userId: string }) {
+  const { toast } = useToast();
   const { codes, isLoading, error } = useRedemptionCodes(supabase);
   const createCode = useCreateRedemptionCode(supabase, userId);
   const [tier, setTier] = useState<"parceiro" | "lifetime" | "beta_tester">("parceiro");
@@ -272,64 +278,65 @@ function CodesSection({ userId }: { userId: string }) {
     }
   }
 
+  const pending = codes.filter((code) => !code.redeemed_by).length;
+
   return (
-    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(300px,.72fr)_minmax(0,1.28fr)]">
-      <Panel title="Gerar código de convite">
-        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Crie códigos para conceder acesso Parceiro, Lifetime ou reconhecer participantes oficiais do beta.</p>
-        <form onSubmit={handleCreate} className="flex min-w-0 flex-col gap-4">
+    <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(300px,.7fr)_minmax(0,1.3fr)]">
+      <Panel title="Novo código de convite" description="Concede acesso Parceiro, Lifetime ou o selo de Beta Tester.">
+        <form onSubmit={handleCreate} className="flex min-w-0 flex-col gap-3">
           <Select label="Acesso concedido" value={tier} onChange={(event) => setTier(event.target.value as typeof tier)}>
             <option value="parceiro">Parceiro</option>
             <option value="lifetime">Lifetime</option>
             <option value="beta_tester">Beta Tester</option>
           </Select>
-          <Input label="Identificação interna (opcional)" placeholder="Ex.: convite para uma pessoa" value={note} onChange={(event) => setNote(event.target.value)} />
-          <Button type="submit" variant="primary" className="self-start" disabled={createCode.isPending}>{createCode.isPending ? "Gerando…" : "Gerar código"}</Button>
+          <Input label="Para quem (opcional)" placeholder="Ex.: convite para a Carol" value={note} onChange={(event) => setNote(event.target.value)} />
+          <Button type="submit" className="self-start" leadingIcon={<TicketIcon size={16} />} loading={createCode.isPending}>
+            Gerar código
+          </Button>
         </form>
-        {createError && <Notice tone="error">{createError}</Notice>}
+        {createError && <Notice compact>{createError}</Notice>}
         {lastGenerated && (
-          <div className="rounded-xl border border-success/30 bg-success-soft p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-success">Código criado</p>
-            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 break-all font-mono text-base font-semibold tracking-[.06em] text-fg">{lastGenerated}</code>
-              <Button type="button" variant="secondary" size="sm" onClick={() => void handleCopyCode()}>Copiar</Button>
+          <div className="flex flex-col gap-2 rounded-lg border border-success/35 bg-success-soft p-3.5">
+            <p className="text-xs font-medium text-success">Código criado — envie para a pessoa</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <code className="min-w-0 flex-1 break-all font-mono text-[15px] font-semibold tracking-[.06em] text-fg">{lastGenerated}</code>
+              <Button variant="secondary" size="sm" leadingIcon={<CopyIcon size={14} />} onClick={() => void handleCopyCode()}>
+                Copiar
+              </Button>
             </div>
-            {copyMessage && <p className="mt-2 text-xs leading-relaxed text-fg-2" role="status">{copyMessage}</p>}
+            {copyMessage && <p className="text-xs text-fg-2" role="status">{copyMessage}</p>}
           </div>
         )}
       </Panel>
 
-      <Panel title="Códigos emitidos">
-        {!isLoading && !error && codes.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[
-              { label: "Total", value: codes.length, tone: "text-fg" },
-              { label: "Pendentes", value: codes.filter((code) => !code.redeemed_by).length, tone: "text-gold-fg" },
-              { label: "Resgatados", value: codes.filter((code) => Boolean(code.redeemed_by)).length, tone: "text-success" },
-            ].map((stat) => <div key={stat.label} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong min-w-0 p-3.5"><p className="text-[10px] font-medium uppercase tracking-[.1em] text-fg-3">{stat.label}</p><p className={`mt-1 font-display text-xl font-semibold ${stat.tone}`}>{stat.value}</p></div>)}
-          </div>
-        )}
+      <Panel title="Códigos emitidos" aside={!isLoading && !error && codes.length > 0 ? <span className="text-xs tabular-nums text-fg-3">{codes.length} · {pending} pendentes</span> : undefined}>
         {isLoading ? (
-          <SkeletonList rows={3} className="py-3" />
+          <SkeletonList rows={3} />
         ) : error ? (
           <SectionError what="os códigos gerados" />
         ) : codes.length === 0 ? (
-          <EmptyState>Nenhum código gerado ainda. Os próximos aparecerão aqui com o status de resgate.</EmptyState>
+          <EmptyState>Nenhum código gerado ainda. Os próximos aparecem aqui com o status de resgate.</EmptyState>
         ) : (
-          <div className="grid min-w-0 gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
+          <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
             {codes.map((code) => (
-              <article key={code.id} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong flex min-w-0 flex-col gap-3 p-4">
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                  <code className="break-all font-mono text-sm font-semibold text-fg">{code.code}</code>
-                  <Badge tone={code.redeemed_by ? "success" : "outline"}>{code.redeemed_by ? "Resgatado" : "Pendente"}</Badge>
+              <li key={code.id} className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+                <div className="min-w-0 flex-1">
+                  <code className="block truncate font-mono text-[13.5px] font-semibold text-fg">{code.code}</code>
+                  <p className="truncate text-xs text-fg-3">
+                    Criado em {shortDate.format(new Date(code.created_at))}
+                    {code.note ? ` · ${code.note}` : ""}
+                  </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={code.tier === "lifetime" ? "premium" : "info"}>{code.tier === "beta_tester" ? "Beta Tester" : TIER_LABEL[code.tier as AccountTier]}</Badge>
-                  <span className="text-[11px] text-fg-3">Criado {shortDate.format(new Date(code.created_at))}</span>
-                </div>
-                {code.note && <p className="truncate border-t border-line pt-2 text-xs text-fg-3" title={code.note}>{code.note}</p>}
-              </article>
+                <Badge tone={code.tier === "lifetime" ? "gold" : "info"}>{code.tier === "beta_tester" ? "Beta Tester" : TIER_LABEL[code.tier as AccountTier]}</Badge>
+                <Badge tone={code.redeemed_by ? "success" : "neutral"}>{code.redeemed_by ? "Resgatado" : "Pendente"}</Badge>
+                {!code.redeemed_by && (
+                  <IconButton label="Copiar código" size="sm" onClick={() => void navigator.clipboard?.writeText(code.code).then(() => toast({ title: "Código copiado", tone: "success" }))}>
+                    <CopyIcon />
+                  </IconButton>
+                )}
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </Panel>
     </div>
@@ -369,11 +376,8 @@ function SecretsSection() {
   }
 
   return (
-    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,.75fr)]">
-      <Panel title="Chaves configuradas" className="min-w-0">
-        <Notice tone="info" title="Segredos protegidos">
-          Os valores nunca são exibidos após o salvamento. Você pode substituir uma chave, mas não consultar seu valor atual.
-        </Notice>
+    <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,.75fr)]">
+      <Panel title="Chaves configuradas" description="Por segurança, os valores nunca voltam a ser exibidos. Dá para substituir, não para consultar.">
         {isLoading ? (
           <SkeletonList rows={3} className="py-3" />
         ) : error ? (
@@ -381,7 +385,7 @@ function SecretsSection() {
         ) : secrets.length === 0 ? (
           <EmptyState>Nenhuma chave configurada. Adicione uma ao lado para conectar uma integração.</EmptyState>
         ) : (
-          <div className="flex min-w-0 flex-col">
+          <div className="-mx-4 -mb-4 flex min-w-0 flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
             {secrets.map((secret) => (
               <SecretRow
                 key={secret.key}
@@ -395,8 +399,7 @@ function SecretsSection() {
         )}
       </Panel>
 
-      <Panel title="Adicionar configuração" className="min-w-0">
-        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Cadastre segredos usados pelas funções de servidor do Qqorvex. Não coloque chaves privadas no código do app; credenciais de Edge Functions, como Stripe, continuam configuradas nos segredos do Supabase.</p>
+      <Panel title="Nova chave" description="Segredos usados pelas funções do servidor. Credenciais da Stripe continuam nos segredos do Supabase.">
         <form
           className="flex min-w-0 flex-col gap-4"
           onSubmit={async (event) => {
@@ -416,7 +419,7 @@ function SecretsSection() {
         >
           <Input label="Identificador" placeholder="Ex.: outra_api_key" value={newKey} onChange={(event) => { setNewKey(event.target.value); setNewSecretSaved(false); }} autoComplete="off" />
           <Input label="Valor secreto" type="password" value={newValue} onChange={(event) => { setNewValue(event.target.value); setNewSecretSaved(false); }} autoComplete="new-password" />
-          <Button type="submit" variant="primary" className="self-start" disabled={setSecretMutation.isPending || !newKey.trim() || !newValue.trim()}>{setSecretMutation.isPending ? "Salvando…" : "Salvar configuração"}</Button>
+          <Button type="submit" className="self-start" loading={setSecretMutation.isPending} disabled={!newKey.trim() || !newValue.trim()}>Salvar chave</Button>
         </form>
         {newSecretError && <Notice tone="error">{newSecretError}</Notice>}
         {newSecretSaved && <Notice tone="success">Chave salva. O valor secreto não será mostrado novamente.</Notice>}
@@ -460,24 +463,24 @@ function SecretRow({
   }
 
   return (
-    <article className="border-b border-line-soft last:border-b-0 flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <article className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm font-medium text-fg">{label}</p>
+          <p className="break-words text-[13.5px] font-medium text-fg">{label}</p>
           <p className="mt-0.5 break-all font-mono text-[11px] text-fg-3">{secretKey}</p>
         </div>
-        <Badge tone={hasValue ? "success" : "outline"}>{hasValue ? "Configurada" : "Sem valor"}</Badge>
+        <Badge tone={hasValue ? "success" : "neutral"}>{hasValue ? "Configurada" : "Sem valor"}</Badge>
       </div>
       {editing ? (
-        <form className="flex min-w-0 flex-col gap-2 sm:w-full sm:max-w-md sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); void save(); }}>
-          <Input label="Novo valor secreto" type="password" placeholder="Cole o novo valor" value={value} onChange={(event) => setValue(event.target.value)} className="min-w-0 flex-1" autoComplete="new-password" />
+        <form className="flex min-w-0 flex-col gap-2 sm:w-full sm:max-w-md sm:flex-row sm:items-center" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+          <Input type="password" aria-label="Novo valor secreto" placeholder="Cole o novo valor" value={value} onChange={(event) => setValue(event.target.value)} fieldSize="sm" wrapperClassName="min-w-0 flex-1" autoComplete="new-password" />
           <div className="flex shrink-0 gap-2">
-            <Button type="submit" size="sm" disabled={saving || !value.trim()}>{saving ? "Salvando…" : "Salvar"}</Button>
-            <Button type="button" variant="quiet" size="sm" onClick={() => { setEditing(false); setValue(""); setError(null); }} disabled={saving}>Cancelar</Button>
+            <Button type="submit" size="sm" loading={saving} disabled={!value.trim()}>Salvar</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setEditing(false); setValue(""); setError(null); }} disabled={saving}>Cancelar</Button>
           </div>
         </form>
       ) : (
-        <Button type="button" variant="quiet" size="sm" className="self-start sm:self-auto" onClick={() => { setEditing(true); setSaved(false); }}>
+        <Button type="button" variant="secondary" size="sm" className="self-start sm:self-auto" onClick={() => { setEditing(true); setSaved(false); }}>
           {hasValue ? "Substituir" : "Definir valor"}
         </Button>
       )}

@@ -175,8 +175,8 @@ export function DocumentosPage() {
     if (!linked) return undefined;
     const days = daysUntil(linked.end_date, today);
     if (days < 0) return { label: "garantia vencida", color: "var(--q-danger)" };
-    if (days <= 30) return { label: `vence em ${formatDistance(days)}`, color: "var(--color-warning)" };
-    return { label: `garantia até ${formatMonthYear(linked.end_date)}`, color: "var(--color-success)" };
+    if (days <= 30) return { label: `vence em ${formatDistance(days)}`, color: "var(--q-warning)" };
+    return { label: `garantia até ${formatMonthYear(linked.end_date)}`, color: "var(--q-success)" };
   }
 
   const storagePercent = storageQuota && storageQuota.quotaBytes ? Math.min(100, Math.round((storageQuota.usedBytes / storageQuota.quotaBytes) * 100)) : null;

@@ -150,8 +150,9 @@ function newId() {
 }
 
 /** Instala as rotas do mock numa página Playwright. */
-export async function installSupabaseMock(page, { log = false, onboarding = false } = {}) {
+export async function installSupabaseMock(page, { log = false, onboarding = false, owner = false } = {}) {
   const mock = createMockDatabase();
+  if (owner) for (const profile of mock.db.profiles ?? []) profile.role = "dono";
   const session = fakeSession({ onboarding });
 
   await page.addInitScript(

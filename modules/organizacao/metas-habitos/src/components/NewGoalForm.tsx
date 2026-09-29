@@ -97,14 +97,14 @@ export function NewGoalForm({
         <legend className="mb-1 text-sm font-medium text-fg">Como acompanhar</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {PROGRESS_OPTIONS.map((option) => (
-            <label key={option.value} className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex cursor-pointer items-start gap-2.5 p-3">
+            <label key={option.value} className={`flex min-w-0 cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${progressType === option.value ? "border-gold-line bg-gold-soft" : "border-line-soft bg-canvas/40 hover:border-line"}`}>
               <input
                 type="radio"
                 name="goal-progress-type"
                 value={option.value}
                 checked={progressType === option.value}
                 onChange={() => setProgressType(option.value)}
-                className="mt-1 accent-[var(--qv-brand-primary)]"
+                className="mt-1 accent-[var(--q-gold)]"
               />
               <span className="min-w-0">
                 <span className="block text-sm font-semibold text-fg">{option.label}</span>
