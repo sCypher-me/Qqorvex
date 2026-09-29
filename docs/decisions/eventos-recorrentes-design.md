@@ -37,6 +37,9 @@ create table public.recurring_events (
   status public.recurring_status not null default 'ativa',
   created_at timestamptz not null default now()
 );
+
+-- Cada ocorrência materializada em `events` também guarda sua origem:
+-- recurring_event_id + recurrence_date é UNIQUE.
 ```
 Reaproveita `task_recurrence_frequency` e `recurring_status` (já existem, mesmos valores) em vez de
 duplicar enums. `start_time`/`end_time` guardam só a hora do dia (null quando `is_all_day`); a data
@@ -49,16 +52,18 @@ mesma lógica de `computeNextTaskOccurrenceDate` mas própria do módulo (Agenda
 Tarefas — direção de acoplamento sem precedente e sem necessidade real aqui).
 
 `generateEventOccurrence(client, userId, recurring)` — novo em `module-agenda/repository.ts`:
-combina `next_occurrence_date` + `start_time`/`end_time` em `start_at`/`end_at` ISO, cria o evento
-de verdade (copiando título/descrição/local/link/categoria/buffers da recorrência) e avança
-`next_occurrence_date`.
+combina `next_occurrence_date` + `start_time`/`end_time` em `start_at`/`end_at` ISO, faz upsert
+idempotente do evento de verdade (copiando título/descrição/local/link/categoria/buffers da
+recorrência) e avança `next_occurrence_date` com compare-and-set. Se outra execução já criou a
+ocorrência, a linha existente é reutilizada sem sobrescrever edições do usuário.
 
 ## Cron — 6ª fonte em `send-notifications`
 
 Reimplementa `findConflicts()` (overlap considerando buffers — poucas linhas, já verificado contra
 a versão original) só pra decidir a mensagem da notificação: cria a ocorrência sempre, mas avisa
 "criado, mas colide com X — confira sua agenda" quando há sobreposição, ou a mensagem normal
-quando não há.
+quando não há. A chave de ocorrência evita duplicata em execuções concorrentes e a notificação só
+é enviada quando esta execução efetivamente criou a linha.
 
 ## UI
 

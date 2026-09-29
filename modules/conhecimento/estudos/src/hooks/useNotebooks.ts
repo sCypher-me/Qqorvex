@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createNotebook, deleteNotebook, listNotebooks } from "../repository";
+import { createNotebook, deleteNotebook, listNotebooks, updateNotebook } from "../repository";
 import type { NewNotebookInput } from "../types";
 
 const NOTEBOOKS_KEY = ["notebooks"] as const;
@@ -22,6 +22,15 @@ export function useDeleteNotebook(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (notebookId: string) => deleteNotebook(client, notebookId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: NOTEBOOKS_KEY }),
+  });
+}
+
+export function useUpdateNotebook(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ notebookId, input }: { notebookId: string; input: Parameters<typeof updateNotebook>[2] }) =>
+      updateNotebook(client, notebookId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: NOTEBOOKS_KEY }),
   });
 }

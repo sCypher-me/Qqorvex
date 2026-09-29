@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { canBeSubGoal, computeCurrentStreak, computeDerivedProgress, computeMilestoneProgress } from "./service";
-import type { Goal, GoalMilestone, HabitLog } from "./types";
+import { canBeSubGoal, computeCurrentStreak, computeDerivedProgress, computeMilestoneProgress, getHabitWeeklyTarget, localDateKey, shiftDateKey } from "./service";
+import { toGoalInsert } from "./types";
+import type { Goal, GoalMilestone, Habit, HabitLog } from "./types";
 
 describe("canBeSubGoal", () => {
   it("sem pai candidato não pode ser submeta", () => {
@@ -29,8 +30,13 @@ describe("computeCurrentStreak", () => {
     return { state: "concluido", log_date: date } as HabitLog;
   }
 
-  it("sem registro na data de referência, sequência é 0", () => {
+  it("sem registro hoje ou ontem, sequência é 0", () => {
     expect(computeCurrentStreak([], new Date(2026, 8, 15))).toBe(0);
+  });
+
+  it("preserva a sequência de ontem até o dia de hoje ser registrado", () => {
+    const logs = [log("2026-09-14"), log("2026-09-13")];
+    expect(computeCurrentStreak(logs, new Date(2026, 8, 15))).toBe(2);
   });
 
   it("conta dias consecutivos concluídos terminando na referência", () => {
@@ -41,6 +47,35 @@ describe("computeCurrentStreak", () => {
   it("um dia sem registro corta a sequência mesmo com dias mais antigos concluídos", () => {
     const logs = [log("2026-09-15"), log("2026-09-13")];
     expect(computeCurrentStreak(logs, new Date(2026, 8, 15))).toBe(1);
+  });
+});
+
+describe("date helpers", () => {
+  it("formata datas como dia local, sem conversão UTC", () => {
+    expect(localDateKey(new Date(2026, 8, 15, 0, 15))).toBe("2026-09-15");
+  });
+
+  it("desloca corretamente entre meses e anos", () => {
+    expect(shiftDateKey("2026-01-01", -1)).toBe("2025-12-31");
+    expect(shiftDateKey("2026-09-30", 1)).toBe("2026-10-01");
+  });
+});
+
+describe("getHabitWeeklyTarget", () => {
+  it("usa o número de dias configurados para a frequência personalizada", () => {
+    expect(getHabitWeeklyTarget({ frequency_type: "dias_especificos", frequency_config: { days: ["mon", "wed"] } } as unknown as Habit)).toBe(2);
+  });
+
+  it("respeita a cota semanal e não inventa um alvo para hábito mensal", () => {
+    expect(getHabitWeeklyTarget({ frequency_type: "x_vezes_semana", frequency_config: { timesPerWeek: 3 } } as unknown as Habit)).toBe(3);
+    expect(getHabitWeeklyTarget({ frequency_type: "mensal", frequency_config: {} } as unknown as Habit)).toBeNull();
+  });
+});
+
+describe("goal defaults", () => {
+  it("starts new goals active unless the user explicitly leaves them planned", () => {
+    expect(toGoalInsert("user-1", { title: "Meta" }).status).toBe("ativa");
+    expect(toGoalInsert("user-1", { title: "Meta", status: "planejada" }).status).toBe("planejada");
   });
 });
 

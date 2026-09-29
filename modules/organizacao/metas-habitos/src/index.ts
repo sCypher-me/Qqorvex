@@ -7,6 +7,6 @@ export * from "./hooks/useHabits";
 export * from "./hooks/useRoutines";
 export * from "./components/GoalCard";
 export * from "./components/NewGoalForm";
-export * from "./components/HabitCard";
+export * from "./components/HabitRow";
 export * from "./components/NewHabitForm";
 export * from "./components/RoutinesPanel";

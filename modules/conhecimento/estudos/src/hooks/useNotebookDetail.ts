@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import {
   createAssessment,
@@ -6,7 +6,16 @@ import {
   createFlashcard,
   createQuizAttempt,
   createSummary,
+  createStudySession,
   createTopic,
+  deleteAssessment,
+  deleteErrorDoubt,
+  deleteFlashcard,
+  deleteStudySession,
+  deleteSummary,
+  deleteTopic,
+  updateFlashcard,
+  updateSummary,
   listAssessments,
   listErrorsDoubts,
   listFlashcards,
@@ -14,11 +23,12 @@ import {
   listQuizQuestions,
   listQuizzes,
   listSummaries,
+  listStudySessions,
   listTopics,
   resolveErrorDoubt,
   reviewFlashcard,
 } from "../repository";
-import type { Flashcard, FlashcardReviewGrade, NewFlashcardInput } from "../types";
+import type { Flashcard, FlashcardReviewGrade, NewFlashcardInput, NewStudySessionInput } from "../types";
 
 const topicsKey = (notebookId: string) => ["topics", notebookId] as const;
 const summariesKey = (notebookId: string) => ["summaries", notebookId] as const;
@@ -28,6 +38,23 @@ const assessmentsKey = (notebookId: string) => ["assessments", notebookId] as co
 const quizzesKey = (notebookId: string) => ["quizzes", notebookId] as const;
 const quizQuestionsKey = (quizId: string) => ["quiz-questions", quizId] as const;
 const quizAttemptsKey = (quizId: string) => ["quiz-attempts", quizId] as const;
+const studySessionsKey = (notebookId: string) => ["study-sessions", notebookId] as const;
+
+/** Visões agregadas (lista de cadernos, Hoje, semana) que dependem do conteúdo dos cadernos. */
+export function invalidateEstudosAggregates(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: ["estudos-overview"] });
+  void queryClient.invalidateQueries({ queryKey: ["estudos-stats"] });
+  void queryClient.invalidateQueries({ queryKey: ["estudos-week"] });
+  void queryClient.invalidateQueries({ queryKey: ["hoje"] });
+}
+
+function useInvalidate(...keys: ReadonlyArray<readonly unknown[]>) {
+  const queryClient = useQueryClient();
+  return () => {
+    for (const key of keys) void queryClient.invalidateQueries({ queryKey: key });
+    invalidateEstudosAggregates(queryClient);
+  };
+}
 
 export function useAssessments(client: SupabaseClient<Database>, notebookId: string) {
   const query = useQuery({ queryKey: assessmentsKey(notebookId), queryFn: () => listAssessments(client, notebookId) });
@@ -35,11 +62,28 @@ export function useAssessments(client: SupabaseClient<Database>, notebookId: str
 }
 
 export function useCreateAssessment(client: SupabaseClient<Database>, notebookId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { name: string; assessmentDate?: string }) => createAssessment(client, notebookId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: assessmentsKey(notebookId) }),
-  });
+  const onSuccess = useInvalidate(assessmentsKey(notebookId));
+  return useMutation({ mutationFn: (input: { name: string; assessmentDate?: string; expectedContent?: string }) => createAssessment(client, notebookId, input), onSuccess });
+}
+
+export function useDeleteAssessment(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(assessmentsKey(notebookId));
+  return useMutation({ mutationFn: (assessmentId: string) => deleteAssessment(client, assessmentId), onSuccess });
+}
+
+export function useStudySessions(client: SupabaseClient<Database>, notebookId: string) {
+  const query = useQuery({ queryKey: studySessionsKey(notebookId), queryFn: () => listStudySessions(client, notebookId) });
+  return { studySessions: query.data ?? [], isLoading: query.isLoading };
+}
+
+export function useCreateStudySession(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(studySessionsKey(notebookId));
+  return useMutation({ mutationFn: (input: NewStudySessionInput) => createStudySession(client, notebookId, input), onSuccess });
+}
+
+export function useDeleteStudySession(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(studySessionsKey(notebookId));
+  return useMutation({ mutationFn: (sessionId: string) => deleteStudySession(client, sessionId), onSuccess });
 }
 
 export function useTopics(client: SupabaseClient<Database>, notebookId: string) {
@@ -48,12 +92,16 @@ export function useTopics(client: SupabaseClient<Database>, notebookId: string) 
 }
 
 export function useCreateTopic(client: SupabaseClient<Database>, notebookId: string) {
-  const queryClient = useQueryClient();
+  const onSuccess = useInvalidate(topicsKey(notebookId));
   return useMutation({
-    mutationFn: ({ title, parentTopicId }: { title: string; parentTopicId?: string }) =>
-      createTopic(client, notebookId, title, parentTopicId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: topicsKey(notebookId) }),
+    mutationFn: ({ title, parentTopicId }: { title: string; parentTopicId?: string }) => createTopic(client, notebookId, title, parentTopicId),
+    onSuccess,
   });
+}
+
+export function useDeleteTopic(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(topicsKey(notebookId), summariesKey(notebookId));
+  return useMutation({ mutationFn: (topicId: string) => deleteTopic(client, topicId), onSuccess });
 }
 
 export function useSummaries(client: SupabaseClient<Database>, notebookId: string) {
@@ -62,12 +110,21 @@ export function useSummaries(client: SupabaseClient<Database>, notebookId: strin
 }
 
 export function useCreateSummary(client: SupabaseClient<Database>, notebookId: string) {
-  const queryClient = useQueryClient();
+  const onSuccess = useInvalidate(summariesKey(notebookId));
+  return useMutation({ mutationFn: (input: { title: string; content: string; topicId?: string }) => createSummary(client, notebookId, input), onSuccess });
+}
+
+export function useUpdateSummary(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(summariesKey(notebookId));
   return useMutation({
-    mutationFn: (input: { title: string; content: string; topicId?: string }) =>
-      createSummary(client, notebookId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: summariesKey(notebookId) }),
+    mutationFn: ({ summaryId, input }: { summaryId: string; input: { title: string; content: string; topicId?: string | null } }) => updateSummary(client, summaryId, input),
+    onSuccess,
   });
+}
+
+export function useDeleteSummary(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(summariesKey(notebookId));
+  return useMutation({ mutationFn: (summaryId: string) => deleteSummary(client, summaryId), onSuccess });
 }
 
 export function useFlashcards(client: SupabaseClient<Database>, notebookId: string) {
@@ -76,48 +133,52 @@ export function useFlashcards(client: SupabaseClient<Database>, notebookId: stri
 }
 
 export function useCreateFlashcard(client: SupabaseClient<Database>, notebookId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: NewFlashcardInput) => createFlashcard(client, notebookId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: flashcardsKey(notebookId) }),
-  });
+  const onSuccess = useInvalidate(flashcardsKey(notebookId));
+  return useMutation({ mutationFn: (input: NewFlashcardInput) => createFlashcard(client, notebookId, input), onSuccess });
 }
 
-export function useReviewFlashcard(client: SupabaseClient<Database>, notebookId: string) {
+export function useUpdateFlashcard(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(flashcardsKey(notebookId));
+  return useMutation({ mutationFn: ({ flashcardId, front, back }: { flashcardId: string; front: string; back: string }) => updateFlashcard(client, flashcardId, { front, back }), onSuccess });
+}
+
+export function useDeleteFlashcard(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(flashcardsKey(notebookId));
+  return useMutation({ mutationFn: (flashcardId: string) => deleteFlashcard(client, flashcardId), onSuccess });
+}
+
+/** Revisão de um cartão de qualquer caderno (sessão global ou do caderno). */
+export function useReviewFlashcard(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ flashcard, grade }: { flashcard: Flashcard; grade: FlashcardReviewGrade }) =>
-      reviewFlashcard(client, flashcard, grade),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: flashcardsKey(notebookId) }),
+    mutationFn: ({ flashcard, grade }: { flashcard: Flashcard; grade: FlashcardReviewGrade }) => reviewFlashcard(client, flashcard, grade),
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: flashcardsKey(updated.notebook_id) });
+      invalidateEstudosAggregates(queryClient);
+    },
   });
 }
 
 export function useErrorsDoubts(client: SupabaseClient<Database>, notebookId: string) {
-  const query = useQuery({
-    queryKey: errorsDoubtsKey(notebookId),
-    queryFn: () => listErrorsDoubts(client, notebookId),
-  });
+  const query = useQuery({ queryKey: errorsDoubtsKey(notebookId), queryFn: () => listErrorsDoubts(client, notebookId) });
   return { errorsDoubts: query.data ?? [], isLoading: query.isLoading };
 }
 
 export function useCreateErrorDoubt(client: SupabaseClient<Database>, notebookId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (description: string) => createErrorDoubt(client, notebookId, description),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: errorsDoubtsKey(notebookId) }),
-  });
+  const onSuccess = useInvalidate(errorsDoubtsKey(notebookId));
+  return useMutation({ mutationFn: (description: string) => createErrorDoubt(client, notebookId, description), onSuccess });
 }
 
 export function useResolveErrorDoubt(client: SupabaseClient<Database>, notebookId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, isResolved }: { id: string; isResolved: boolean }) =>
-      resolveErrorDoubt(client, id, isResolved),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: errorsDoubtsKey(notebookId) }),
-  });
+  const onSuccess = useInvalidate(errorsDoubtsKey(notebookId));
+  return useMutation({ mutationFn: ({ id, isResolved }: { id: string; isResolved: boolean }) => resolveErrorDoubt(client, id, isResolved), onSuccess });
 }
 
-/** Quiz é criado só pela ferramenta da Vex (fora deste hook) — aqui só há leitura e responder. */
+export function useDeleteErrorDoubt(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(errorsDoubtsKey(notebookId));
+  return useMutation({ mutationFn: (id: string) => deleteErrorDoubt(client, id), onSuccess });
+}
+
 export function useQuizzes(client: SupabaseClient<Database>, notebookId: string) {
   const query = useQuery({ queryKey: quizzesKey(notebookId), queryFn: () => listQuizzes(client, notebookId) });
   return { quizzes: query.data ?? [], isLoading: query.isLoading };
@@ -136,8 +197,10 @@ export function useQuizAttempts(client: SupabaseClient<Database>, quizId: string
 export function useCreateQuizAttempt(client: SupabaseClient<Database>, userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ quizId, answers, score }: { quizId: string; answers: number[]; score: number }) =>
-      createQuizAttempt(client, userId, quizId, answers, score),
-    onSuccess: (_data, variables) => queryClient.invalidateQueries({ queryKey: quizAttemptsKey(variables.quizId) }),
+    mutationFn: ({ quizId, answers, score }: { quizId: string; answers: number[]; score: number }) => createQuizAttempt(client, userId, quizId, answers, score),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: quizAttemptsKey(variables.quizId) });
+      void queryClient.invalidateQueries({ queryKey: ["gamification"] });
+    },
   });
 }

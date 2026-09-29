@@ -16,10 +16,10 @@ Busca automática de metadados por título, só para os tipos onde existe uma AP
 confiável:
 
 - **Livro** → Google Books API (`https://www.googleapis.com/books/v1/volumes`), sem chave.
-- **Filme/série** → TMDB (`https://api.themoviedb.org/3/search/{movie|tv}`), chave grátis via
+- **Filme/série/anime** → TMDB (`https://api.themoviedb.org/3/search/{movie|tv}`), chave grátis via
   cadastro em themoviedb.org.
 
-Os outros 12 tipos do enum `item_type` continuam manuais — não há API pública equivalente para
+Os outros 11 tipos do enum `item_type` continuam manuais — não há API pública equivalente para
 podcast, curso, artigo acadêmico, jogo etc. que valha a pena integrar na v1.
 
 ## Decisões
@@ -46,10 +46,10 @@ podcast, curso, artigo acadêmico, jogo etc. que valha a pena integrar na v1.
 ## Arquivos
 
 - `modules/conhecimento/biblioteca/src/metadataProviders.ts` (novo) — `searchGoogleBooks`,
-  `searchTmdb`, tipo `MetadataSearchResult`.
+  `searchTmdb`, `searchLibraryMetadata`, `selectBestLibraryMetadata`, tipo `MetadataSearchResult`.
 - `repository.ts` — `listItemCreators`, `addItemCreator`.
 - `service.ts` — `LIBRARY_ITEM_TYPE_LABELS` (rótulos pt-BR do enum, usados no seletor e na
-  Galeria), `SEARCHABLE_ITEM_TYPES` (`["book", "movie", "series"]`).
+  Galeria), `SEARCHABLE_ITEM_TYPES` (`["book", "movie", "series", "anime"]`).
 - `hooks/useLibrary.ts` — `useCreateLibraryItemWithCreators` (cria o item e, se houver resultado
   selecionado, os `creators` junto).
 - `components/NewItemForm.tsx` — seletor de tipo, botão "Buscar" (só para tipos buscáveis),
@@ -72,3 +72,15 @@ segurança.
 Cadastrar uma chave grátis em themoviedb.org/settings/api e preencher `VITE_TMDB_API_KEY` no
 `.env` local. Sem ela, busca de livro (Google Books) funciona normalmente; busca de filme/série
 retorna vazio até a chave existir.
+
+## Atualização — integração com a Vex e preenchimento manual
+
+- `searchLibraryMetadata` agora centraliza a escolha do provedor para formulário e Vex, incluindo
+  anime como busca de série no TMDB com fallback para filme.
+- `add_library_item` recebe o tipo quando disponível e tenta enriquecer o item depois da confirmação.
+  A capa só é aplicada quando há título exato ou uma única opção; em caso ambíguo, o item é criado
+  sem capa para não associar uma obra errada.
+- `NewItemForm` permite revisar os metadados encontrados e preencher manualmente subtítulo,
+  descrição, ano, URL da capa, autor/criador e fonte ou link para qualquer tipo de item.
+- A integração continua sem migration: os campos necessários já existem em `library_items` e
+  `library_item_creators`.

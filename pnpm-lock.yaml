@@ -8,12 +8,18 @@ importers:
 
   .:
     devDependencies:
+      playwright-core:
+        specifier: 1.56.1
+        version: 1.56.1
       vitest:
         specifier: ^3.0.0
         version: 3.2.7(jiti@2.7.0)(lightningcss@1.32.0)
 
   apps/qqorvex:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -71,6 +77,15 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.102.8(react@19.2.8)
+      '@tauri-apps/api':
+        specifier: '2'
+        version: 2.12.0
+      '@tauri-apps/plugin-deep-link':
+        specifier: '2'
+        version: 2.5.0
+      '@tauri-apps/plugin-opener':
+        specifier: '2'
+        version: 2.6.0
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -105,9 +120,15 @@ importers:
 
   modules/conhecimento/biblioteca:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-gamificacao':
         specifier: workspace:*
         version: link:../../pessoal/gamificacao
@@ -133,9 +154,15 @@ importers:
 
   modules/conhecimento/estudos:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-agenda':
         specifier: workspace:*
         version: link:../../organizacao/agenda
@@ -170,9 +197,15 @@ importers:
 
   modules/conhecimento/segundo-cerebro:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-agenda':
         specifier: workspace:*
         version: link:../../organizacao/agenda
@@ -219,9 +252,15 @@ importers:
 
   modules/gestao/documentos:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-hoje':
         specifier: workspace:*
         version: link:../../hoje
@@ -247,9 +286,15 @@ importers:
 
   modules/gestao/financas:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-documentos':
         specifier: workspace:*
         version: link:../documentos
@@ -278,9 +323,6 @@ importers:
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
-      '@qqorvex/ui':
-        specifier: workspace:*
-        version: link:../../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.102.8(react@19.2.8)
@@ -288,9 +330,6 @@ importers:
         specifier: ^19.0.0
         version: 19.2.8
     devDependencies:
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.18
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -310,9 +349,15 @@ importers:
 
   modules/organizacao/agenda:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-hoje':
         specifier: workspace:*
         version: link:../../hoje
@@ -335,9 +380,15 @@ importers:
 
   modules/organizacao/metas-habitos:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-financas':
         specifier: workspace:*
         version: link:../../gestao/financas
@@ -369,9 +420,15 @@ importers:
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-gamificacao':
         specifier: workspace:*
         version: link:../../pessoal/gamificacao
@@ -397,9 +454,15 @@ importers:
 
   modules/pessoal/gamificacao:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/ui':
         specifier: workspace:*
         version: link:../../../packages/ui
@@ -419,15 +482,24 @@ importers:
 
   modules/pessoal/vida-pessoal:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../../../packages/database
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../../../packages/design-system
       '@qqorvex/module-documentos':
         specifier: workspace:*
         version: link:../../gestao/documentos
       '@qqorvex/module-financas':
         specifier: workspace:*
         version: link:../../gestao/financas
+      '@qqorvex/module-gamificacao':
+        specifier: workspace:*
+        version: link:../gamificacao
       '@qqorvex/module-hoje':
         specifier: workspace:*
         version: link:../../hoje
@@ -459,6 +531,9 @@ importers:
       '@qqorvex/database':
         specifier: workspace:*
         version: link:../database
+      libphonenumber-js:
+        specifier: ^1.11.0
+        version: 1.13.13
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -484,6 +559,16 @@ importers:
         version: 5.9.3
 
   packages/design-system:
+    dependencies:
+      '@fontsource-variable/geist-mono':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/inter':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/outfit':
+        specifier: 5.3.0
+        version: 5.3.0
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -507,6 +592,12 @@ importers:
 
   packages/ui:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@qqorvex/design-system':
+        specifier: workspace:*
+        version: link:../design-system
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -550,6 +641,9 @@ importers:
       '@qqorvex/module-financas':
         specifier: workspace:*
         version: link:../../modules/gestao/financas
+      '@qqorvex/module-gamificacao':
+        specifier: workspace:*
+        version: link:../../modules/pessoal/gamificacao
       '@qqorvex/module-metas-habitos':
         specifier: workspace:*
         version: link:../../modules/organizacao/metas-habitos
@@ -559,6 +653,9 @@ importers:
       '@qqorvex/module-tarefas':
         specifier: workspace:*
         version: link:../../modules/organizacao/tarefas
+      '@qqorvex/module-vida-pessoal':
+        specifier: workspace:*
+        version: link:../../modules/pessoal/vida-pessoal
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.102.8(react@19.2.8)
@@ -830,6 +927,15 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@fontsource-variable/geist-mono@5.3.0':
+    resolution: {integrity: sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw==}
+
+  '@fontsource-variable/inter@5.3.0':
+    resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
+
+  '@fontsource-variable/outfit@5.3.0':
+    resolution: {integrity: sha512-fPb5XnYK0k7SbR++HEmm4+ZqDszmLKQ+sPRUr8oQ/KNC0vy6r6hazJFe8iYozv4cqlHbvJ/JECkJWrfDodUMVQ==}
+
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -851,6 +957,13 @@ packages:
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
+
+  '@phosphor-icons/react@2.1.10':
+    resolution: {integrity: sha512-vt8Tvq8GLjheAZZYa+YG/pW7HDbov8El/MANW8pOAz4eGxrwhnbfrQZq0Cp4q8zBEu8NIhHdnr+r8thnfRSNYA==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>= 16.8'
+      react-dom: '>= 16.8'
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -1110,6 +1223,15 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
+  '@tauri-apps/api@2.12.0':
+    resolution: {integrity: sha512-fUSxFX8VABYe9W9K5ROdEaKVkNUFRcMSRofjruvaxztXA+I0XnQHcYHF8m/a6iExRUxsUf0HsFWhPBuH9IgzJw==}
+
+  '@tauri-apps/plugin-deep-link@2.5.0':
+    resolution: {integrity: sha512-Heu/hQSeWIQ6K/XML3Rj7An99eofHHaFoc6njMMIa+XIznvgiDtGgv6OIBWQ0HwHwmHf1QK/ysA/2dL3lEKMeA==}
+
+  '@tauri-apps/plugin-opener@2.6.0':
+    resolution: {integrity: sha512-KIl9qkBGyAUrbzfCtdk+NRPTXUOwpMyUKsKN57H6/qA0q8auVywXpfUyWClqX6I/iH8PHmqAUa/KK9YZPWVQew==}
+
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
 
@@ -1340,6 +1462,9 @@ packages:
     resolution: {integrity: sha512-h+UCwkZ+4Jz8WQ7MLGfj7UVFrRCizGb912fwF4luGdYsC5paYG1vx+jy+KRcC/XkpjGva/P7nAWuxNnPzRvzHw==}
     hasBin: true
 
+  libphonenumber-js@1.13.13:
+    resolution: {integrity: sha512-hV6SmWnyQ8U1QXhhqbqYBHIStNnscG7A5XbGodgdHhf/8N5PwhYpJA5U/yHDjYwPYTd8uNGXqq416XctuvK2PA==}
+
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
     engines: {node: '>= 12.0.0'}
@@ -1457,6 +1582,11 @@ packages:
   picomatch@4.0.7:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
+
+  playwright-core@1.56.1:
+    resolution: {integrity: sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
@@ -1881,6 +2011,12 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
+  '@fontsource-variable/geist-mono@5.3.0': {}
+
+  '@fontsource-variable/inter@5.3.0': {}
+
+  '@fontsource-variable/outfit@5.3.0': {}
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -1902,6 +2038,11 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
@@ -2086,6 +2227,16 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.102.8
       react: 19.2.8
+
+  '@tauri-apps/api@2.12.0': {}
+
+  '@tauri-apps/plugin-deep-link@2.5.0':
+    dependencies:
+      '@tauri-apps/api': 2.12.0
+
+  '@tauri-apps/plugin-opener@2.6.0':
+    dependencies:
+      '@tauri-apps/api': 2.12.0
 
   '@types/babel__core@7.20.5':
     dependencies:
@@ -2316,6 +2467,8 @@ snapshots:
     dependencies:
       commander: 15.0.0
 
+  libphonenumber-js@1.13.13: {}
+
   lightningcss-android-arm64@1.32.0:
     optional: true
 
@@ -2394,6 +2547,8 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.7: {}
+
+  playwright-core@1.56.1: {}
 
   postcss@8.5.28:
     dependencies:

@@ -15,7 +15,7 @@ describe("canBeSubTopic", () => {
 
 describe("computeNextReview (SM-2 simplificado)", () => {
   const base = { interval_days: 6, ease_factor: 2.5, repetitions: 2 };
-  const today = new Date("2026-09-15");
+  const today = new Date(2026, 8, 15, 12);
 
   it("errar zera repetições, intervalo de 1 dia e reduz o ease factor", () => {
     const result = computeNextReview(base, "errei", today);
@@ -44,6 +44,12 @@ describe("computeNextReview (SM-2 simplificado)", () => {
   it("ease factor nunca cai abaixo do mínimo (1.3)", () => {
     const result = computeNextReview({ interval_days: 1, ease_factor: 1.35, repetitions: 0 }, "errei", today);
     expect(result.easeFactor).toBe(1.3);
+  });
+
+  it("mantém a data de revisão no calendário local ao estudar perto da meia-noite", () => {
+    const lateToday = new Date(2026, 8, 15, 23, 45);
+    const result = computeNextReview({ interval_days: 0, ease_factor: 2.5, repetitions: 0 }, "bom", lateToday);
+    expect(result.nextReviewDate).toBe("2026-09-16");
   });
 });
 

@@ -1,0 +1,13 @@
+project_id = "uowipikbumbaprckdvkg"
+
+[functions.stripe-webhook]
+# Stripe autentica este endpoint via Stripe-Signature, validada no handler.
+verify_jwt = false
+
+[functions.billing-app-return]
+# Endpoint público somente de redirecionamento para o deep link fixo do APK.
+verify_jwt = false
+
+[functions.google-calendar-disconnect]
+# A revogação sempre deriva o usuário do JWT validado; nunca aceita user_id do cliente.
+verify_jwt = true

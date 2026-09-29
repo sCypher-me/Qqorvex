@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createHabit, deleteHabit, listHabitLogs, listHabits, logHabit, updateHabitStatus } from "../repository";
+import { createHabit, deleteHabit, listHabitLogs, listHabits, logHabit, updateHabitStatus, listHabitLogsInRange, deleteHabitLog } from "../repository";
 import type { Habit, HabitLogState, NewHabitInput } from "../types";
 
 const HABITS_KEY = ["habits"] as const;
@@ -46,6 +46,42 @@ export function useLogHabit(client: SupabaseClient<Database>, habitId: string) {
   return useMutation({
     mutationFn: ({ logDate, state }: { logDate: string; state: HabitLogState }) =>
       logHabit(client, habitId, logDate, state),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: habitLogsKey(habitId) }),
+    onSuccess: () => invalidateHabitLogs(queryClient),
+  });
+}
+
+const HABIT_LOG_KEY_PREFIXES = new Set(["habit-logs", "habit-logs-by-date", "habit-logs-range", "hoje"]);
+
+function invalidateHabitLogs(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ predicate: (query) => HABIT_LOG_KEY_PREFIXES.has(String(query.queryKey[0])) });
+}
+
+/** Registros de todos os hábitos num intervalo (painel do dia, mapa de calor, resumo semanal). */
+export function useHabitLogsInRange(client: SupabaseClient<Database>, fromDate: string, toDate: string) {
+  const query = useQuery({ queryKey: ["habit-logs-range", fromDate, toDate], queryFn: () => listHabitLogsInRange(client, fromDate, toDate) });
+  return { logs: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
+
+/** Marca/desmarca um hábito num dia, de qualquer tela. */
+export function useToggleHabitLog(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ habitId, logDate, done }: { habitId: string; logDate: string; done: boolean }) => {
+      if (done) await logHabit(client, habitId, logDate, "concluido");
+      else await deleteHabitLog(client, habitId, logDate);
+    },
+    onSuccess: () => invalidateHabitLogs(queryClient),
+  });
+}
+
+/** Define o registro de um dia (feito, parcial, pulado) ou o apaga (`null`). */
+export function useSetHabitLog(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ habitId, logDate, state }: { habitId: string; logDate: string; state: HabitLogState | null }) => {
+      if (state) await logHabit(client, habitId, logDate, state);
+      else await deleteHabitLog(client, habitId, logDate);
+    },
+    onSuccess: () => invalidateHabitLogs(queryClient),
   });
 }

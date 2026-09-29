@@ -24,6 +24,14 @@ const EASE_DELTA: Record<FlashcardReviewGrade, number> = {
   facil: 0.15,
 };
 
+/** Formata uma data pelo calendário local, sem deslocar o dia via UTC. */
+export function getLocalDateKey(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * "O algoritmo exato permanece pendente e deve ser substituível sem perder conteúdo/histórico."
  * Implementação atual: variante simplificada do SM-2. Trocar por outro algoritmo exige só
@@ -57,7 +65,7 @@ export function computeNextReview(
     intervalDays,
     easeFactor,
     repetitions,
-    nextReviewDate: nextReviewDate.toISOString().slice(0, 10),
+    nextReviewDate: getLocalDateKey(nextReviewDate),
   };
 }
 

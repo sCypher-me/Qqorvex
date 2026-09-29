@@ -3,6 +3,7 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import {
   createFolder,
   createWarranty,
+  getDocumentStorageQuota,
   deleteDocument,
   deleteFolder,
   listDocuments,
@@ -14,6 +15,7 @@ import {
   purgeDocument,
   restoreDocument,
   restoreDocumentVersion,
+  setDocumentArchived,
   toggleImportant,
   toggleVault,
   updateDocumentType,
@@ -29,10 +31,20 @@ const FOLDERS_KEY = ["folders"] as const;
 const WARRANTIES_KEY = ["warranties"] as const;
 const TRASHED_DOCUMENTS_KEY = ["documents-trash"] as const;
 const DOCUMENT_VERSIONS_KEY = ["document-versions"] as const;
+const DOCUMENT_STORAGE_QUOTA_KEY = ["documents", "storage-quota"] as const;
 
-export function useDocuments(client: SupabaseClient<Database>) {
-  const query = useQuery({ queryKey: DOCUMENTS_KEY, queryFn: () => listDocuments(client) });
-  return { documents: query.data ?? [], isLoading: query.isLoading, error: query.error };
+export function useDocumentStorageQuota(client: SupabaseClient<Database>) {
+  const query = useQuery({
+    queryKey: DOCUMENT_STORAGE_QUOTA_KEY,
+    queryFn: () => getDocumentStorageQuota(client),
+    retry: false,
+  });
+  return { quota: query.data ?? null, isLoading: query.isLoading, error: query.error };
+}
+
+export function useDocuments(client: SupabaseClient<Database>, archived = false, enabled = true) {
+  const query = useQuery({ queryKey: [...DOCUMENTS_KEY, archived], queryFn: () => listDocuments(client, archived), enabled });
+  return { documents: query.data ?? [], isLoading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useUploadDocument(client: SupabaseClient<Database>, userId: string) {
@@ -43,13 +55,18 @@ export function useUploadDocument(client: SupabaseClient<Database>, userId: stri
       fileName,
       documentType,
       force,
+      folderId,
     }: {
       file: File;
       fileName: string;
       documentType?: Document["document_type"];
       force?: boolean;
-    }) => uploadDocument(client, userId, file, fileName, documentType ?? "outro", { force }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
+      folderId?: string;
+    }) => uploadDocument(client, userId, file, fileName, documentType ?? "outro", { force, folderId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
+      queryClient.invalidateQueries({ queryKey: DOCUMENT_STORAGE_QUOTA_KEY });
+    },
   });
 }
 
@@ -93,7 +110,10 @@ export function usePurgeDocument(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (document: Document) => purgeDocument(client, document),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: TRASHED_DOCUMENTS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRASHED_DOCUMENTS_KEY });
+      queryClient.invalidateQueries({ queryKey: DOCUMENT_STORAGE_QUOTA_KEY });
+    },
   });
 }
 
@@ -114,6 +134,7 @@ export function useUploadNewVersion(client: SupabaseClient<Database>) {
     onSuccess: (_data, { document }) => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
       queryClient.invalidateQueries({ queryKey: [...DOCUMENT_VERSIONS_KEY, document.id] });
+      queryClient.invalidateQueries({ queryKey: DOCUMENT_STORAGE_QUOTA_KEY });
     },
   });
 }
@@ -126,6 +147,7 @@ export function useRestoreDocumentVersion(client: SupabaseClient<Database>) {
     onSuccess: (_data, { document }) => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
       queryClient.invalidateQueries({ queryKey: [...DOCUMENT_VERSIONS_KEY, document.id] });
+      queryClient.invalidateQueries({ queryKey: DOCUMENT_STORAGE_QUOTA_KEY });
     },
   });
 }
@@ -200,6 +222,15 @@ export function useMoveDocumentToFolder(client: SupabaseClient<Database>) {
   return useMutation({
     mutationFn: ({ documentId, folderId }: { documentId: string; folderId: string | null }) =>
       moveDocumentToFolder(client, documentId, folderId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
+  });
+}
+
+export function useSetDocumentArchived(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ documentId, isArchived }: { documentId: string; isArchived: boolean }) =>
+      setDocumentArchived(client, documentId, isArchived),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
   });
 }

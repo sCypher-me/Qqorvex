@@ -1,30 +1,52 @@
 import { useState, type FormEvent } from "react";
-import { Button, Input } from "@qqorvex/ui";
+import { Button, Input, Textarea } from "@qqorvex/ui";
+import type { NewProjectInput } from "../types";
 
-/** "Campo mínimo obrigatório: Título." Descrição fica para depois, se fizer falta. */
-export function NewProjectForm({ onCreate, onCancel }: { onCreate: (title: string) => void; onCancel?: () => void }) {
+/** Projeto agrupa tarefas já existentes; título é obrigatório e contexto é opcional. */
+export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewProjectInput) => void | Promise<void>; onCancel?: () => void }) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
-    onCreate(trimmed);
-    setTitle("");
+    if (!trimmed || isSaving) return;
+    setIsSaving(true);
+    setError(false);
+    try {
+      await onCreate({ title: trimmed, description: description.trim() || undefined });
+      setTitle("");
+      setDescription("");
+    } catch {
+      setError(true);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input label="Nome do projeto" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Reforma do escritório" autoFocus />
-      <div className="flex gap-2">
-        <Button type="submit" variant="primary" size="sm">
-          Criar projeto
-        </Button>
+      <Textarea
+        label="Descrição"
+        value={description}
+        onChange={(event) => setDescription(event.target.value.slice(0, 1000))}
+        maxLength={1000}
+        placeholder="Contexto, resultado ou próximos passos (opcional)"
+        rows={3}
+      />
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o projeto. Seus dados foram mantidos; tente novamente.</p>}
+      <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={onCancel}>
             Cancelar
           </Button>
         )}
+        <Button type="submit" variant="primary" loading={isSaving} disabled={!title.trim()}>
+          Criar projeto
+        </Button>
       </div>
     </form>
   );

@@ -76,6 +76,18 @@ export async function listMilestones(client: Client, goalId: string): Promise<Go
   return data;
 }
 
+export async function listGoalCheckins(client: Client, goalId: string): Promise<GoalCheckin[]> {
+  const { data, error } = await client
+    .from("goal_checkins")
+    .select("*")
+    .eq("goal_id", goalId)
+    .order("checkin_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data;
+}
+
 export async function createMilestone(client: Client, goalId: string, title: string): Promise<GoalMilestone> {
   const { data, error } = await client
     .from("goal_milestones")
@@ -257,4 +269,17 @@ export async function listHabitLogsForDate(client: Client, logDate: string): Pro
   const { data, error } = await client.from("habit_logs").select("*").eq("log_date", logDate);
   if (error) throw error;
   return data;
+}
+
+/** Registros de todos os hábitos num intervalo de datas (inclusive), para painéis e mapas de calor. */
+export async function listHabitLogsInRange(client: Client, fromDate: string, toDate: string): Promise<HabitLog[]> {
+  const { data, error } = await client.from("habit_logs").select("*").gte("log_date", fromDate).lte("log_date", toDate);
+  if (error) throw error;
+  return data;
+}
+
+/** Desfaz o registro de um dia (desmarcar). */
+export async function deleteHabitLog(client: Client, habitId: string, logDate: string): Promise<void> {
+  const { error } = await client.from("habit_logs").delete().eq("habit_id", habitId).eq("log_date", logDate);
+  if (error) throw error;
 }

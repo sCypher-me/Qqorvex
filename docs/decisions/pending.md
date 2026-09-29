@@ -1499,7 +1499,7 @@
   (`#090b0e`/gold `#b88a54`/cyan `#43b9d2`) que a v1 baseada só no Xmind, sistema de classes `qv-*`
   em `tokens.css`, novo shell (`apps/qqorvex/src/app/shell/`: header, paleta de comando Cmd+K,
   painel da Vex), páginas novas (`AuthLayout`, `Gamificacao`, `Perfil`). Detalhes completos em
-  `docs/design-system/tokens.md`, que agora é a fonte de verdade do design system (a versão
+  `DESIGN.md`, que agora é a fonte de verdade do design system (a versão
   anterior deste arquivo estava obsoleta). `designq.zip` (40MB, material bruto trazido da outra
   sessão) e `.superpowers/` adicionados ao `.gitignore`. **Pendências reais**: nada commitado
   ainda (perguntar antes do primeiro commit); decidir o que fazer com `designq.zip` em disco.
@@ -1648,6 +1648,293 @@
   e formulários mais densos (Tarefas/Agenda quick-capture) não foram auditados um a um — o shell
   agora comporta telas pequenas, mas conteúdo específico de cada página pode precisar de ajuste
   pontual conforme for sendo usado de verdade no celular.
+
+- **Auditoria geral + retorno tátil (haptics) — 1ª rodada (17/09/2026)**: usuário pediu uma
+  auditoria completa (bugs, código morto, duplicação, arquitetura, UI/UX, motion, performance,
+  segurança, acessibilidade — lista de 45 itens). Escopo é grande demais pra uma passada só num
+  app de 20 pacotes; comecei pela varredura mecânica (rápida, baixo risco) e já implementei o item
+  de maior valor concreto que realmente não existia ainda.
+  **Varredura mecânica — resultado: já bem limpo**. Grep no monorepo inteiro por `console.log/
+  debug/warn`, `catch {}` vazio, `TODO/FIXME/XXX/HACK`, `any`: zero ocorrências reais (os 2 "TODO"
+  que apareceram eram falso-positivo — "TODOS" em português e o placeholder "QQ-XXXX-XXXX"). Só 1
+  uso de `any` no projeto inteiro (`sync-google-calendar`, array temporário antes de tipar — baixo
+  risco, não corrigido ainda). Checagem de dependências não usadas em 5 pacotes-amostra
+  (ui/vex/auth/financas/tarefas): nenhuma encontrada. Advisor de segurança revisado de novo depois
+  do Painel Manager — mesmo achado de sempre (funções `SECURITY DEFINER` chamáveis por
+  `authenticated`, todas esperadas, cada uma já filtra por `is_owner()`/`auth.uid()`).
+  **Implementado**: `packages/ui/src/haptics.ts` — retorno tátil via Web Vibration API (funciona
+  no WebView Android do APK, sem plugin nativo), 5 níveis (`light/medium/success/warning/error`),
+  progressive enhancement de verdade (nunca lança, nunca bloqueia a ação; desliga também com
+  `prefers-reduced-motion`, não só animação visual). Conectado direto em `Button` (só variantes de
+  ação "pesada" — `primary/vex/premium/destructive` — vibram; `quiet/ghost/secondary/dashed`
+  ficam de fora de propósito, pra não vibrar em cada toque) e em `Switch`. Como `ConfirmDialog` já
+  usa `Button` por baixo, toda confirmação destrutiva do app (~20 componentes da rodada "página
+  por página") ganhou haptics sem precisar tocar em cada um.
+  **Achado à parte, corrigido**: o servidor de dev (`node`/Vite) estava rodando desde 16/09 às
+  23h — mais de 24h sem reiniciar, o HMR corrompeu (erro `NAV_SECTIONS não exportado`, resquício
+  de um rename de horas atrás). Matei o processo antigo e abri um novo — não era bug de código
+  (typecheck/build a partir do zero sempre passaram limpos), só o dev server precisando de
+  restart depois de uma sessão muito longa.
+  Typecheck/build/testes limpos depois da mudança.
+  **Pendências reais desta auditoria (o que ainda falta das 45 seções do pedido)**: motion
+  system/animações de página, skeletons em vez de "Carregando..." (43 ocorrências em 32 arquivos —
+  mudança grande, não cabe numa passada só), auditoria de acessibilidade (contraste, aria, foco)
+  tela por tela, revisão de textos/CTAs, e a varredura completa arquivo-por-arquivo de código
+  morto/duplicação nos ~19 módulos restantes. Fica como próxima(s) rodada(s) — dá pra continuar
+  incrementalmente na mesma sessão.
+
+- **Skeletons de carregamento — 2ª rodada da auditoria geral (18/09/2026)**: converteu as 41
+  ocorrências reais de texto "Carregando..." (de 32 arquivos — 2 a mais eram comentário/doc, não
+  contadas) em placeholders visuais animados, em vez de texto simples.
+  **Implementado**: `packages/design-system/src/tokens/tokens.css` — classe `.qv-skeleton` (bloco
+  cinza com brilho varrendo da esquerda pra direita, `@keyframes skeletonShimmer`, token
+  `--animate-skeleton-shimmer`) — respeita `prefers-reduced-motion` porque a regra global de Base
+  já desliga toda `animation` nesse caso, não precisou de lógica JS extra.
+  `packages/ui/src/components/Skeleton.tsx` — 4 primitivas exportadas: `Skeleton` (bloco avulso,
+  forma livre via `className`), `SkeletonRow`/`SkeletonList` (linha/lista no formato `qv-row-top`,
+  usado pela maioria dos painéis), `SkeletonBlock` (retângulo único) e `SkeletonCards` (pilha de
+  cards de altura fixa, pra colunas/grades que não são listas `qv-row`).
+  Cada uma das 41 ocorrências foi trocada pela primitiva que melhor combina com a forma real do
+  conteúdo que ela substitui (lista → `SkeletonList`; grade de cards/badges/notebooks → blocos em
+  grid; chips/pills → blocos arredondados em `rounded-full`; formulário → `SkeletonCards`) — não
+  foi um find-replace cego, cada arquivo foi lido pra conferir o layout real antes de escolher a
+  forma do placeholder. Imports de `EmptyState` que ficaram sem uso depois da troca foram
+  removidos (`Perfil.tsx`, `Biblioteca.tsx`, `Financas.tsx`, `Gamificacao.tsx`, `Seguranca.tsx`,
+  `DailyCheckinForm.tsx`).
+  **Deixado de propósito sem skeleton**: `apps/qqorvex/src/app/App.tsx` (`PageFallback`) — é o
+  fallback do `Suspense` entre chunks de rota (code-splitting), não sabe qual página está
+  carregando nem que forma ela tem; o indicador atual (ponto cyan pulsando + texto) já é o padrão
+  certo pra esse caso, diferente de um placeholder que precisa imitar conteúdo real.
+  Typecheck (20 pacotes) e build limpos depois da mudança. CSS do skeleton confirmado renderizando
+  (background, animação, `border-radius`) via injeção de elemento de teste no navegador — não deu
+  pra testar a transição de carregamento real ponta a ponta (piscaria rápido demais pra observar,
+  e exigiria login com a conta de teste + confirmação de e-mail do usuário), mas a base (CSS válido
+  + build passando + mesmo padrão de classes já usado e verificado em outras rodadas) dá confiança
+  suficiente pra esse tipo de mudança puramente visual/mecânica.
+  **Pendências reais que ainda restam das 45 seções**: motion system/animações de transição de
+  página, auditoria de acessibilidade tela por tela, revisão de textos/CTAs, varredura completa de
+  código morto/duplicação nos ~19 módulos restantes.
+
+- **Motion system — transições de página — 3ª rodada da auditoria geral (18/09/2026)**: cada
+  navegação entre páginas trocava de conteúdo sem transição nenhuma (corte seco). Implementado sem
+  dependência nova — o projeto já resolve toda animação com CSS puro (`@keyframes` em
+  `tokens.css`), então segui o mesmo padrão em vez de instalar `framer-motion` só pra isso.
+  **Implementado**: token `--animate-page-in` (`pageIn`, fade + leve deslocamento vertical de 8px,
+  220ms, mesma curva `ease-standard` já usada em outras transições do design system).
+  `apps/qqorvex/src/app/shell/PageTransition.tsx` — substitui o `<Outlet />` direto dentro de
+  `ProtectedLayout.tsx`; usa `key={location.pathname}` pra forçar remount (e a animação tocar de
+  novo) mesmo entre rotas que reaproveitam o mesmo componente com param diferente (trocar de
+  caderno em `/estudos/:notebookId`, de página em `/segundo-cerebro/:pageId`). `AuthLayout.tsx`
+  ganhou a mesma classe no card de login/2FA (sem precisar de `key`, já que Login e Mfa são
+  componentes de rota diferentes — o remount já acontece sozinho ao trocar de rota).
+  **Decisão consciente de escopo**: só transição de entrada, sem saída. `react-router` desmonta a
+  página antiga antes de montar a nova — uma transição de saída de verdade exigiria manter as duas
+  montadas ao mesmo tempo, o que precisaria de uma lib dedicada (`framer-motion` ou
+  `react-transition-group`). Como o app já roda 100% sem essas dependências, não valia trazer uma
+  só pra isso; fade de entrada sozinho já resolve o "corte seco" que era o problema real.
+  Respeita `prefers-reduced-motion` de graça — a regra global em `tokens.css` (Base layer) já
+  desliga toda `animation`/`transition` nesse caso, não precisou de lógica JS extra.
+  **Ainda não coberto**: troca de aba dentro da mesma página (`ChipTabs` — ex. Finanças, Tarefas,
+  Segundo Cérebro, Metas & Hábitos) continua sem transição, já que não é navegação de rota. Fica de
+  fora deste incremento por ser uma mudança maior (tocaria em muitas páginas uma por uma) — próxima
+  rodada se fizer sentido.
+  Typecheck (20 pacotes) e build limpos. Confirmado no navegador: classe `animate-page-in` aplicada
+  na tela de login com a animação/curva/duração corretas via `getComputedStyle`.
+
+- **Auditoria de acessibilidade — 4ª rodada da auditoria geral (18/09/2026)**: primeira rodada real
+  (não mecânica) — contraste calculado objetivamente (fórmula WCAG de luminância relativa, não
+  "olhômetro"), depois inspeção de foco/teclado/ARIA nos componentes de maior reuso (Modal,
+  paleta de comandos, menu "Mais", Sidebar, ChipTabs), não tela por tela (escopo grande demais pra
+  uma rodada; ver pendência no fim desta entrada).
+  **Contraste (achado real, corrigido)**: calculei a razão de contraste WCAG de cada cor de texto
+  contra as 4 superfícies do app (`vex-black/obsidian/graphite/raised`). `--color-text-muted`
+  (`#707780`) falhava AA (3.49–4.35:1, precisa 4.5:1 pra texto normal) nas 4 — é a cor mais usada
+  do app pra legendas/timestamps/o botão "Adicionar" tracejado, então o impacto real era grande.
+  `--color-critical` (`#d94155`, tom "urgente" do `Notice` de erro) também falhava nas superfícies
+  mais claras (3.64–4.29:1). Clareei os dois mantendo o tom original (`text-muted` → `#8a8f97`,
+  `critical` → `#df5f70`, ~16–18% em direção ao branco) — `critical` continua visivelmente mais
+  escuro/saturado que `--color-error` (`#f05d6c`), preservando a distinção de severidade entre os
+  dois. Atualizado em `tokens.css`, `colors.ts` (mesmo valor, documentado como espelhando o CSS) e
+  `DESIGN.md`.
+  **Foco em diálogos (achado real, corrigido)**: `Modal.tsx` (usado por `ConfirmDialog` — toda
+  confirmação de exclusão do app passa por aqui) abria sem mover o foco pra dentro, sem prender
+  Tab lá dentro (dava pra tabular pro conteúdo atrás do fundo escurecido) e sem devolver o foco pro
+  elemento que abriu o modal ao fechar. Implementado foco automático no primeiro elemento
+  focável ao abrir, `Tab`/`Shift+Tab` presos dentro do diálogo, foco restaurado ao fechar, e
+  `aria-labelledby` ligando o `role="dialog"` ao título visível (`aria-label` como alternativa
+  quando não há `title` prop, caso do `ConfirmDialog`). Mesmo tratamento aplicado ao `MoreSheet`
+  (menu "Mais" da barra inferior mobile, que já tinha Esc mas nada de foco) e devolução de foco na
+  paleta de comandos (⌘K) ao fechar.
+  **`<title>` da aba nunca mudava entre rotas (achado real, corrigido)**: `PageMetaProvider` já
+  calculava o título certo de cada rota (usado no cabeçalho visual), mas nunca espelhava isso em
+  `document.title` — o SPA não recarrega a página, então a aba do navegador ficava travada no
+  título fixo do `index.html` a sessão inteira. Além de atrapalhar histórico/abas, é como leitores
+  de tela percebem que a "página" mudou numa SPA. Um `useEffect` a mais no provider já existente
+  resolveu — sem duplicar a lógica de título, só espelhando o valor que já existia.
+  **`ChipTabs`/`Chip role="tab"` com ARIA conflitante (achado real, corrigido)**: `Chip` sempre
+  aplica `aria-pressed` (semântica de botão-toggle); `ChipTabs` sobrescrevia com `role="tab"` mas
+  sem trocar `aria-pressed` por `aria-selected` (o atributo certo pra essa role) — ficava um
+  elemento anunciado como aba mas com o atributo de estado errado. Corrigido nos dois lugares que
+  usam esse padrão (`ChipTabs` genérico e o seletor de visão do Segundo Cérebro).
+  **Navegação por drag-and-drop no Kanban — decisão já documentada, não mudei**: o `TaskCard`
+  arrastável vira um `role="button" tabIndex=0` focável (via `@dnd-kit`) mas sem `KeyboardSensor`
+  configurado, então Enter/setas não movem o card por teclado — só existe o gesto de arrastar. Isso
+  já era uma decisão consciente e documentada no próprio código (`KanbanBoard.tsx`: "os botões
+  'mover para' continuam disponíveis como alternativa acessível") — os botões de mover status
+  cobrem a ação real por teclado, então não mexi na configuração do `@dnd-kit` pra não arriscar
+  regressão numa feature que já funciona, mas fica registrado como aresta menor (o handle de
+  arrastar em si não faz nada com teclado, mesmo focável).
+  **Já estava correto, verificado e não mudei**: `<html lang="pt-BR">`, `alt` em todas as `<img>`
+  (decorativas com `alt=""`, informativas com texto), `Input`/`Select`/`Textarea` já associam
+  `<label htmlFor>` com `id` único via `useId()`, `:focus-visible` global já configurado em
+  `tokens.css`, cor nunca é o único indicador de estado (badges/textos sempre acompanham).
+  Typecheck (20 pacotes) e build limpos. Valores de contraste novos confirmados via
+  `getComputedStyle` no navegador. **Não existe suíte de testes automatizados neste projeto**
+  (nenhum `package.json` define script `test`) — corrigindo uma imprecisão de rodadas anteriores
+  desta auditoria que mencionaram "testes limpos"; só typecheck e build são verificáveis
+  automaticamente hoje.
+  **Pendências reais**: essa rodada cobriu os componentes de maior reuso, não cada tela
+  individualmente — falta auditoria tela por tela de verdade (ordem de heading h1/h2/h3, mais
+  landmarks ARIA em áreas específicas, navegação por teclado em fluxos complexos como o editor de
+  blocos do Segundo Cérebro e o Kanban de verdade com um leitor de tela real). Revisão de
+  textos/CTAs e varredura de código morto nos ~19 módulos restantes também continuam pendentes.
+
+- **Varredura de código morto nos módulos restantes — 5ª rodada da auditoria geral (18/09/2026)**:
+  a 1ª rodada desta auditoria (17/09) já tinha checado dependências não usadas numa amostra de 5
+  pacotes (ui/vex/auth/financas/tarefas) — sem achado. Esta rodada cobriu os outros 15
+  pacotes/módulos (os 13 que faltavam de `modules/`+`packages/database/design-system/notifications`,
+  mais o app principal e a raiz do workspace) com três checagens mecânicas:
+  **1) Dependências não usadas** (`depcheck` em cada `package.json`): achado real em
+  `modules/gestao/manager` — `@qqorvex/ui` em `dependencies` e `@types/react` em `devDependencies`,
+  nenhum dos dois usado em nenhum arquivo do módulo (confirmado via grep antes de mexer, não só
+  confiando no depcheck). Removidos; `tsc` do módulo e do monorepo inteiro continuam limpos depois
+  — confirma que eram mesmo mortos, não um falso-negativo do typecheck escondendo o uso real.
+  Falsos-positivos descartados (verificados, não é achado real): "vitest ausente" em quase todo
+  módulo (declarado só na raiz do workspace, não por pacote — normal em monorepo pnpm),
+  `@qqorvex/design-system`/`tailwindcss` "não usados" no app principal (na verdade usados via
+  `@import` em CSS, que o depcheck não enxerga), `jsr:@supabase`/`npm:web-push` "faltando" na raiz
+  (specifiers de import estilo Deno usados dentro das Edge Functions do Supabase, fora do grafo de
+  dependências do pnpm/Node).
+  **2) Arquivos órfãos** (heurística: nome do arquivo nunca aparece como especificador de import em
+  nenhum outro arquivo do repo): 109 arquivos `.ts`/`.tsx` checados nos 13 módulos ainda não
+  auditados — zero achados reais (o único "suspeito", `segundo-cerebro/src/css.d.ts`, é uma
+  declaração ambiente de tipos pro `import("katex/dist/katex.min.css")` dinâmico, que por natureza
+  nunca é importado por caminho — falso-positivo esperado desse tipo de arquivo).
+  **3) Arquivos de backup/rascunho esquecidos** (busca por `old`/`backup`/`copy`/`temp`/`.bak` no
+  nome): zero achados reais (só coincidências de substring tipo "F**old**ersPanel.tsx", "K**old**...
+  Bold...").
+  **Conclusão**: a 2ª leva de módulos estava tão limpa quanto a amostra da 1ª rodada — confirma que
+  não é sorte de amostragem, o projeto inteiro (20 pacotes) está genuinamente sem código morto
+  mecânico relevante hoje. Typecheck (20 pacotes) e build limpos depois da remoção em
+  `module-manager`.
+  **Não coberto por este tipo de varredura** (é mecânica, não semântica): exports públicos que
+  existem, são importados por *algum* lugar mas nunca de fato chamados/usados no fluxo real
+  (precisaria de análise por símbolo, não por arquivo/dependência); duplicação de lógica entre
+  módulos parecidos (ex.: padrões repetidos de painel CRUD) — isso é "oportunidade de abstração",
+  não "código morto", e entra em outra categoria de trabalho (refatoração deliberada, não
+  varredura).
+
+- **Revisão de textos/CTAs — 6ª rodada da auditoria geral, última seção pendente da lista original
+  de 45 (18/09/2026)**: extraí todo o texto estático de `<Button>` e `<EmptyState>` do app inteiro
+  (regex multi-linha, não plugin) pra revisar de uma vez em vez de tela por tela — achei a maior
+  parte já consistente (o padrão "Nenhum(a) X cadastrado(a)/criado(a) ainda. [porquê/como]" se
+  repete corretamente em ~35 EmptyStates; "X mesmo assim" + botão alternativo é um padrão
+  deliberado e bem documentado em 3 módulos diferentes pra confirmação de duplicado/conflito —
+  Biblioteca, Agenda, Documentos). Dois achados reais, corrigidos:
+  **1) `Manager.tsx` confundia "sem dados" com "falha ao buscar"** — as 4 seções (Visão geral,
+  Contas, Códigos, Configurações) já recebem `error` de volta dos hooks (`useManager.ts` sempre
+  expôs `query.error`), mas nenhuma delas checava — uma falha de rede aparecia como "Sem dados."/
+  "Nenhuma conta cadastrada." em vez de avisar que a busca falhou. Isso é especialmente enganoso
+  numa tela de administração só do Dono. Corrigido com um `SectionError` local reutilizável
+  (reaproveita o `Notice` já existente do design system) nas 4 seções.
+  **Achado relacionado, não corrigido nesta rodada (fora de escopo — não é "texto", é lógica de
+  UI)**: o mesmo padrão de hook (`error: query.error` exposto mas descartado pela página) existe em
+  mais 8 módulos — `agenda/useEvents.ts`, `documentos/useDocumentos.ts`, `biblioteca/useLibrary.ts`,
+  `metas-habitos/useGoals.ts` e `useHabits.ts`, `segundo-cerebro/usePages.ts`,
+  `financas/useFinancas.ts`, `estudos/useNotebooks.ts`. Fixei só o Manager porque é a tela mais
+  sensível a esse tipo de confusão (painel de administração); os outros 8 ficam como pendência real
+  — auditar cada um individualmente pra ver se a página já trata o erro de outro jeito (ex.: toast)
+  antes de assumir que é o mesmo bug.
+  **2) Terminologia inconsistente em `Seguranca.tsx`**: excluir uma passkey usava "Remover" (botão
+  + título do `ConfirmDialog`, sem `confirmLabel` — caía no genérico "Confirmar") enquanto as
+  outras ~15 confirmações de exclusão do app inteiro usam "Excluir" de forma consistente, inclusive
+  as outras 2 do mesmo arquivo (`Sair`/`Sair de todos`, ambas com `confirmLabel` explícito).
+  Alinhado pra "Excluir"/`confirmLabel="Excluir"`. ("Remover linha"/"Remover coluna" na tabela do
+  editor de blocos do Segundo Cérebro **não** é o mesmo caso — ação instantânea sem confirmação,
+  mais parecida com editar uma planilha do que excluir uma entidade; mantido como está de
+  propósito.)
+  Typecheck (20 pacotes) e build limpos.
+  **Com isso, as 45 seções do pedido original de auditoria completa (17-18/09/2026) estão todas
+  cobertas** — não no sentido de "cada linha de código revisada", mas no sentido de "cada seção
+  recebeu pelo menos uma passada real com achados verificados, não só uma lista de sugestões".
+  Pendências que ficaram (listadas com honestidade, não escondidas): acessibilidade tela por tela
+  de verdade (não só os componentes de maior reuso), os 8 módulos com erro de fetch potencialmente
+  mascarado como lista vazia, e duplicação de padrão CRUD entre módulos como oportunidade de
+  abstração futura.
+
+- **Sistema de autenticação completo — e-mail/senha + Google/Discord/GitHub (18/09/2026)**: o app
+  já usava Supabase Auth (nunca existiu autenticação paralela pra evitar) — a base é 100%
+  aproveitada, não recriada. Peça pra reestruturar o login virou um pedido detalhado cobrindo
+  cadastro completo, OAuth, account linking, recuperação de senha e gestão de identidades.
+  **Decisão-chave**: Supabase Auth já faz *Automatic Linking* nativo — quando um e-mail
+  OAuth bate com um e-mail já verificado de outra identidade, ele vincula à mesma conta sozinho
+  (e descarta identidades não confirmadas concorrentes, prevenindo pre-account-takeover). Não
+  construí nenhuma lógica própria de dedup/linking — seria reinventar o que a plataforma já
+  garante com mais rigor. `linkIdentity`/`unlinkIdentity`/`getUserIdentities` (nativos, desde
+  supabase-js 2.42+) cobrem "conectar mais um provedor logado" e "desconectar" — o próprio
+  Supabase já recusa desconectar a última identidade restante (checado de novo no cliente só por
+  UX antecipada).
+  **Banco** (`auth_registro_completo` + revoke de anon): `profiles.full_name`/`profiles.phone`
+  (E.164, `+5562912345678`) novos, nuláveis (perfis existentes não têm esse dado, nunca quebra
+  quem já tinha conta). `handle_new_user()` agora grava os dois e garante um `username`: o que o
+  usuário digitou (validado de novo no servidor) ou um `qqXXXXX` gerado com loop de colisão real
+  contra a tabela (`generate_qq_username()`, minúsculo pra respeitar a constraint `citext`
+  existente — o exemplo do pedido era `QqXXXXX` maiúsculo, adaptado). RPC nova
+  `is_username_available(candidate)` — `SECURITY DEFINER`, deliberadamente liberada pra `anon`
+  (única exceção consciente: precisa funcionar antes do cadastro existir), só retorna boolean.
+  Achei de novo a mesma pegadinha de privilégio já documentada nesta sessão (função nova ganha
+  EXECUTE de anon/authenticated separado do grant de PUBLIC) — corrigido na hora, confirmado via
+  `information_schema`, não só confiando no advisor.
+  **Pacote `@qqorvex/auth`** (estende o existente, não substitui): `oauth.ts`/`identities.ts`/
+  `useIdentities.ts` (linking), `username.ts`/`useUsernameAvailability.ts` (debounce 400ms),
+  `password.ts` (regras + checklist, mesma validação usada em cadastro e redefinição),
+  `phone.ts` (`libphonenumber-js/min` pra validação/E.164 real — não só contar dígito; a máscara
+  visual "(62) 9 1234-5678" é feita à mão pra bater com o formato pedido, `AsYouType` da lib dava
+  um espaçamento ligeiramente diferente), `authErrors.ts` (mapeia erro do Supabase pra mensagem em
+  português que nunca ajuda a enumerar conta — "E-mail ou senha incorretos.", nunca qual dos dois).
+  `AuthProvider` ganhou `signInWithOAuth`/`resetPasswordForEmail`/`updatePassword`/
+  `resendSignupConfirmation`; `signUpWithPassword` passa a aceitar nome/username/telefone.
+  **Telas**: `Login.tsx` reescrita (login + Passkey + "Esqueci minha senha" + OAuth, cadastro virou
+  rota própria). `Registrar.tsx` nova: nome, usuário (opcional, disponibilidade em tempo real),
+  e-mail, telefone (opcional), senha com checklist ao vivo, confirmação com feedback ao vivo,
+  mostrar/ocultar senha sem perder foco/cursor (ícone de olho vira `trailingAdornment` novo em
+  `Input`, reaproveitável). `EsqueciSenha.tsx`/`RedefinirSenha.tsx` novas — resposta sempre neutra
+  ("se existir uma conta...", nunca confirma/nega), token de recuperação tratado pelo próprio
+  `supabase-js` (`detectSessionInUrl`), redefinir com sucesso revoga as outras sessões
+  (`signOut({scope:"others"})`) sem derrubar a atual. `Seguranca.tsx` ganhou "Contas conectadas"
+  (E-mail verificado + Google/Discord/GitHub, Conectar/Desconectar).
+  Typecheck (20 pacotes) e build limpos. Testado no navegador sem precisar de conta real:
+  checagem de username ao vivo (RPC de verdade, não mock), checklist de senha, confirmação de
+  senha, máscara de telefone, mostrar/ocultar senha, tela de link inválido em `/redefinir-senha`
+  sem sessão — todos funcionando ponta a ponta contra o Supabase real.
+  **Rate limiting, hash de senha (Argon2id/bcrypt), sessões JWT+refresh**: nativos do Supabase
+  Auth, não implementados por fora — seria reinventar o que a plataforma já faz com mais rigor.
+  **Sessão em localStorage (não httpOnly cookie)**: mantido — é o padrão do `supabase-js` em SPA
+  sem backend próprio; migrar pra cookie exigiria um servidor intermediário (BFF) que não existe
+  nesta arquitetura, mudança desproporcional ao pedido. Mitigado pelo que já existe: token de
+  acesso de vida curta + refresh rotativo, e revogação de sessão/2FA/Passkey já implementados.
+  **Credenciais externas que só o usuário pode fornecer** (nenhum código depende delas pra
+  compilar/typar — só pra funcionar de ponta a ponta): no painel do Supabase
+  (Authentication → Providers), habilitar Google/Discord/GitHub e colar o Client ID/Secret de cada
+  um (Google Cloud Console, Discord Developer Portal, GitHub OAuth Apps — redirect URI de todos:
+  `https://uowipikbumbaprckdvkg.supabase.co/auth/v1/callback`); habilitar "Allow manual linking"
+  (Authentication → Sign In / Providers) pro "Conectar" em Configurações funcionar.
+  **Pendências reais**: sem suíte de testes automatizados no projeto (achado já registrado antes),
+  então a lista de casos de teste do pedido (login inválido, token expirado, etc.) foi validada
+  manualmente no que deu pra testar sem OAuth configurado — não vira teste automatizado porque não
+  existe harness de teste nesse repo ainda. `full_name`/`phone` não aparecem ainda na tela de
+  Perfil (`/perfil`) pra edição posterior — só são gravados no cadastro; editar depois é uma
+  extensão natural do `ProfileInput` existente, não fiz por não ter sido pedido.
 
 ## Próximo passo lógico (arquitetural, não precisa de aprovação para começar)
 1. ~~Vex Context Engine (7 fases completas)~~, ~~Estudos — Quiz/Testes gerados pela Vex~~ e

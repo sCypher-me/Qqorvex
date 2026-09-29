@@ -7,13 +7,13 @@ const RECURRING_EVENTS_KEY = ["recurring-events"] as const;
 
 export function useRecurringEvents(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: RECURRING_EVENTS_KEY, queryFn: () => listRecurringEvents(client) });
-  return { recurringEvents: query.data ?? [], isLoading: query.isLoading };
+  return { recurringEvents: query.data ?? [], isLoading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useCreateRecurringEvent(client: SupabaseClient<Database>, userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { title: string; isAllDay?: boolean; startTime?: string; endTime?: string; frequency: RecurringEventFrequency; startDate: string }) =>
+    mutationFn: (input: { title: string; isAllDay?: boolean; startTime?: string; endTime?: string; frequency: RecurringEventFrequency; startDate: string; timeZone: string }) =>
       createRecurringEvent(client, userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: RECURRING_EVENTS_KEY }),
   });

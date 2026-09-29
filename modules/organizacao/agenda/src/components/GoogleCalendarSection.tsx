@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
+import { CheckCircleIcon, GoogleLogoIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Notice } from "@qqorvex/ui";
+import { Button, Notice, Skeleton } from "@qqorvex/ui";
 import { useConnectGoogleCalendar, useDisconnectGoogleCalendar, useGoogleCalendarConnection } from "../hooks/useGoogleCalendar";
 
 /**
- * Sincronização bidirecional completa com um calendário "Qqorvex" dedicado (não o pessoal) —
- * ver docs/decisions/integracoes-agenda-design.md. "Desconectar" só apaga a conexão, nunca
- * eventos já sincronizados nos dois lados.
+ * Sincronização bidirecional com um calendário "Qqorvex" dedicado na conta Google (não o
+ * calendário pessoal). Desconectar só apaga a conexão — nenhum evento é removido.
  */
 export function GoogleCalendarSection({
   client,
@@ -20,64 +20,56 @@ export function GoogleCalendarSection({
   googleClientId: string | undefined;
 }) {
   const { connection, isLoading } = useGoogleCalendarConnection(client);
-  const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
-  const connect = useConnectGoogleCalendar(client, userId, redirectUri, googleClientId ?? "");
-  const disconnect = useDisconnectGoogleCalendar(client, userId);
-
-  // `google-oauth-callback` redireciona de volta pra cá com `?google=connected|error` — não dá
-  // pra saber o resultado de outro jeito, já que o callback roda fora de uma sessão de usuário.
+  const connect = useConnectGoogleCalendar(client, userId, `${supabaseUrl}/functions/v1/google-oauth-callback`, googleClientId ?? "");
+  const disconnect = useDisconnectGoogleCalendar(client);
   const [callbackResult, setCallbackResult] = useState<"connected" | "error" | null>(null);
+
+  // O callback do Google volta para o app com `?google=connected|error`.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const result = params.get("google");
     if (result === "connected" || result === "error") {
       setCallbackResult(result);
       params.delete("google");
-      const newSearch = params.toString();
-      window.history.replaceState({}, "", window.location.pathname + (newSearch ? `?${newSearch}` : ""));
+      const search = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (search ? `?${search}` : ""));
     }
   }, []);
 
-  if (!googleClientId) {
-    return (
-      <p className="text-[13px] leading-relaxed text-text-secondary">
-        Integração com Google Calendar ainda não configurada (falta <span className="font-mono">VITE_GOOGLE_CLIENT_ID</span>).
-      </p>
-    );
-  }
-
-  if (isLoading) return <p className="text-[13px] text-text-secondary">Carregando...</p>;
-
-  if (connection) {
-    return (
-      <div className="flex flex-col gap-3 items-start">
-        <span className="qv-pill qv-pill-success">Google Calendar conectado — sincronizando a cada poucos minutos</span>
-        <Button type="button" variant="secondary" size="sm" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
-          Desconectar
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-3 items-start">
-      <p className="text-[13px] leading-relaxed text-text-secondary">
-        Cria um calendário dedicado "Qqorvex" na sua conta Google e sincroniza seus eventos nos dois sentidos.
-      </p>
-      <Button type="button" variant="primary" size="sm" onClick={() => connect.mutate()} disabled={connect.isPending}>
-        Conectar Google Calendar
-      </Button>
-      {connect.error && (
-        <Notice tone="error" className="w-full">
-          {connect.error instanceof Error ? connect.error.message : "Falha ao iniciar a conexão."}
-        </Notice>
-      )}
-      {callbackResult === "error" && (
-        <Notice tone="error" className="w-full" title="A conexão com o Google falhou">
-          A conexão com o Google falhou. Confira se a Calendar API está ativada e se seu e-mail está na lista de
-          testadores da tela de consentimento, e tente de novo.
-        </Notice>
-      )}
+    <div className="flex items-start gap-4 rounded-xl border border-line p-4">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-hover text-fg-2">
+        <GoogleLogoIcon size={20} weight="bold" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div>
+          <p className="text-[14px] font-semibold text-fg">Google Calendar</p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-fg-3">Sincroniza nos dois sentidos com um calendário “Qqorvex” dedicado na sua conta Google.</p>
+        </div>
+        {!googleClientId ? (
+          <p className="text-xs text-fg-4">Integração ainda não habilitada neste ambiente.</p>
+        ) : isLoading ? (
+          <Skeleton className="h-8 w-40" />
+        ) : connection ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-[13px] text-success">
+              <CheckCircleIcon size={16} weight="fill" /> Conectado
+            </span>
+            <Button variant="ghost" size="sm" loading={disconnect.isPending} onClick={() => disconnect.mutate()}>
+              Desconectar
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" className="self-start" loading={connect.isPending} onClick={() => connect.mutate()}>
+            Conectar Google Calendar
+          </Button>
+        )}
+        {callbackResult === "connected" && <Notice tone="success" compact>Conta Google conectada. Os eventos aparecem em alguns minutos.</Notice>}
+        {(callbackResult === "error" || connect.error) && (
+          <Notice compact>A conexão com o Google não foi concluída. Tente novamente em instantes.</Notice>
+        )}
+        {disconnect.error && <Notice compact>Não foi possível desconectar agora.</Notice>}
+      </div>
     </div>
   );
 }

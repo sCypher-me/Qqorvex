@@ -7,7 +7,7 @@ const IMPORTANT_DATE_WINDOW_DAYS = 14;
 /**
  * "Não vira feed" (mesmo princípio de Biblioteca) — só o lembrete de check-in pendente e datas
  * importantes de Veículos nos próximos 14 dias aparecem no Hoje (mesma janela que Documentos já
- * usa). Planos/Projetos/Ideias/Contatos/Bens/Compras ficam só dentro de `/vida-pessoal`.
+ * usa). Planos/Projetos/Ideias/Contatos/Bens/Compras ficam só dentro de `/vida/pessoal`.
  */
 export function createVidaPessoalHojeProvider(client: SupabaseClient<Database>) {
   return async function vidaPessoalHojeProvider(): Promise<HojeItem[]> {

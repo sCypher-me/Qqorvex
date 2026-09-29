@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, CardHeader, ConfirmDialog, EmptyState } from "@qqorvex/ui";
+import { Button, CardHeader, ConfirmDialog, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useRestoreDocument, usePurgeDocument, useTrashedDocuments } from "../hooks/useDocumentos";
 import { TRASH_RETENTION_DAYS, daysUntilTrashExpiry } from "../service";
 
@@ -18,14 +18,14 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
   const today = new Date();
 
   return (
-    <div className="qv-card overflow-hidden">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 overflow-hidden">
       <CardHeader
         divider
         title="Lixeira"
         meta={isLoading ? undefined : `${documents.length} ${documents.length === 1 ? "arquivo" : "arquivos"}`}
       />
       {isLoading ? (
-        <EmptyState className="px-5 py-4">Carregando lixeira...</EmptyState>
+        <SkeletonList rows={3} className="px-5 py-3" />
       ) : documents.length === 0 ? (
         <EmptyState className="px-5 py-4">
           Lixeira vazia. Documentos excluídos ficam aqui por {TRASH_RETENTION_DAYS} dias antes de sumirem de vez.
@@ -35,18 +35,18 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
           {documents.map((document) => {
             const daysLeft = daysUntilTrashExpiry(document.deleted_at!, today);
             return (
-              <li key={document.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[14px] flex-wrap">
+              <li key={document.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-[14px] px-[18px] py-[14px] flex-wrap">
                 <div className="flex-[1_1_180px] min-w-0 flex flex-col gap-[3px]">
                   <span className="text-sm font-medium truncate">{document.file_name}</span>
-                  <span className="font-mono text-xs text-text-muted truncate">
+                  <span className="font-mono text-xs text-fg-3 truncate">
                     excluído em {formatDate(document.deleted_at!)} · some em {daysLeft} {daysLeft === 1 ? "dia" : "dias"}
                   </span>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button type="button" variant="quiet" size="sm" onClick={() => restore.mutate(document.id)}>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => restore.mutate(document.id)}>
                     Restaurar
                   </Button>
-                  <Button type="button" variant="destructive" size="sm" onClick={() => setConfirmPurgeId(document.id)}>
+                  <Button type="button" variant="danger" size="sm" onClick={() => setConfirmPurgeId(document.id)}>
                     Excluir para sempre
                   </Button>
                 </div>

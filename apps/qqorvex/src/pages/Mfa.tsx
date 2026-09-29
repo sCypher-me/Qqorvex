@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Button, Notice } from "@qqorvex/ui";
+import { Button, Notice, Skeleton } from "@qqorvex/ui";
 import { useAuth, useMfaFactors, verifyTotpChallenge, getAssuranceLevel, isMfaPending } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 
@@ -11,7 +11,9 @@ export function MfaPage() {
   const { client, session, isLoading, signOut } = useAuth();
   const { factors, isLoading: factorsLoading } = useMfaFactors(client);
   const navigate = useNavigate();
+  const [selectedFactorId, setSelectedFactorId] = useState("");
   const [pending, setPending] = useState<boolean | null>(null);
+  const [assuranceError, setAssuranceError] = useState(false);
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -19,15 +21,47 @@ export function MfaPage() {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!session) return;
-    getAssuranceLevel(client).then((level) => setPending(isMfaPending(level)));
+    if (!session) {
+      setPending(null);
+      setAssuranceError(false);
+      return;
+    }
+    let cancelled = false;
+    setPending(null);
+    setAssuranceError(false);
+    void getAssuranceLevel(client)
+      .then((level) => {
+        if (!cancelled) setPending(isMfaPending(level));
+      })
+      .catch(() => {
+        if (!cancelled) setAssuranceError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [client, session]);
 
   if (isLoading) return null;
   if (!session) return <Navigate to="/login" replace />;
+  if (assuranceError) {
+    return (
+      <AuthLayout>
+        <div className="flex flex-col gap-4">
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Não foi possível validar o 2FA</h1>
+          <p className="m-0 text-[14px] leading-relaxed text-fg-3">
+            Verifique sua conexão e recarregue a página para tentar novamente.
+          </p>
+          <Button type="button" variant="primary" onClick={() => window.location.reload()} size="lg" fullWidth>
+            Tentar novamente
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+  }
   if (done || pending === false) return <Navigate to="/" replace />;
 
-  const verifiedFactor = factors.find((f) => f.status === "verified");
+  const verifiedFactors = factors.filter((factor) => factor.status === "verified");
+  const verifiedFactor = verifiedFactors.find((factor) => factor.id === selectedFactorId) ?? verifiedFactors[0];
   const code = digits.join("");
 
   function setDigit(index: number, value: string) {
@@ -78,18 +112,38 @@ export function MfaPage() {
 
   return (
     <AuthLayout>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[28px] font-semibold m-0">Verificação em duas etapas</h1>
-          <p className="text-[13px] text-text-secondary leading-[1.6] m-0">
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Verificação em duas etapas</h1>
+          <p className="m-0 text-[14px] leading-relaxed text-fg-3">
             Digite o código de 6 dígitos do seu app autenticador. A sessão só é liberada depois da confirmação.
           </p>
         </div>
 
         {factorsLoading || pending === null ? (
-          <p className="text-sm text-text-secondary">Carregando...</p>
+          <div role="status" aria-label="Carregando" className="grid grid-cols-6 gap-2.5">
+            {Array.from({ length: CODE_LENGTH }, (_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
+            ))}
+          </div>
         ) : (
           <>
+            {verifiedFactors.length > 1 && (
+              <label className="flex flex-col gap-2 text-sm font-medium text-fg">
+                App autenticador
+                <select
+                  value={verifiedFactor?.id ?? ""}
+                  onChange={(event) => setSelectedFactorId(event.target.value)}
+                  className="q-input w-full"
+                  aria-label="Escolher app autenticador"
+                >
+                  {verifiedFactors.map((factor, index) => (
+                    <option key={factor.id} value={factor.id}>{factor.friendlyName || `App autenticador ${index + 1}`}</option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal leading-relaxed text-fg-3">Se perdeu acesso ao principal, escolha seu app autenticador de reserva.</span>
+              </label>
+            )}
             <div className="grid grid-cols-6 gap-2.5" role="group" aria-label="Código de 6 dígitos">
               {digits.map((digit, index) => (
                 <input
@@ -106,8 +160,8 @@ export function MfaPage() {
                   maxLength={CODE_LENGTH}
                   autoFocus={index === 0}
                   aria-label={`Dígito ${index + 1}`}
-                  placeholder="—"
-                  className="qv-field h-[60px] p-0 text-center font-mono text-[22px]"
+                  placeholder="·"
+                  className="q-input h-14 p-0! text-center font-mono text-[22px] font-semibold"
                 />
               ))}
             </div>
@@ -116,13 +170,14 @@ export function MfaPage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={busy || code.length < CODE_LENGTH}
-                className="w-full py-3 text-[15px]"
+                disabled={busy || code.length < CODE_LENGTH || !verifiedFactor}
+                size="lg"
+                fullWidth
               >
-                {busy ? "Verificando..." : "Verificar"}
+                {busy ? "Verificando…" : "Verificar"}
               </Button>
-              <Button type="button" variant="quiet" onClick={handleBack} className="w-full py-3 text-[15px]">
-                Voltar
+              <Button type="button" variant="ghost" onClick={handleBack} size="lg" fullWidth>
+                Usar outra conta
               </Button>
             </div>
           </>

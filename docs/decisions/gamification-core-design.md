@@ -13,9 +13,12 @@ zero via brainstorming com o usuário, mesmo espírito de Vida Pessoal.
 - **Nível**: derivado do XP total via fórmula progressiva, nunca guardado (mesmo padrão de
   "Metas — progresso derivado", evita divergência).
 - **Badges**: catálogo fixo curto no código, cada uma checada contra um contador simples.
+- **Desafios diários**: quatro missões rotativas por data local (2 fáceis, 1 média e 1 difícil),
+  com bônus de XP por dificuldade e progresso persistido até a meia-noite seguinte. A categoria
+  Especial fica reservada para missões criadas sob demanda.
 - **Título**: uma faixa de nível = um título fixo, automático, sem escolha do usuário.
-- **Onde aparece**: widget compacto no topo do Hoje + seção completa (progresso + badges) em
-  `/seguranca`, junto do Perfil.
+- **Onde aparece**: widget compacto no topo do Hoje + seção completa (níveis, desafios e badges)
+  em `/gamificacao`.
 
 ## Ajuste feito durante a implementação
 
@@ -34,10 +37,14 @@ de "Avaliação concluída".
   patamar exceder o XP atual (poucas iterações, sem custo real pra um usuário só).
 - **Título por faixa de nível**: 1–4 "Iniciante", 5–9 "Dedicado", 10–19 "Consistente", 20+
   "Mestre" (`getTitleForLevel`).
-- **Badges** (catálogo fixo, `BADGE_CATALOG`): "Produtivo" (10 tarefas), "Consistente" (5
-  check-ins), "Estudioso" (3 quizzes), "Leitor" (5 itens da Biblioteca). Cada uma é uma função
-  pura `(stats) => boolean` contra os contadores de `gamification_stats` — crescer o catálogo
-  depois não pede migration.
+- **Conquistas** (catálogo fixo, `BADGE_CATALOG`): "Produtivo" (150 tarefas), "Consistente" (30
+  dias de check-in), "Estudioso" (50 quizzes com pelo menos 90% de acerto), "Leitor" (50 itens
+  da Biblioteca). Cada uma libera somente um título e uma insígnia — nunca XP — e é uma função
+  pura `(stats) => boolean` contra os contadores de `gamification_stats`.
+- **Desafios diários**: o catálogo é selecionado deterministicamente pela data local, evitando
+  que a missão mude durante o dia. Fácil vale 10 XP, Médio 25 XP e Difícil 50 XP; cada desafio
+  exige de 1 a 5 ações, sempre concluíveis em um dia. O contador regressivo da tela zera à
+  meia-noite e a próxima visita passa automaticamente para a nova composição.
 
 ## Onde o XP é concedido (e por quê)
 
@@ -53,9 +60,12 @@ da própria função de repository de cada módulo que decide "isso conta como c
   só em `state === "concluido"`, nunca em `"parcial"`/`"pulado"`) e `createCheckin` (todo
   check-in de meta é um insert novo — sempre premia, sem checar estado anterior).
 - `modules/conhecimento/estudos/src/repository.ts` → `createQuizAttempt`: cada tentativa premia,
-  inclusive repetir o mesmo quiz — é engajamento real, não um valor a proteger contra abuso na v1.
+  inclusive repetir o mesmo quiz; tentativas com pelo menos 90% também contam para a conquista
+  "Estudioso".
 - `modules/conhecimento/biblioteca/src/repository.ts` → `updateItemStatus`: mesma lógica de
   transição de Tarefas.
+- `modules/pessoal/vida-pessoal/src/repository.ts` → `upsertCheckin`: registra no máximo um dia
+  de conquista por data, mesmo quando o check-in daquele dia é editado novamente.
 
 Isso cria quatro dependências uma-via-só (`Tarefas/Metas-Hábitos/Estudos/Biblioteca →
 Gamificação`), sem ciclo — `@qqorvex/module-gamificacao` não depende de nenhum outro módulo de
@@ -68,29 +78,36 @@ não o propósito da chamada.
 
 ## Schema
 
-Duas tabelas novas, sem RPC/função `security definer` (upsert simples via supabase-js é
+Três tabelas novas, sem RPC/função `security definer` (upsert simples via supabase-js é
 suficiente pra um app de usuário único, sem necessidade de incremento atômico):
 
 ```sql
 gamification_stats (user_id pk, xp, tasks_completed, habit_or_goal_checkins,
-                     quizzes_completed, library_items_completed, updated_at)
+                     quizzes_completed, library_items_completed, checkin_days_completed,
+                     quizzes_90_plus, updated_at)
 user_badges (id pk, user_id, badge_key, unlocked_at, unique(user_id, badge_key))
+user_daily_challenge_progress (id pk, user_id, challenge_date, challenge_key, progress,
+                               completed_at, unique(user_id, challenge_date, challenge_key))
 ```
 
-RLS: select/insert/update restritos a `auth.uid() = user_id` nas duas tabelas — mesmo padrão já
+RLS: select/insert/update restritos a `auth.uid() = user_id` nas três tabelas — mesmo padrão já
 usado em todo o projeto.
 
 ## Fora do escopo da v1 (decisão consciente)
 
-- **Sem toast/notificação em tempo real** ao desbloquear uma badge — só aparece quando o usuário
-  abre a seção de badges em `/seguranca`. Um sistema de toast global não existe ainda no projeto.
-- **Sem sincronização instantânea entre módulos**: o widget do Hoje atualiza no padrão normal do
-  React Query (foco da aba, revisita da página), não no exato momento em que XP é concedido em
-  outro módulo — evitar importar o `queryClient` dentro de `repository.ts` (camada que não deveria
-  conhecer a UI) valeu mais que atualização instantânea.
+- **Sem toast/notificação em tempo real** ao desbloquear uma badge — ela aparece na própria seção
+  de conquistas em `/gamificacao`. Um sistema de toast global não existe ainda no projeto.
+- **Atualização entre módulos sem acoplar repositório à UI**: concessões de XP emitem um evento
+  local do app; os hooks de gamificação invalidam as consultas correspondentes no React Query.
+  Assim, a tela atualiza imediatamente na mesma aba sem importar `queryClient` no repositório.
+  Sincronização entre abas/dispositivos continua dependendo do refetch normal do React Query.
+- **Histórico diário limitado a sete dias**: a tela pode consultar os registros anteriores e
+  reconstruir os desafios determinísticos de cada data para mostrar conclusão e XP bônus, sem
+  introduzir uma tabela ou regra de recompensa nova.
 - **Sem re-desbloqueio nem histórico de perda de badge** — uma vez desbloqueada, é permanente.
-- **Sem XP em Segundo Cérebro, Documentos, Finanças, Agenda, Vida Pessoal** — só as quatro ações
-  centrais aprovadas; catálogo de ações é uma constante fácil de estender depois.
+- **Sem XP adicional em Segundo Cérebro, Documentos, Finanças, Agenda, Vida Pessoal** — só as
+  quatro ações centrais aprovadas geram XP; o check-in diário apenas alimenta a métrica da
+  conquista de consistência.
 
 ## Testes
 

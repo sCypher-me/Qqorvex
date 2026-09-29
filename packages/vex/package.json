@@ -18,10 +18,12 @@
     "@qqorvex/module-biblioteca": "workspace:*",
     "@qqorvex/module-documentos": "workspace:*",
     "@qqorvex/module-financas": "workspace:*",
+    "@qqorvex/module-gamificacao": "workspace:*",
     "@qqorvex/module-estudos": "workspace:*",
     "@qqorvex/module-metas-habitos": "workspace:*",
     "@qqorvex/module-segundo-cerebro": "workspace:*",
-    "@qqorvex/module-tarefas": "workspace:*"
+    "@qqorvex/module-tarefas": "workspace:*",
+    "@qqorvex/module-vida-pessoal": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",

@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert } from "@qqorvex/database";
+import type { Tables, TablesInsert, TablesUpdate } from "@qqorvex/database";
 
 /**
  * Agenda & Tempo é a única fonte de verdade dos blocos de horário do Qqorvex. Scheduler de
@@ -48,5 +48,18 @@ export function toEventInsert(userId: string, input: NewEventInput): TablesInser
     assessment_id: input.assessmentId ?? null,
     buffer_before_minutes: input.bufferBeforeMinutes ?? 0,
     buffer_after_minutes: input.bufferAfterMinutes ?? 0,
+  };
+}
+
+export function toEventUpdate(input: NewEventInput): TablesUpdate<"events"> {
+  return {
+    title: input.title,
+    description: input.description ?? null,
+    location: input.location ?? null,
+    meeting_link: input.meetingLink ?? null,
+    category: input.category ?? "compromisso",
+    is_all_day: input.isAllDay ?? false,
+    start_at: input.startAt,
+    end_at: input.endAt,
   };
 }

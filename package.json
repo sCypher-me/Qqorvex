@@ -7,12 +7,17 @@
   },
   "packageManager": "pnpm@9.15.9",
   "scripts": {
-    "dev": "pnpm --filter qqorvex dev",
-    "build": "pnpm -r --if-present build",
-    "typecheck": "pnpm -r --if-present typecheck",
-    "test": "vitest run"
+    "dev": "corepack pnpm --filter qqorvex dev",
+    "build": "corepack pnpm -r --if-present build",
+    "typecheck": "corepack pnpm -r --if-present typecheck",
+    "test": "vitest run",
+    "audit:edge": "node tools/audit-edge-functions.mjs",
+    "audit:edge:runtime": "node tools/audit-edge-runtime.mjs",
+    "audit:native": "node tools/audit-native-config.mjs",
+    "audit:rls:two-user": "node tools/audit-rls-two-user.mjs"
   },
   "devDependencies": {
+    "playwright-core": "1.56.1",
     "vitest": "^3.0.0"
   }
 }

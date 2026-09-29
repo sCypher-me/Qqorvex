@@ -29,6 +29,17 @@ export interface NewTaskInput {
   estimatedMinutes?: number;
 }
 
+export interface TaskUpdateInput {
+  title?: string;
+  description?: string | null;
+  priority?: TaskPriority;
+  dueDate?: string | null;
+  startDate?: string | null;
+  tags?: string[];
+  estimatedMinutes?: number | null;
+  status?: TaskStatus;
+}
+
 export function toTaskInsert(userId: string, input: NewTaskInput): TablesInsert<"tasks"> {
   return {
     user_id: userId,

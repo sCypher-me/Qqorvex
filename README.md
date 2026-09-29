@@ -102,6 +102,8 @@ Sem o Ollama rodando, a Vex **não trava**: o `ResilientProvider` cai automatica
 
 Segredos de servidor — chave privada VAPID, segredo do cron, credenciais do Zoom, client secret do Google — **nunca** ficam no cliente: vivem na tabela `public.app_secrets`, que só a `service_role` das Edge Functions consegue ler.
 
+Para publicar a Vex com Gemini/Tavily e fazê-la funcionar para usuários online, siga o tutorial [Vex online — configuração e publicação](docs/vex-online-setup.md). As chaves do Gemini e da Tavily ficam somente no `app_secrets` do Supabase; nunca use `VITE_GEMINI_API_KEY` ou `VITE_TAVILY_API_KEY`.
+
 ### Scripts
 
 | Comando | O que faz |
@@ -191,7 +193,6 @@ Qqorvex/
 ├── docs/
 │   ├── architecture/        visão geral e stack
 │   ├── decisions/           decisões de design de cada feature
-│   └── design-system/       tokens e identidade visual
 ├── Vex/                     arte oficial da personagem Vex
 └── Logotipos/               símbolo e wordmark da marca
 ```
@@ -200,59 +201,41 @@ Qqorvex/
 
 ## Inventário de telas
 
-Todas as telas autenticadas compartilham o `ProtectedLayout`: **barra lateral** de navegação com 5 seções (Principal, Organização, Conhecimento, Gestão, Pessoal) e o **painel retrátil da Vex** na borda direita, que abre o chat sobre qualquer página. Cada página é carregada sob demanda (code-splitting por rota).
+Todas as telas autenticadas compartilham o `ProtectedLayout`: **barra lateral** com Hoje, as três áreas
+(**Planejar**, **Conhecimento**, **Vida**) e a Vex; **barra superior** com busca (`Ctrl K`), criação rápida
+e notificações; no celular, **barra inferior** com as 4 áreas + Vex. No desktop, o **painel da Vex** abre ao
+lado de qualquer página. Cada página é carregada sob demanda (code-splitting por rota); links antigos
+(`/tarefas`, `/financas`, `/perfil`, `/seguranca`…) redirecionam para as rotas novas.
 
-| # | Rota | Tela | O que dá para fazer |
+| Área | Rota | Tela | O que dá para fazer |
 |---|---|---|---|
-| 1 | `/login` | **Login** | Entrar ou criar conta com e-mail e senha; entrar sem senha com **passkey**. |
-| 2 | `/mfa` | **Verificação em duas etapas** | Digitar o código de 6 dígitos do app autenticador quando a conta tem 2FA ativo. |
-| 3 | `/` | **Hoje** | Ver o resumo do dia montado por todos os módulos, com prioridade por item; acompanhar nível e XP; abrir a **Nota do Dia**; falar com a Vex; sair. |
-| 4 | `/tarefas` | **Tarefas** | Capturar tarefa rápida; **Kanban** de 3 colunas com arrastar e soltar; lista completa com filtros por status, prioridade e tag; tarefas **recorrentes**. |
-| 5 | `/agenda` | **Agenda** | Visões **Dia, Semana, Mês e Lista**; aba **Reuniões** com botão de entrar e criação de reunião **Zoom**; eventos **recorrentes**; evento rápido com lembrete e aviso de conflito. |
-| 6 | `/metas-habitos` | **Metas & Hábitos** | Criar metas com marcos, check-ins, hábitos vinculados e **progresso financeiro derivado**; hábitos com sequência; **rotinas** que agrupam hábitos. |
-| 7 | `/estudos` | **Estudos** | Listar, criar e excluir Cadernos. |
-| 8 | `/estudos/:notebookId` | **Caderno** | Tópicos; resumos; **flashcards com repetição espaçada**; **quizzes** gerados pela Vex; erros & dúvidas; avaliações com evento na Agenda; itens da Biblioteca relacionados; documentos anexados. |
-| 9 | `/segundo-cerebro` | **Segundo Cérebro** | Lista de páginas, **grafo de conhecimento** navegável e **Bases** com fórmulas, ordenação e filtro. |
-| 10 | `/segundo-cerebro/:pageId` | **Página** | **Editor de blocos** com 19 tipos e slash menu; tags; links internos e **backlinks**; **checkpoints** com restauração. |
-| 11 | `/biblioteca` | **Biblioteca** | Galeria de livros, filmes, séries e mais; novo item com **busca de metadados**, capa e detecção de duplicados; status, favorito e exclusão. |
-| 12 | `/documentos` | **Documentos** | Upload com anti-duplicado; filtros por tipo e pasta; importante; **Cofre com PIN**; **versões**; **OCR**; **lixeira** de 30 dias; pastas; **garantias**. |
-| 13 | `/financas` | **Finanças** | Saldo atual e projetado; nova movimentação com conta, cartão, categoria, forma de pagamento e veículo; contas; cartões e **faturas**; categorias; **recorrências e assinaturas**; **parcelamentos**; **orçamentos**; **calendário financeiro**. |
-| 14 | `/vida-pessoal` | **Vida Pessoal** | Abas **Planejamento** (planos, projetos, ideias), **Bem-estar** (check-in diário, Pomodoro) e **Vida Prática** (contatos úteis, veículos, bens e inventário, compras importantes, lista de compras). |
-| 15 | `/seguranca` | **Segurança** | Perfil; gamificação e badges; **2FA**; **passkeys**; **dispositivos conectados**; **PIN do Cofre**; notificações push; integração com **Google Calendar**. |
-| 16 | `/vex` | **Vex** | Conversa com a Vex em tela cheia, com histórico de conversas persistido. |
-
-### O que compõe cada tela
+| — | `/` | **Hoje** | Resumo do dia de todos os módulos: foco, agenda, hábitos, próximos compromissos e o que pede atenção. |
+| Planejar | `/planejar/tarefas` | **Tarefas** | Captura rápida com linguagem natural, lista agrupada por prazo ou quadro Kanban, filtros e tags, recorrências. |
+| Planejar | `/planejar/agenda` | **Agenda** | Dia, semana, mês e lista; eventos recorrentes, lembretes, Zoom e Google Agenda; tarefas do dia ao lado. |
+| Planejar | `/planejar/metas` | **Metas & Hábitos** | Hábitos de hoje com um toque, sequências e mapa de 12 semanas; metas com marcos e progresso derivado; rotinas. |
+| Conhecimento | `/conhecimento/estudos` (+ `/:caderno`) | **Estudos** | Cadernos com tópicos, resumos, flashcards com repetição espaçada, quizzes, sessões de estudo e avaliações. |
+| Conhecimento | `/conhecimento/notas` (+ `/:pagina`) | **Notas** | Páginas com editor de blocos, links e backlinks, mapa de conexões, bases com fórmulas e checkpoints. |
+| Conhecimento | `/conhecimento/biblioteca` | **Biblioteca** | Estante em grade ou lista, busca de metadados, progresso por página/episódio e avaliações. |
+| Vida | `/vida/financas` | **Finanças** | Visão do mês, transações, orçamentos, contas e cartões, contas a pagar, importação de extrato. |
+| Vida | `/vida/documentos` | **Documentos** | Arquivos com pastas, filtros, versões, OCR, Cofre com PIN, garantias e lixeira. |
+| Vida | `/vida/pessoal` | **Pessoal** | Planos, projetos e ideias; check-in diário e foco (Pomodoro); lista de compras, veículos, bens e contatos. |
+| — | `/vex` | **Vex** | Conversa em tela cheia com histórico, consultas aos seus dados e ações com confirmação. |
+| Conta | `/configuracoes/:secao` | **Configurações** | Perfil, aparência (tema e cor de destaque), notificações, segurança, conexões e exportação de dados. |
+| Conta | `/conquistas` | **Conquistas** | Nível e XP, desafios do dia, insígnias e trilha de níveis. |
+| Conta | `/assinatura` | **Plano e assinatura** | Uso do mês, comparação Free × Plus e gerenciamento da assinatura. |
+| Conta | `/manager` | **Central do Dono** | Contas, códigos de convite e chaves de integração (só para o Dono). |
+| Público | `/login`, `/criar-conta`, `/esqueci-senha`, `/redefinir-senha`, `/mfa` | **Entrada** | Entrar com senha, passkey ou OAuth; cadastro; recuperação; verificação em duas etapas. |
 
 <details>
-<summary><b>Componentes e hooks usados por tela</b></summary>
-
-| Tela | Arquivo | Componentes e hooks |
-|---|---|---|
-| Hoje | `pages/Hoje.tsx` | `useHojeSummary`, `useEnsureDailyNote`, `useGamificationStats`, `GamificationWidget`, `Card`, `Badge` |
-| Tarefas | `pages/Tarefas.tsx` | `QuickCapture`, `KanbanBoard`, `TaskListView`, `RecurringTasksPanel`, `useTasks`, `useAllTasks`, `useCreateTask`, `useUpdateTaskStatus`, `useUpdateTaskCancelled`, `useDeleteTask` |
-| Agenda | `pages/Agenda.tsx` | `WeekStrip`, `DayAgenda`, `WeekView`, `MonthView`, `ListView`, `MeetingsView`, `QuickEventForm`, `NewZoomMeetingForm`, `RecurringEventsPanel`, `useEventsInRange`, `useCreateEvent`, `useDeleteEvent`, `useCreateZoomMeeting`, `findConflicts` |
-| Metas & Hábitos | `pages/MetasHabitos.tsx` | `GoalCard`, `NewGoalForm`, `HabitCard`, `NewHabitForm`, `RoutinesPanel`, `useGoals`, `useHabits` e mutações |
-| Estudos | `pages/Estudos.tsx` | `NewNotebookForm`, `NotebookCard`, `useNotebooks`, `useCreateNotebook`, `useDeleteNotebook` |
-| Caderno | `pages/EstudosCaderno.tsx` | `FlashcardReviewCard`, `QuizTakingForm`, `RelatedLibraryItemsPanel`, `AttachDocumentPanel`, hooks de tópicos, resumos, flashcards, erros & dúvidas, avaliações e quizzes |
-| Segundo Cérebro | `pages/SegundoCerebro.tsx` | `NewPageForm`, `PageCard`, `GraphView`, `BasesPanel`, `usePages`, `useAllPageLinks` |
-| Página | `pages/SegundoCerebroPagina.tsx` | `BlockEditor`, `CheckpointsPanel`, `usePage`, `usePageTags`, `useBacklinks`, `useCreatePageLink` |
-| Biblioteca | `pages/Biblioteca.tsx` | `NewItemForm`, `GalleryGrid`, `useLibraryItems`, `useCreateLibraryItemWithCreators`, `useUpdateItemStatus`, `useToggleFavorite` |
-| Documentos | `pages/Documentos.tsx` | `UploadForm`, `DocumentCard`, `TrashPanel`, `VersionHistoryPanel`, `FoldersPanel`, `WarrantiesPanel`, `useExtractText`, `verifySecurityPin`, `getDownloadUrl` |
-| Finanças | `pages/Financas.tsx` | `DashboardCards`, `NewTransactionForm`, `TransactionList`, `AccountsPanel`, `CardsPanel`, `CategoriesPanel`, `RecurringTransactionsPanel`, `InstallmentsPanel`, `BudgetsPanel`, `FinancialCalendarView`, `computeBalances`, `useVehicles` |
-| Vida Pessoal | `pages/VidaPessoal.tsx` | `PlanCard`, `ProjectCard`, `IdeaCard`, `DailyCheckinForm`, `PomodoroTimer`, `UsefulContactsPanel`, `VehiclesPanel`, `AssetsPanel`, `ImportantPurchasesPanel`, `ShoppingListPanel` |
-| Segurança | `pages/Seguranca.tsx` | `useProfile`, `useMfaFactors`, `usePasskeys`, `useSessions`, `usePin`, `useNotifications`, `GoogleCalendarSection`, `BadgesPanel`, `GamificationWidget`, `ConfirmDialog` |
-| Login | `pages/Login.tsx` | `useAuth`, `signInWithPasskey` |
-| 2FA | `pages/Mfa.tsx` | `useMfaFactors`, `verifyTotpChallenge`, `getAssuranceLevel`, `isMfaPending` |
-| Vex | `pages/Vex.tsx` | `VexConversationView` (em `src/vex/`) |
-
-**Peças da Vex no app** (`apps/qqorvex/src/vex/`):
+<summary><b>Peças da Vex no app</b></summary>
 
 | Arquivo | Papel |
 |---|---|
-| `VexPanel.tsx` | Aba retrátil na borda direita de toda página autenticada; abre o chat por cima do conteúdo. |
-| `VexConversationView.tsx` | O chat em si: lista de conversas, mensagens, indicador "digitando…" e cartão de confirmação de ação. |
-| `VexSessionContext.tsx` | Compartilha qual conversa está aberta entre o painel e a página `/vex`. |
-| `CurrentItemContext.tsx` | Guarda o item em foco na tela (ex.: a tarefa clicada) para a Vex entender "muda o prazo **disso**". |
+| `VexPanel.tsx` · `VexLauncher.tsx` | Painel lateral da Vex no desktop e o botão que o abre em qualquer página. |
+| `VexConversationView.tsx` | Tela da conversa: histórico, mensagens e compositor, usada no painel e em `/vex`. |
+| `VexThread.tsx` · `VexComposer.tsx` · `VexHistory.tsx` | Mensagens (com Markdown e cartões de ação), campo com voz e lista de conversas. |
+| `useVexChat.ts` · `useSpeechInput.ts` · `helpers.ts` | Turno da Vex (ferramentas de leitura e confirmação de escrita), ditado por voz e utilitários puros. |
+| `VexSessionContext.tsx` · `CurrentItemContext.tsx` | Conversa aberta compartilhada entre painel e página; item em foco na tela para a Vex entender "disso". |
 
 </details>
 
@@ -1432,47 +1415,27 @@ Vivem em `packages/` e são consumidos pelos módulos e pelo app.
 
 ### `@qqorvex/ui`
 
-`packages/ui` · 9 exports
+`packages/ui`
 
-Componentes base do design system, consumidos por todas as telas: `Button`, `Card`, `Input`/`Select`/`Textarea`, `Badge`, `Modal`/`ConfirmDialog` e `Sidebar`.
+Biblioteca de componentes do design system Ouro & Tinta, consumida por todas as telas (lista completa e
+regras de uso em [`DESIGN.md`](DESIGN.md)):
 
-<details>
-<summary><b>Inventário de funções</b> (9)</summary>
-
-**Componentes de interface** (9)
-
-| Função / componente | Arquivo | O que faz |
-|---|---|---|
-| `Badge({ tone, className = "", children, ...props })` | `components/Badge.tsx` | Badge de status — ponto indicador, sem borda, fundo tintado sutil. |
-| `Button({ variant = "primary", className = "", ...props })` | `components/Button.tsx` | Botão do design system com 6 variantes: primary, secondary, ghost, destructive, chip e chip-accent. |
-| `Card({ accent = "cyan", className = "", ...props }, ref)` | `components/Card.tsx` | Card padrão do design system — decidido via brainstorming visual. |
-| `Input({ label, id, className = "", ...props })` | `components/FormField.tsx` | Campo de texto com rótulo obrigatório e barra lateral que acende em dourado no foco. |
-| `Select({ label, id, className = "", ...props })` | `components/FormField.tsx` | Seletor com rótulo obrigatório, mesma casca visual do Input. |
-| `Textarea({ label, id, className = "", ...props })` | `components/FormField.tsx` | Área de texto com rótulo obrigatório, mesma casca visual do Input. |
-| `Modal({ isOpen, onClose, children })` | `components/Modal.tsx` | Modal centralizado — decidido via brainstorming visual sobre 3 posições (centralizado, bottom sheet, painel lateral). |
-| `ConfirmDialog({ isOpen, title, description, confirmLabel = "Confirmar", cancelLabel…)` | `components/Modal.tsx` | Diálogo de confirmação (padrão: ação destrutiva) construído sobre o Modal. |
-| `Sidebar({ sections, brandLabel = "Qqorvex" })` | `components/Sidebar.tsx` | Sidebar fixa sem ícones — decidida via brainstorming visual. |
-
-</details>
+- **Estrutura:** `PageContainer`, `PageHeader`, `Tabs`, `Segmented`, `Card`/`CardHeader`, `List`/`ListRow`.
+- **Ações:** `Button` (primary, secondary, ghost, subtle, danger, ai, dashed, link), `IconButton`,
+  `ButtonLink`, `DropdownMenu`, `Popover`, `Tooltip`.
+- **Formulário:** `Input`, `Select`, `Textarea`, `Checkbox`, `Switch` e a classe `.q-input`.
+- **Feedback e sobreposição:** `Notice`, `EmptyState`, `useToast`, `Modal`, `Sheet`, `ConfirmDialog`, `Skeleton*`.
+- **Dados:** `Badge`, `ProgressBar`, `ProgressRing`, `BarChart`, `LineChart`, `DonutChart`, `Sparkline`, `Markdown`.
+- **Marca:** `BrandSymbol`, `Wordmark`, `VexAvatar`.
 
 ### `@qqorvex/design-system`
 
-`packages/design-system` · 3 exports
+`packages/design-system`
 
-Tokens de cor e tipografia (`colors.ts`, `typography.ts`, `tokens.css` no `@theme` do Tailwind v4) e fontes auto-hospedadas (Space Grotesk, Manrope, JetBrains Mono), sem CDN em runtime.
-
-<details>
-<summary><b>Inventário de funções</b> (3)</summary>
-
-**Funções** (3)
-
-| Função / componente | Arquivo | O que faz |
-|---|---|---|
-| `colors` | `tokens/colors.ts` | Paleta oficial do Qqorvex. |
-| `fontFamilies` | `tokens/typography.ts` | Hierarquia tipográfica oficial. |
-| `typeScale` | `tokens/typography.ts` | Escala tipográfica oficial: família, peso e tamanho de cada nível de texto. |
-
-</details>
+Tokens do Ouro & Tinta em `tokens/tokens.css` (tema escuro e claro, skins de destaque, `@theme` do
+Tailwind v4) e fontes auto-hospedadas (Inter, Outfit, Geist Mono), sem CDN em runtime. Em TypeScript:
+`cssVar` (variáveis CSS por papel), `categoryColors`/`categoryColor(key)` (paleta categórica em ordem
+fixa), `brand`, `fontFamilies` e `typeScale`.
 
 ### `@qqorvex/database`
 
@@ -1738,15 +1701,13 @@ Os testes cobrem as **funções puras** de `service.ts` — onde vivem as regras
 
 ## Design system
 
-**Cores** (`packages/design-system/src/tokens`): fundo `#0F1114`, superfícies `#14181A` e `#152124`, borda `#2D2D2D`, texto `#F4EFE6`; marca **dourado** `#CF9C49` e **ciano** `#00E6FB`; semânticas sucesso `#4ADE80`, erro `#FF5D73`, alerta `#F4C95D` e informação `#5EBBFF`.
+**Ouro & Tinta** — escuro por padrão (tinta quente `#100f0e`, texto creme `#f3ebdd`), claro opcional
+(papel `#f6f2ea`) ou automático pelo sistema. O **dourado** `#d4a056` é reservado para ação e destaque; a
+**Vex** tem turquesa próprio. Tipografia Inter (interface), Outfit (títulos) e Geist Mono (dados).
+Cores de destaque alternativas são liberadas por nível e com o Plus.
 
-**Tipografia:** Space Grotesk (títulos), Manrope (interface), JetBrains Mono (dados técnicos) — auto-hospedadas.
-
-**Regras:** dourado e ciano não competem no mesmo componente; nenhum dos dois preenche grandes áreas; estado **nunca** é comunicado só por cor.
-
-**Identidade:** a arte oficial da **Vex** fica em `Vex/` (avatares circulares em 64, 128, 256 e 512 px) e o símbolo da marca — um glifo de diamante/bússola derivado das tatuagens e joias da própria Vex — em `Logotipos/`. O wordmark é asset próprio e não deve ser recriado com a tipografia da interface.
-
-> Um redesign visual completo (design system "Sigilo") está sendo prototipado separadamente, antes de chegar a este código.
+Tokens em `packages/design-system/src/tokens/tokens.css`, componentes em `packages/ui` e as regras
+completas em [`DESIGN.md`](DESIGN.md). QA visual automatizado em `tools/visual-qa/`.
 
 ---
 
@@ -1768,7 +1729,6 @@ Os testes cobrem as **funções puras** de `service.ts` — onde vivem as regras
 | `biblioteca-metadata-provider-design.md` | Google Books e TMDB |
 | `documentos-ocr-design.md` | OCR com Tesseract.js |
 | `segundo-cerebro-checkpoints-design.md` | Checkpoints de página |
-| `design-system-componentes-v1.md` · `redesign-visual-brainstorm.md` | Componentes e direção visual |
 | `pending.md` | Histórico detalhado de implementação e pendências |
 
 Visão arquitetural completa em `docs/architecture/overview.md`.

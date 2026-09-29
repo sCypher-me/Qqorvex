@@ -28,9 +28,16 @@ supabase/.branches/
 supabase/.temp/
 *.tsbuildinfo
 
+# Caches created by local validation/build tooling
+.pnpm-store/
+.gradle-user/
+
 # Material de design bruto (referência, não faz parte do app) e sessões do Visual Companion
 designq.zip
 .superpowers/
 
+# Capturas de QA com dados da conta do usuário — somente locais
+
 # Superpowers visual brainstorming companion (mockups temporários)
 .superpowers/
+tools/visual-qa/out/

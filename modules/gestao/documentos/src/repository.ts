@@ -1,8 +1,41 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { buildStoragePath, buildVersionStoragePath, computeFileHash, computeWarrantyEndDate, isTrashExpired } from "./service";
+import { assertDocumentFitsStorageQuota, buildStoragePath, buildVersionStoragePath, computeFileHash, computeWarrantyEndDate, documentStorageLimitFromError, isTrashExpired } from "./service";
 import type { Document, DocumentImportantDate, DocumentRelation, DocumentVersion, Folder, Warranty } from "./types";
 
 type Client = SupabaseClient<Database>;
+
+async function assertStorageQuota(client: Client, fileBytes: number): Promise<void> {
+  const { data, error } = await client.rpc("get_my_document_storage_quota");
+  // A migração ainda pode não estar publicada; nesse estágio, o Storage mantém o comportamento atual.
+  // Após a publicação, a política RLS no próprio bucket continua sendo a validação autoritativa.
+  if (error?.code === "PGRST202" || error?.code === "42883") return;
+  if (error) throw new Error("Não foi possível conferir o espaço disponível. Tente novamente antes de enviar.");
+  const row = data?.[0];
+  if (!row) throw new Error("Não foi possível conferir o espaço disponível. Tente novamente antes de enviar.");
+  assertDocumentFitsStorageQuota(fileBytes, {
+    usedBytes: Number(row.used_bytes),
+    quotaBytes: Number(row.quota_bytes),
+    maxFileBytes: Number(row.max_file_bytes),
+    isPlus: row.is_plus,
+  });
+}
+
+function storageError(error: unknown): unknown {
+  return documentStorageLimitFromError(error) ?? error;
+}
+
+export async function getDocumentStorageQuota(client: Client) {
+  const { data, error } = await client.rpc("get_my_document_storage_quota");
+  if (error) throw error;
+  const row = data?.[0];
+  if (!row) return null;
+  return {
+    usedBytes: Number(row.used_bytes),
+    quotaBytes: Number(row.quota_bytes),
+    maxFileBytes: Number(row.max_file_bytes),
+    isPlus: row.is_plus,
+  };
+}
 
 const BUCKET = "documents";
 
@@ -23,11 +56,11 @@ export async function findDuplicateDocuments(client: Client, contentHash: string
   return data;
 }
 
-export async function listDocuments(client: Client): Promise<Document[]> {
+export async function listDocuments(client: Client, archived = false): Promise<Document[]> {
   const { data, error } = await client
     .from("documents")
     .select("*")
-    .eq("is_archived", false)
+    .eq("is_archived", archived)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -46,8 +79,9 @@ export async function uploadDocument(
   file: File | Blob,
   fileName: string,
   documentType: Document["document_type"] = "outro",
-  options?: { force?: boolean },
+  options?: { force?: boolean; folderId?: string },
 ): Promise<Document> {
+  await assertStorageQuota(client, file.size);
   const contentHash = await computeFileHash(file);
 
   if (!options?.force) {
@@ -61,7 +95,7 @@ export async function uploadDocument(
   const { error: uploadError } = await client.storage.from(BUCKET).upload(storagePath, file, {
     contentType: file instanceof File ? file.type : undefined,
   });
-  if (uploadError) throw uploadError;
+  if (uploadError) throw storageError(uploadError);
 
   const { data, error } = await client
     .from("documents")
@@ -74,10 +108,19 @@ export async function uploadDocument(
       size_bytes: file.size,
       document_type: documentType,
       content_hash: contentHash,
+      folder_id: options?.folderId ?? null,
     })
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) {
+    // The object was already stored; best-effort cleanup avoids orphaned private files if metadata fails.
+    try {
+      await client.storage.from(BUCKET).remove([storagePath]);
+    } catch {
+      // Preserve the original database error for the upload form.
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -89,9 +132,10 @@ export async function uploadDocument(
  * preocupação diferente da deduplicação entre documentos distintos já feita em `uploadDocument`.
  */
 export async function uploadNewVersion(client: Client, document: Document, file: File | Blob, fileName: string): Promise<Document> {
+  await assertStorageQuota(client, file.size);
   const archivePath = buildVersionStoragePath(document.user_id, document.id, document.current_version, document.file_name);
   const { error: copyError } = await client.storage.from(BUCKET).copy(document.storage_path, archivePath);
-  if (copyError) throw copyError;
+  if (copyError) throw storageError(copyError);
   const { error: removeError } = await client.storage.from(BUCKET).remove([document.storage_path]);
   if (removeError) throw removeError;
 
@@ -112,7 +156,7 @@ export async function uploadNewVersion(client: Client, document: Document, file:
     contentType: file instanceof File ? file.type : undefined,
     upsert: true,
   });
-  if (uploadError) throw uploadError;
+  if (uploadError) throw storageError(uploadError);
 
   const { data, error } = await client
     .from("documents")
@@ -148,9 +192,10 @@ export async function listDocumentVersions(client: Client, documentId: string): 
  * `git revert` em vez de um `git reset`.
  */
 export async function restoreDocumentVersion(client: Client, document: Document, version: DocumentVersion): Promise<Document> {
+  await assertStorageQuota(client, version.size_bytes ?? 0);
   const archivePath = buildVersionStoragePath(document.user_id, document.id, document.current_version, document.file_name);
   const { error: copyError } = await client.storage.from(BUCKET).copy(document.storage_path, archivePath);
-  if (copyError) throw copyError;
+  if (copyError) throw storageError(copyError);
   const { error: removeError } = await client.storage.from(BUCKET).remove([document.storage_path]);
   if (removeError) throw removeError;
 
@@ -167,7 +212,7 @@ export async function restoreDocumentVersion(client: Client, document: Document,
 
   const restoredPath = buildStoragePath(document.user_id, document.id, version.file_name);
   const { error: restoreCopyError } = await client.storage.from(BUCKET).copy(version.storage_path, restoredPath);
-  if (restoreCopyError) throw restoreCopyError;
+  if (restoreCopyError) throw storageError(restoreCopyError);
 
   const { data, error } = await client
     .from("documents")
@@ -217,7 +262,13 @@ export async function restoreDocument(client: Client, documentId: string): Promi
 
 /** Exclusão física de verdade: remove o objeto do Storage e a linha. Sem volta. */
 export async function purgeDocument(client: Client, document: Document): Promise<void> {
-  const { error: storageError } = await client.storage.from(BUCKET).remove([document.storage_path]);
+  const { data: versions, error: versionsError } = await client
+    .from("document_versions")
+    .select("storage_path")
+    .eq("document_id", document.id);
+  if (versionsError) throw versionsError;
+  const storagePaths = [...new Set([document.storage_path, ...versions.map((version) => version.storage_path)])];
+  const { error: storageError } = await client.storage.from(BUCKET).remove(storagePaths);
   if (storageError) throw storageError;
   const { error } = await client.from("documents").delete().eq("id", document.id);
   if (error) throw error;
@@ -313,6 +364,17 @@ export async function moveDocumentToFolder(client: Client, documentId: string, f
   const { data, error } = await client
     .from("documents")
     .update({ folder_id: folderId })
+    .eq("id", documentId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function setDocumentArchived(client: Client, documentId: string, isArchived: boolean): Promise<Document> {
+  const { data, error } = await client
+    .from("documents")
+    .update({ is_archived: isArchived })
     .eq("id", documentId)
     .select("*")
     .single();

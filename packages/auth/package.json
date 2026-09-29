@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@qqorvex/database": "workspace:*"
+    "@qqorvex/database": "workspace:*",
+    "libphonenumber-js": "^1.11.0"
   },
   "peerDependencies": {
     "react": "^19.0.0",

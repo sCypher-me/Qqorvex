@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildGoogleAuthUrl, computeNextEventOccurrenceDate, findConflicts, findFreeSlots } from "./service";
+import { buildGoogleAuthUrl, computeNextEventOccurrenceDate, findConflicts, findFreeSlots, normalizeEventSearchText } from "./service";
+import { localDateTimeToIso, zonedDateTimeToIso } from "./dateUtils";
 import type { CalendarEvent } from "./types";
 
 function event(overrides: Partial<CalendarEvent>): CalendarEvent {
@@ -49,6 +50,33 @@ describe("findConflicts", () => {
   });
 });
 
+describe("normalizeEventSearchText", () => {
+  it("ignora acentos e diferenças entre maiúsculas/minúsculas na busca", () => {
+    expect(normalizeEventSearchText("  Reunião COM a Equipe ")).toBe("reuniao com a equipe");
+  });
+});
+
+describe("localDateTimeToIso", () => {
+  it("preserva o horário local selecionado ao serializar para a API", () => {
+    const expected = new Date(2026, 8, 27, 9, 30, 0, 0).toISOString();
+    expect(localDateTimeToIso("2026-09-27", "09:30")).toBe(expected);
+  });
+
+  it("converte corretamente um horário recorrente de um fuso IANA para UTC", () => {
+    expect(zonedDateTimeToIso("2026-01-15", "09:30", "America/Los_Angeles")).toBe("2026-01-15T17:30:00.000Z");
+  });
+
+  it("recusa uma hora local inexistente na mudança de horário de verão", () => {
+    expect(() => zonedDateTimeToIso("2026-03-08", "02:30", "America/New_York"))
+      .toThrow("Esse horário local não existe por causa da mudança de horário do fuso escolhido.");
+  });
+
+  it("recusa datas de calendário inválidas", () => {
+    expect(() => zonedDateTimeToIso("2026-02-30", "09:30", "America/Sao_Paulo"))
+      .toThrow("A data do evento não existe.");
+  });
+});
+
 describe("findFreeSlots", () => {
   it("acha o intervalo livre entre dois eventos ocupados", () => {
     const events = [
@@ -93,5 +121,11 @@ describe("computeNextEventOccurrenceDate", () => {
     expect(computeNextEventOccurrenceDate("2026-09-15", "diaria")).toBe("2026-09-16");
     expect(computeNextEventOccurrenceDate("2026-09-15", "semanal")).toBe("2026-09-22");
     expect(computeNextEventOccurrenceDate("2026-09-15", "mensal")).toBe("2026-10-15");
+  });
+
+  it("mantém o dia âncora da recorrência mensal sem pular fevereiro ou derivar", () => {
+    expect(computeNextEventOccurrenceDate("2026-01-31", "mensal", 31)).toBe("2026-02-28");
+    expect(computeNextEventOccurrenceDate("2026-02-28", "mensal", 31)).toBe("2026-03-31");
+    expect(computeNextEventOccurrenceDate("2028-01-31", "mensal", 31)).toBe("2028-02-29");
   });
 });

@@ -1,7 +1,7 @@
 import type { SupabaseClient, Database, TablesUpdate } from "@qqorvex/database";
 import { awardXp } from "@qqorvex/module-gamificacao";
-import { computeNextTaskOccurrenceDate } from "./service";
-import type { NewTaskInput, RecurringTask, Task, TaskRecurrenceFrequency, TaskStatus } from "./types";
+import { computeNextTaskOccurrenceDate, localDateKey } from "./service";
+import type { ChecklistItem, NewTaskInput, RecurringTask, Task, TaskRecurrenceFrequency, TaskStatus, TaskUpdateInput } from "./types";
 import { toTaskInsert } from "./types";
 
 type Client = SupabaseClient<Database>;
@@ -50,6 +50,24 @@ export async function updateTaskStatus(client: Client, taskId: string, status: T
   const { data: before, error: beforeError } = await client.from("tasks").select("status, user_id").eq("id", taskId).single();
   if (beforeError) throw beforeError;
 
+  if (status !== "nao_iniciado" && status !== before.status) {
+    const { data: prerequisites, error: prerequisiteError } = await client
+      .from("task_dependencies")
+      .select("depends_on_task_id")
+      .eq("task_id", taskId);
+    if (prerequisiteError) throw prerequisiteError;
+    const prerequisiteIds = prerequisites.map((item) => item.depends_on_task_id);
+    if (prerequisiteIds.length > 0) {
+      const { data: pending, error: pendingError } = await client
+        .from("tasks")
+        .select("id")
+        .in("id", prerequisiteIds)
+        .neq("status", "concluido");
+      if (pendingError) throw pendingError;
+      if (pending.length > 0) throw new Error("Conclua os pré-requisitos antes de avançar esta tarefa.");
+    }
+  }
+
   const { data, error } = await client
     .from("tasks")
     .update({
@@ -76,11 +94,16 @@ export async function updateTaskStatus(client: Client, taskId: string, status: T
 export async function updateTask(
   client: Client,
   taskId: string,
-  updates: { title?: string; dueDate?: string | null; status?: TaskStatus },
+  updates: TaskUpdateInput,
 ): Promise<Task> {
   const patch: TablesUpdate<"tasks"> = {};
   if (updates.title !== undefined) patch.title = updates.title;
+  if (updates.description !== undefined) patch.description = updates.description;
+  if (updates.priority !== undefined) patch.priority = updates.priority;
   if (updates.dueDate !== undefined) patch.due_date = updates.dueDate;
+  if (updates.startDate !== undefined) patch.start_date = updates.startDate;
+  if (updates.tags !== undefined) patch.tags = updates.tags;
+  if (updates.estimatedMinutes !== undefined) patch.estimated_minutes = updates.estimatedMinutes;
   if (updates.status !== undefined) {
     patch.status = updates.status;
     patch.completed_at = updates.status === "concluido" ? new Date().toISOString() : null;
@@ -88,6 +111,34 @@ export async function updateTask(
   const { data, error } = await client.from("tasks").update(patch).eq("id", taskId).select("*").single();
   if (error) throw error;
   return data;
+}
+
+export async function listTaskChecklist(client: Client, taskId: string): Promise<ChecklistItem[]> {
+  const { data, error } = await client.from("task_checklist_items").select("*").eq("task_id", taskId).order("position").order("created_at");
+  if (error) throw error;
+  return data;
+}
+
+export async function createTaskChecklistItem(client: Client, taskId: string, title: string): Promise<ChecklistItem> {
+  const { count, error: countError } = await client.from("task_checklist_items").select("id", { count: "exact", head: true }).eq("task_id", taskId);
+  if (countError) throw countError;
+  const { data, error } = await client.from("task_checklist_items").insert({ task_id: taskId, title: title.trim(), position: count ?? 0 }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTaskChecklistItem(client: Client, itemId: string, updates: { title?: string; isDone?: boolean }): Promise<ChecklistItem> {
+  const patch: TablesUpdate<"task_checklist_items"> = {};
+  if (updates.title !== undefined) patch.title = updates.title.trim();
+  if (updates.isDone !== undefined) patch.is_done = updates.isDone;
+  const { data, error } = await client.from("task_checklist_items").update(patch).eq("id", itemId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTaskChecklistItem(client: Client, itemId: string): Promise<void> {
+  const { error } = await client.from("task_checklist_items").delete().eq("id", itemId);
+  if (error) throw error;
 }
 
 export async function deleteTask(client: Client, taskId: string): Promise<void> {
@@ -106,6 +157,11 @@ export async function addDependency(client: Client, taskId: string, dependsOnTas
   const { error } = await client
     .from("task_dependencies")
     .insert({ task_id: taskId, depends_on_task_id: dependsOnTaskId });
+  if (error) throw error;
+}
+
+export async function removeDependency(client: Client, taskId: string, dependsOnTaskId: string): Promise<void> {
+  const { error } = await client.from("task_dependencies").delete().eq("task_id", taskId).eq("depends_on_task_id", dependsOnTaskId);
   if (error) throw error;
 }
 
@@ -150,29 +206,98 @@ export async function updateRecurringTaskStatus(
   return data;
 }
 
+function todayDateKey(): string {
+  return localDateKey();
+}
+
+/**
+ * Materializa as ocorrências vencidas para que o Kanban não dependa de o cron ter
+ * executado exatamente antes da navegação do usuário. A chave composta da ocorrência
+ * mantém este processo seguro mesmo quando ele concorre com o cron.
+ */
+export async function materializeDueRecurringTasks(
+  client: Client,
+  userId: string,
+  today = todayDateKey(),
+): Promise<Task[]> {
+  const generated: Task[] = [];
+  const maxOccurrencesPerSync = 365;
+
+  while (generated.length < maxOccurrencesPerSync) {
+    const { data: recurringTasks, error } = await client
+      .from("recurring_tasks")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "ativa")
+      .lte("next_occurrence_date", today)
+      .order("next_occurrence_date", { ascending: true });
+    if (error) throw error;
+    if (recurringTasks.length === 0) break;
+
+    for (const recurring of recurringTasks) {
+      if (generated.length >= maxOccurrencesPerSync) break;
+      generated.push(await generateTaskOccurrence(client, userId, recurring));
+    }
+  }
+
+  return generated;
+}
+
 /**
  * "Cada ocorrência é uma tarefa vinculada à recorrência." Cria a ocorrência como tarefa comum e
  * independente (editar/completar/apagar depois não afeta a série) e avança
  * `next_occurrence_date` — a recorrência nunca é, em si, uma tarefa.
  */
 export async function generateTaskOccurrence(client: Client, userId: string, recurring: RecurringTask): Promise<Task> {
-  const { data: task, error: taskError } = await client
+  const occurrenceDate = recurring.next_occurrence_date;
+
+  const { data: existingTask, error: existingError } = await client
     .from("tasks")
-    .insert({
-      user_id: userId,
-      title: recurring.title,
-      description: recurring.description,
-      priority: recurring.priority,
-      due_date: recurring.next_occurrence_date,
-    })
     .select("*")
-    .single();
-  if (taskError) throw taskError;
+    .eq("user_id", userId)
+    .eq("recurring_task_id", recurring.id)
+    .eq("recurrence_date", occurrenceDate)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  let task = existingTask;
+  if (!task) {
+    const { data: createdTask, error: taskError } = await client
+      .from("tasks")
+      .insert({
+        user_id: userId,
+        title: recurring.title,
+        description: recurring.description,
+        priority: recurring.priority,
+        due_date: occurrenceDate,
+        recurring_task_id: recurring.id,
+        recurrence_date: occurrenceDate,
+      })
+      .select("*")
+      .single();
+
+    if (taskError && taskError.code !== "23505") throw taskError;
+    task = createdTask;
+
+    // Outra aba ou o cron pode ter criado a mesma ocorrência entre o select e o insert.
+    if (!task) {
+      const { data: concurrentTask, error: concurrentError } = await client
+        .from("tasks")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("recurring_task_id", recurring.id)
+        .eq("recurrence_date", occurrenceDate)
+        .single();
+      if (concurrentError) throw concurrentError;
+      task = concurrentTask;
+    }
+  }
 
   const { error: updateError } = await client
     .from("recurring_tasks")
-    .update({ next_occurrence_date: computeNextTaskOccurrenceDate(recurring.next_occurrence_date, recurring.frequency) })
-    .eq("id", recurring.id);
+    .update({ next_occurrence_date: computeNextTaskOccurrenceDate(occurrenceDate, recurring.frequency, recurring.start_date) })
+    .eq("id", recurring.id)
+    .eq("next_occurrence_date", occurrenceDate);
   if (updateError) throw updateError;
 
   return task;

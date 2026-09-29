@@ -8,8 +8,9 @@ depois, sub-projeto independente — Tarefas e Agenda são módulos diferentes).
 
 - Frequências: diária, semanal, mensal (sem dias específicos da semana — mesmo corte que Metas &
   Hábitos já fez pra Hábitos com frequência "dias_especificos").
-- Geração da próxima ocorrência: **automática via cron**, ampliando a Edge Function
-  `send-notifications` (já roda a cada 5 min) com uma 5ª fonte — não um botão manual.
+- Geração da próxima ocorrência: **automática e sem botão manual**. O Kanban sincroniza as
+  ocorrências vencidas ao carregar e após criar/retomar uma série; a Edge Function
+  `send-notifications` (a cada 5 min) cobre o app fechado.
 - Tarefa gerada é independente da receita de recorrência depois de criada: editar/completar/apagar
   não afeta a série, que continua gerando as próximas normalmente (mesmo espírito de
   `generateOccurrence` em Finanças — a transação gerada não é "amarrada" à recorrência depois).
@@ -43,7 +44,8 @@ diária +1 dia, semanal +7 dias, mensal +1 mês (usando `Date.setMonth`, mesmo p
 
 `generateTaskOccurrence(client, userId, recurring)` — novo em `module-tarefas/repository.ts`: cria
 a `task` de verdade (`due_date = recurring.next_occurrence_date`, `title`/`description`/`priority`
-copiados da recorrência) e avança `next_occurrence_date` via `computeNextTaskOccurrenceDate`.
+copiados da recorrência), registra `recurring_task_id` + `recurrence_date` para idempotência e
+avança `next_occurrence_date` via `computeNextTaskOccurrenceDate`.
 
 ## Cron — 5ª fonte em `send-notifications`
 

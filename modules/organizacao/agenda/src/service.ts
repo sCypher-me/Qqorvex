@@ -33,6 +33,18 @@ export function findConflicts(
   });
 }
 
+export class EventConflictError extends Error {
+  readonly name = "EventConflictError";
+
+  constructor(readonly conflicts: CalendarEvent[]) {
+    super(`Este horário já está ocupado por: ${conflicts.map((event) => event.title).join(", ")}.`);
+  }
+}
+
+export function normalizeEventSearchText(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
+
 /**
  * "Agenda pode calcular intervalos livres considerando eventos, blocos e buffers." Retorna
  * janelas livres dentro do intervalo pedido com pelo menos `durationMinutes`.
@@ -92,10 +104,22 @@ export function buildGoogleAuthUrl(input: { clientId: string; redirectUri: strin
  * `computeNextTaskOccurrenceDate` em Tarefas, mas própria de Agenda (sem importar o módulo de
  * Tarefas pra isso). Ver docs/decisions/eventos-recorrentes-design.md.
  */
-export function computeNextEventOccurrenceDate(currentDate: string, frequency: RecurringEventFrequency): string {
-  const date = new Date(`${currentDate}T00:00:00`);
-  if (frequency === "diaria") date.setDate(date.getDate() + 1);
-  else if (frequency === "semanal") date.setDate(date.getDate() + 7);
-  else date.setMonth(date.getMonth() + 1);
+export function computeNextEventOccurrenceDate(
+  currentDate: string,
+  frequency: RecurringEventFrequency,
+  monthlyAnchorDay?: number,
+): string {
+  const [year, month, day] = currentDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day!));
+
+  if (frequency === "diaria") date.setUTCDate(date.getUTCDate() + 1);
+  else if (frequency === "semanal") date.setUTCDate(date.getUTCDate() + 7);
+  else {
+    const nextMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+    const lastDay = new Date(Date.UTC(nextMonth.getUTCFullYear(), nextMonth.getUTCMonth() + 1, 0)).getUTCDate();
+    nextMonth.setUTCDate(Math.min(Math.max(monthlyAnchorDay ?? day!, 1), lastDay));
+    return nextMonth.toISOString().slice(0, 10);
+  }
+
   return date.toISOString().slice(0, 10);
 }

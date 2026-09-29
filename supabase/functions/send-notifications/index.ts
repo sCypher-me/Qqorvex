@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
     const { data: transactions } = await supabase
       .from("transactions")
       .select("amount")
+      .eq("user_id", budget.user_id)
       .eq("category_id", budget.category_id)
       .eq("status", "concluida")
       .eq("transaction_type", "saida")
@@ -236,19 +237,29 @@ Deno.serve(async (req) => {
 
   let tasksGenerated = 0;
   for (const recurring of recurringTasks ?? []) {
-    const { error: insertError } = await supabase.from("tasks").insert({
+    const occurrenceDate = recurring.next_occurrence_date;
+    const { error: insertError } = await supabase.from("tasks").upsert({
       user_id: recurring.user_id,
       title: recurring.title,
       description: recurring.description,
       priority: recurring.priority,
-      due_date: recurring.next_occurrence_date,
-    });
+      due_date: occurrenceDate,
+      recurring_task_id: recurring.id,
+      recurrence_date: occurrenceDate,
+    }, { onConflict: "recurring_task_id,recurrence_date", ignoreDuplicates: true });
     if (insertError) continue;
 
-    await supabase
+    // Avança somente a ocorrência que este processo acabou de reivindicar.
+    // Se o Kanban ou outro ciclo do cron chegou primeiro, o update não encontra
+    // mais a data antiga e nenhuma notificação duplicada é enviada.
+    const { data: advanced, error: advanceError } = await supabase
       .from("recurring_tasks")
-      .update({ next_occurrence_date: nextTaskOccurrenceDate(recurring.next_occurrence_date, recurring.frequency) })
-      .eq("id", recurring.id);
+      .update({ next_occurrence_date: nextTaskOccurrenceDate(occurrenceDate, recurring.frequency) })
+      .eq("id", recurring.id)
+      .eq("next_occurrence_date", occurrenceDate)
+      .select("id")
+      .maybeSingle();
+    if (advanceError || !advanced) continue;
 
     totalSent += await sendToUser(recurring.user_id, {
       title: "Qqorvex — Tarefas",
@@ -263,32 +274,86 @@ Deno.serve(async (req) => {
   // horário" no momento do cron (esse fluxo é só pra criação manual), a ocorrência é criada
   // sempre — findConflicts() (overlap considerando buffers) é reimplementado aqui só pra decidir
   // a mensagem da notificação, nunca pra bloquear a criação.
-  function nextEventOccurrenceDate(currentDate: string, frequency: string): string {
-    const date = new Date(`${currentDate}T00:00:00`);
-    if (frequency === "diaria") date.setDate(date.getDate() + 1);
-    else if (frequency === "semanal") date.setDate(date.getDate() + 7);
-    else date.setMonth(date.getMonth() + 1);
+  function nextEventOccurrenceDate(currentDate: string, frequency: string, anchorDay: number): string {
+    const [year, month, day] = currentDate.split("-").map(Number);
+    const date = new Date(Date.UTC(year!, month! - 1, day!));
+    if (frequency === "diaria") date.setUTCDate(date.getUTCDate() + 1);
+    else if (frequency === "semanal") date.setUTCDate(date.getUTCDate() + 7);
+    else {
+      const nextMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+      const lastDay = new Date(Date.UTC(nextMonth.getUTCFullYear(), nextMonth.getUTCMonth() + 1, 0)).getUTCDate();
+      nextMonth.setUTCDate(Math.min(Math.max(anchorDay, 1), lastDay));
+      return nextMonth.toISOString().slice(0, 10);
+    }
     return date.toISOString().slice(0, 10);
   }
 
-  function eventOverlaps(
-    a: { start: Date; end: Date },
-    b: { start: Date; end: Date },
-  ): boolean {
-    return a.start < b.end && b.start < a.end;
+  function addCalendarDay(date: string): string {
+    const [year, month, day] = date.split("-").map(Number);
+    const next = new Date(Date.UTC(year!, month! - 1, day! + 1));
+    return next.toISOString().slice(0, 10);
+  }
+
+  function dateInTimeZone(instant: Date, timeZone: string): string {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(instant);
+    const part = (type: string) => parts.find((value) => value.type === type)?.value ?? "00";
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  }
+
+  function zonedDateTimeToIso(date: string, time: string, timeZone: string): string {
+    const [year, month, day] = date.split("-").map(Number);
+    const [hours, minutes, seconds = 0] = time.split(":").map(Number);
+    const wallClockAsUtc = Date.UTC(year!, month! - 1, day!, hours!, minutes!, seconds!);
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    });
+    let instant = wallClockAsUtc;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const parts = formatter.formatToParts(new Date(instant));
+      const part = (type: string) => Number(parts.find((value) => value.type === type)?.value);
+      const projectedAsUtc = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
+      const adjusted = wallClockAsUtc - (projectedAsUtc - instant);
+      if (adjusted === instant) break;
+      instant = adjusted;
+    }
+    return new Date(instant).toISOString();
   }
 
   const { data: recurringEvents } = await supabase
     .from("recurring_events")
     .select("*")
     .eq("status", "ativa")
-    .lte("next_occurrence_date", todayDateStr);
+    // O maior deslocamento civil é +14h; inclui a próxima data UTC e depois filtra
+    // exatamente pelo dia local de cada regra, sem deixar eventos elegíveis para trás.
+    .lte("next_occurrence_date", addCalendarDay(todayDateStr));
 
   let eventsGenerated = 0;
   for (const recurring of recurringEvents ?? []) {
     const dateStr = recurring.next_occurrence_date;
-    const startAt = recurring.is_all_day ? `${dateStr}T00:00:00` : `${dateStr}T${recurring.start_time}`;
-    const endAt = recurring.is_all_day ? `${dateStr}T23:59:59` : `${dateStr}T${recurring.end_time}`;
+    let timeZone = recurring.time_zone || "America/Sao_Paulo";
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone }).format();
+    } catch {
+      timeZone = "America/Sao_Paulo";
+    }
+    if (dateStr > dateInTimeZone(new Date(), timeZone)) continue;
+
+    const startAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "00:00:00" : recurring.start_time || "09:00:00", timeZone);
+    const endAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "23:59:59" : recurring.end_time || "10:00:00", timeZone);
+    const dayStartAt = zonedDateTimeToIso(dateStr, "00:00:00", timeZone);
+    const dayEndAt = zonedDateTimeToIso(addCalendarDay(dateStr), "00:00:00", timeZone);
 
     let hasConflict = false;
     if (!recurring.is_all_day) {
@@ -296,21 +361,19 @@ Deno.serve(async (req) => {
         .from("events")
         .select("id, start_at, end_at, is_all_day, buffer_before_minutes, buffer_after_minutes")
         .eq("user_id", recurring.user_id)
-        .gte("start_at", `${dateStr}T00:00:00`)
-        .lt("start_at", `${dateStr}T23:59:59`);
+        .lt("start_at", dayEndAt)
+        .gt("end_at", dayStartAt);
 
       const candidateRange = { start: new Date(startAt), end: new Date(endAt) };
       hasConflict = (sameDayEvents ?? []).some((existing) => {
         if (existing.is_all_day) return false;
-        const existingStart = new Date(existing.start_at);
-        const existingEnd = new Date(existing.end_at);
-        existingStart.setMinutes(existingStart.getMinutes() - existing.buffer_before_minutes);
-        existingEnd.setMinutes(existingEnd.getMinutes() + existing.buffer_after_minutes);
-        return eventOverlaps({ start: existingStart, end: existingEnd }, candidateRange);
+        const existingStart = new Date(existing.start_at).getTime() - existing.buffer_before_minutes * 60_000;
+        const existingEnd = new Date(existing.end_at).getTime() + existing.buffer_after_minutes * 60_000;
+        return existingStart < candidateRange.end.getTime() && candidateRange.start.getTime() < existingEnd;
       });
     }
 
-    const { error: insertError } = await supabase.from("events").insert({
+    const { data: insertedEvent, error: insertError } = await supabase.from("events").upsert({
       user_id: recurring.user_id,
       title: recurring.title,
       description: recurring.description,
@@ -322,13 +385,21 @@ Deno.serve(async (req) => {
       end_at: endAt,
       buffer_before_minutes: recurring.buffer_before_minutes,
       buffer_after_minutes: recurring.buffer_after_minutes,
-    });
+      recurring_event_id: recurring.id,
+      recurrence_date: dateStr,
+    }, { onConflict: "recurring_event_id,recurrence_date", ignoreDuplicates: true })
+      .select("id")
+      .maybeSingle();
     if (insertError) continue;
 
-    await supabase
+    const { data: advanced, error: advanceError } = await supabase
       .from("recurring_events")
-      .update({ next_occurrence_date: nextEventOccurrenceDate(recurring.next_occurrence_date, recurring.frequency) })
-      .eq("id", recurring.id);
+      .update({ next_occurrence_date: nextEventOccurrenceDate(recurring.next_occurrence_date, recurring.frequency, Number(recurring.start_date.slice(-2))) })
+      .eq("id", recurring.id)
+      .eq("next_occurrence_date", dateStr)
+      .select("id")
+      .maybeSingle();
+    if (advanceError || !advanced || !insertedEvent) continue;
 
     totalSent += await sendToUser(recurring.user_id, {
       title: "Qqorvex — Agenda",

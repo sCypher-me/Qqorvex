@@ -1,13 +1,10 @@
 @import "tailwindcss";
 @import "@qqorvex/design-system/tokens.css";
+@import "@qqorvex/ui/ui.css";
 
 /**
- * Detecção automática de conteúdo do Tailwind v4 não segue symlinks do pnpm workspace — só
- * enxerga `apps/qqorvex/src` por padrão, porque `packages/*`/`modules/*` só são alcançáveis daqui
- * via `node_modules/@qqorvex/*` (symlink), e node_modules é explicitamente ignorado. Sem isso,
- * classes usadas só dentro de um módulo/pacote (nunca duplicadas numa página do app) somem
- * silenciosamente do CSS de produção — bug real encontrado ao implementar o `Card` do design
- * system (docs/decisions/design-system-componentes-v1.md).
+ * O Tailwind v4 não segue os symlinks do workspace pnpm: sem estas linhas, classes usadas só
+ * dentro de `packages/*` ou `modules/*` sumiriam do CSS de produção.
  */
 @source "../../../../packages/**/*.{ts,tsx}";
 @source "../../../../modules/**/*.{ts,tsx}";

@@ -7,7 +7,7 @@ const CONNECTION_KEY = ["google-calendar-connection"] as const;
 
 export function useGoogleCalendarConnection(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: CONNECTION_KEY, queryFn: () => getGoogleCalendarConnection(client) });
-  return { connection: query.data ?? null, isLoading: query.isLoading };
+  return { connection: query.data ?? false, isLoading: query.isLoading, error: query.error };
 }
 
 /**
@@ -24,10 +24,10 @@ export function useConnectGoogleCalendar(client: SupabaseClient<Database>, userI
   });
 }
 
-export function useDisconnectGoogleCalendar(client: SupabaseClient<Database>, userId: string) {
+export function useDisconnectGoogleCalendar(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => disconnectGoogleCalendar(client, userId),
+    mutationFn: () => disconnectGoogleCalendar(client),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CONNECTION_KEY }),
   });
 }

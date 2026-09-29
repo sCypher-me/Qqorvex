@@ -30,8 +30,16 @@ Deno.serve(async (req) => {
 
   if (oauthError || !code || !state) return redirectToApp("error");
 
-  const { data: stateRow } = await supabase.from("google_oauth_states").select("user_id").eq("id", state).maybeSingle();
-  if (!stateRow) return redirectToApp("error");
+  const stateExpiresAt = Date.now() - 10 * 60_000;
+  const { data: stateRow } = await supabase
+    .from("google_oauth_states")
+    .select("user_id, created_at")
+    .eq("id", state)
+    .maybeSingle();
+  if (!stateRow || new Date(stateRow.created_at).getTime() < stateExpiresAt) {
+    await supabase.from("google_oauth_states").delete().eq("id", state);
+    return redirectToApp("error");
+  }
   await supabase.from("google_oauth_states").delete().eq("id", state);
 
   const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-oauth-callback`;

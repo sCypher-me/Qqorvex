@@ -7,13 +7,18 @@ export function usePin(client: SupabaseClient<Database>) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const result = await hasSecurityPin(client);
-    setHasPin(result);
-    setIsLoading(false);
+    setIsLoading(true);
+    try {
+      setHasPin(await hasSecurityPin(client));
+    } catch {
+      // Keep the last valid state when the security PIN RPC fails unexpectedly.
+    } finally {
+      setIsLoading(false);
+    }
   }, [client]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { hasPin, isLoading, refresh };

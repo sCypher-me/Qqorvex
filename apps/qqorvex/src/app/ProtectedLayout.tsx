@@ -1,33 +1,89 @@
 import { useCallback, useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { RequireAuth, useAuth, useProfile } from "@qqorvex/auth";
-import { Sidebar } from "@qqorvex/ui";
-import { VexSessionProvider } from "../vex/VexSessionContext";
+import { useLocation, useNavigate } from "react-router-dom";
+import { RequireAuth, useAuth } from "@qqorvex/auth";
+import { cx } from "@qqorvex/ui";
+import { DailyCheckinPrompt } from "./DailyCheckinPrompt";
+import { VexSessionProvider, useVexSession } from "../vex/VexSessionContext";
 import { CurrentItemProvider } from "../vex/CurrentItemContext";
 import { VexPanel } from "../vex/VexPanel";
+import { VexLauncherContext } from "../vex/VexLauncher";
+import { AccountProvider } from "./account";
+import { useVipSkinGuard } from "./useVipSkinGuard";
 import { PageMetaProvider } from "./shell/PageMeta";
-import { AppHeader } from "./shell/AppHeader";
+import { Sidebar } from "./shell/Sidebar";
+import { TopBar } from "./shell/TopBar";
 import { CommandPalette } from "./shell/CommandPalette";
-import { MobileBottomNav, MoreSheet } from "./shell/MobileNav";
-import { BRAND_ASSETS, getNavSections } from "./shell/navigation";
+import { MobileBottomNav } from "./shell/MobileNav";
+import { PageTransition } from "./shell/PageTransition";
+import { QuickCreateProvider } from "./shell/QuickCreate";
 import { supabase } from "./supabase";
+import { Onboarding } from "./Onboarding";
+import { APP_SKIN_STORAGE_KEY, isAppSkin, useTheme, type ThemePreference } from "./ThemeContext";
 
-/**
- * Rota-layout pras páginas autenticadas — shell do Design System v1.0: sidebar persistente,
- * cabeçalho fixo (título da página, busca/paleta, notificações, "Falar com a Vex"), conteúdo e o
- * painel lateral da Vex. Em `/vex` o chat já ocupa a área de conteúdo, então o painel não abre lá
- * (o botão do cabeçalho volta pra Hoje com o painel aberto, mantendo a mesma conversa).
- */
+type AuthUser = NonNullable<ReturnType<typeof useAuth>["session"]>["user"];
+
+function needsOnboarding(user: AuthUser): boolean {
+  const metadata = user.user_metadata ?? {};
+  if (metadata.qqorvex_onboarding_completed === true) return false;
+  if (metadata.qqorvex_onboarding_pending === true) return true;
+
+  // Provedores OAuth não aceitam metadados arbitrários no cadastro: o horário de início do OAuth
+  // (guardado nesta aba) distingue uma conta nova de uma conta existente voltando pelo mesmo fluxo.
+  let startedAt: number | null = null;
+  try {
+    const stored = window.sessionStorage.getItem("qqorvex.oauth.started_at");
+    if (stored) startedAt = Number(stored);
+  } catch {
+    // Sem armazenamento, cai no critério de idade da conta.
+  }
+  const createdAt = Date.parse(user.created_at);
+  const oauthStartedRecently = Boolean(startedAt && Number.isFinite(startedAt) && Number.isFinite(createdAt) && createdAt >= startedAt - 5 * 60 * 1000);
+  const accountAge = Date.now() - createdAt;
+  const accountWasJustCreated = Number.isFinite(createdAt) && accountAge >= -5 * 60 * 1000 && accountAge <= 24 * 60 * 60 * 1000;
+  if (startedAt && !oauthStartedRecently) {
+    try {
+      window.sessionStorage.removeItem("qqorvex.oauth.started_at");
+    } catch {
+      /* opcional */
+    }
+  }
+  return oauthStartedRecently || accountWasJustCreated;
+}
+
+const COLLAPSED_KEY = "qqorvex.nav.collapsed";
+const VEX_OPEN_KEY = "qqorvex.vex.open";
+
+function readFlag(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string, value: boolean) {
+  try {
+    window.localStorage.setItem(key, String(value));
+  } catch {
+    /* preferência visual opcional */
+  }
+}
+
+/** Rota-layout das páginas autenticadas. */
 export function ProtectedLayout() {
   return (
     <RequireAuth>
-      <VexSessionProvider>
-        <CurrentItemProvider>
-          <PageMetaProvider>
-            <Shell />
-          </PageMetaProvider>
-        </CurrentItemProvider>
-      </VexSessionProvider>
+      <AccountProvider>
+        <VexSessionProvider>
+          <CurrentItemProvider>
+            <PageMetaProvider>
+              <QuickCreateProvider>
+                <Shell />
+              </QuickCreateProvider>
+            </PageMetaProvider>
+          </CurrentItemProvider>
+        </VexSessionProvider>
+      </AccountProvider>
     </RequireAuth>
   );
 }
@@ -35,103 +91,110 @@ export function ProtectedLayout() {
 function Shell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isVexPage = location.pathname === "/vex";
-  const [vexOpen, setVexOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const { session } = useAuth();
-  const { profile } = useProfile(supabase, session!.user.id);
-  const isOwner = profile?.role === "dono";
+  const { setPreference, setSkin } = useTheme();
+  useVipSkinGuard();
+  const { setPendingPrompt } = useVexSession();
+  const isVexPage = location.pathname === "/vex";
+  const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSED_KEY));
+  const [vexOpen, setVexOpen] = useState(() => readFlag(VEX_OPEN_KEY));
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [onboardingFinished, setOnboardingFinished] = useState(false);
+  const user = session!.user;
+  const remotePreferences = user.user_metadata.qqorvex_preferences as { theme?: ThemePreference; skin?: unknown } | undefined;
 
   useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    let hasLocalTheme = false;
+    let hasLocalSkin = false;
+    try {
+      hasLocalTheme = window.localStorage.getItem("qqorvex.theme") !== null;
+      hasLocalSkin = window.localStorage.getItem(APP_SKIN_STORAGE_KEY) !== null;
+    } catch {
+      /* opcional */
+    }
+    if (!hasLocalTheme && (remotePreferences?.theme === "dark" || remotePreferences?.theme === "light" || remotePreferences?.theme === "system")) setPreference(remotePreferences.theme);
+    if (!hasLocalSkin && isAppSkin(remotePreferences?.skin)) setSkin(remotePreferences.skin);
+    // Sincroniza só uma vez por usuário.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+
+  useEffect(() => writeFlag(COLLAPSED_KEY, collapsed), [collapsed]);
+  useEffect(() => writeFlag(VEX_OPEN_KEY, vexOpen), [vexOpen]);
+
+  const openVex = useCallback(
+    (prompt?: string) => {
+      if (prompt) setPendingPrompt(prompt);
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+      if (!isDesktop || location.pathname === "/vex") {
+        navigate("/vex");
+        return;
+      }
+      setVexOpen(true);
+    },
+    [location.pathname, navigate, setPendingPrompt],
+  );
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "k") {
         event.preventDefault();
-        setPaletteOpen((v) => !v);
+        setPaletteOpen((value) => !value);
+      }
+      if (key === "j") {
+        event.preventDefault();
+        if (location.pathname === "/vex") return;
+        setVexOpen((value) => !value);
       }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [location.pathname]);
 
-  const openVex = useCallback(() => {
-    if (location.pathname === "/vex") navigate("/");
-    setVexOpen(true);
-  }, [location.pathname, navigate]);
-
-  function toggleVex() {
-    if (isVexPage) {
-      navigate("/");
-      setVexOpen(true);
-      return;
-    }
-    setVexOpen((v) => !v);
+  if (!onboardingFinished && needsOnboarding(user)) {
+    return (
+      <Onboarding
+        onComplete={(path) => {
+          setOnboardingFinished(true);
+          try {
+            window.sessionStorage.removeItem("qqorvex.oauth.started_at");
+          } catch {
+            /* opcional */
+          }
+          navigate(path, { replace: true });
+        }}
+      />
+    );
   }
 
-  const navSections = getNavSections(isOwner);
-
   return (
-    <div className="flex min-h-screen items-stretch">
+    <VexLauncherContext.Provider value={openVex}>
+    <div className="flex min-h-dvh bg-canvas">
       <div className="hidden lg:block">
-        <Sidebar sections={navSections} brandSymbolSrc={BRAND_ASSETS.symbol} footer={<SidebarUser profile={profile} />} />
+        <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((value) => !value)} onOpenPalette={() => setPaletteOpen(true)} onOpenVex={() => openVex()} />
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col">
-        <AppHeader onOpenPalette={() => setPaletteOpen(true)} onToggleVex={toggleVex} />
-        <main className="flex-1 min-w-0 px-4 lg:px-8 pt-5 lg:pt-[30px] pb-24 lg:pb-12 flex flex-col gap-[22px]">
-          <Outlet />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopBar onOpenPalette={() => setPaletteOpen(true)} onToggleVex={() => setVexOpen((value) => !value)} vexOpen={vexOpen && !isVexPage} />
+        <main
+          id="conteudo"
+          className={cx(
+            "flex min-w-0 flex-1 flex-col",
+            isVexPage
+              ? "pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-0"
+              : "px-4 pb-[calc(88px+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:pb-12 lg:pt-7 xl:px-10",
+          )}
+        >
+          <PageTransition />
         </main>
       </div>
 
-      {vexOpen && !isVexPage && <VexPanel onClose={() => setVexOpen(false)} />}
-
-      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} isOwner={isOwner} />
-      <MobileBottomNav onOpenVex={openVex} onOpenMore={() => setMoreOpen(true)} />
-      <MoreSheet sections={navSections} isOpen={moreOpen} onClose={() => setMoreOpen(false)} />
+      {!isVexPage && <VexPanel isOpen={vexOpen} onClose={() => setVexOpen(false)} />}
+      <MobileBottomNav />
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} />
+      <DailyCheckinPrompt client={supabase} userId={user.id} />
     </div>
-  );
-}
-
-function SidebarUser({ profile }: { profile: ReturnType<typeof useProfile>["profile"] }) {
-  const { session, signOut } = useAuth();
-  const navigate = useNavigate();
-  const email = session?.user.email ?? "";
-  const name = profile?.display_name || profile?.username || email.split("@")[0] || "Você";
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-
-  return (
-    <div className="flex items-center gap-2.5 px-2 py-1.5">
-      <button
-        type="button"
-        onClick={() => navigate("/perfil")}
-        className="flex items-center gap-2.5 flex-1 min-w-0 text-left cursor-pointer"
-        title="Perfil"
-      >
-        {profile?.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="w-[30px] h-[30px] rounded-full object-cover border border-border" />
-        ) : (
-          <span className="w-[30px] h-[30px] rounded-full border border-border bg-vex-raised flex items-center justify-center font-mono text-[11px] text-text-secondary shrink-0">
-            {initials || "·"}
-          </span>
-        )}
-        <span className="flex-1 min-w-0">
-          <span className="block text-[13px] font-semibold truncate">{name}</span>
-          <span className="block text-[11px] text-text-muted truncate">{email}</span>
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => signOut()}
-        title="Sair"
-        className="border border-border rounded-lg text-text-muted text-[11px] px-2 py-1 cursor-pointer hover:text-text-primary"
-      >
-        Sair
-      </button>
-    </div>
+    </VexLauncherContext.Provider>
   );
 }

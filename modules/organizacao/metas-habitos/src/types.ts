@@ -25,6 +25,7 @@ export interface NewGoalInput {
   motivationNote?: string;
   tags?: string[];
   parentGoalId?: string;
+  status?: GoalStatus;
   progressType?: GoalProgressType;
   progressNumericTarget?: number;
   progressSourceAccountId?: string;
@@ -34,6 +35,7 @@ export function toGoalInsert(userId: string, input: NewGoalInput): TablesInsert<
   return {
     user_id: userId,
     title: input.title,
+    status: input.status ?? "ativa",
     description: input.description ?? null,
     due_date: input.dueDate ?? null,
     category: input.category ?? null,

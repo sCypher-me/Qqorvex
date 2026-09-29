@@ -3,8 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#090B0E" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#100f0e" />
+    <script>
+      try {
+        const saved = localStorage.getItem("qqorvex.theme");
+        const theme = saved === "light" || saved === "dark" ? saved : saved === "system" && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "light" ? "#f6f2ea" : "#100f0e");
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+    <meta name="description" content="Qqorvex — seu espaço de clareza para organizar tarefas, planos, estudos, finanças e vida pessoal." />
     <title>Qqorvex — Veja além dos números</title>
   </head>
   <body>

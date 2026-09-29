@@ -1,19 +1,9 @@
-import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@qqorvex/auth";
-import { ProtectedLayout } from "./ProtectedLayout";
-import { registerHojeProvider } from "@qqorvex/module-hoje";
-import { createTasksHojeProvider } from "@qqorvex/module-tarefas";
-import { createAgendaHojeProvider } from "@qqorvex/module-agenda";
-import { createGoalsHabitsHojeProvider } from "@qqorvex/module-metas-habitos";
-import { createEstudosHojeProvider } from "@qqorvex/module-estudos";
-import { createSegundoCerebroHojeProvider } from "@qqorvex/module-segundo-cerebro";
-import { createBibliotecaHojeProvider } from "@qqorvex/module-biblioteca";
-import { createDocumentosHojeProvider } from "@qqorvex/module-documentos";
-import { createFinancasHojeProvider } from "@qqorvex/module-financas";
-import { createVidaPessoalHojeProvider } from "@qqorvex/module-vida-pessoal";
-import { supabase } from "./supabase";
+import { ToastProvider } from "@qqorvex/ui";
+import { AreaLayout } from "./shell/AreaLayout";
+import { LEGACY_REDIRECTS } from "./shell/navigation";
 
 /**
  * Code-splitting por rota: cada página vira o próprio chunk, carregado só quando visitada.
@@ -23,10 +13,14 @@ import { supabase } from "./supabase";
  * módulo — os componentes pesados (KanbanBoard, MonthView, GraphView, BasesPanel...) só entram
  * no bundle quando a página daquele módulo é aberta.
  */
-const HojePage = lazy(() => import("../pages/Hoje").then((m) => ({ default: m.HojePage })));
+const HojePage = lazy(() => import("../pages/HojeEditorial").then((m) => ({ default: m.HojeEditorialPage })));
+const AppRuntime = lazy(() => import("./AppRuntime").then((m) => ({ default: m.AppRuntime })));
+const ProtectedLayout = lazy(() => import("./ProtectedLayout").then((m) => ({ default: m.ProtectedLayout })));
 const LoginPage = lazy(() => import("../pages/Login").then((m) => ({ default: m.LoginPage })));
+const RegistrarPage = lazy(() => import("../pages/Registrar").then((m) => ({ default: m.RegistrarPage })));
+const EsqueciSenhaPage = lazy(() => import("../pages/EsqueciSenha").then((m) => ({ default: m.EsqueciSenhaPage })));
+const RedefinirSenhaPage = lazy(() => import("../pages/RedefinirSenha").then((m) => ({ default: m.RedefinirSenhaPage })));
 const MfaPage = lazy(() => import("../pages/Mfa").then((m) => ({ default: m.MfaPage })));
-const SegurancaPage = lazy(() => import("../pages/Seguranca").then((m) => ({ default: m.SegurancaPage })));
 const TarefasPage = lazy(() => import("../pages/Tarefas").then((m) => ({ default: m.TarefasPage })));
 const AgendaPage = lazy(() => import("../pages/Agenda").then((m) => ({ default: m.AgendaPage })));
 const MetasHabitosPage = lazy(() => import("../pages/MetasHabitos").then((m) => ({ default: m.MetasHabitosPage })));
@@ -40,75 +34,81 @@ const BibliotecaPage = lazy(() => import("../pages/Biblioteca").then((m) => ({ d
 const DocumentosPage = lazy(() => import("../pages/Documentos").then((m) => ({ default: m.DocumentosPage })));
 const FinancasPage = lazy(() => import("../pages/Financas").then((m) => ({ default: m.FinancasPage })));
 const VidaPessoalPage = lazy(() => import("../pages/VidaPessoal").then((m) => ({ default: m.VidaPessoalPage })));
-const PerfilPage = lazy(() => import("../pages/Perfil").then((m) => ({ default: m.PerfilPage })));
+const ConfiguracoesPage = lazy(() => import("../pages/Configuracoes").then((m) => ({ default: m.ConfiguracoesPage })));
+const AssinaturaPage = lazy(() => import("../pages/Assinatura").then((m) => ({ default: m.AssinaturaPage })));
 const ManagerPage = lazy(() => import("../pages/Manager").then((m) => ({ default: m.ManagerPage })));
 const GamificacaoPage = lazy(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
 const VexPage = lazy(() => import("../pages/Vex").then((m) => ({ default: m.VexPage })));
 
-const queryClient = new QueryClient();
-
-function ModuleRegistrations() {
-  useEffect(() => {
-    const unregisterFns = [
-      registerHojeProvider(createTasksHojeProvider(supabase)),
-      registerHojeProvider(createAgendaHojeProvider(supabase)),
-      registerHojeProvider(createGoalsHabitsHojeProvider(supabase)),
-      registerHojeProvider(createEstudosHojeProvider(supabase)),
-      registerHojeProvider(createSegundoCerebroHojeProvider(supabase)),
-      registerHojeProvider(createBibliotecaHojeProvider(supabase)),
-      registerHojeProvider(createDocumentosHojeProvider(supabase)),
-      registerHojeProvider(createFinancasHojeProvider(supabase)),
-      registerHojeProvider(createVidaPessoalHojeProvider(supabase)),
-    ];
-    return () => unregisterFns.forEach((unregister) => unregister());
-  }, []);
-  return null;
-}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 20_000, refetchOnWindowFocus: true, retry: 1 },
+  },
+});
 
 function PageFallback() {
   return (
-    <div className="flex-1 flex items-center justify-center py-24">
-      <span className="flex items-center gap-2.5 text-sm text-text-secondary">
-        <span className="w-[7px] h-[7px] rounded-full bg-vex-cyan-bright animate-core-glow" />
-        Carregando...
-      </span>
+    <div aria-busy="true" aria-label="Carregando" role="status" className="flex min-h-[50vh] flex-1 items-center justify-center">
+      <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-gold" />
+      <span className="sr-only">Carregando…</span>
     </div>
   );
+}
+
+function LegacyRedirect({ from, to }: { from: string; to: string }) {
+  const location = useLocation();
+  const rest = location.pathname.slice(from.length);
+  return <Navigate to={`${to}${rest}${location.search}`} replace />;
 }
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider client={supabase}>
-        <ModuleRegistrations />
+      <ToastProvider>
         <BrowserRouter>
           <Suspense fallback={<PageFallback />}>
-            <Routes>
-              <Route element={<ProtectedLayout />}>
-                <Route path="/" element={<HojePage />} />
-                <Route path="/tarefas" element={<TarefasPage />} />
-                <Route path="/agenda" element={<AgendaPage />} />
-                <Route path="/metas-habitos" element={<MetasHabitosPage />} />
-                <Route path="/estudos" element={<EstudosPage />} />
-                <Route path="/estudos/:notebookId" element={<EstudosCadernoPage />} />
-                <Route path="/segundo-cerebro" element={<SegundoCerebroPage />} />
-                <Route path="/segundo-cerebro/:pageId" element={<SegundoCerebroPaginaPage />} />
-                <Route path="/biblioteca" element={<BibliotecaPage />} />
-                <Route path="/documentos" element={<DocumentosPage />} />
-                <Route path="/financas" element={<FinancasPage />} />
-                <Route path="/vida-pessoal" element={<VidaPessoalPage />} />
-                <Route path="/perfil" element={<PerfilPage />} />
-                <Route path="/gamificacao" element={<GamificacaoPage />} />
-                <Route path="/manager" element={<ManagerPage />} />
-                <Route path="/seguranca" element={<SegurancaPage />} />
-                <Route path="/vex" element={<VexPage />} />
-              </Route>
-              <Route path="/mfa" element={<MfaPage />} />
-              <Route path="/login" element={<LoginPage />} />
-            </Routes>
+            <AppRuntime>
+              <Routes>
+                <Route element={<ProtectedLayout />}>
+                  <Route path="/" element={<HojePage />} />
+                  <Route path="/planejar" element={<AreaLayout areaKey="planejar" />}>
+                    <Route path="tarefas" element={<TarefasPage />} />
+                    <Route path="agenda" element={<AgendaPage />} />
+                    <Route path="metas" element={<MetasHabitosPage />} />
+                  </Route>
+                  <Route path="/conhecimento" element={<AreaLayout areaKey="conhecimento" />}>
+                    <Route path="estudos" element={<EstudosPage />} />
+                    <Route path="estudos/:notebookId" element={<EstudosCadernoPage />} />
+                    <Route path="notas" element={<SegundoCerebroPage />} />
+                    <Route path="notas/:pageId" element={<SegundoCerebroPaginaPage />} />
+                    <Route path="biblioteca" element={<BibliotecaPage />} />
+                  </Route>
+                  <Route path="/vida" element={<AreaLayout areaKey="vida" />}>
+                    <Route path="financas" element={<FinancasPage />} />
+                    <Route path="documentos" element={<DocumentosPage />} />
+                    <Route path="pessoal" element={<VidaPessoalPage />} />
+                  </Route>
+                  <Route path="/vex" element={<VexPage />} />
+                  <Route path="/conquistas" element={<GamificacaoPage />} />
+                  <Route path="/assinatura" element={<AssinaturaPage />} />
+                  <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+                  <Route path="/configuracoes/:secao" element={<ConfiguracoesPage />} />
+                  <Route path="/manager" element={<ManagerPage />} />
+                  {LEGACY_REDIRECTS.map((redirect) => (
+                    <Route key={redirect.from} path={`${redirect.from}/*`} element={<LegacyRedirect from={redirect.from} to={redirect.to} />} />
+                  ))}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+                <Route path="/mfa" element={<MfaPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/criar-conta" element={<RegistrarPage />} />
+                <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+                <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+              </Routes>
+            </AppRuntime>
           </Suspense>
         </BrowserRouter>
-      </AuthProvider>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

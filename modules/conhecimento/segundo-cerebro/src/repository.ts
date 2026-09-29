@@ -27,6 +27,16 @@ export async function listPages(client: Client): Promise<Page[]> {
   return data;
 }
 
+export async function listArchivedPages(client: Client): Promise<Page[]> {
+  const { data, error } = await client
+    .from("pages")
+    .select("*")
+    .eq("is_archived", true)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 export async function getPage(client: Client, pageId: string): Promise<Page> {
   const { data, error } = await client.from("pages").select("*").eq("id", pageId).single();
   if (error) throw error;
@@ -48,17 +58,24 @@ export async function getOrCreateDailyNote(client: Client, userId: string, date:
   const { data: existing, error: existingError } = await client
     .from("pages")
     .select("*")
+    .eq("user_id", userId)
     .eq("page_type", DAILY_NOTE_PAGE_TYPE)
     .eq("title", title)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing) return existing;
+  if (existing) return existing.is_archived ? archivePage(client, existing.id, false) : existing;
 
   return createPage(client, userId, { title, pageType: DAILY_NOTE_PAGE_TYPE });
 }
 
 export async function updatePageTitle(client: Client, pageId: string, title: string): Promise<Page> {
   const { data, error } = await client.from("pages").update({ title }).eq("id", pageId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePageFavorite(client: Client, pageId: string, isFavorite: boolean): Promise<Page> {
+  const { data, error } = await client.from("pages").update({ is_favorite: isFavorite }).eq("id", pageId).select("*").single();
   if (error) throw error;
   return data;
 }
@@ -266,6 +283,12 @@ export async function listPageTags(client: Client, pageId: string): Promise<stri
   return data.map((row) => row.tag);
 }
 
+export async function listAllPageTags(client: Client): Promise<Array<{ page_id: string; tag: string }>> {
+  const { data, error } = await client.from("page_tags").select("page_id, tag");
+  if (error) throw error;
+  return data;
+}
+
 export async function addPageTag(client: Client, pageId: string, tag: string): Promise<void> {
   const { error } = await client.from("page_tags").insert({ page_id: pageId, tag });
   if (error) throw error;
@@ -405,4 +428,28 @@ export async function listPropertiesForPages(client: Client, pageIds: string[]):
   const { data, error } = await client.from("page_properties").select("*").in("page_id", pageIds);
   if (error) throw error;
   return data;
+}
+
+const EXCERPT_BLOCK_TYPES = ["texto", "lista", "citacao", "callout", "checklist"] as const;
+
+/**
+ * Primeiro trecho de texto de cada página (para a lista mostrar mais que o título). Uma consulta
+ * só, ordenada pela posição do bloco; o primeiro bloco com texto de cada página vence.
+ */
+export async function listPageExcerpts(client: Client): Promise<Record<string, string>> {
+  const { data, error } = await client
+    .from("blocks")
+    .select("page_id, content, order_index")
+    .in("block_type", [...EXCERPT_BLOCK_TYPES])
+    .order("order_index", { ascending: true })
+    .limit(4000);
+  if (error) throw error;
+  const excerpts: Record<string, string> = {};
+  for (const row of data) {
+    if (excerpts[row.page_id]) continue;
+    const content = row.content as { text?: unknown } | null;
+    const text = typeof content?.text === "string" ? content.text.replace(/\s+/g, " ").trim() : "";
+    if (text) excerpts[row.page_id] = text.length > 180 ? `${text.slice(0, 177)}…` : text;
+  }
+  return excerpts;
 }

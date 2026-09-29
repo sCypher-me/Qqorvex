@@ -1,103 +1,125 @@
 import { useState } from "react";
-import { Button } from "@qqorvex/ui";
+import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
+import { Button, ProgressBar, cx } from "@qqorvex/ui";
 import { computeQuizScore } from "../service";
 import type { QuizQuestion } from "../types";
 
-/**
- * `options` é jsonb no banco — persistido como `string[]` por `createQuiz()`, então o cast aqui é
- * seguro (não vem de nenhuma outra origem).
- */
+/** `options` é jsonb, gravado como `string[]` por `createQuiz()`. */
 function optionsOf(question: QuizQuestion): string[] {
-  return question.options as string[];
+  return Array.isArray(question.options) ? (question.options as string[]) : [];
 }
 
-export function QuizTakingForm({
-  questions,
-  onSubmit,
-  onClose,
-}: {
-  questions: QuizQuestion[];
-  onSubmit: (result: { answers: number[]; score: number }) => void;
-  onClose: () => void;
-}) {
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [corrected, setCorrected] = useState<{ answers: number[]; score: number } | null>(null);
+const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
-  const allAnswered = questions.every((q) => answers[q.id] !== undefined);
+/**
+ * Quiz uma pergunta por vez; no fim mostra a nota e a correção de cada pergunta. A tentativa é
+ * registrada ao corrigir (`onSubmit`).
+ */
+export function QuizTakingForm({ questions, onSubmit, onClose }: { questions: QuizQuestion[]; onSubmit: (result: { answers: number[]; score: number }) => void; onClose: () => void }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<number[]>(() => questions.map(() => -1));
+  const [result, setResult] = useState<{ answers: number[]; score: number } | null>(null);
+  const question = questions[step];
+  const answered = answers[step] !== undefined && answers[step]! >= 0;
+  const isLast = step === questions.length - 1;
 
-  function handleCorrect() {
-    const orderedAnswers = questions.map((q) => answers[q.id]!);
-    const score = computeQuizScore(questions, orderedAnswers);
-    const result = { answers: orderedAnswers, score };
-    setCorrected(result);
-    onSubmit(result);
+  function finish() {
+    const score = computeQuizScore(questions, answers);
+    const next = { answers, score };
+    setResult(next);
+    onSubmit(next);
   }
 
-  return (
-    <div className="qv-well p-4 flex flex-col gap-5">
-      {questions.map((question, index) => (
-        <div key={question.id} className="flex flex-col gap-2.5">
-          <p className="text-sm font-medium leading-relaxed text-text-primary">
-            <span className="font-mono text-text-muted mr-1.5">{index + 1}.</span>
-            {question.question_text}
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {optionsOf(question).map((option, optionIndex) => {
-              const isChosen = answers[question.id] === optionIndex;
-              const isCorrectOption = optionIndex === question.correct_option_index;
-              const showFeedback = corrected !== null;
-              return (
-                <label
-                  key={optionIndex}
-                  className={`flex items-center gap-2.5 text-sm px-3 py-2 rounded-[10px] border cursor-pointer transition-colors ${
-                    showFeedback && isCorrectOption
-                      ? "border-success-border bg-success-bg text-success"
-                      : showFeedback && isChosen
-                        ? "border-error-border bg-error-bg text-error"
-                        : isChosen
-                          ? "border-vex-cyan-dark bg-[rgba(67,185,210,.08)] text-text-primary"
-                          : "border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={question.id}
-                    checked={isChosen}
-                    disabled={corrected !== null}
-                    onChange={() => setAnswers((prev) => ({ ...prev, [question.id]: optionIndex }))}
-                    className="accent-[var(--color-vex-cyan)]"
-                  />
-                  {option}
-                </label>
-              );
-            })}
+  if (result) {
+    const pct = Math.round((result.score / questions.length) * 100);
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-4 rounded-xl border border-line bg-canvas/40 p-4">
+          <span className={cx("font-display text-[32px] font-semibold tabular-nums", pct >= 70 ? "text-success" : pct >= 40 ? "text-warning" : "text-danger")}>
+            {result.score}/{questions.length}
+          </span>
+          <div>
+            <p className="text-[14px] font-medium text-fg">{pct >= 90 ? "Excelente!" : pct >= 70 ? "Muito bem." : pct >= 40 ? "Quase lá." : "Vale revisar este conteúdo."}</p>
+            <p className="text-xs text-fg-3">{pct}% de acerto · a tentativa foi registrada</p>
           </div>
         </div>
-      ))}
-
-      {corrected ? (
-        <div className="qv-row-top pt-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-text-primary">
-            Resultado:{" "}
-            <span className="font-mono">
-              {corrected.score}/{questions.length}
-            </span>{" "}
-            corretas
-          </p>
-          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-            Fechar
-          </Button>
+        <ol className="flex flex-col gap-3">
+          {questions.map((item, index) => {
+            const chosen = result.answers[index] ?? -1;
+            const correct = chosen === item.correct_option_index;
+            return (
+              <li key={item.id} className="rounded-lg border border-line-soft px-4 py-3">
+                <p className="flex gap-2 text-[13.5px] font-medium text-fg">
+                  {correct ? <CheckCircleIcon size={18} weight="fill" className="mt-px shrink-0 text-success" /> : <XCircleIcon size={18} weight="fill" className="mt-px shrink-0 text-danger" />}
+                  {item.question_text}
+                </p>
+                {!correct && (
+                  <p className="mt-1.5 pl-[26px] text-xs text-fg-3">
+                    {chosen >= 0 && (
+                      <>
+                        Sua resposta: <span className="text-danger">{optionsOf(item)[chosen]}</span> ·{" "}
+                      </>
+                    )}
+                    Correta: <span className="text-success">{optionsOf(item)[item.correct_option_index]}</span>
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        <div className="flex justify-end">
+          <Button onClick={onClose}>Fechar</Button>
         </div>
-      ) : (
-        <div className="qv-row-top pt-4 flex gap-2.5">
-          <Button type="button" variant="primary" size="sm" onClick={handleCorrect} disabled={!allAnswered}>
+      </div>
+    );
+  }
+
+  if (!question) return null;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3">
+        <span className="shrink-0 text-xs text-fg-3 tabular-nums">
+          {step + 1} de {questions.length}
+        </span>
+        <ProgressBar value={((step + (answered ? 1 : 0)) / questions.length) * 100} height={4} label="Progresso do quiz" className="flex-1" />
+      </div>
+      <p className="font-display text-[18px] font-semibold leading-snug text-fg">{question.question_text}</p>
+      <div className="flex flex-col gap-2" role="radiogroup" aria-label="Alternativas">
+        {optionsOf(question).map((option, optionIndex) => {
+          const chosen = answers[step] === optionIndex;
+          return (
+            <button
+              key={optionIndex}
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              onClick={() => setAnswers((current) => current.map((value, index) => (index === step ? optionIndex : value)))}
+              className={cx(
+                "flex items-start gap-3 rounded-lg border px-3.5 py-3 text-left text-[14px] transition-colors",
+                chosen ? "border-gold-line bg-gold-soft text-fg" : "border-line bg-surface text-fg-2 hover:border-line-strong hover:text-fg",
+              )}
+            >
+              <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold", chosen ? "bg-gold text-on-gold" : "bg-hover text-fg-3")}>{LETTERS[optionIndex]}</span>
+              <span className="pt-0.5">{option}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-line-soft pt-4">
+        <Button variant="ghost" onClick={step === 0 ? onClose : () => setStep((current) => current - 1)}>
+          {step === 0 ? "Cancelar" : "Anterior"}
+        </Button>
+        {isLast ? (
+          <Button onClick={finish} disabled={answers.some((value) => value < 0)}>
             Corrigir
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancelar
+        ) : (
+          <Button onClick={() => setStep((current) => current + 1)} disabled={!answered}>
+            Próxima
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

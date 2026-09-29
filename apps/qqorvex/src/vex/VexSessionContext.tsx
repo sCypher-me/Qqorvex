@@ -1,25 +1,27 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 /**
- * Fase 2 do Context Engine: painel retrátil e página `/vex` são dois pontos de entrada pra mesma
- * conversa. O histórico já é compartilhado automaticamente (ambos leem `vex_conversations` do
- * banco) — o que precisa ser compartilhado explicitamente é *qual* conversa está aberta agora,
- * pra abrir o painel na conversa X e depois ir pra `/vex` sem trocar de contexto.
+ * Estado compartilhado entre o painel lateral e a tela `/vex`: qual conversa está aberta e,
+ * opcionalmente, uma pergunta pendente vinda de outro lugar do app (paleta de comandos, botões
+ * "Pedir à Vex"). A conversa consome `pendingPrompt` e o limpa.
  */
 interface VexSessionValue {
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
+  pendingPrompt: string | null;
+  setPendingPrompt: (prompt: string | null) => void;
 }
 
 const VexSessionContext = createContext<VexSessionValue | null>(null);
 
 export function VexSessionProvider({ children }: { children: ReactNode }) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  return (
-    <VexSessionContext.Provider value={{ activeConversationId, setActiveConversationId }}>
-      {children}
-    </VexSessionContext.Provider>
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const value = useMemo(
+    () => ({ activeConversationId, setActiveConversationId, pendingPrompt, setPendingPrompt }),
+    [activeConversationId, pendingPrompt],
   );
+  return <VexSessionContext.Provider value={value}>{children}</VexSessionContext.Provider>;
 }
 
 export function useVexSession(): VexSessionValue {

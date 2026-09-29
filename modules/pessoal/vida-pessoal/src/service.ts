@@ -29,14 +29,25 @@ export function computePlanPeriod(
 ): { periodStart: string; periodEnd: string } {
   if (planType === "mensal") {
     const [year, month] = input.month!.split("-").map(Number);
-    const start = new Date(year!, month! - 1, 1);
-    const end = new Date(year!, month!, 0);
-    return { periodStart: start.toISOString().slice(0, 10), periodEnd: end.toISOString().slice(0, 10) };
+    const lastDay = new Date(Date.UTC(year!, month!, 0)).getUTCDate();
+    const normalizedMonth = String(month).padStart(2, "0");
+    return {
+      periodStart: `${year}-${normalizedMonth}-01`,
+      periodEnd: `${year}-${normalizedMonth}-${String(lastDay).padStart(2, "0")}`,
+    };
   }
   if (planType === "anual") {
     return { periodStart: `${input.year}-01-01`, periodEnd: `${input.year}-12-31` };
   }
   return { periodStart: `${input.year}-01-01`, periodEnd: `${input.year! + 4}-12-31` };
+}
+
+/** Chave YYYY-MM-DD no fuso local; evita trocar de dia perto da meia-noite por causa de UTC. */
+export function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function isSameLocalDay(a: Date, b: Date): boolean {
@@ -61,5 +72,17 @@ export function countCompletedPomodorosToday(sessions: PomodoroSession[], refere
 
 export function countCompletedPomodorosThisWeek(sessions: PomodoroSession[], referenceDate: Date): number {
   const weekStart = startOfLocalWeek(referenceDate);
-  return sessions.filter((s) => s.status === "completed" && new Date(s.started_at) >= weekStart).length;
+  return sessions.filter((s) => {
+    const startedAt = new Date(s.started_at);
+    return s.status === "completed" && startedAt >= weekStart && startedAt <= referenceDate;
+  }).length;
+}
+
+export function completedPomodoroMinutesThisWeek(sessions: PomodoroSession[], referenceDate: Date): number {
+  const weekStart = startOfLocalWeek(referenceDate);
+  return sessions.reduce((total, session) => {
+    const startedAt = new Date(session.started_at);
+    if (session.status !== "completed" || startedAt < weekStart || startedAt > referenceDate) return total;
+    return total + session.duration_minutes;
+  }, 0);
 }

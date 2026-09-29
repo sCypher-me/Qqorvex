@@ -1,7 +1,8 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { computeNextEventOccurrenceDate } from "./service";
-import type { CalendarEvent, EventReminder, GoogleCalendarConnection, NewEventInput, RecurringEvent, RecurringEventFrequency } from "./types";
-import { toEventInsert } from "./types";
+import { zonedDateTimeToIso } from "./dateUtils";
+import type { CalendarEvent, EventReminder, NewEventInput, RecurringEvent, RecurringEventFrequency } from "./types";
+import { toEventInsert, toEventUpdate } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -39,6 +40,17 @@ export async function createEvent(client: Client, userId: string, input: NewEven
     await createEventReminder(client, data.id, input.reminderMinutesBefore);
   }
 
+  return data;
+}
+
+export async function updateEvent(client: Client, eventId: string, input: NewEventInput): Promise<CalendarEvent> {
+  const { data, error } = await client
+    .from("events")
+    .update(toEventUpdate(input))
+    .eq("id", eventId)
+    .select("*")
+    .single();
+  if (error) throw error;
   return data;
 }
 
@@ -122,17 +134,20 @@ export async function createZoomMeeting(
   return data;
 }
 
-/** Não expõe o `refresh_token` pro chamador — só o suficiente pra UI mostrar "conectado". */
-export async function getGoogleCalendarConnection(client: Client): Promise<GoogleCalendarConnection | null> {
-  const { data, error } = await client.from("google_calendar_connections").select("*").maybeSingle();
+/** Retorna somente o estado da conexão; tokens nunca são lidos pelo navegador. */
+export async function getGoogleCalendarConnection(client: Client): Promise<boolean> {
+  const { data, error } = await client.rpc("has_google_calendar_connection");
   if (error) throw error;
   return data;
 }
 
-/** Só apaga a conexão — nunca apaga eventos já sincronizados nos dois lados. */
-export async function disconnectGoogleCalendar(client: Client, userId: string): Promise<void> {
-  const { error } = await client.from("google_calendar_connections").delete().eq("user_id", userId);
+/** Revoga o refresh token no Google e remove a conexão no servidor. */
+export async function disconnectGoogleCalendar(client: Client): Promise<void> {
+  const { data, error } = await client.functions.invoke("google-calendar-disconnect", { body: {} });
   if (error) throw error;
+  if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
+    throw new Error(data.error);
+  }
 }
 
 /** Gera o token opaco (`id`) que vira o parâmetro `state` do redirecionamento OAuth do Google. */
@@ -161,22 +176,30 @@ export async function createRecurringEvent(
     endTime?: string;
     frequency: RecurringEventFrequency;
     startDate: string;
+    timeZone: string;
   },
 ): Promise<RecurringEvent> {
+  const values = {
+    user_id: userId,
+    title: input.title,
+    is_all_day: input.isAllDay ?? false,
+    start_time: input.startTime ?? null,
+    end_time: input.endTime ?? null,
+    frequency: input.frequency,
+    start_date: input.startDate,
+    next_occurrence_date: input.startDate,
+  };
   const { data, error } = await client
     .from("recurring_events")
-    .insert({
-      user_id: userId,
-      title: input.title,
-      is_all_day: input.isAllDay ?? false,
-      start_time: input.startTime ?? null,
-      end_time: input.endTime ?? null,
-      frequency: input.frequency,
-      start_date: input.startDate,
-      next_occurrence_date: input.startDate,
-    })
+    .insert({ ...values, time_zone: input.timeZone })
     .select("*")
     .single();
+  if (error && /time_zone/i.test(error.message) && (error.code === "42703" || error.code === "PGRST204")) {
+    // Graceful transition while the additive migration is awaiting deployment.
+    const legacyResult = await client.from("recurring_events").insert(values).select("*").single();
+    if (legacyResult.error) throw legacyResult.error;
+    return legacyResult.data;
+  }
   if (error) throw error;
   return data;
 }
@@ -199,12 +222,13 @@ export async function updateRecurringEventStatus(
  */
 export async function generateEventOccurrence(client: Client, userId: string, recurring: RecurringEvent): Promise<CalendarEvent> {
   const dateStr = recurring.next_occurrence_date;
-  const startAt = recurring.is_all_day ? `${dateStr}T00:00:00` : `${dateStr}T${recurring.start_time}`;
-  const endAt = recurring.is_all_day ? `${dateStr}T23:59:59` : `${dateStr}T${recurring.end_time}`;
+  const timeZone = recurring.time_zone || "America/Sao_Paulo";
+  const startAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "00:00" : (recurring.start_time ?? "09:00:00").slice(0, 5), timeZone);
+  const endAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "23:59" : (recurring.end_time ?? "10:00:00").slice(0, 5), timeZone, recurring.is_all_day ? 59 : 0);
 
-  const { data: event, error: eventError } = await client
+  const { data: insertedEvent, error: eventError } = await client
     .from("events")
-    .insert({
+    .upsert({
       user_id: userId,
       title: recurring.title,
       description: recurring.description,
@@ -216,15 +240,39 @@ export async function generateEventOccurrence(client: Client, userId: string, re
       end_at: endAt,
       buffer_before_minutes: recurring.buffer_before_minutes,
       buffer_after_minutes: recurring.buffer_after_minutes,
-    })
+      recurring_event_id: recurring.id,
+      recurrence_date: dateStr,
+    }, { onConflict: "recurring_event_id,recurrence_date", ignoreDuplicates: true })
     .select("*")
-    .single();
+    .maybeSingle();
   if (eventError) throw eventError;
+
+  // `ignoreDuplicates` intentionally does not return the existing row. Fetch it so a
+  // concurrent cron/UI generation remains idempotent without overwriting user edits.
+  let event = insertedEvent;
+  if (!event) {
+    const { data: existingEvent, error: lookupError } = await client
+      .from("events")
+      .select("*")
+      .eq("recurring_event_id", recurring.id)
+      .eq("recurrence_date", dateStr)
+      .single();
+    if (lookupError) throw lookupError;
+    event = existingEvent;
+  }
+  if (!event) throw new Error("A ocorrência recorrente não pôde ser localizada após a geração.");
 
   const { error: updateError } = await client
     .from("recurring_events")
-    .update({ next_occurrence_date: computeNextEventOccurrenceDate(recurring.next_occurrence_date, recurring.frequency) })
-    .eq("id", recurring.id);
+    .update({
+      next_occurrence_date: computeNextEventOccurrenceDate(
+        recurring.next_occurrence_date,
+        recurring.frequency,
+        Number(recurring.start_date.slice(-2)),
+      ),
+    })
+    .eq("id", recurring.id)
+    .eq("next_occurrence_date", dateStr);
   if (updateError) throw updateError;
 
   return event;

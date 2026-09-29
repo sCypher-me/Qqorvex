@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeAccountBalance,
   computeBalances,
+  computeBudgetUsage,
   computeCurrentClosingDate,
   computeInstallmentAmounts,
   computeNextOccurrenceDate,
@@ -9,23 +10,58 @@ import {
   computeStatementPeriod,
   computeStatementTotal,
   computeVehicleSpending,
+  addMonthsToDate,
+  parseBRLInput,
+  projectRecurringOccurrences,
   deriveInitialStatus,
   toReferenceMonth,
 } from "./service";
-import type { Transaction } from "./types";
+import type { RecurringTransaction, Transaction } from "./types";
 
 function tx(overrides: Partial<Transaction>): Transaction {
   return { amount: 0, transaction_type: "saida", status: "concluida", ...overrides } as Transaction;
 }
 
+function recurring(overrides: Partial<RecurringTransaction>): RecurringTransaction {
+  return {
+    id: "rec-1",
+    name: "Conta mensal",
+    amount: 25,
+    transaction_type: "saida",
+    status: "ativa",
+    frequency: "mensal",
+    start_date: "2026-01-31",
+    next_occurrence_date: "2026-01-31",
+    end_date: "2026-04-30",
+    category_id: "food",
+    ...overrides,
+  } as RecurringTransaction;
+}
+
 describe("deriveInitialStatus", () => {
   it("marca como futura quando a data é depois de hoje", () => {
-    expect(deriveInitialStatus("2026-09-20", new Date("2026-09-15"))).toBe("futura");
+    expect(deriveInitialStatus("2026-09-20", new Date(2026, 8, 15))).toBe("futura");
   });
 
   it("marca como concluida quando a data é hoje ou antes", () => {
-    expect(deriveInitialStatus("2026-09-15", new Date("2026-09-15"))).toBe("concluida");
-    expect(deriveInitialStatus("2026-09-01", new Date("2026-09-15"))).toBe("concluida");
+    expect(deriveInitialStatus("2026-09-15", new Date(2026, 8, 15))).toBe("concluida");
+    expect(deriveInitialStatus("2026-09-01", new Date(2026, 8, 15))).toBe("concluida");
+  });
+});
+
+describe("date-only arithmetic", () => {
+  it("clamps month-end dates instead of overflowing into the following month", () => {
+    expect(addMonthsToDate("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonthsToDate("2024-01-31", 1)).toBe("2024-02-29");
+    expect(addMonthsToDate("2026-12-31", 2)).toBe("2027-02-28");
+  });
+});
+
+describe("parseBRLInput", () => {
+  it("interprets Brazilian currency formatting and rounds to cents", () => {
+    expect(parseBRLInput("1.234,56")).toBe(1234.56);
+    expect(parseBRLInput("1234.56")).toBe(1234.56);
+    expect(parseBRLInput("R$ 10,129")).toBe(10.13);
   });
 });
 
@@ -86,6 +122,41 @@ describe("computeVehicleSpending", () => {
   });
 });
 
+describe("computeBudgetUsage", () => {
+  it("separates realized expenses from future, pending and overdue commitments", () => {
+    const usage = computeBudgetUsage([
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-09-02", amount: 40, status: "concluida" }),
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-09-03", amount: 20, status: "pendente" }),
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-09-04", amount: 15, status: "futura" }),
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-09-05", amount: 10, status: "vencida" }),
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-09-06", amount: 900, status: "cancelada" }),
+      tx({ transaction_type: "saida", category_id: "other", date: "2026-09-07", amount: 300, status: "concluida" }),
+      tx({ transaction_type: "entrada", category_id: "food", date: "2026-09-08", amount: 500, status: "concluida" }),
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-08-31", amount: 700, status: "concluida" }),
+    ] as Transaction[], "food", "2026-09");
+    expect(usage).toEqual({ realized: 40, committed: 45 });
+  });
+
+  it("adds active recurring expenses as projected commitments without double-counting generated entries", () => {
+    const scheduled = recurring({ next_occurrence_date: "2026-09-01", start_date: "2026-09-01", end_date: null, amount: 25 });
+    const usage = computeBudgetUsage([
+      tx({ transaction_type: "saida", category_id: "food", date: "2026-09-01", amount: 25, status: "pendente", recurring_transaction_id: scheduled.id }),
+    ], "food", "2026-09", [scheduled]);
+    expect(usage).toEqual({ realized: 0, committed: 25 });
+  });
+});
+
+describe("projectRecurringOccurrences", () => {
+  it("projects month-end dates without drift and respects the end date/status", () => {
+    const projected = projectRecurringOccurrences(
+      [recurring({}), recurring({ id: "paused", status: "pausada" })],
+      "2026-02-01",
+      "2026-04-30",
+    );
+    expect(projected.map((item) => item.date)).toEqual(["2026-02-28", "2026-03-31", "2026-04-30"]);
+  });
+});
+
 describe("computeNextOccurrenceDate", () => {
   it("avança pela frequência, inclusive virada de ano (anual)", () => {
     expect(computeNextOccurrenceDate("2026-10-09", "anual")).toBe("2027-10-09");
@@ -93,6 +164,7 @@ describe("computeNextOccurrenceDate", () => {
     expect(computeNextOccurrenceDate("2026-09-15", "bimestral")).toBe("2026-11-15");
     expect(computeNextOccurrenceDate("2026-09-15", "trimestral")).toBe("2026-12-15");
     expect(computeNextOccurrenceDate("2026-09-15", "semestral")).toBe("2027-03-15");
+    expect(computeNextOccurrenceDate("2026-02-28", "mensal", "2026-01-31")).toBe("2026-03-31");
   });
 });
 

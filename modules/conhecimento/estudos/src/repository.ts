@@ -1,7 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { createEvent as createAgendaEvent, listEventsByAssessment, type CalendarEvent } from "@qqorvex/module-agenda";
 import type { LibraryItem } from "@qqorvex/module-biblioteca";
-import { awardXp } from "@qqorvex/module-gamificacao";
+import { awardXp, recordHighAccuracyQuiz } from "@qqorvex/module-gamificacao";
 import { computeNextReview, type GeneratedQuizQuestion } from "./service";
 import type {
   Assessment,
@@ -43,6 +43,29 @@ export async function deleteNotebook(client: Client, notebookId: string): Promis
   if (error) throw error;
 }
 
+export async function updateNotebook(
+  client: Client,
+  notebookId: string,
+  input: Partial<NewNotebookInput> & { status?: Notebook["status"]; isFavorite?: boolean },
+): Promise<Notebook> {
+  const update = {
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.notebookType !== undefined ? { notebook_type: input.notebookType } : {}),
+    ...(input.area !== undefined ? { area: input.area || null } : {}),
+    ...(input.tags !== undefined ? { tags: input.tags } : {}),
+    ...(input.description !== undefined ? { description: input.description || null } : {}),
+    ...(input.institution !== undefined ? { institution: input.institution || null } : {}),
+    ...(input.instructor !== undefined ? { instructor: input.instructor || null } : {}),
+    ...(input.startDate !== undefined ? { start_date: input.startDate || null } : {}),
+    ...(input.endDate !== undefined ? { end_date: input.endDate || null } : {}),
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    ...(input.isFavorite !== undefined ? { is_favorite: input.isFavorite } : {}),
+  };
+  const { data, error } = await client.from("notebooks").update(update).eq("id", notebookId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function listTopics(client: Client, notebookId: string): Promise<Topic[]> {
   const { data, error } = await client
     .from("topics")
@@ -73,7 +96,7 @@ export async function listSummaries(client: Client, notebookId: string): Promise
     .from("summaries")
     .select("*")
     .eq("notebook_id", notebookId)
-    .order("created_at", { ascending: true });
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return data;
 }
@@ -91,6 +114,25 @@ export async function createSummary(
       content: input.content,
       topic_id: input.topicId ?? null,
     })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSummary(
+  client: Client,
+  summaryId: string,
+  input: { title: string; content: string; topicId?: string | null },
+): Promise<Summary> {
+  const { data, error } = await client
+    .from("summaries")
+    .update({
+      title: input.title,
+      content: input.content,
+      topic_id: input.topicId ?? null,
+    })
+    .eq("id", summaryId)
     .select("*")
     .single();
   if (error) throw error;
@@ -200,11 +242,11 @@ export async function listAssessments(client: Client, notebookId: string): Promi
 export async function createAssessment(
   client: Client,
   notebookId: string,
-  input: { name: string; assessmentDate?: string },
+  input: { name: string; assessmentDate?: string; expectedContent?: string },
 ): Promise<Assessment> {
   const { data, error } = await client
     .from("assessments")
-    .insert({ notebook_id: notebookId, name: input.name, assessment_date: input.assessmentDate ?? null })
+    .insert({ notebook_id: notebookId, name: input.name, assessment_date: input.assessmentDate ?? null, expected_content: input.expectedContent ?? null })
     .select("*")
     .single();
   if (error) throw error;
@@ -214,13 +256,23 @@ export async function createAssessment(
 export async function createStudySession(
   client: Client,
   notebookId: string,
-  input: { note?: string; durationMinutes?: number },
+  input: { note?: string; durationMinutes?: number; occurredAt?: string },
 ): Promise<StudySession> {
   const { data, error } = await client
     .from("study_sessions")
-    .insert({ notebook_id: notebookId, note: input.note ?? null, duration_minutes: input.durationMinutes ?? null })
+    .insert({ notebook_id: notebookId, note: input.note ?? null, duration_minutes: input.durationMinutes ?? null, ...(input.occurredAt ? { occurred_at: input.occurredAt } : {}) })
     .select("*")
     .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listStudySessions(client: Client, notebookId: string): Promise<StudySession[]> {
+  const { data, error } = await client
+    .from("study_sessions")
+    .select("*")
+    .eq("notebook_id", notebookId)
+    .order("occurred_at", { ascending: false });
   if (error) throw error;
   return data;
 }
@@ -302,6 +354,9 @@ export async function createQuizAttempt(
   if (error) throw error;
 
   await awardXp(client, userId, "quiz_completed");
+  if (answers.length > 0 && score / answers.length >= 0.9) {
+    await recordHighAccuracyQuiz(client, userId);
+  }
 
   return data;
 }
@@ -376,6 +431,77 @@ export async function listRelatedLibraryItems(client: Client, notebookId: string
     .from("library_items")
     .select("*")
     .in("id", relations.map((r) => r.library_item_id));
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSummary(client: Client, summaryId: string): Promise<void> {
+  const { error } = await client.from("summaries").delete().eq("id", summaryId);
+  if (error) throw error;
+}
+
+export async function updateFlashcard(client: Client, flashcardId: string, input: { front: string; back: string }): Promise<Flashcard> {
+  const { data, error } = await client.from("flashcards").update({ front: input.front, back: input.back }).eq("id", flashcardId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteFlashcard(client: Client, flashcardId: string): Promise<void> {
+  const { error } = await client.from("flashcards").delete().eq("id", flashcardId);
+  if (error) throw error;
+}
+
+export async function deleteTopic(client: Client, topicId: string): Promise<void> {
+  const { error } = await client.from("topics").delete().eq("id", topicId);
+  if (error) throw error;
+}
+
+export async function deleteErrorDoubt(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("errors_doubts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteAssessment(client: Client, assessmentId: string): Promise<void> {
+  const { error } = await client.from("assessments").delete().eq("id", assessmentId);
+  if (error) throw error;
+}
+
+export async function deleteStudySession(client: Client, sessionId: string): Promise<void> {
+  const { error } = await client.from("study_sessions").delete().eq("id", sessionId);
+  if (error) throw error;
+}
+
+export interface NotebookStats {
+  summaries: number;
+  flashcards: number;
+  due: number;
+}
+
+/**
+ * Contagens por caderno em duas consultas leves (só ids), para os cartões da lista não fazerem
+ * uma consulta por caderno.
+ */
+export async function listNotebookStats(client: Client, today: string): Promise<Record<string, NotebookStats>> {
+  const [summaries, flashcards] = await Promise.all([
+    client.from("summaries").select("notebook_id"),
+    client.from("flashcards").select("notebook_id, next_review_date"),
+  ]);
+  if (summaries.error) throw summaries.error;
+  if (flashcards.error) throw flashcards.error;
+  const stats: Record<string, NotebookStats> = {};
+  const entry = (id: string) => (stats[id] ??= { summaries: 0, flashcards: 0, due: 0 });
+  for (const row of summaries.data) entry(row.notebook_id).summaries += 1;
+  for (const row of flashcards.data) {
+    const current = entry(row.notebook_id);
+    current.flashcards += 1;
+    if (row.next_review_date <= today) current.due += 1;
+  }
+  return stats;
+}
+
+/** Sessões de estudo de todos os cadernos a partir de uma data (ISO), para o resumo da semana. */
+export async function listStudySessionsSince(client: Client, fromIso: string): Promise<StudySession[]> {
+  const { data, error } = await client.from("study_sessions").select("*").gte("occurred_at", fromIso).order("occurred_at", { ascending: true });
   if (error) throw error;
   return data;
 }

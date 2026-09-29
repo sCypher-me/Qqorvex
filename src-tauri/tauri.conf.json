@@ -3,11 +3,21 @@
   "productName": "qqorvex",
   "version": "0.1.0",
   "identifier": "tech.biocypher.qqorvex",
+  "plugins": {
+    "deep-link": {
+      "mobile": [
+        {
+          "scheme": ["qqorvex"],
+          "appLink": false
+        }
+      ]
+    }
+  },
   "build": {
     "frontendDist": "../apps/qqorvex/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "node C:/Users/Julio/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.mjs --filter qqorvex dev",
-    "beforeBuildCommand": "node C:/Users/Julio/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.mjs --filter qqorvex build"
+    "beforeDevCommand": "corepack pnpm --filter qqorvex dev",
+    "beforeBuildCommand": "corepack pnpm --filter qqorvex build && node tools/ensure-android-microphone-permission.mjs"
   },
   "app": {
     "windows": [
@@ -20,7 +30,72 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": ["'self'", "asset:", "customprotocol:"],
+        "connect-src": [
+          "ipc:",
+          "http://ipc.localhost",
+          "https://uowipikbumbaprckdvkg.supabase.co",
+          "wss://uowipikbumbaprckdvkg.supabase.co",
+          "https://challenges.cloudflare.com",
+          "https://www.googleapis.com",
+          "https://api.themoviedb.org"
+        ],
+        "font-src": ["'self'", "asset:", "data:"],
+        "img-src": ["'self'", "asset:", "blob:", "data:", "https:"],
+        "style-src": ["'self'", "asset:", "'unsafe-inline'"],
+        "script-src": ["'self'", "asset:", "https://challenges.cloudflare.com"],
+        "frame-src": [
+          "'self'",
+          "https://challenges.cloudflare.com",
+          "about:blank",
+          "about:srcdoc",
+          "https://open.spotify.com",
+          "https://www.youtube.com",
+          "https://player.vimeo.com",
+          "https://www.figma.com",
+          "https://codepen.io"
+        ],
+        "media-src": ["'self'", "blob:", "data:", "https:"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"]
+      },
+      "devCsp": {
+        "default-src": ["'self'", "asset:", "customprotocol:"],
+        "connect-src": [
+          "ipc:",
+          "http://ipc.localhost",
+          "http://localhost:5173",
+          "ws://localhost:5173",
+          "http://localhost:11434",
+          "ws://localhost:11434",
+          "https://uowipikbumbaprckdvkg.supabase.co",
+          "wss://uowipikbumbaprckdvkg.supabase.co",
+          "https://challenges.cloudflare.com",
+          "https://www.googleapis.com",
+          "https://api.themoviedb.org"
+        ],
+        "font-src": ["'self'", "asset:", "data:"],
+        "img-src": ["'self'", "asset:", "blob:", "data:", "https:"],
+        "style-src": ["'self'", "asset:", "'unsafe-inline'"],
+        "script-src": ["'self'", "asset:", "https://challenges.cloudflare.com"],
+        "frame-src": [
+          "'self'",
+          "https://challenges.cloudflare.com",
+          "about:blank",
+          "about:srcdoc",
+          "https://open.spotify.com",
+          "https://www.youtube.com",
+          "https://player.vimeo.com",
+          "https://www.figma.com",
+          "https://codepen.io"
+        ],
+        "media-src": ["'self'", "blob:", "data:", "https:"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"]
+      }
     }
   },
   "bundle": {

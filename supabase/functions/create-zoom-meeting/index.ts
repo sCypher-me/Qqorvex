@@ -18,11 +18,25 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const MAX_TITLE_CHARS = 240;
+const MAX_MEETING_DURATION_MINUTES = 24 * 60;
+const ZOOM_TIMEOUT_MS = 15_000;
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ZOOM_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -36,8 +50,14 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Corpo inválido." }, 400);
   }
   const { title, startAt, endAt } = body;
-  if (!title || !startAt || !endAt) {
+  if (typeof title !== "string" || typeof startAt !== "string" || typeof endAt !== "string") {
     return jsonResponse({ error: "title, startAt e endAt são obrigatórios." }, 400);
+  }
+  const normalizedTitle = title.trim();
+  const startTimestamp = Date.parse(startAt);
+  const endTimestamp = Date.parse(endAt);
+  if (!normalizedTitle || normalizedTitle.length > MAX_TITLE_CHARS || !Number.isFinite(startTimestamp) || !Number.isFinite(endTimestamp) || endTimestamp <= startTimestamp) {
+    return jsonResponse({ error: "Dados da reunião inválidos." }, 400);
   }
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -51,43 +71,58 @@ Deno.serve(async (req) => {
   }
   const secrets = Object.fromEntries(secretRows.map((r) => [r.key, r.value]));
 
-  const tokenResponse = await fetch(
-    `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${secrets.zoom_account_id}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`${secrets.zoom_client_id}:${secrets.zoom_client_secret}`)}`,
+  let tokenResponse: Response;
+  try {
+    tokenResponse = await fetchWithTimeout(
+      `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(secrets.zoom_account_id)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${btoa(`${secrets.zoom_client_id}:${secrets.zoom_client_secret}`)}`,
+        },
       },
-    },
-  );
+    );
+  } catch (error) {
+    console.error("Zoom token request failed", error);
+    return jsonResponse({ error: "O serviço de reuniões não respondeu a tempo." }, 504);
+  }
   if (!tokenResponse.ok) {
     const detail = await tokenResponse.text();
-    console.error("Zoom token error", tokenResponse.status, detail);
-    return jsonResponse({ error: `Falha ao autenticar com o Zoom: ${detail}` }, 502);
+    console.error("Zoom token error", tokenResponse.status, detail.slice(0, 1_000));
+    return jsonResponse({ error: "Não foi possível autenticar o serviço de reuniões." }, 502);
   }
   const { access_token: accessToken } = await tokenResponse.json();
 
-  const durationMinutes = Math.max(1, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60_000));
+  const durationMinutes = Math.min(
+    MAX_MEETING_DURATION_MINUTES,
+    Math.max(1, Math.round((endTimestamp - startTimestamp) / 60_000)),
+  );
 
-  const meetingResponse = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      topic: title,
-      type: 2,
-      start_time: startAt,
-      duration: durationMinutes,
-      timezone: "UTC",
-      settings: { join_before_host: true },
-    }),
-  });
+  let meetingResponse: Response;
+  try {
+    meetingResponse = await fetchWithTimeout("https://api.zoom.us/v2/users/me/meetings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        topic: normalizedTitle,
+        type: 2,
+        start_time: startAt,
+        duration: durationMinutes,
+        timezone: "UTC",
+        settings: { join_before_host: true },
+      }),
+    });
+  } catch (error) {
+    console.error("Zoom meeting request failed", error);
+    return jsonResponse({ error: "O serviço de reuniões não respondeu a tempo." }, 504);
+  }
   if (!meetingResponse.ok) {
     const detail = await meetingResponse.text();
-    console.error("Zoom meeting error", meetingResponse.status, detail);
-    return jsonResponse({ error: `Falha ao criar a reunião no Zoom: ${detail}` }, 502);
+    console.error("Zoom meeting error", meetingResponse.status, detail.slice(0, 1_000));
+    return jsonResponse({ error: "Não foi possível criar a reunião agora." }, 502);
   }
   const meeting = await meetingResponse.json();
 

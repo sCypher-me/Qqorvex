@@ -12,6 +12,7 @@ export * from "./components/IdeaCard";
 export * from "./components/NewIdeaForm";
 export * from "./components/DailyCheckinForm";
 export * from "./components/PomodoroTimer";
+export * from "./components/FocusAudioPlayer";
 export * from "./components/UsefulContactsPanel";
 export * from "./components/VehiclesPanel";
 export * from "./components/AssetsPanel";
