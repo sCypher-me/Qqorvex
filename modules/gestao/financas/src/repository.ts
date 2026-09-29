@@ -66,6 +66,11 @@ export async function updateTransaction(
       date: input.date,
       category_id: input.categoryId ?? null,
       status: input.status,
+      ...(input.accountId !== undefined ? { account_id: input.accountId } : {}),
+      ...(input.cardId !== undefined ? { card_id: input.cardId } : {}),
+      ...(input.transferToAccountId !== undefined ? { transfer_to_account_id: input.transferToAccountId } : {}),
+      ...(input.paymentMethod !== undefined ? { payment_method: input.paymentMethod } : {}),
+      ...(input.tags !== undefined ? { tags: input.tags } : {}),
     })
     .eq("id", id)
     .select("*")
@@ -410,4 +415,69 @@ export async function markStatementPaid(client: Client, statementId: string): Pr
     .single();
   if (error) throw error;
   return data;
+}
+
+/** Importação: insere vários lançamentos numa só chamada (status derivado da data). */
+export async function createTransactionsBulk(client: Client, userId: string, inputs: NewTransactionInput[]): Promise<Transaction[]> {
+  if (inputs.length === 0) return [];
+  const rows = inputs.map((input) => toTransactionInsert(userId, { ...input, status: input.status ?? deriveInitialStatus(input.date) }));
+  const { data, error } = await client.from("transactions").insert(rows).select("*");
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAccount(client: Client, id: string, input: { name?: string; accountType?: Account["account_type"] }): Promise<Account> {
+  const { data, error } = await client
+    .from("accounts")
+    .update({ ...(input.name !== undefined ? { name: input.name.trim() } : {}), ...(input.accountType ? { account_type: input.accountType } : {}) })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAccount(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("accounts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateCategory(client: Client, id: string, name: string): Promise<Category> {
+  const { data, error } = await client.from("categories").update({ name: name.trim() }).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCategory(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("categories").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteBudget(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("budgets").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateCard(
+  client: Client,
+  id: string,
+  input: { nickname?: string; institution?: string | null; lastDigits?: string | null },
+): Promise<Card> {
+  const { data, error } = await client
+    .from("cards")
+    .update({
+      ...(input.nickname !== undefined ? { nickname: input.nickname.trim() } : {}),
+      ...(input.institution !== undefined ? { institution: input.institution } : {}),
+      ...(input.lastDigits !== undefined ? { last_digits: input.lastDigits } : {}),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCard(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("cards").delete().eq("id", id);
+  if (error) throw error;
 }

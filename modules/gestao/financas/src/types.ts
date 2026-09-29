@@ -41,6 +41,12 @@ export interface UpdateTransactionInput {
   date: string;
   categoryId?: string;
   status: TransactionStatus;
+  /** Campos opcionais: só são gravados quando informados (undefined = não mexe). */
+  accountId?: string | null;
+  cardId?: string | null;
+  transferToAccountId?: string | null;
+  paymentMethod?: PaymentMethod;
+  tags?: string[];
 }
 
 export function toTransactionInsert(userId: string, input: NewTransactionInput): TablesInsert<"transactions"> {
