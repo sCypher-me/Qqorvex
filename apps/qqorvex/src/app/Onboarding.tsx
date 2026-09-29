@@ -7,13 +7,14 @@ import {
   CheckCircleIcon,
   CompassIcon,
   CrownIcon,
+  DesktopIcon,
   HouseIcon,
   MoonIcon,
   SparkleIcon,
   SunIcon,
   TargetIcon,
 } from "@phosphor-icons/react";
-import { Button, Notice } from "@qqorvex/ui";
+import { BrandSymbol, Button, Notice, Wordmark } from "@qqorvex/ui";
 import {
   removeManagedProfileAvatar,
   uploadProfileAvatar,
@@ -21,7 +22,7 @@ import {
   useProfile,
 } from "@qqorvex/auth";
 import { BILLING_PLANS } from "../billing/plans";
-import { useTheme, type AppTheme } from "./ThemeContext";
+import { useTheme, type ThemePreference } from "./ThemeContext";
 
 type FocusArea = "routine" | "organization" | "study" | "personal";
 
@@ -31,7 +32,7 @@ const FOCUS_OPTIONS: { value: FocusArea; label: string; description: string; pat
   { value: "routine", label: "Ter clareza do meu dia", description: "Começar pela visão Hoje", path: "/" },
   { value: "organization", label: "Organizar tarefas e compromissos", description: "Abrir tarefas e agenda", path: "/planejar/tarefas" },
   { value: "study", label: "Aprender e guardar ideias", description: "Começar pelos Estudos", path: "/conhecimento/estudos" },
-  { value: "personal", label: "Cuidar da vida pessoal", description: "Abrir Vida Pessoal", path: "/vida/pessoal" },
+  { value: "personal", label: "Cuidar da vida pessoal", description: "Abrir Pessoal: planos, bem-estar e casa", path: "/vida/pessoal" },
 ];
 
 const PLAN_PRICE = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -40,10 +41,10 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
   const { client, session } = useAuth();
   const userId = session!.user.id;
   const { profile, save } = useProfile(client, userId);
-  const { theme, setTheme } = useTheme();
+  const { preference, setPreference } = useTheme();
   const [step, setStep] = useState(0);
   const [focusArea, setFocusArea] = useState<FocusArea>("routine");
-  const [selectedTheme, setSelectedTheme] = useState<AppTheme>(theme);
+  const [selectedTheme, setSelectedTheme] = useState<ThemePreference>(preference);
   const themeWasSelected = useRef(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null);
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -55,13 +56,13 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
   const currentAvatar = avatarPreview ?? profile?.avatar_url ?? null;
 
   useEffect(() => {
-    if (!themeWasSelected.current) setSelectedTheme(theme);
-  }, [theme]);
+    if (!themeWasSelected.current) setSelectedTheme(preference);
+  }, [preference]);
 
-  function chooseTheme(value: AppTheme) {
+  function chooseTheme(value: ThemePreference) {
     themeWasSelected.current = true;
     setSelectedTheme(value);
-    setTheme(value);
+    setPreference(value);
   }
 
   async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
@@ -102,6 +103,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
           qqorvex_onboarding_completed: true,
           qqorvex_onboarding_completed_at: new Date().toISOString(),
           qqorvex_preferences: {
+            ...(session!.user.user_metadata.qqorvex_preferences && typeof session!.user.user_metadata.qqorvex_preferences === "object" ? (session!.user.user_metadata.qqorvex_preferences as Record<string, unknown>) : {}),
             focus_area: focusArea,
             theme: selectedTheme,
           },
@@ -143,8 +145,11 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
 
       <header className="relative z-10 flex items-center justify-between border-b border-line px-5 py-4 sm:px-8 lg:px-12">
         <div className="flex min-w-0 items-center gap-3">
-          <img src="/brand/wordmark.png" alt="Qqorvex" className="h-7 w-auto" />
-          <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+          <span className="flex items-center gap-2">
+            <BrandSymbol size={24} />
+            <Wordmark size={19} />
+          </span>
+          <span className="hidden h-5 w-px bg-line sm:block" aria-hidden="true" />
           <span className="hidden text-xs text-fg-3 sm:block">Seu começo, do seu jeito</span>
         </div>
         <button
@@ -196,8 +201,8 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
               {error && <Notice tone="error" title="Um instante">{error}</Notice>}
 
               {step === 0 && (
-                <div className="animate-[qv-onboarding-in_.28s_ease-out]">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">BEM-VINDO AO QQORVEX</p>
+                <div className="animate-fade-up">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">BOAS-VINDAS AO QQORVEX</p>
                   <h2 id="onboarding-title" className="mt-3 max-w-xl font-display text-3xl font-semibold leading-tight tracking-[-.04em] sm:text-[40px]">
                     Mais clareza para o que importa.
                   </h2>
@@ -207,7 +212,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
 
                   <div className="mt-8 grid gap-x-8 sm:grid-cols-2">
                     <Feature icon={<HouseIcon size={19} />} title="Organize sua rotina" description="Hoje, tarefas, agenda, metas e hábitos trabalham juntos." />
-                    <Feature icon={<BookOpenTextIcon size={19} />} title="Aprenda e registre" description="Cadernos, mapas mentais, biblioteca e segundo cérebro." />
+                    <Feature icon={<BookOpenTextIcon size={19} />} title="Aprenda e registre" description="Cadernos, flashcards, notas conectadas e biblioteca." />
                     <Feature icon={<CompassIcon size={19} />} title="Cuide da sua vida" description="Finanças, documentos, vida pessoal e conquistas." />
                     <Feature icon={<SparkleIcon size={19} />} title="Converse com a Vex" description="Uma assistente de texto para consultar e organizar seu app." />
                   </div>
@@ -220,7 +225,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
               )}
 
               {step === 1 && (
-                <div className="animate-[qv-onboarding-in_.28s_ease-out]">
+                <div className="animate-fade-up">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">PREFERÊNCIAS</p>
                   <h2 id="onboarding-title" className="mt-3 font-display text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Como você quer começar?</h2>
                   <p className="mt-2 text-sm leading-6 text-fg-2">Escolha uma área para abrir primeiro e o tema que fica mais confortável para você.</p>
@@ -250,16 +255,17 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
 
                   <fieldset className="mt-7">
                     <legend className="mb-3 text-sm font-semibold">Aparência</legend>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <ThemeChoice icon={<MoonIcon size={19} />} label="Escuro" selected={selectedTheme === "dark"} onClick={() => chooseTheme("dark")} />
                       <ThemeChoice icon={<SunIcon size={19} />} label="Claro" selected={selectedTheme === "light"} onClick={() => chooseTheme("light")} />
+                      <ThemeChoice icon={<DesktopIcon size={19} />} label="Automático" selected={selectedTheme === "system"} onClick={() => chooseTheme("system")} />
                     </div>
                   </fieldset>
                 </div>
               )}
 
               {step === 2 && (
-                <div className="animate-[qv-onboarding-in_.28s_ease-out]">
+                <div className="animate-fade-up">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">SEU PERFIL</p>
                   <h2 id="onboarding-title" className="mt-3 font-display text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Vamos colocar seu rosto no seu espaço?</h2>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-fg-2">Uma foto ajuda a reconhecer seu perfil no app. Ela é opcional e você pode trocar ou remover quando quiser.</p>
@@ -282,7 +288,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
               )}
 
               {step === 3 && (
-                <div className="animate-[qv-onboarding-in_.28s_ease-out]">
+                <div className="animate-fade-up">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">PLANOS, SEM PRESSA</p>
                   <h2 id="onboarding-title" className="mt-3 font-display text-3xl font-semibold tracking-[-.04em] sm:text-4xl">Comece grátis. Evolua quando fizer sentido.</h2>
                   <p className="mt-2 text-sm leading-6 text-fg-2">Você começa no Free com acesso a todos os módulos. A assinatura é opcional e pode ser decidida depois.</p>

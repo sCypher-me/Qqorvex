@@ -13,7 +13,7 @@ function b64url(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-export function fakeSession() {
+export function fakeSession({ onboarding = false } = {}) {
   const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
   const user = {
     id: USER_ID,
@@ -23,7 +23,7 @@ export function fakeSession() {
     email_confirmed_at: new Date(Date.now() - 86_400_000 * 60).toISOString(),
     phone: "",
     app_metadata: { provider: "email", providers: ["email"] },
-    user_metadata: { full_name: "Ana Souza", qqorvex_onboarding_completed: true },
+    user_metadata: onboarding ? { full_name: "Ana Souza", qqorvex_onboarding_pending: true } : { full_name: "Ana Souza", qqorvex_onboarding_completed: true },
     identities: [],
     factors: [],
     created_at: new Date(Date.now() - 86_400_000 * 60).toISOString(),
@@ -150,9 +150,9 @@ function newId() {
 }
 
 /** Instala as rotas do mock numa página Playwright. */
-export async function installSupabaseMock(page, { log = false } = {}) {
+export async function installSupabaseMock(page, { log = false, onboarding = false } = {}) {
   const mock = createMockDatabase();
-  const session = fakeSession();
+  const session = fakeSession({ onboarding });
 
   await page.addInitScript(
     ([key, value]) => {
