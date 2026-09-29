@@ -1,36 +1,124 @@
-import { forwardRef, type HTMLAttributes } from "react";
+import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
+import { cx } from "../cx";
 
-export type CardVariant = "default" | "vex" | "milestone" | "tile" | "well" | "column";
+export type CardVariant =
+  | "default"
+  | "raised"
+  | "inset"
+  | "outline"
+  | "interactive"
+  | "gold"
+  | "ai"
+  /** @deprecated aliases do design antigo */
+  | "vex"
+  | "milestone"
+  | "tile"
+  | "well"
+  | "column";
+
+export type CardPadding = "none" | "sm" | "md" | "lg";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /**
-   * default = painel grafite fosco · vex = contexto abstrato de assistência · milestone =
-   * marco/meta em dourado discreto · tile = card compacto sólido (kanban, badges) ·
-   * well = área rebaixada dentro de um card · column = coluna de kanban.
-   */
   variant?: CardVariant;
-  /** Sem padding interno — para cards com cabeçalho/lista que controlam o próprio espaçamento. */
+  padding?: CardPadding;
+  /** @deprecated use `padding="none"` */
   flush?: boolean;
+  /** Mantém o layout em coluna com espaçamento (padrão). `false` deixa o conteúdo livre. */
+  stack?: boolean;
 }
 
-const variantClasses: Record<CardVariant, string> = {
-  default: "qv-card",
-  vex: "qv-card-vex",
-  milestone: "qv-card-milestone",
-  tile: "qv-tile",
-  well: "qv-well",
-  column: "qv-column",
+const variants: Record<CardVariant, string> = {
+  default: "border border-line bg-surface",
+  raised: "border border-line bg-raised shadow-sm",
+  inset: "border border-line-soft bg-canvas/60",
+  outline: "border border-line",
+  interactive: "border border-line bg-surface transition-[border-color,background-color,transform] duration-150 ease-q hover:border-line-strong hover:bg-raised",
+  gold: "border border-gold-line bg-[color-mix(in_srgb,var(--q-gold)_6%,var(--q-surface))]",
+  ai: "border border-ai-line bg-[color-mix(in_srgb,var(--q-ai)_6%,var(--q-surface))]",
+  vex: "border border-ai-line bg-[color-mix(in_srgb,var(--q-ai)_6%,var(--q-surface))]",
+  milestone: "border border-gold-line bg-[color-mix(in_srgb,var(--q-gold)_6%,var(--q-surface))]",
+  tile: "border border-line bg-raised transition-[border-color] duration-150 hover:border-line-strong",
+  well: "border border-line-soft bg-canvas/60",
+  column: "border border-line-soft bg-canvas/40",
 };
 
-/**
- * Card fosco do Design System. A ênfase é semântica e contida, nunca glow permanente.
- * `forwardRef` porque alguns usos (ex.: `TaskCard` com `@dnd-kit/core`)
- * precisam do nó DOM real por baixo (`setNodeRef`), não só de props.
- */
+const paddings: Record<CardPadding, string> = {
+  none: "",
+  sm: "p-3",
+  md: "p-4 sm:p-5",
+  lg: "p-5 sm:p-6",
+};
+
+/** Contêiner base. Superfícies se diferenciam por luminância e borda, não por sombra. */
 export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
-  { variant = "default", flush = false, className = "", ...props },
+  { variant = "default", padding, flush = false, stack = true, className, ...props },
   ref,
 ) {
-  const padding = flush ? "" : variant === "tile" || variant === "well" ? "p-3" : "p-5";
-  return <div ref={ref} className={`${variantClasses[variant]} ${padding} flex flex-col gap-3 ${className}`} {...props} />;
+  const resolvedPadding: CardPadding = flush ? "none" : padding ?? (variant === "tile" || variant === "well" ? "sm" : "md");
+  return (
+    <div
+      ref={ref}
+      className={cx("min-w-0 rounded-xl", variants[variant], paddings[resolvedPadding], stack && "flex flex-col gap-3", className)}
+      {...props}
+    />
+  );
 });
+
+export interface CardHeaderProps {
+  title: ReactNode;
+  /** Texto de apoio abaixo do título. */
+  description?: ReactNode;
+  /** Metadado curto ao lado do título (contagem, data). */
+  meta?: ReactNode;
+  icon?: ReactNode;
+  actions?: ReactNode;
+  /** Linha divisória abaixo — use em cards com `padding="none"`. */
+  divider?: boolean;
+  /** @deprecated sem efeito — títulos de card seguem uma única escala. */
+  display?: boolean;
+  className?: string;
+}
+
+export function CardHeader({ title, description, meta, icon, actions, divider = false, className }: CardHeaderProps) {
+  return (
+    <div className={cx("flex min-w-0 items-start gap-3", divider && "border-b border-line px-4 py-3.5 sm:px-5", className)}>
+      {icon && <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-fg-2 [&_svg]:size-[18px]">{icon}</span>}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h3 className="truncate text-[14px] font-semibold leading-snug text-fg">{title}</h3>
+          {meta !== undefined && meta !== null && <span className="text-xs tabular-nums text-fg-3">{meta}</span>}
+        </div>
+        {description && <p className="mt-0.5 text-[13px] leading-snug text-fg-3">{description}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
+    </div>
+  );
+}
+
+export interface SectionTitleProps {
+  children: ReactNode;
+  meta?: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}
+
+/** Título de seção dentro de uma página (acima de uma lista, grade ou grupo de cards). */
+export function SectionTitle({ children, meta, description, actions, className }: SectionTitleProps) {
+  return (
+    <div className={cx("flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1", className)}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <h2 className="font-display text-[17px] font-semibold leading-snug tracking-[-0.01em] text-fg">{children}</h2>
+          {meta !== undefined && meta !== null && <span className="text-xs tabular-nums text-fg-3">{meta}</span>}
+        </div>
+        {description && <p className="mt-0.5 text-[13px] text-fg-3">{description}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function Divider({ className, vertical = false }: { className?: string; vertical?: boolean }) {
+  return <div role="separator" aria-orientation={vertical ? "vertical" : "horizontal"} className={cx(vertical ? "w-px self-stretch bg-line" : "h-px w-full bg-line", className)} />;
+}

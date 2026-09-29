@@ -17,6 +17,7 @@
     "audit:rls:two-user": "node tools/audit-rls-two-user.mjs"
   },
   "devDependencies": {
+    "playwright-core": "1.56.1",
     "vitest": "^3.0.0"
   }
 }

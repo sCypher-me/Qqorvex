@@ -1,25 +1,23 @@
 /**
- * Hierarquia tipográfica oficial. Fonte de verdade: Xmind "Qqorvex" > Tipografia Oficial.
- * Space Grotesk = display/títulos · Manrope = interface/leitura · JetBrains Mono = dados técnicos.
+ * Tipografia: Outfit (display — títulos, números de destaque) ecoa a geometria do wordmark;
+ * Inter (interface e leitura) garante legibilidade densa; Geist Mono para código e atalhos.
  */
 export const fontFamilies = {
-  display: "'Space Grotesk', sans-serif",
-  sans: "'Manrope', sans-serif",
-  mono: "'JetBrains Mono', monospace",
+  display: "'Outfit Variable', sans-serif",
+  sans: "'Inter Variable', sans-serif",
+  mono: "'Geist Mono Variable', monospace",
 } as const;
 
 export const typeScale = {
-  displayHero: { family: fontFamilies.display, weight: 700, size: "40px" },
-  pageTitle: { family: fontFamilies.display, weight: 600, size: "32px" },
-  sectionTitle: { family: fontFamilies.display, weight: 600, size: "24px" },
-  cardTitle: { family: fontFamilies.display, weight: 600, size: "16px" },
-  body: { family: fontFamilies.sans, weight: 400, size: "15px" },
-  buttonLabel: { family: fontFamilies.sans, weight: 600, size: "15px" },
-  secondary: { family: fontFamilies.sans, weight: 400, size: "13px" },
-  label: { family: fontFamilies.sans, weight: 600, size: "12px" },
-  caption: { family: fontFamilies.sans, weight: 500, size: "11px" },
-  metric: { family: fontFamilies.mono, weight: 500, size: "30px" },
-  technical: { family: fontFamilies.mono, weight: 500, size: "14px" },
+  hero: "font-display text-[34px] leading-[1.1] font-semibold tracking-[-0.02em]",
+  pageTitle: "font-display text-[26px] leading-[1.15] font-semibold tracking-[-0.015em]",
+  sectionTitle: "font-display text-[17px] leading-snug font-semibold",
+  cardTitle: "text-[14px] leading-snug font-semibold",
+  body: "text-[14px] leading-relaxed",
+  small: "text-[13px] leading-normal",
+  caption: "text-[12px] leading-normal",
+  eyebrow: "text-2xs font-semibold uppercase tracking-[0.08em]",
+  metric: "font-display text-[28px] leading-none font-semibold tabular-nums",
 } as const;
 
 export type TypeScaleToken = keyof typeof typeScale;

@@ -1,76 +1,147 @@
-import type { ButtonHTMLAttributes } from "react";
+import { forwardRef, type AnchorHTMLAttributes, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { Link, type LinkProps } from "react-router-dom";
+import { cx } from "../cx";
 import { triggerHaptic, type HapticLevel } from "../haptics";
+import { Spinner } from "./Spinner";
 
 export type ButtonVariant =
   | "primary"
   | "secondary"
-  | "quiet"
   | "ghost"
+  | "subtle"
+  | "danger"
+  | "ai"
+  | "dashed"
+  | "link"
+  /** @deprecated aliases do design antigo */
+  | "quiet"
   | "destructive"
   | "vex"
   | "premium"
-  | "dashed"
   | "chip"
   | "chip-accent";
 
-export type ButtonSize = "xs" | "sm" | "md";
+export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+const base =
+  "relative inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap font-medium " +
+  "transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-q " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--q-focus)] " +
+  "disabled:pointer-events-none disabled:opacity-45 active:translate-y-px";
+
+const variants: Record<ButtonVariant, string> = {
+  primary: "bg-gold text-on-gold shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(0_0_0/0.2)] hover:bg-gold-hover active:bg-gold-press",
+  secondary: "border border-line bg-raised text-fg shadow-sm hover:border-line-strong hover:bg-overlay",
+  ghost: "text-fg-2 hover:bg-hover hover:text-fg",
+  subtle: "bg-hover text-fg hover:bg-selected",
+  danger: "border border-danger/30 bg-danger-soft text-danger hover:border-danger/50 hover:bg-danger/20",
+  ai: "border border-ai-line bg-ai-soft text-ai-fg hover:bg-ai/20",
+  dashed: "border border-dashed border-line-strong text-fg-2 hover:border-fg-3 hover:text-fg",
+  link: "h-auto! px-0! text-gold-fg underline-offset-4 hover:underline",
+  quiet: "text-fg-2 hover:bg-hover hover:text-fg",
+  destructive: "border border-danger/30 bg-danger-soft text-danger hover:border-danger/50 hover:bg-danger/20",
+  vex: "border border-ai-line bg-ai-soft text-ai-fg hover:bg-ai/20",
+  premium: "bg-gold text-on-gold shadow-[inset_0_1px_0_rgb(255_255_255/0.22)] hover:bg-gold-hover",
+  chip: "border border-line bg-transparent text-fg-2 hover:bg-hover hover:text-fg",
+  "chip-accent": "border border-gold-line bg-gold-soft text-gold-fg hover:bg-gold/20",
+};
+
+const sizes: Record<ButtonSize, string> = {
+  xs: "h-7 gap-1.5 rounded-md px-2.5 text-xs",
+  sm: "h-8 gap-1.5 rounded-md px-3 text-[13px]",
+  md: "h-9 gap-2 rounded-lg px-3.5 text-[13.5px]",
+  lg: "h-11 gap-2 rounded-lg px-5 text-[15px]",
+};
+
+const iconOnlySizes: Record<ButtonSize, string> = {
+  xs: "w-7 px-0",
+  sm: "w-8 px-0",
+  md: "w-9 px-0",
+  lg: "w-11 px-0",
+};
+
+/** Ação "pesada" vibra; navegação e ações leves não, para o toque não virar ruído. */
+const HAPTIC: Partial<Record<ButtonVariant, HapticLevel>> = {
+  primary: "light",
+  premium: "light",
+  ai: "light",
+  vex: "light",
+  danger: "warning",
+  destructive: "warning",
+};
+
+export interface ButtonStyleOptions {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  fullWidth?: boolean;
+  iconOnly?: boolean;
 }
 
-/**
- * Botões do Design System. Primary é grafite com contorno ciano; ciano preenchido fica restrito
- * à ação contextual da Vex. Gold sinaliza marcos/metas, nunca lucro por si só.
- */
-const variantClasses: Record<ButtonVariant, string> = {
-  primary: "qv-btn-primary",
-  secondary: "qv-btn-secondary",
-  quiet: "qv-btn-quiet",
-  ghost: "qv-btn-ghost",
-  destructive: "qv-btn-danger",
-  vex: "qv-btn-vex",
-  premium: "qv-btn-premium",
-  dashed: "qv-btn-dashed",
-  chip: "qv-btn-quiet",
-  "chip-accent": "qv-btn-vex",
-};
-
-const sizeClasses: Record<ButtonSize, string> = {
-  xs: "qv-btn-xs",
-  sm: "qv-btn-sm",
-  md: "",
-};
-
-/**
- * Só os botões de ação "pesada" vibram — nem toda a superfície clicável, senão cada toque vira
- * ruído tátil. `quiet`/`ghost`/`secondary`/`dashed`/`chip` (navegação, cancelar, ações leves) não
- * entram aqui de propósito.
- */
-const HAPTIC_BY_VARIANT: Partial<Record<ButtonVariant, HapticLevel>> = {
-  primary: "light",
-  vex: "light",
-  premium: "light",
-  destructive: "warning",
-  "chip-accent": "light",
-};
-
-export function Button({ variant = "primary", size, className = "", onClick, ...props }: ButtonProps) {
+export function buttonClasses({ variant = "primary", size, fullWidth, iconOnly }: ButtonStyleOptions = {}): string {
   const resolvedSize = size ?? (variant === "chip" || variant === "chip-accent" ? "sm" : "md");
-  const hapticLevel = HAPTIC_BY_VARIANT[variant];
+  return cx(base, variants[variant], sizes[resolvedSize], iconOnly && iconOnlySizes[resolvedSize], fullWidth && "w-full");
+}
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonStyleOptions {
+  loading?: boolean;
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "primary", size, fullWidth, iconOnly, loading = false, leadingIcon, trailingIcon, className, onClick, type = "button", disabled, children, ...props },
+  ref,
+) {
+  const haptic = HAPTIC[variant];
   return (
     <button
-      className={`qv-btn ${variantClasses[variant]} ${sizeClasses[resolvedSize]} ${className}`}
-      onClick={
-        hapticLevel
-          ? (event) => {
-              triggerHaptic(hapticLevel);
-              onClick?.(event);
-            }
-          : onClick
-      }
+      ref={ref}
+      type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={cx(buttonClasses({ variant, size, fullWidth, iconOnly }), className)}
+      onClick={(event) => {
+        if (haptic) triggerHaptic(haptic);
+        onClick?.(event);
+      }}
       {...props}
-    />
+    >
+      {loading ? <Spinner size={14} /> : leadingIcon}
+      {children}
+      {!loading && trailingIcon}
+    </button>
+  );
+});
+
+export interface ButtonLinkProps extends Omit<LinkProps, "className">, ButtonStyleOptions {
+  className?: string;
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
+}
+
+/** Link de navegação com aparência de botão (rotas internas). */
+export function ButtonLink({ variant = "secondary", size, fullWidth, iconOnly, className, leadingIcon, trailingIcon, children, ...props }: ButtonLinkProps) {
+  return (
+    <Link className={cx(buttonClasses({ variant, size, fullWidth, iconOnly }), className)} {...props}>
+      {leadingIcon}
+      {children}
+      {trailingIcon}
+    </Link>
+  );
+}
+
+export interface ExternalButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement>, ButtonStyleOptions {
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
+}
+
+/** Link externo com aparência de botão — abre em nova aba com `noopener`. */
+export function ExternalButtonLink({ variant = "secondary", size, fullWidth, iconOnly, className, leadingIcon, trailingIcon, children, ...props }: ExternalButtonLinkProps) {
+  return (
+    <a target="_blank" rel="noopener noreferrer" className={cx(buttonClasses({ variant, size, fullWidth, iconOnly }), className)} {...props}>
+      {leadingIcon}
+      {children}
+      {trailingIcon}
+    </a>
   );
 }

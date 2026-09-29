@@ -1,0 +1,97 @@
+/*
+ * Classes de componente que precisam existir como CSS (e não só utilitários): campos nativos
+ * usados diretamente nas telas, conteúdo rico (prosa) e o skeleton com brilho.
+ */
+@layer components {
+  .q-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--q-line);
+    border-radius: var(--radius-md);
+    outline: none;
+    background: var(--q-field);
+    color: var(--q-fg);
+    font-size: 14px;
+    line-height: 1.4;
+    transition: border-color var(--q-fast) var(--q-ease), box-shadow var(--q-fast) var(--q-ease), background-color var(--q-fast) var(--q-ease);
+  }
+  .q-input:hover:not(:disabled):not(:focus) { border-color: var(--q-line-strong); }
+  .q-input:focus, .q-input:focus-visible {
+    border-color: var(--q-gold-line);
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--q-gold) 16%, transparent);
+  }
+  .q-input[aria-invalid="true"] { border-color: color-mix(in srgb, var(--q-danger) 70%, transparent); }
+  .q-input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--q-danger) 16%, transparent); }
+  .q-input:disabled { cursor: not-allowed; opacity: 0.55; }
+  .q-input[data-size="sm"] { height: 32px; padding: 0 10px; font-size: 13px; }
+  .q-input[data-size="lg"] { height: 44px; padding: 0 14px; font-size: 15px; border-radius: var(--radius-lg); }
+  textarea.q-input { height: auto; min-height: 88px; padding: 9px 12px; line-height: 1.55; resize: vertical; }
+  select.q-input {
+    padding-right: 34px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 256 256'%3E%3Cpath fill='%239a9184' d='M213.66 101.66l-80 80a8 8 0 0 1-11.32 0l-80-80a8 8 0 0 1 11.32-11.32L128 164.69l74.34-74.35a8 8 0 0 1 11.32 11.32Z'/%3E%3C/svg%3E");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+  }
+  input.q-input[type="date"], input.q-input[type="time"], input.q-input[type="datetime-local"], input.q-input[type="month"] { color-scheme: inherit; }
+  input.q-input[type="color"] { padding: 3px; }
+  input.q-input[type="file"] { height: auto; padding: 8px; }
+
+  .q-skeleton {
+    display: block;
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--q-hover) 0%, var(--q-selected) 50%, var(--q-hover) 100%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  .q-kbd {
+    display: inline-flex;
+    min-width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border: 1px solid var(--q-line);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--q-raised);
+    color: var(--q-fg-3);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .q-prose { color: var(--q-fg); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+  .q-prose > * + * { margin-top: 0.7em; }
+  .q-prose h1, .q-prose h2, .q-prose h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; margin-top: 1.1em; }
+  .q-prose h1 { font-size: 1.45em; }
+  .q-prose h2 { font-size: 1.25em; }
+  .q-prose h3 { font-size: 1.08em; }
+  .q-prose a { color: var(--q-gold-fg); text-decoration: underline; text-underline-offset: 3px; }
+  .q-prose ul, .q-prose ol { padding-left: 1.25em; }
+  .q-prose ul { list-style: disc; }
+  .q-prose ol { list-style: decimal; }
+  .q-prose li + li { margin-top: 0.25em; }
+  .q-prose code { padding: 0.1em 0.35em; border-radius: 5px; background: var(--q-selected); font-family: var(--font-mono); font-size: 0.88em; }
+  .q-prose pre { overflow-x: auto; padding: 12px 14px; border: 1px solid var(--q-line); border-radius: var(--radius-md); background: var(--q-field); }
+  .q-prose pre code { padding: 0; background: none; }
+  .q-prose blockquote { padding-left: 12px; border-left: 2px solid var(--q-gold-line); color: var(--q-fg-2); }
+  .q-prose strong { font-weight: 600; }
+  .q-prose table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .q-prose th, .q-prose td { padding: 6px 8px; border-bottom: 1px solid var(--q-line); text-align: left; }
+
+  .q-scroll-x { overflow-x: auto; scrollbar-width: none; }
+  .q-scroll-x::-webkit-scrollbar { display: none; }
+
+  .q-dialog::backdrop { background: var(--q-scrim); backdrop-filter: blur(3px); }
+  .q-dialog[open] { animation: var(--animate-pop-in); }
+  .q-sheet[open] { animation: var(--animate-slide-in-right); }
+  @media (max-width: 639px) {
+    .q-dialog[open] { animation: var(--animate-slide-in-up); }
+  }
+}
