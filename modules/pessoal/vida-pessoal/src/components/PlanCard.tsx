@@ -1,29 +1,26 @@
 import { useState } from "react";
+import { ArchiveIcon, ArrowCounterClockwiseIcon, CaretDownIcon, CheckCircleIcon, TargetIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, ConfirmDialog, type BadgeTone } from "@qqorvex/ui";
+import { Badge, ConfirmDialog, IconButton, ProgressBar, cx, type BadgeTone } from "@qqorvex/ui";
 import { useGoals } from "@qqorvex/module-metas-habitos";
 import { useLinkGoalToPlan, usePlanGoalRelations, useUnlinkGoalFromPlan } from "../hooks/useVidaPessoal";
 import { computePlanLabel } from "../service";
 import type { Plan, PlanStatus, PlanType } from "../types";
+import { KebabMenu } from "./PanelShell";
 
-const STATUS_LABEL: Record<PlanStatus, string> = {
-  ativo: "Ativo",
-  concluido: "Concluído",
-  arquivado: "Arquivado",
-};
+export const PLAN_STATUS_LABEL: Record<PlanStatus, string> = { ativo: "Ativo", concluido: "Concluído", arquivado: "Arquivado" };
+export const PLAN_STATUS_TONE: Record<PlanStatus, BadgeTone> = { ativo: "gold", concluido: "success", arquivado: "neutral" };
+const PLAN_TYPE_LABEL: Record<PlanType, string> = { mensal: "Mensal", anual: "Anual", quinquenal: "5 anos" };
 
-/** ativo = em andamento (cyan) · arquivado = parado (âmbar) · concluído = sucesso (verde). */
-const STATUS_TONE: Record<PlanStatus, BadgeTone> = {
-  ativo: "info",
-  concluido: "success",
-  arquivado: "warning",
-};
-
-const PLAN_TYPE_LABEL: Record<PlanType, string> = {
-  mensal: "Mensal",
-  anual: "Anual",
-  quinquenal: "Quinquenal",
-};
+export function statusMenu(status: PlanStatus, onChange: (status: PlanStatus) => void, onDelete: () => void) {
+  return [
+    ...(status === "ativo" ? [{ label: "Marcar como concluído", icon: <CheckCircleIcon />, onSelect: () => onChange("concluido") }] : []),
+    ...(status !== "arquivado" ? [{ label: "Arquivar", icon: <ArchiveIcon />, onSelect: () => onChange("arquivado") }] : []),
+    ...(status !== "ativo" ? [{ label: "Reativar", icon: <ArrowCounterClockwiseIcon />, onSelect: () => onChange("ativo") }] : []),
+    "separator" as const,
+    { label: "Excluir", icon: <TrashIcon />, danger: true, onSelect: onDelete },
+  ];
+}
 
 /** Um Plano agrupa Metas já existentes por referência — nunca duplica a Meta. */
 export function PlanCard({
@@ -41,81 +38,76 @@ export function PlanCard({
   const { relations } = usePlanGoalRelations(client);
   const linkGoal = useLinkGoalToPlan(client);
   const unlinkGoal = useUnlinkGoalFromPlan(client);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
 
   const linkedGoalIds = new Set(relations.filter((r) => r.plan_id === plan.id).map((r) => r.goal_id));
   const linkedGoals = goals.filter((g) => linkedGoalIds.has(g.id));
   const linkableGoals = goals.filter((g) => !linkedGoalIds.has(g.id));
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [goalsOpen, setGoalsOpen] = useState(false);
+  const averageProgress = linkedGoals.length
+    ? Math.round(linkedGoals.reduce((sum, goal) => sum + (goal.status === "concluida" ? 100 : goal.progress_percent ?? 0), 0) / linkedGoals.length)
+    : null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-4 flex flex-col gap-[9px]">
-      <div className="flex items-start gap-2">
-        <span className="flex-1 text-sm font-semibold leading-[1.35] text-fg">{plan.title}</span>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
-          aria-label={`Excluir "${plan.title}"`}
-          title="Excluir"
-          onClick={() => setConfirmOpen(true)}
-        >
-          ✕
-        </button>
+    <article className={cx("min-w-0 rounded-xl border border-line bg-surface", plan.status !== "ativo" && "opacity-75")}>
+      <div className="flex items-start gap-3 px-4 pt-3.5 pb-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium text-fg-3">
+            {PLAN_TYPE_LABEL[plan.plan_type]} · {computePlanLabel(plan)}
+          </p>
+          <h3 className="mt-0.5 text-[14.5px] font-semibold leading-snug text-fg">{plan.title}</h3>
+          {plan.description && <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-fg-2">{plan.description}</p>}
+        </div>
+        {plan.status !== "ativo" && <Badge tone={PLAN_STATUS_TONE[plan.status]}>{PLAN_STATUS_LABEL[plan.status]}</Badge>}
+        <KebabMenu label={`Ações para ${plan.title}`} items={statusMenu(plan.status, onChangeStatus, () => setConfirmOpen(true))} />
       </div>
-      <span className="text-[13px] leading-normal text-fg-2">
-        {PLAN_TYPE_LABEL[plan.plan_type]} · <span className="font-mono text-xs">{computePlanLabel(plan)}</span>
-        {plan.description && <> · {plan.description}</>}
-      </span>
-      <Badge tone={STATUS_TONE[plan.status]} className="self-start">
-        {STATUS_LABEL[plan.status]}
-      </Badge>
 
-      <div className="border-t border-line-soft pt-[9px] flex items-center gap-1.5 flex-wrap">
-        <Button type="button" variant="ghost" size="xs" aria-expanded={goalsOpen} onClick={() => setGoalsOpen((v) => !v)}>
-          Metas <span className="font-mono text-fg-3">{linkedGoals.length}</span>
-          <span aria-hidden>{goalsOpen ? "‹" : "›"}</span>
-        </Button>
-        <span className="flex-1" />
-        {plan.status === "ativo" && <StatusButton label="Concluir" onClick={() => onChangeStatus("concluido")} />}
-        {plan.status !== "arquivado" && <StatusButton label="Arquivar" onClick={() => onChangeStatus("arquivado")} />}
-        {plan.status !== "ativo" && <StatusButton label="Reativar" onClick={() => onChangeStatus("ativo")} />}
-      </div>
+      <button type="button" onClick={() => setGoalsOpen((value) => !value)} aria-expanded={goalsOpen} className="flex w-full items-center gap-3 border-t border-line-soft px-4 py-2.5 text-left hover:bg-hover">
+        <TargetIcon size={15} className="shrink-0 text-fg-3" />
+        <span className="shrink-0 text-xs text-fg-2">{linkedGoals.length ? `${linkedGoals.length} ${linkedGoals.length === 1 ? "meta" : "metas"}` : "Vincular metas"}</span>
+        {averageProgress !== null ? (
+          <>
+            <ProgressBar value={averageProgress} height={4} className="flex-1" label="Progresso médio das metas" />
+            <span className="w-9 shrink-0 text-right text-xs tabular-nums text-fg-2">{averageProgress}%</span>
+          </>
+        ) : (
+          <span className="flex-1" />
+        )}
+        <CaretDownIcon size={12} className={cx("shrink-0 text-fg-4 transition-transform", !goalsOpen && "-rotate-90")} />
+      </button>
 
       {goalsOpen && (
-        <div className="flex flex-col gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Metas vinculadas</span>
+        <div className="flex flex-col gap-2 border-t border-line-soft bg-canvas/40 px-4 py-3">
           {linkedGoals.length === 0 ? (
-            <p className="text-[13px] text-fg-2">Nenhuma meta vinculada ainda.</p>
+            <p className="text-[13px] text-fg-3">Um plano ganha forma com metas concretas. Vincule as que levam até ele.</p>
           ) : (
-            <ul className="flex flex-col">
-              {linkedGoals.map((goal) => (
-                <li key={goal.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-2 py-1.5 text-[13px] text-fg">
-                  <span className="flex-1 min-w-0">{goal.title}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => unlinkGoal.mutate({ planId: plan.id, goalId: goal.id })}
-                  >
-                    Desvincular
-                  </Button>
-                </li>
-              ))}
+            <ul className="flex flex-col gap-1.5">
+              {linkedGoals.map((goal) => {
+                const percent = goal.status === "concluida" ? 100 : goal.progress_percent ?? 0;
+                return (
+                  <li key={goal.id} className="group flex items-center gap-2.5">
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{goal.title}</span>
+                    <ProgressBar value={percent} height={3} className="w-16 shrink-0" tone={percent >= 100 ? "success" : "gold"} />
+                    <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-fg-3">{percent}%</span>
+                    <IconButton label={`Desvincular ${goal.title}`} variant="ghost" size="xs" onClick={() => unlinkGoal.mutate({ planId: plan.id, goalId: goal.id })}>
+                      <XIcon />
+                    </IconButton>
+                  </li>
+                );
+              })}
             </ul>
           )}
-
           {linkableGoals.length > 0 && (
             <select
-              defaultValue=""
+              value=""
               aria-label="Vincular uma meta"
-              onChange={(e) => {
-                if (!e.target.value) return;
-                linkGoal.mutate({ planId: plan.id, goalId: e.target.value });
-                e.target.value = "";
+              onChange={(event) => {
+                if (event.target.value) linkGoal.mutate({ planId: plan.id, goalId: event.target.value });
               }}
-              className="q-input py-2 text-[13px]"
+              data-size="sm"
+              className="q-input"
             >
-              <option value="">Vincular uma meta...</option>
+              <option value="">+ Vincular uma meta…</option>
               {linkableGoals.map((goal) => (
                 <option key={goal.id} value={goal.id}>
                   {goal.title}
@@ -129,21 +121,14 @@ export function PlanCard({
       <ConfirmDialog
         isOpen={confirmOpen}
         title={`Excluir "${plan.title}"?`}
-        description="Essa ação não pode ser desfeita."
+        description="As metas vinculadas continuam existindo em Metas & Hábitos."
+        confirmLabel="Excluir"
         onConfirm={() => {
           setConfirmOpen(false);
           onDelete();
         }}
         onCancel={() => setConfirmOpen(false)}
       />
-    </div>
-  );
-}
-
-function StatusButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <Button type="button" variant="quiet" size="xs" onClick={onClick}>
-      {label}
-    </Button>
+    </article>
   );
 }

@@ -29,25 +29,25 @@ export function AttachDocumentPanel({
   const attachableDocuments = allDocuments.filter((d) => !attachedIds.has(d.id));
 
   return (
-    <div className="flex flex-col gap-[10px]">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Documentos relacionados</span>
+    <div className="flex flex-col gap-2">
+      <h3 className="text-xs font-semibold text-fg-2">Documentos relacionados</h3>
 
       {isLoading ? (
-        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-surface">
           <SkeletonList rows={2} subtitle={false} className="px-3 py-2" />
         </div>
       ) : attached.length === 0 ? (
-        <EmptyState>Nenhum documento relacionado.</EmptyState>
+        <EmptyState>Nenhum documento relacionado ainda.</EmptyState>
       ) : (
-        <ul className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex flex-col">
+        <ul className="flex min-w-0 flex-col divide-y divide-line-soft overflow-hidden rounded-lg border border-line-soft bg-surface">
           {attached.map((doc) => (
-            <li key={doc.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-3 px-3 py-[9px]">
-              <span className="w-[26px] h-[32px] shrink-0 rounded-[5px] border border-line bg-canvas flex items-center justify-center font-mono text-[9px] text-fg-3">
+            <li key={doc.id} className="flex items-center gap-3 px-3 py-2">
+              <span className="flex h-8 w-[26px] shrink-0 items-center justify-center rounded-[5px] border border-line bg-raised font-mono text-[9px] font-semibold text-fg-3">
                 {documentExtension(doc)}
               </span>
-              <span className="flex-1 min-w-0 text-[13px] truncate">{doc.file_name}</span>
-              <Button type="button" variant="quiet" size="xs" onClick={() => detach.mutate(doc.id)}>
-                Remover relação
+              <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{doc.file_name}</span>
+              <Button type="button" variant="ghost" size="xs" onClick={() => detach.mutate(doc.id)}>
+                Desvincular
               </Button>
             </li>
           ))}
@@ -55,14 +55,15 @@ export function AttachDocumentPanel({
       )}
 
       {attachableDocuments.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
             aria-label="Documento para relacionar"
-            className="q-input flex-[1_1_200px] py-[7px] px-3 text-[13px]"
+            data-size="sm"
+            className="q-input flex-[1_1_200px]"
           >
-            <option value="">Relacionar um documento...</option>
+            <option value="">Vincular um documento…</option>
             {attachableDocuments.map((doc) => (
               <option key={doc.id} value={doc.id}>
                 {doc.file_name}
@@ -71,7 +72,7 @@ export function AttachDocumentPanel({
           </select>
           <Button
             type="button"
-            variant="primary"
+            variant="secondary"
             size="sm"
             disabled={!selectedId}
             onClick={() => {
@@ -80,7 +81,7 @@ export function AttachDocumentPanel({
               setSelectedId("");
             }}
           >
-            Relacionar
+            Vincular
           </Button>
         </div>
       )}

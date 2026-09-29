@@ -1,38 +1,66 @@
 import { useCallback, useEffect, useState } from "react";
+import { PlayIcon, StopIcon, TimerIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ProgressRing, SkeletonCards } from "@qqorvex/ui";
+import { Button, Notice, ProgressRing, Segmented, Skeleton, cx } from "@qqorvex/ui";
 import { useLogPomodoroSession, usePomodoroSessions } from "../hooks/useVidaPessoal";
-import { completedPomodoroMinutesThisWeek, countCompletedPomodorosThisWeek, countCompletedPomodorosToday } from "../service";
-import type { NewPomodoroSessionInput } from "../types";
+import { completedPomodoroMinutesThisWeek, countCompletedPomodorosToday, localDateKey } from "../service";
+import type { NewPomodoroSessionInput, PomodoroSession } from "../types";
 import { FocusAudioPlayer } from "./FocusAudioPlayer";
 
-const DURATIONS_MINUTES = [15, 30, 60];
+const DURATIONS = ["15", "25", "45", "60"] as const;
+type Duration = (typeof DURATIONS)[number];
+const WEEKDAY_INITIAL = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 interface RunningSession {
   startedAt: Date;
   endAt: Date;
+  minutes: number;
+}
+
+function formatMinutes(total: number): string {
+  if (total < 60) return `${total} min`;
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return minutes ? `${hours}h ${String(minutes).padStart(2, "0")}` : `${hours}h`;
+}
+
+/** Minutos concluídos por dia nos últimos 7 dias (hoje por último). */
+function lastSevenDays(sessions: PomodoroSession[], reference: Date) {
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - 6 + index);
+    return { key: localDateKey(date), weekday: date.getDay(), day: date.getDate(), minutes: 0 };
+  });
+  const byKey = new Map(days.map((day) => [day.key, day]));
+  for (const session of sessions) {
+    if (session.status !== "completed") continue;
+    const day = byKey.get(localDateKey(new Date(session.started_at)));
+    if (day) day.minutes += session.duration_minutes;
+  }
+  return days;
 }
 
 /**
  * Mecânica igual ao app Forest: a sessão só é gravada quando termina — completa (`completed`) ou
- * "morre" (`died`) se a pessoa cancelar ou sair da aba antes do tempo acabar. A trilha local toca
- * dentro do app e não cria uma sessão externa. Nenhuma linha "em andamento" existe no banco; o cronômetro
- * roda em estado local até esse momento.
+ * "morre" (`died`) se a pessoa encerrar ou sair da aba antes do tempo acabar. Nenhuma linha
+ * "em andamento" existe no banco; o cronômetro roda em estado local até esse momento.
  */
 export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { sessions, isLoading: sessionsLoading, error: sessionsError, refetch: retrySessions } = usePomodoroSessions(client);
   const logSession = useLogPomodoroSession(client, userId);
-  const [duration, setDuration] = useState(DURATIONS_MINUTES[0]!);
+  const [duration, setDuration] = useState<Duration>("25");
   const [session, setSession] = useState<RunningSession | null>(null);
   const [failedSession, setFailedSession] = useState<NewPomodoroSessionInput | null>(null);
   const [now, setNow] = useState(() => new Date());
 
-  const saveSession = useCallback((input: NewPomodoroSessionInput) => {
-    logSession.mutate(input, {
-      onSuccess: () => setFailedSession(null),
-      onError: () => setFailedSession(input),
-    });
-  }, [logSession.mutate]);
+  const saveSession = useCallback(
+    (input: NewPomodoroSessionInput) => {
+      logSession.mutate(input, {
+        onSuccess: () => setFailedSession(null),
+        onError: () => setFailedSession(input),
+      });
+    },
+    [logSession.mutate],
+  );
 
   useEffect(() => {
     if (!session) return;
@@ -43,173 +71,133 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
   useEffect(() => {
     if (!session) return;
     if (now.getTime() >= session.endAt.getTime()) {
-      saveSession({
-        durationMinutes: duration,
-        status: "completed",
-        startedAt: session.startedAt.toISOString(),
-        endedAt: session.endAt.toISOString(),
-      });
+      saveSession({ durationMinutes: session.minutes, status: "completed", startedAt: session.startedAt.toISOString(), endedAt: session.endAt.toISOString() });
       setSession(null);
     }
-  }, [now, session, duration, saveSession]);
+  }, [now, session, saveSession]);
 
   useEffect(() => {
     if (!session) return;
     function handleVisibilityChange() {
-      if (!document.hidden) {
-        return;
-      }
-      if (session) {
-        saveSession({
-          durationMinutes: duration,
-          status: "died",
-          startedAt: session.startedAt.toISOString(),
-          endedAt: new Date().toISOString(),
-        });
-        setSession(null);
-      }
+      if (!document.hidden || !session) return;
+      saveSession({ durationMinutes: session.minutes, status: "died", startedAt: session.startedAt.toISOString(), endedAt: new Date().toISOString() });
+      setSession(null);
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [session, duration, saveSession]);
+  }, [session, saveSession]);
 
   function handleStart() {
     if (failedSession || logSession.isPending) return;
     const startedAt = new Date();
-    const endAt = new Date(startedAt.getTime() + duration * 60_000);
+    const minutes = Number(duration);
     setNow(startedAt);
-    setSession({ startedAt, endAt });
+    setSession({ startedAt, endAt: new Date(startedAt.getTime() + minutes * 60_000), minutes });
   }
 
   function handleCancel() {
     if (!session) return;
-    saveSession({
-      durationMinutes: duration,
-      status: "died",
-      startedAt: session.startedAt.toISOString(),
-      endedAt: new Date().toISOString(),
-    });
+    saveSession({ durationMinutes: session.minutes, status: "died", startedAt: session.startedAt.toISOString(), endedAt: new Date().toISOString() });
     setSession(null);
   }
 
-  const totalSeconds = duration * 60;
-  const remainingSeconds = session
-    ? Math.max(0, Math.round((session.endAt.getTime() - now.getTime()) / 1000))
-    : totalSeconds;
+  const totalSeconds = (session?.minutes ?? Number(duration)) * 60;
+  const remainingSeconds = session ? Math.max(0, Math.round((session.endAt.getTime() - now.getTime()) / 1000)) : totalSeconds;
   const progress = session ? 1 - remainingSeconds / totalSeconds : 0;
-  const minutesLeft = Math.floor(remainingSeconds / 60);
-  const secondsLeft = remainingSeconds % 60;
+  const clock = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
   const today = new Date();
   const completedToday = countCompletedPomodorosToday(sessions, today);
-  const completedThisWeek = countCompletedPomodorosThisWeek(sessions, today);
-  const focusedMinutesThisWeek = completedPomodoroMinutesThisWeek(sessions, today);
-  const recentSessions = sessions.slice(0, 5);
-
-  function formatSessionDate(startedAt: string): string {
-    return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-      .format(new Date(startedAt)).replace(".", "");
-  }
+  const minutesThisWeek = completedPomodoroMinutesThisWeek(sessions, today);
+  const week = lastSevenDays(sessions, today);
+  const weekMax = Math.max(30, ...week.map((day) => day.minutes));
+  const recent = sessions.slice(0, 4);
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[22px] flex flex-col items-center gap-[18px]">
-      <h2 className="self-start font-display text-lg font-semibold text-fg">Pomodoro</h2>
+    <section className="flex min-w-0 flex-col rounded-xl border border-line bg-surface" aria-labelledby="focus-title">
+      <header className="flex items-center gap-2 px-4 pt-4 sm:px-5">
+        <TimerIcon size={17} className="text-fg-3" />
+        <h2 id="focus-title" className="flex-1 text-[15px] font-semibold text-fg">
+          Foco
+        </h2>
+        <span className="text-xs text-fg-3">{completedToday} {completedToday === 1 ? "sessão" : "sessões"} hoje</span>
+      </header>
 
-      <ProgressRing value={progress * 100} size={180} thickness={14}>
-        <span className="font-mono text-[34px] font-semibold tabular-nums text-fg" role="timer">
-          {String(minutesLeft).padStart(2, "0")}:{String(secondsLeft).padStart(2, "0")}
-        </span>
-        <span className="text-[11px] tracking-[.1em] uppercase text-fg-3">
-          {session ? "foco" : "pronto"} · <span className="font-mono">{duration}</span> min
-        </span>
-      </ProgressRing>
-
-      {session ? (
-        <div className="flex flex-col gap-2 w-full">
-          <Button type="button" variant="quiet" className="w-full" onClick={handleCancel}>
-            Encerrar
-          </Button>
-          <span className="text-xs text-fg-3 text-center leading-relaxed">
-            Encerrar antes do fim ou sair da aba perde a sessão.
+      <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-3 sm:px-5">
+        <ProgressRing value={progress * 100} size={188} thickness={10} label="Tempo de foco">
+          <span className="font-display text-[40px] font-semibold leading-none tabular-nums text-fg" role="timer" aria-live="off">
+            {clock}
           </span>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2.5 w-full">
-          <div className="flex gap-2" role="radiogroup" aria-label="Duração">
-            {DURATIONS_MINUTES.map((d) => {
-              const selected = duration === d;
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => setDuration(d)}
-                  className={`flex-1 rounded-xl py-2 font-mono text-[13px] border cursor-pointer transition-colors ${
-                    selected
-                      ? "bg-gold-soft border-gold-line text-gold-fg"
-                      : "bg-canvas border-line text-fg-2 hover:text-fg hover:border-line-strong"
-                  }`}
-                >
-                  {d}m
-                </button>
-              );
-            })}
-          </div>
-          <Button type="button" variant="vex" className="w-full" onClick={handleStart} disabled={Boolean(failedSession) || logSession.isPending}>
-            {logSession.isPending ? "Salvando sessão anterior…" : failedSession ? "Salve a sessão anterior para continuar" : "Começar"}
-          </Button>
-        </div>
-      )}
+          <span className={cx("mt-1.5 text-xs", session ? "font-medium text-gold-fg" : "text-fg-3")}>{session ? "focando" : `sessão de ${duration} min`}</span>
+        </ProgressRing>
 
-      <div className="w-full flex flex-col">
-        <div className="border-t border-line-soft flex items-baseline gap-2.5 py-2">
-          <span className="flex-1 text-[13px] text-fg">Concluídos hoje</span>
-          <span className="font-mono text-xs text-fg-2">{completedToday}</span>
-        </div>
-        <div className="border-t border-line-soft flex items-baseline gap-2.5 py-2">
-          <span className="flex-1 text-[13px] text-fg">Esta semana</span>
-          <span className="font-mono text-xs text-fg-2">{completedThisWeek} sessões · {focusedMinutesThisWeek} min</span>
-        </div>
+        {session ? (
+          <div className="flex w-full flex-col items-center gap-2">
+            <Button variant="secondary" fullWidth leadingIcon={<StopIcon size={15} weight="fill" />} onClick={handleCancel}>
+              Encerrar sessão
+            </Button>
+            <p className="text-center text-xs leading-relaxed text-fg-3">Encerrar antes do fim ou sair da aba interrompe a sessão.</p>
+          </div>
+        ) : (
+          <div className="flex w-full flex-col gap-2.5">
+            <Segmented<Duration> label="Duração" fullWidth value={duration} onChange={setDuration} options={DURATIONS.map((value) => ({ value, label: `${value} min` }))} />
+            <Button fullWidth leadingIcon={<PlayIcon size={15} weight="fill" />} onClick={handleStart} disabled={Boolean(failedSession)} loading={logSession.isPending}>
+              {failedSession ? "Salve a sessão anterior primeiro" : "Começar"}
+            </Button>
+          </div>
+        )}
+
+        {failedSession && (
+          <Notice compact actions={<Button size="sm" variant="secondary" loading={logSession.isPending} onClick={() => saveSession(failedSession)}>Tentar de novo</Button>}>
+            A sessão terminou, mas o registro não foi salvo.
+          </Notice>
+        )}
       </div>
 
-      {failedSession && (
-        <div className="w-full rounded-xl border border-danger/30 bg-error/5 p-3" role="alert">
-          <p className="text-sm text-fg">A sessão terminou, mas não foi possível salvar o registro.</p>
-          <Button type="button" variant="quiet" size="sm" className="mt-2" disabled={logSession.isPending} onClick={() => saveSession(failedSession)}>
-            {logSession.isPending ? "Salvando…" : "Tentar salvar novamente"}
-          </Button>
-        </div>
-      )}
-      <section className="w-full border-t border-line pt-4" aria-labelledby="pomodoro-history-title">
-        <div className="mb-3 flex items-baseline gap-2">
-          <h3 id="pomodoro-history-title" className="flex-1 text-sm font-semibold text-fg">Sessões recentes</h3>
-          <span className="text-[11px] text-fg-3">concluídas e interrompidas</span>
+      <div className="border-t border-line-soft px-4 py-3.5 sm:px-5">
+        <div className="mb-2.5 flex items-baseline justify-between">
+          <h3 className="text-xs font-semibold text-fg-2">Esta semana</h3>
+          <span className="text-xs tabular-nums text-fg-3">{formatMinutes(minutesThisWeek)} de foco</span>
         </div>
         {sessionsLoading ? (
-          <SkeletonCards count={2} className="h-8 w-full rounded-xl" />
+          <Skeleton className="h-14 w-full" />
         ) : sessionsError ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/30 bg-error/5 p-3" role="alert">
-            <p className="flex-1 text-xs text-fg-2">Não foi possível carregar as sessões salvas.</p>
-            <Button type="button" variant="quiet" size="sm" onClick={() => void retrySessions()}>Tentar novamente</Button>
-          </div>
-        ) : recentSessions.length === 0 ? (
-          <p className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-3 py-2.5 text-xs leading-relaxed text-fg-3">Suas sessões aparecem aqui depois do primeiro foco.</p>
+          <Notice compact actions={<Button size="sm" variant="secondary" onClick={() => void retrySessions()}>Tentar de novo</Button>}>Não foi possível carregar as sessões.</Notice>
         ) : (
+          <div className="grid grid-cols-7 gap-1.5" role="img" aria-label={`Minutos de foco por dia: ${week.map((day) => `${day.day}: ${day.minutes} min`).join(", ")}`}>
+            {week.map((day, index) => (
+              <div key={day.key} className="flex flex-col items-center gap-1" title={`${day.day}: ${formatMinutes(day.minutes)}`}>
+                <div className="flex h-10 w-full items-end justify-center">
+                  <span className={cx("w-full max-w-6 rounded-t-[4px]", day.minutes ? (index === 6 ? "bg-gold" : "bg-gold/55") : "h-0.5 bg-line")} style={day.minutes ? { height: `${Math.max(8, (day.minutes / weekMax) * 100)}%` } : undefined} />
+                </div>
+                <span className={cx("text-[10px]", index === 6 ? "font-semibold text-fg-2" : "text-fg-4")}>{WEEKDAY_INITIAL[day.weekday]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {recent.length > 0 && (
+        <div className="border-t border-line-soft px-4 py-3 sm:px-5">
+          <h3 className="mb-1.5 text-xs font-semibold text-fg-2">Sessões recentes</h3>
           <ul className="flex flex-col">
-            {recentSessions.map((recent) => (
-              <li key={recent.id} className="border-t border-line-soft flex items-center gap-2 py-2 text-xs">
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${recent.status === "completed" ? "bg-success" : "bg-text-muted"}`} aria-hidden="true" />
-                <span className="flex-1 text-fg-2">{formatSessionDate(recent.started_at)}</span>
-                <span className="font-mono text-fg">{recent.duration_minutes} min</span>
-                <span className="text-fg-3">{recent.status === "completed" ? "Concluída" : "Interrompida"}</span>
+            {recent.map((item) => (
+              <li key={item.id} className="flex items-center gap-2 py-1 text-xs">
+                <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", item.status === "completed" ? "bg-success" : "bg-fg-4")} aria-hidden="true" />
+                <span className="flex-1 text-fg-2">
+                  {new Intl.DateTimeFormat("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(item.started_at)).replace(".", "")}
+                </span>
+                <span className="tabular-nums text-fg">{item.duration_minutes} min</span>
+                <span className="w-20 text-right text-fg-3">{item.status === "completed" ? "concluída" : "interrompida"}</span>
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </div>
+      )}
 
-      <FocusAudioPlayer />
-    </div>
+      <div className="border-t border-line-soft px-4 py-3.5 sm:px-5">
+        <FocusAudioPlayer />
+      </div>
+    </section>
   );
 }

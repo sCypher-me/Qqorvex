@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { Button, Input, Select } from "@qqorvex/ui";
+import { Button, Input, Select, Textarea } from "@qqorvex/ui";
 import { computePlanPeriod } from "../service";
 import type { NewPlanInput, PlanType } from "../types";
 
 const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   mensal: "Mensal",
   anual: "Anual",
-  quinquenal: "Quinquenal (5 anos)",
+  quinquenal: "5 anos",
 };
 
 /** A pessoa só escolhe um mês ou ano, nunca duas datas soltas — ver `computePlanPeriod`. */
@@ -40,7 +40,7 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input
         label="Visão do plano"
         value={title}
@@ -48,13 +48,13 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
         placeholder="Ex.: Ser um designer"
         autoFocus
       />
-      <textarea
+      <Textarea
+        label="Descrição"
         value={description}
         onChange={(event) => setDescription(event.target.value.slice(0, 1000))}
         maxLength={1000}
-        aria-label="Descrição opcional do plano"
         placeholder="O que essa visão significa para você? (opcional)"
-        className="q-input min-h-20 resize-y"
+        rows={3}
       />
       <div className="grid grid-cols-2 gap-2.5">
         <Select label="Tipo" value={planType} onChange={(e) => setPlanType(e.target.value as PlanType)}>
@@ -65,28 +65,27 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
           ))}
         </Select>
         {planType === "mensal" ? (
-          <Input label="Mês" type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="font-mono" />
+          <Input label="Mês" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         ) : (
           <Input
             label="Ano"
             type="number"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="font-mono"
           />
         )}
       </div>
-      <div className="flex gap-2">
-        <Button type="submit" variant="primary" size="sm" disabled={!title.trim() || isSaving}>
-          {isSaving ? "Criando…" : "Criar plano"}
-        </Button>
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o plano. Seus dados foram mantidos; tente novamente.</p>}
+      <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={onCancel}>
             Cancelar
           </Button>
         )}
+        <Button type="submit" variant="primary" loading={isSaving} disabled={!title.trim()}>
+          Criar plano
+        </Button>
       </div>
-      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o plano. Seus dados foram mantidos; tente novamente.</p>}
     </form>
   );
 }

@@ -1,50 +1,47 @@
 import { useState } from "react";
-import { Badge, ConfirmDialog } from "@qqorvex/ui";
+import { FolderSimplePlusIcon, LightbulbIcon, TrashIcon } from "@phosphor-icons/react";
+import { ConfirmDialog } from "@qqorvex/ui";
 import type { Idea } from "../types";
+import { KebabMenu } from "./PanelShell";
 
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 function formatCapturedAt(iso: string): string {
   const date = new Date(iso);
   const sameYear = date.getFullYear() === new Date().getFullYear();
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${day} ${MONTHS_SHORT[date.getMonth()]}${sameYear ? "" : ` ${date.getFullYear()}`}`;
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}${sameYear ? "" : ` ${date.getFullYear()}`}`;
 }
 
-export function IdeaCard({ idea, onDelete }: { idea: Idea; onDelete: () => void }) {
+/** Ideia é captura rápida; quando amadurece, vira projeto (a ideia sai da caixa de entrada). */
+export function IdeaCard({ idea, onDelete, onPromote }: { idea: Idea; onDelete: () => void; onPromote?: () => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-4 flex flex-col gap-[9px]">
-      <div className="flex items-start gap-2">
-        <span className="flex-1 text-sm font-semibold leading-[1.35] text-fg">{idea.title}</span>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
-          aria-label={`Excluir "${idea.title}"`}
-          title="Excluir"
-          onClick={() => setConfirmOpen(true)}
-        >
-          ✕
-        </button>
+    <article className="flex min-w-0 items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+      <LightbulbIcon size={16} className="mt-0.5 shrink-0 text-gold-fg" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <h3 className="text-[13.5px] font-medium leading-snug text-fg">{idea.title}</h3>
+        {idea.description && <p className="mt-0.5 line-clamp-2 text-[13px] leading-relaxed text-fg-2">{idea.description}</p>}
+        <p className="mt-1 text-[11px] text-fg-4">{formatCapturedAt(idea.created_at)}</p>
       </div>
-      <span className="text-[13px] leading-normal text-fg-2">
-        {idea.description && <>{idea.description} · </>}
-        Capturada em <span className="font-mono text-xs">{formatCapturedAt(idea.created_at)}</span>
-      </span>
-      <Badge tone="neutral" className="self-start">
-        Ideia
-      </Badge>
+      <KebabMenu
+        label={`Ações para ${idea.title}`}
+        items={[
+          ...(onPromote ? [{ label: "Transformar em projeto", icon: <FolderSimplePlusIcon />, onSelect: onPromote }, "separator" as const] : []),
+          { label: "Excluir", icon: <TrashIcon />, danger: true, onSelect: () => setConfirmOpen(true) },
+        ]}
+      />
       <ConfirmDialog
         isOpen={confirmOpen}
         title={`Excluir "${idea.title}"?`}
         description="Essa ação não pode ser desfeita."
+        confirmLabel="Excluir"
         onConfirm={() => {
           setConfirmOpen(false);
           onDelete();
         }}
         onCancel={() => setConfirmOpen(false)}
       />
-    </div>
+    </article>
   );
 }

@@ -29,7 +29,7 @@ export interface FieldProps {
 }
 
 export function Field({ label, htmlFor, hint, error, required, labelAside, descriptionId, className, children }: FieldProps) {
-  if (!label && !hint && !error) return <>{children}</>;
+  if (!label && !hint && !error) return className ? <div className={cx("min-w-0", className)}>{children}</div> : <>{children}</>;
   return (
     <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
       {(label || labelAside) && (

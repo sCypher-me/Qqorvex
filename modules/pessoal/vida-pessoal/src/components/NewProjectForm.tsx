@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, Input } from "@qqorvex/ui";
+import { Button, Input, Textarea } from "@qqorvex/ui";
 import type { NewProjectInput } from "../types";
 
 /** Projeto agrupa tarefas já existentes; título é obrigatório e contexto é opcional. */
@@ -27,27 +27,27 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewPr
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input label="Nome do projeto" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Reforma do escritório" autoFocus />
-      <textarea
+      <Textarea
+        label="Descrição"
         value={description}
         onChange={(event) => setDescription(event.target.value.slice(0, 1000))}
         maxLength={1000}
-        aria-label="Descrição opcional do projeto"
         placeholder="Contexto, resultado ou próximos passos (opcional)"
-        className="q-input min-h-20 resize-y"
+        rows={3}
       />
-      <div className="flex gap-2">
-        <Button type="submit" variant="primary" size="sm" disabled={!title.trim() || isSaving}>
-          {isSaving ? "Criando…" : "Criar projeto"}
-        </Button>
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o projeto. Seus dados foram mantidos; tente novamente.</p>}
+      <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={onCancel}>
             Cancelar
           </Button>
         )}
+        <Button type="submit" variant="primary" loading={isSaving} disabled={!title.trim()}>
+          Criar projeto
+        </Button>
       </div>
-      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o projeto. Seus dados foram mantidos; tente novamente.</p>}
     </form>
   );
 }

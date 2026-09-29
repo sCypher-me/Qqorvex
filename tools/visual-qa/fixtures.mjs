@@ -312,17 +312,70 @@ export const fixtures = {
   billing_subscriptions: [],
   billing_usage_monthly: [{ user_id: USER_ID, month_start: `${monthKey(0)}-01`, vex_ai_responses: 12, vex_web_searches: 2, updated_at: now }],
   daily_checkins: [
-    { ...base, id: id("z0000000"), checkin_date: dateKey(-1), mood: 4, energy: 3, sleep_quality: 4, note: null },
-    { ...base, id: id("z0000000"), checkin_date: dateKey(0), mood: 4, energy: 4, sleep_quality: 3, note: null },
-  ],
+    [-6, 3, 2, 3, null],
+    [-5, 4, 3, 4, null],
+    [-4, 3, 3, 2, "Noite curta, reunião cedo."],
+    [-3, 4, 4, 4, null],
+    [-2, 5, 4, 4, "Corrida de manhã fez diferença."],
+    [-1, 4, 3, 4, null],
+    [0, 4, 4, 3, null],
+  ].map(([offset, mood, energy, sleep_quality, note]) => ({ ...base, id: id("z0000000"), checkin_date: dateKey(offset), mood, energy, sleep_quality, note })),
+  pomodoro_sessions: [
+    [0, 9, 30, "completed"],
+    [0, 14, 60, "completed"],
+    [-1, 10, 30, "completed"],
+    [-1, 15, 15, "died"],
+    [-2, 9, 60, "completed"],
+    [-3, 20, 30, "completed"],
+  ].map(([offset, hour, minutes, status]) => ({ ...base, id: id("p0000000"), started_at: at(offset, hour), ended_at: at(offset, hour, status === "died" ? 7 : minutes), duration_minutes: minutes, status })),
   shopping_list_items: [
     { ...base, id: id("s0000000"), name: "Café em grãos", quantity: "1 pacote", is_purchased: false },
     { ...base, id: id("s0000000"), name: "Detergente", quantity: "2", is_purchased: false },
+    { ...base, id: id("s0000000"), name: "Aveia", quantity: "500 g", is_purchased: false },
     { ...base, id: id("s0000000"), name: "Frutas", quantity: null, is_purchased: true },
   ],
-  ideas: [{ ...base, id: id("i0000000"), title: "App de receitas com IA", description: "Sugere receitas com o que tem na geladeira." }],
-  projects: [{ ...base, id: id("j0000000"), title: "Reforma da varanda", description: "Plantas, iluminação e móveis.", status: "ativo" }],
-  plans: [{ ...base, id: id("o0000000"), title: "Plano de outubro", plan_type: "mensal", status: "ativo", period_start: dateKey(2), period_end: dateKey(32) }],
+  ideas: [
+    { ...base, id: id("i0000000"), title: "App de receitas com IA", description: "Sugere receitas com o que tem na geladeira.", created_at: at(-3, 21) },
+    { ...base, id: id("i0000000"), title: "Newsletter sobre finanças para freelancers", description: null, created_at: at(-9, 8) },
+    { ...base, id: id("i0000000"), title: "Horta vertical na varanda", description: "Temperos e ervas para cozinhar.", created_at: at(-15, 18) },
+  ],
+  projects: [
+    { ...base, id: "j0000000-0000-4000-8000-000000000901", title: "Reforma da varanda", description: "Plantas, iluminação e móveis.", status: "ativo" },
+    { ...base, id: "j0000000-0000-4000-8000-000000000902", title: "Portfólio 2026", description: null, status: "ativo" },
+    { ...base, id: "j0000000-0000-4000-8000-000000000903", title: "Organizar fotos da família", description: null, status: "concluido" },
+  ],
+  project_tasks: [
+    { id: id("r0000000"), project_id: "j0000000-0000-4000-8000-000000000902", task_id: tasks[5].id, user_id: USER_ID, created_at: now },
+    { id: id("r0000000"), project_id: "j0000000-0000-4000-8000-000000000902", task_id: tasks[8].id, user_id: USER_ID, created_at: now },
+    { id: id("r0000000"), project_id: "j0000000-0000-4000-8000-000000000901", task_id: tasks[7].id, user_id: USER_ID, created_at: now },
+  ],
+  plans: [
+    { ...base, id: "o0000000-0000-4000-8000-000000000901", title: "Virar designer de produto", description: "Migrar de carreira com portfólio e certificação.", plan_type: "anual", status: "ativo", period_start: `${new Date().getFullYear()}-01-01`, period_end: `${new Date().getFullYear()}-12-31` },
+    { ...base, id: "o0000000-0000-4000-8000-000000000902", title: "Plano de outubro", description: null, plan_type: "mensal", status: "ativo", period_start: dateKey(2), period_end: dateKey(32) },
+  ],
+  plan_goals: [
+    { id: id("q0000000"), plan_id: "o0000000-0000-4000-8000-000000000901", goal_id: goals[2].id, user_id: USER_ID, created_at: now },
+    { id: id("q0000000"), plan_id: "o0000000-0000-4000-8000-000000000901", goal_id: goals[0].id, user_id: USER_ID, created_at: now },
+  ],
+  useful_contacts: [
+    { ...base, id: id("c0000000"), name: "Marcos", category: "Eletricista", phone: "(11) 98765-4321" },
+    { ...base, id: id("c0000000"), name: "Dra. Helena", category: "Dentista", phone: "(11) 3456-7890" },
+    { ...base, id: id("c0000000"), name: "Auto Center Vila", category: "Mecânico", phone: null },
+  ],
+  vehicles: [{ ...base, id: "k0000000-0000-4000-8000-000000000901", nickname: "Onix prata", brand: "Chevrolet", model: "Onix LT", year: 2021, plate: "BRA2E19" }],
+  vehicle_important_dates: [
+    { id: id("d0000000"), vehicle_id: "k0000000-0000-4000-8000-000000000901", user_id: USER_ID, label: "Seguro", date: dateKey(12), created_at: now },
+    { id: id("d0000000"), vehicle_id: "k0000000-0000-4000-8000-000000000901", user_id: USER_ID, label: "Revisão 40 mil km", date: dateKey(45), created_at: now },
+  ],
+  assets: [
+    { ...base, id: id("a0000000"), name: "Notebook de trabalho", category: "Eletrônicos", location: "Escritório", estimated_value: 6800, warranty_id: null },
+    { ...base, id: id("a0000000"), name: "Bicicleta", category: "Esporte", location: "Garagem", estimated_value: 2400, warranty_id: null },
+  ],
+  important_purchases: [
+    { ...base, id: id("b0000000"), title: "Cadeira ergonômica", estimated_price: 1890, priority: "alta", is_purchased: false },
+    { ...base, id: id("b0000000"), title: "Fone com cancelamento de ruído", estimated_price: 1200, priority: "media", is_purchased: false },
+    { ...base, id: id("b0000000"), title: "Luminária de mesa", estimated_price: 240, priority: "baixa", is_purchased: true },
+  ],
 };
 
 export const rpcFixtures = {

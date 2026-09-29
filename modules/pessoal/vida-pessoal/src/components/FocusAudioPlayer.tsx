@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { MusicNotesIcon, PauseIcon, PlayIcon, PlusIcon, SkipBackIcon, SkipForwardIcon, SpeakerHighIcon, XIcon } from "@phosphor-icons/react";
+import { IconButton, cx } from "@qqorvex/ui";
 
 interface AudioTrack {
   id: string;
@@ -64,18 +66,6 @@ async function removeTrack(id: string): Promise<void> {
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
-}
-
-function PlayIcon({ playing }: { playing: boolean }) {
-  return playing ? (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M7 5.5A1.5 1.5 0 0 1 8.5 4h1A1.5 1.5 0 0 1 11 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-1A1.5 1.5 0 0 1 7 18.5v-13Zm6 0A1.5 1.5 0 0 1 14.5 4h1A1.5 1.5 0 0 1 17 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-1a1.5 1.5 0 0 1-1.5-1.5v-13Z" /></svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M8 5.8c0-1.17 1.28-1.9 2.28-1.3l9.1 5.45a2.38 2.38 0 0 1 0 4.1l-9.1 5.45A1.52 1.52 0 0 1 8 18.2V5.8Z" /></svg>
-  );
-}
-
-function SkipIcon({ backward = false }: { backward?: boolean }) {
-  return <svg viewBox="0 0 24 24" className={`h-3.5 w-3.5 ${backward ? "rotate-180" : ""}`} fill="currentColor" aria-hidden="true"><path d="M5 5.8c0-1.17 1.28-1.9 2.28-1.3l9.1 5.45a2.38 2.38 0 0 1 0 4.1l-9.1 5.45A1.52 1.52 0 0 1 5 18.2V5.8Zm13 0a1 1 0 0 1 2 0v12.4a1 1 0 1 1-2 0V5.8Z" /></svg>;
 }
 
 export function FocusAudioPlayer() {
@@ -216,40 +206,90 @@ export function FocusAudioPlayer() {
   }
 
   return (
-    <section className="w-full min-w-0 border-t border-line pt-3" aria-labelledby="focus-audio-title">
+    <section className="w-full min-w-0" aria-labelledby="focus-audio-title">
       <audio ref={audioRef} className="hidden" preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)} onEnded={handleTrackEnded} onError={() => setError("Este arquivo não pôde ser reproduzido. Tente MP3, M4A, WAV ou OGG.")} />
 
       <div className="flex min-w-0 items-center gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold-soft text-gold-fg" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none"><path d="M9 18V5l11-2v13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /><circle cx="6" cy="18" r="3" stroke="currentColor" strokeWidth="1.8" /><circle cx="17" cy="16" r="3" stroke="currentColor" strokeWidth="1.8" /></svg></span>
-        <div className="min-w-0 flex-1"><h2 id="focus-audio-title" className="text-sm font-semibold text-fg">Trilha do foco</h2><p className="text-[10px] text-fg-3">Áudio neste dispositivo</p></div>
-        {tracks.length > 0 && <button type="button" onClick={() => setShowLibrary((shown) => !shown)} className="shrink-0 rounded-md px-2 py-1.5 text-[10px] text-fg-3 hover:bg-surface hover:text-fg" aria-expanded={showLibrary}>{tracks.length} {tracks.length === 1 ? "faixa" : "faixas"}</button>}
-        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="shrink-0 rounded-md border border-line px-2 py-1.5 text-[10px] font-medium text-gold-fg hover:border-gold-line disabled:opacity-60" aria-label="Adicionar arquivos de áudio">＋ Adicionar</button>
+        <MusicNotesIcon size={15} className="shrink-0 text-fg-3" aria-hidden="true" />
+        <h3 id="focus-audio-title" className="min-w-0 flex-1 text-xs font-semibold text-fg-2">Trilha do foco</h3>
+        {tracks.length > 0 && (
+          <button type="button" onClick={() => setShowLibrary((shown) => !shown)} className="shrink-0 rounded-md px-1.5 py-1 text-xs text-fg-3 hover:bg-hover hover:text-fg" aria-expanded={showLibrary}>
+            {tracks.length} {tracks.length === 1 ? "faixa" : "faixas"}
+          </button>
+        )}
+        <IconButton label="Adicionar arquivos de áudio" size="xs" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+          <PlusIcon weight="bold" />
+        </IconButton>
       </div>
 
-      <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 mt-2.5 rounded-xl px-2.5 py-2">
+      <div className="mt-2 min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-2.5 py-2">
         {selectedTrack ? (
           <>
             <div className="flex min-w-0 items-center gap-1.5">
-              <button type="button" onClick={togglePlayback} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold text-vex-obsidian" aria-label={isPlaying ? "Pausar" : "Reproduzir"}><PlayIcon playing={isPlaying} /></button>
-              <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-fg" title={selectedTrack.name}>{selectedTrack.name}</p><p className="text-[9px] text-fg-3">{isPlaying ? "Tocando" : "Pausado"}</p></div>
-              <button type="button" onClick={() => playAdjacentTrack(-1)} disabled={tracks.length < 2} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-fg-3 hover:bg-surface hover:text-fg disabled:opacity-30" aria-label="Faixa anterior"><SkipIcon backward /></button>
-              <button type="button" onClick={() => playAdjacentTrack(1)} disabled={tracks.length < 2} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-fg-3 hover:bg-surface hover:text-fg disabled:opacity-30" aria-label="Próxima faixa"><SkipIcon /></button>
-              <button type="button" onClick={() => setShowVolume((shown) => !shown)} className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${showVolume ? "text-gold-fg" : "text-fg-3"}`} aria-label="Ajustar volume" aria-expanded={showVolume}><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 4a5 5 0 0 1 0 6m3-9a9 9 0 0 1 0 12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" /></svg></button>
+              <button type="button" onClick={togglePlayback} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold text-on-gold hover:bg-gold-hover" aria-label={isPlaying ? "Pausar" : "Reproduzir"}>
+                {isPlaying ? <PauseIcon size={14} weight="fill" /> : <PlayIcon size={14} weight="fill" />}
+              </button>
+              <div className="min-w-0 flex-1 pl-1">
+                <p className="truncate text-[13px] font-medium text-fg" title={selectedTrack.name}>{selectedTrack.name}</p>
+                <p className="text-[11px] text-fg-3">{isPlaying ? "Tocando" : "Pausado"}</p>
+              </div>
+              <IconButton label="Faixa anterior" size="xs" onClick={() => playAdjacentTrack(-1)} disabled={tracks.length < 2}>
+                <SkipBackIcon weight="fill" />
+              </IconButton>
+              <IconButton label="Próxima faixa" size="xs" onClick={() => playAdjacentTrack(1)} disabled={tracks.length < 2}>
+                <SkipForwardIcon weight="fill" />
+              </IconButton>
+              <IconButton label="Ajustar volume" size="xs" active={showVolume} onClick={() => setShowVolume((shown) => !shown)} aria-expanded={showVolume}>
+                <SpeakerHighIcon />
+              </IconButton>
             </div>
-            <div className="ml-9 mt-1 flex items-center gap-1.5 font-mono text-[9px] tabular-nums text-fg-3"><span>{formatTime(currentTime)}</span><input type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { const time = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = time; setCurrentTime(time); }} disabled={!duration} aria-label="Posição da reprodução" className="h-1 min-w-0 flex-1 cursor-pointer accent-[#73d7e4] disabled:cursor-default" /><span>{formatTime(duration)}</span></div>
-            {showVolume && <div className="mt-2 flex items-center justify-end gap-2 border-t border-line/70 pt-2"><span className="text-[10px] text-fg-3">Volume</span><input type="range" min={0} max={1} step={0.05} value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" className="h-1 w-24 cursor-pointer accent-[#73d7e4]" /><span className="w-7 text-right font-mono text-[9px] tabular-nums text-fg-3">{Math.round(volume * 100)}%</span></div>}
+            <div className="mt-1.5 flex items-center gap-2 text-[11px] tabular-nums text-fg-3">
+              <span>{formatTime(currentTime)}</span>
+              <input type="range" min={0} max={duration || 0} step={0.1} value={Math.min(currentTime, duration || 0)} onChange={(event) => { const time = Number(event.target.value); if (audioRef.current) audioRef.current.currentTime = time; setCurrentTime(time); }} disabled={!duration} aria-label="Posição da reprodução" className="h-1 min-w-0 flex-1 cursor-pointer accent-[var(--q-gold)] disabled:cursor-default" />
+              <span>{formatTime(duration)}</span>
+            </div>
+            {showVolume && (
+              <div className="mt-2 flex items-center justify-end gap-2 border-t border-line-soft pt-2 text-[11px] text-fg-3">
+                <span>Volume</span>
+                <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(event) => setVolume(Number(event.target.value))} aria-label="Volume" className="h-1 w-28 cursor-pointer accent-[var(--q-gold)]" />
+                <span className="w-8 text-right tabular-nums">{Math.round(volume * 100)}%</span>
+              </div>
+            )}
           </>
         ) : tracks.length ? (
-          <button type="button" onClick={() => setTrackSource(tracks[0]!, false)} className="flex min-h-8 w-full items-center justify-between gap-2 text-left text-[11px] text-fg-3"><span>Nenhuma faixa selecionada</span><span className="text-gold-fg">Selecionar →</span></button>
+          <button type="button" onClick={() => setTrackSource(tracks[0]!, false)} className="flex min-h-8 w-full items-center justify-between gap-2 text-left text-[13px] text-fg-3">
+            <span>Nenhuma faixa selecionada</span>
+            <span className="text-gold-fg">Selecionar</span>
+          </button>
         ) : (
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex min-h-8 w-full items-center justify-between gap-2 text-left text-[11px] text-fg-3 disabled:opacity-60"><span>{isLoading ? "Carregando biblioteca…" : "Nenhuma música adicionada"}</span><span className="text-gold-fg">Adicionar áudio →</span></button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex min-h-8 w-full items-center justify-between gap-2 text-left text-[13px] text-fg-3 disabled:opacity-60">
+            <span>{isLoading ? "Carregando…" : "Sua música ou ruído branco para focar"}</span>
+            <span className="shrink-0 text-gold-fg">Adicionar</span>
+          </button>
         )}
       </div>
 
       <input ref={fileInputRef} type="file" accept="audio/*" multiple className="hidden" aria-label="Selecionar arquivos de áudio" onChange={(event) => void handleFilesSelected(event.currentTarget.files)} />
-      {showLibrary && tracks.length > 0 && <ul className="mt-2 max-h-28 space-y-0.5 overflow-y-auto rounded-lg border border-line p-1">{tracks.map((track, index) => { const active = track.id === selectedTrackId; return <li key={track.id} className={`flex min-w-0 items-center gap-2 rounded-md px-2 py-1 ${active ? "bg-gold-soft/60" : "hover:bg-vex-graphite/70"}`}><button type="button" onClick={() => setTrackSource(track, true)} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-current={active ? "true" : undefined}><span className="w-4 shrink-0 text-center font-mono text-[9px] text-fg-3">{active && isPlaying ? "♪" : index + 1}</span><span className={`truncate text-[10px] ${active ? "font-semibold text-fg" : "text-fg-2"}`} title={track.name}>{track.name}</span></button><button type="button" onClick={() => void handleRemoveTrack(track)} className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-fg-3 hover:bg-error/10 hover:text-danger" aria-label={`Remover ${track.name}`}>×</button></li>; })}</ul>}
-      {error && <p className="mt-1.5 text-[10px] leading-relaxed text-danger" role="alert">{error}</p>}
-      <p className="mt-1.5 text-[9px] text-fg-3">Áudios salvos apenas neste dispositivo.</p>
+      {showLibrary && tracks.length > 0 && (
+        <ul className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-line-soft p-1">
+          {tracks.map((track, index) => {
+            const active = track.id === selectedTrackId;
+            return (
+              <li key={track.id} className={cx("flex min-w-0 items-center gap-2 rounded-md px-2 py-1", active ? "bg-gold-soft" : "hover:bg-hover")}>
+                <button type="button" onClick={() => setTrackSource(track, true)} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-current={active ? "true" : undefined}>
+                  <span className="w-4 shrink-0 text-center text-[11px] tabular-nums text-fg-3">{active && isPlaying ? "♪" : index + 1}</span>
+                  <span className={cx("truncate text-xs", active ? "font-medium text-fg" : "text-fg-2")} title={track.name}>{track.name}</span>
+                </button>
+                <IconButton label={`Remover ${track.name}`} variant="danger" size="xs" onClick={() => void handleRemoveTrack(track)}>
+                  <XIcon />
+                </IconButton>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {error && <p className="mt-1.5 text-xs leading-relaxed text-danger" role="alert">{error}</p>}
+      <p className="mt-1.5 text-[11px] text-fg-4">Os áudios ficam só neste dispositivo.</p>
     </section>
   );
 }
