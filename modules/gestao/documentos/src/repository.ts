@@ -68,6 +68,26 @@ export async function listDocuments(client: Client, archived = false): Promise<D
 }
 
 /**
+ * Busca por nome para a paleta global (Ctrl K). Nunca devolve documentos do Cofre nem da lixeira:
+ * o nome de um arquivo do Cofre não pode aparecer fora de Documentos sem o PIN.
+ */
+export async function searchDocumentsByName(
+  client: Client,
+  term: string,
+  limit = 5,
+): Promise<Array<Pick<Document, "id" | "file_name">>> {
+  const { data, error } = await client
+    .from("documents")
+    .select("id,file_name")
+    .ilike("file_name", `%${term.replace(/[%_]/g, "")}%`)
+    .is("deleted_at", null)
+    .eq("is_vault", false)
+    .limit(limit);
+  if (error) throw error;
+  return data;
+}
+
+/**
  * Faz upload do arquivo para o bucket privado `documents` e cria o registro de metadados numa
  * única operação lógica. O id do documento é gerado no cliente para poder compor o caminho de
  * Storage (`{user_id}/{document_id}/{file_name}`) antes de existir a linha — as RLS policies de

@@ -10,7 +10,9 @@ import {
   NewGoalForm,
   NewHabitForm,
   RoutinesPanel,
-  computeCurrentStreak,
+  computeHabitStreak,
+  formatHabitStreak,
+  habitStreakDays,
   habitScheduleOn,
   localDateKey,
   shiftDateKey,
@@ -154,8 +156,8 @@ export function MetasHabitosPage() {
   const doneToday = dueToday.filter((habit) => logsByHabit.get(habit.id)?.some((log) => log.log_date === today && log.state === "concluido")).length;
   const todayPercent = dueToday.length ? Math.round((doneToday / dueToday.length) * 100) : 0;
   const bestStreak = activeHabits
-    .map((habit) => ({ habit, streak: computeCurrentStreak(logsByHabit.get(habit.id) ?? [], todayDate) }))
-    .sort((a, b) => b.streak - a.streak)[0];
+    .map((habit) => ({ habit, streak: computeHabitStreak(habit, logsByHabit.get(habit.id) ?? [], todayDate) }))
+    .sort((a, b) => habitStreakDays(b.streak) - habitStreakDays(a.streak))[0];
   const activeGoals = goals.filter((goal) => goal.status === "ativa");
   const visibleGoals = goals.filter((goal) => (goalFilter === "andamento" ? goal.status === "ativa" || goal.status === "planejada" || goal.status === "pausada" : goalFilter === "concluidas" ? goal.status === "concluida" || goal.status === "cancelada" : true));
 
@@ -256,10 +258,10 @@ export function MetasHabitosPage() {
               </ProgressRing>
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-fg">{dueToday.length === 0 ? "Dia livre" : doneToday === dueToday.length ? "Dia completo!" : `Faltam ${dueToday.length - doneToday}`}</p>
-                {bestStreak && bestStreak.streak > 0 ? (
+                {bestStreak && bestStreak.streak.count > 0 ? (
                   <p className="mt-1 flex items-center gap-1 text-xs text-fg-3">
                     <FireIcon size={13} weight="fill" className="text-[#e8804a]" />
-                    {bestStreak.habit.name}: {bestStreak.streak} {bestStreak.streak === 1 ? "dia" : "dias"} seguidos
+                    {bestStreak.habit.name}: {formatHabitStreak(bestStreak.streak)}
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-fg-3">Marque um hábito para começar uma sequência.</p>

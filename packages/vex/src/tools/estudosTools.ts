@@ -11,6 +11,7 @@ import {
   QUIZ_QUESTION_COUNT,
 } from "@qqorvex/module-estudos";
 import type { ToolDefinition, VexProvider } from "../types";
+import { localDateKey } from "./shared";
 
 const QUIZ_GENERATION_PROMPT = `Gere exatamente ${QUIZ_QUESTION_COUNT} perguntas de múltipla escolha sobre o conteúdo abaixo, cada uma com exatamente 4 alternativas (só uma certa).
 
@@ -156,8 +157,7 @@ export function createEstudosTools(client: SupabaseClient<Database>, userId: str
       parameters: { type: "object", properties: {} },
       requiresConfirmation: false,
       async execute() {
-        const today = new Date().toISOString().slice(0, 10);
-        const flashcards = await listDueFlashcards(client, today);
+        const flashcards = await listDueFlashcards(client, localDateKey());
         if (flashcards.length === 0) return { summary: "Nenhum flashcard para revisar hoje." };
         return { summary: `Você tem ${flashcards.length} flashcard(s) para revisar hoje.`, data: flashcards };
       },

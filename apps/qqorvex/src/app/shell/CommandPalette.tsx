@@ -13,6 +13,7 @@ import {
   SparkleIcon,
   SunIcon,
 } from "@phosphor-icons/react";
+import { searchDocumentsByName } from "@qqorvex/module-documentos";
 import { Kbd, Spinner, cx } from "@qqorvex/ui";
 import { useAccount } from "../account";
 import { supabase } from "../supabase";
@@ -43,7 +44,8 @@ async function searchData(term: string): Promise<Array<Omit<PaletteEntry, "run">
     supabase.from("events").select("id,title,start_at").ilike("title", pattern).order("start_at", { ascending: false }).limit(5),
     supabase.from("library_items").select("id,title,item_type").ilike("title", pattern).limit(5),
     supabase.from("notebooks").select("id,name").ilike("name", pattern).limit(5),
-    supabase.from("documents").select("id,file_name").ilike("file_name", pattern).is("deleted_at", null).limit(5),
+    // Vem do módulo de Documentos, que exclui o Cofre e a lixeira.
+    searchDocumentsByName(supabase, term).catch(() => []),
   ]);
   const results: Array<Omit<PaletteEntry, "run"> & { to: string }> = [];
   for (const task of tasks.data ?? []) results.push({ id: `t-${task.id}`, group: "Tarefas", label: task.title, hint: task.status === "concluido" ? "Concluída" : undefined, icon: <CheckSquareIcon />, to: `/planejar/tarefas?tarefa=${task.id}` });
@@ -51,7 +53,7 @@ async function searchData(term: string): Promise<Array<Omit<PaletteEntry, "run">
   for (const event of events.data ?? []) results.push({ id: `e-${event.id}`, group: "Agenda", label: event.title, hint: new Date(event.start_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }), icon: <CalendarBlankIcon />, to: `/planejar/agenda?data=${event.start_at.slice(0, 10)}` });
   for (const notebook of notebooks.data ?? []) results.push({ id: `n-${notebook.id}`, group: "Estudos", label: notebook.name, icon: <GraduationCapIcon />, to: `/conhecimento/estudos/${notebook.id}` });
   for (const item of library.data ?? []) results.push({ id: `l-${item.id}`, group: "Biblioteca", label: item.title, icon: <BooksIcon />, to: `/conhecimento/biblioteca?item=${item.id}` });
-  for (const doc of documents.data ?? []) results.push({ id: `d-${doc.id}`, group: "Documentos", label: doc.file_name, icon: <FileTextIcon />, to: `/vida/documentos?documento=${doc.id}` });
+  for (const doc of documents) results.push({ id: `d-${doc.id}`, group: "Documentos", label: doc.file_name, icon: <FileTextIcon />, to: `/vida/documentos?documento=${doc.id}` });
   return results;
 }
 

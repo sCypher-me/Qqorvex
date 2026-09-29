@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CheckIcon, CircleHalfIcon, DotsThreeIcon, FireIcon, MinusIcon, PauseIcon, PlayIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { Badge, ConfirmDialog, DropdownMenu, cx } from "@qqorvex/ui";
-import { computeCurrentStreak, getHabitWeeklyTarget, shiftDateKey } from "../service";
+import { computeHabitStreak, formatHabitStreak, getHabitWeeklyTarget, shiftDateKey } from "../service";
 import type { Habit, HabitFrequencyConfig, HabitLog, HabitLogState } from "../types";
 
 const DAY_LABEL: Record<string, string> = { mon: "seg", tue: "ter", wed: "qua", thu: "qui", fri: "sex", sat: "sáb", sun: "dom", seg: "seg", ter: "ter", qua: "qua", qui: "qui", sex: "sex", sab: "sáb", dom: "dom" };
@@ -63,7 +63,7 @@ export function HabitRow({ habit, logs, today, offSchedule = false, busy = false
   const doneThisWeek = week.filter((date) => byDate.get(date) === "concluido").length;
   const weeklyTarget = getHabitWeeklyTarget(habit);
   const [y = 0, m = 1, d = 1] = today.split("-").map(Number);
-  const streak = computeCurrentStreak(logs, new Date(y, m - 1, d));
+  const streak = computeHabitStreak(habit, logs, new Date(y, m - 1, d));
   const active = habit.status === "ativo";
   const done = todayState === "concluido";
 
@@ -109,9 +109,9 @@ export function HabitRow({ habit, logs, today, offSchedule = false, busy = false
       </div>
 
       <div className="flex w-[84px] shrink-0 flex-col items-end gap-0.5 text-right">
-        <span className={cx("inline-flex items-center gap-1 text-[13px] font-semibold tabular-nums", streak > 0 ? "text-fg" : "text-fg-4")} title="Sequência atual">
-          <FireIcon size={14} weight={streak > 0 ? "fill" : "regular"} className={streak > 0 ? "text-[#e8804a]" : undefined} />
-          {streak}
+        <span className={cx("inline-flex items-center gap-1 text-[13px] font-semibold tabular-nums", streak.count > 0 ? "text-fg" : "text-fg-4")} title={`Sequência atual: ${formatHabitStreak(streak)}`}>
+          <FireIcon size={14} weight={streak.count > 0 ? "fill" : "regular"} className={streak.count > 0 ? "text-[#e8804a]" : undefined} />
+          {streak.count}
         </span>
         <span className="text-[11px] text-fg-4">{weeklyTarget ? `${doneThisWeek}/${weeklyTarget} na semana` : `${doneThisWeek} em 7 dias`}</span>
       </div>
