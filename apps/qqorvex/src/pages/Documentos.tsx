@@ -12,6 +12,7 @@ import {
   useFolders,
   useMoveDocumentToFolder,
   useUpdateDocumentType,
+  useRenameDocument,
   useExtractText,
   useSetDocumentArchived,
   useWarranties,
@@ -22,7 +23,9 @@ import {
   VersionHistoryPanel,
   FoldersPanel,
   WarrantiesPanel,
+  normalizeDocumentRename,
   selectDocuments,
+  type Document,
   type DocumentQuickFilter,
   type DocumentSortOrder,
 } from "@qqorvex/module-documentos";
@@ -78,6 +81,7 @@ export function DocumentosPage() {
   const [extractingDocumentId, setExtractingDocumentId] = useState<string | null>(null);
   const [extractProgress, setExtractProgress] = useState(0);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ document: Document; draft: string } | null>(null);
 
   const { documents: allDocuments, isLoading, error: documentsError, refetch: refetchDocuments } = useDocuments(supabase);
   const { quota: storageQuota } = useDocumentStorageQuota(supabase);
@@ -105,6 +109,28 @@ export function DocumentosPage() {
   const toggleVault = useToggleVault(supabase);
   const moveToFolder = useMoveDocumentToFolder(supabase);
   const updateType = useUpdateDocumentType(supabase);
+  const renameDocument = useRenameDocument(supabase);
+  const renamePreview = renaming ? normalizeDocumentRename(renaming.draft, renaming.document.file_name) : null;
+
+  function handleRename(event: FormEvent) {
+    event.preventDefault();
+    if (!renaming || !renamePreview) return;
+    const { document } = renaming;
+    if (renamePreview === document.file_name) {
+      setRenaming(null);
+      return;
+    }
+    renameDocument.mutate(
+      { documentId: document.id, fileName: renamePreview },
+      {
+        onSuccess: () => {
+          setRenaming(null);
+          if (currentItem?.type === "documento" && currentItem.id === document.id) setCurrentItem({ type: "documento", id: document.id, label: renamePreview });
+          toast({ title: "Documento renomeado", description: renamePreview, tone: "success" });
+        },
+      },
+    );
+  }
   const extractText = useExtractText(supabase);
   const setArchived = useSetDocumentArchived(supabase);
 
@@ -354,6 +380,7 @@ export function DocumentosPage() {
                         const url = await getDownloadUrl(supabase, document.storage_path);
                         window.open(url, "_blank", "noopener,noreferrer");
                       }}
+                      onRename={() => setRenaming({ document, draft: document.file_name })}
                       onToggleImportant={() => toggleImportant.mutate({ documentId: document.id, isImportant: !document.is_important })}
                       onToggleVault={() => toggleVault.mutate({ documentId: document.id, isVault: !document.is_vault })}
                       onDelete={() => deleteDocument.mutate(document.id, { onSuccess: () => toast({ title: "Movido para a lixeira", description: `Fica lá por 30 dias.`, tone: "success" }) })}
@@ -454,6 +481,45 @@ export function DocumentosPage() {
           </aside>
         </div>
       )}
+
+      <Modal
+        isOpen={renaming !== null}
+        onClose={() => setRenaming(null)}
+        title="Renomear documento"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRenaming(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" form="rename-document-form" disabled={!renamePreview} loading={renameDocument.isPending}>
+              Salvar
+            </Button>
+          </>
+        }
+      >
+        {renaming && (
+          <form id="rename-document-form" onSubmit={handleRename} className="flex flex-col gap-2">
+            <label htmlFor="rename-document-input" className="text-[13px] font-medium text-fg-2">
+              Nome
+            </label>
+            <input
+              id="rename-document-input"
+              value={renaming.draft}
+              onChange={(event) => setRenaming({ document: renaming.document, draft: event.target.value })}
+              maxLength={200}
+              data-autofocus
+              className="q-input"
+            />
+            {renamePreview && renamePreview !== renaming.draft.trim() && (
+              <p className="text-xs text-fg-3">
+                Vai ficar: <span className="text-fg">{renamePreview}</span>
+              </p>
+            )}
+            {renameDocument.isError && <p role="alert" className="text-xs text-danger">Não foi possível renomear. Tente de novo.</p>}
+          </form>
+        )}
+      </Modal>
     </PageContainer>
   );
 }

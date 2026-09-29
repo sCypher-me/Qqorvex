@@ -31,6 +31,7 @@ export function DocumentCard({
   document,
   folders,
   onDownload,
+  onRename,
   onToggleImportant,
   onToggleVault,
   onDelete,
@@ -50,6 +51,7 @@ export function DocumentCard({
   document: Document;
   folders: Folder[];
   onDownload: () => void;
+  onRename?: () => void;
   onToggleImportant: () => void;
   onToggleVault: () => void;
   onDelete: () => void;
@@ -164,6 +166,11 @@ export function DocumentCard({
             <Button type="button" variant="primary" size="sm" onClick={onDownload}>
               Abrir
             </Button>
+            {onRename && (
+              <Button type="button" variant="ghost" size="sm" onClick={onRename}>
+                Renomear
+              </Button>
+            )}
             <Button type="button" variant="ghost" size="sm" onClick={onToggleImportant}>
               {document.is_important ? "Desmarcar importante" : "Importante"}
             </Button>

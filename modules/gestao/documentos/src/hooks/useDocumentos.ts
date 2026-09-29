@@ -13,6 +13,8 @@ import {
   listWarranties,
   moveDocumentToFolder,
   purgeDocument,
+  renameDocument,
+  renameFolder,
   restoreDocument,
   restoreDocumentVersion,
   setDocumentArchived,
@@ -67,6 +69,14 @@ export function useUploadDocument(client: SupabaseClient<Database>, userId: stri
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
       queryClient.invalidateQueries({ queryKey: DOCUMENT_STORAGE_QUOTA_KEY });
     },
+  });
+}
+
+export function useRenameDocument(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ documentId, fileName }: { documentId: string; fileName: string }) => renameDocument(client, documentId, fileName),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
   });
 }
 
@@ -202,6 +212,14 @@ export function useCreateFolder(client: SupabaseClient<Database>, userId: string
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => createFolder(client, userId, name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FOLDERS_KEY }),
+  });
+}
+
+export function useRenameFolder(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ folderId, name }: { folderId: string; name: string }) => renameFolder(client, folderId, name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: FOLDERS_KEY }),
   });
 }

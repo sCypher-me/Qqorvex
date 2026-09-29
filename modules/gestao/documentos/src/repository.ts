@@ -319,6 +319,13 @@ export async function listTrashedDocuments(client: Client): Promise<Document[]> 
   return active;
 }
 
+/** Muda só o nome exibido — o arquivo no Storage continua no mesmo caminho. */
+export async function renameDocument(client: Client, documentId: string, fileName: string): Promise<Document> {
+  const { data, error } = await client.from("documents").update({ file_name: fileName }).eq("id", documentId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateDocumentType(client: Client, documentId: string, documentType: Document["document_type"]): Promise<Document> {
   const { data, error } = await client
     .from("documents")
@@ -376,6 +383,12 @@ export async function listFolders(client: Client): Promise<Folder[]> {
 
 export async function createFolder(client: Client, userId: string, name: string): Promise<Folder> {
   const { data, error } = await client.from("folders").insert({ user_id: userId, name }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renameFolder(client: Client, folderId: string, name: string): Promise<Folder> {
+  const { data, error } = await client.from("folders").update({ name }).eq("id", folderId).select("*").single();
   if (error) throw error;
   return data;
 }
