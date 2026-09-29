@@ -49,9 +49,9 @@ type SecuritySection = "access" | "devices" | "recovery" | "privacy" | "vault";
 
 function SecurityCard({ id, title, pill, children }: { id?: string; title: string; pill?: ReactNode; children: ReactNode }) {
   return (
-    <section id={id} className="qv-card flex min-w-0 flex-col gap-4 p-5 sm:p-6 scroll-mt-6">
+    <section id={id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-4 p-5 sm:p-6 scroll-mt-6">
       <div className="flex min-w-0 items-center gap-2.5">
-        <h2 className="min-w-0 flex-1 font-display text-lg font-semibold text-text-primary">{title}</h2>
+        <h2 className="min-w-0 flex-1 font-display text-lg font-semibold text-fg">{title}</h2>
         {pill}
       </div>
       {children}
@@ -60,7 +60,7 @@ function SecurityCard({ id, title, pill, children }: { id?: string; title: strin
 }
 
 function CardText({ children }: { children: ReactNode }) {
-  return <p className="text-[13px] text-text-secondary leading-relaxed">{children}</p>;
+  return <p className="text-[13px] text-fg-2 leading-relaxed">{children}</p>;
 }
 
 /** E-mail/senha + os 3 provedores OAuth apontam pra uma única identidade (o Supabase já faz o
@@ -96,14 +96,14 @@ function ConnectedAccountsCard({ client, emailConfirmed }: { client: SupabaseCli
         <SkeletonList rows={2} />
       ) : (
         <ul className="flex flex-col">
-          <li className="qv-row-top flex flex-wrap items-center gap-2.5 py-3">
+          <li className="border-t border-line-soft flex flex-wrap items-center gap-2.5 py-3">
             <span className="min-w-[5rem] flex-1 text-sm">E-mail</span>
             <Badge tone={emailConfirmed ? "success" : "outline"}>{emailConfirmed ? "Verificado" : "Não verificado"}</Badge>
           </li>
           {OAUTH_PROVIDERS.map(({ id, label }) => {
             const connected = identities.some((i) => i.provider === id);
             return (
-              <li key={id} className="qv-row-top flex flex-wrap items-center gap-2.5 py-3">
+              <li key={id} className="border-t border-line-soft flex flex-wrap items-center gap-2.5 py-3">
                 <span className="min-w-[5rem] flex-1 text-sm">{label}</span>
                 {connected ? (
                   <div className="flex flex-wrap items-center justify-end gap-2">
@@ -135,22 +135,22 @@ function ThirdPartyPermissionsCard({ client }: { client: SupabaseClient<Database
     <SecurityCard title="Permissões de aplicativos terceiros">
       <CardText>Revogue aqui as integrações que acessam serviços externos. Remover uma permissão impede novas sincronizações; eventos já copiados para o Google permanecem na sua conta Google.</CardText>
       {isLoading ? <Skeleton className="h-24 w-full rounded-xl" /> : error ? null : connection ? (
-        <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-surface-1 p-4">
+        <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-canvas p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold text-text-primary">Google Calendar</p>
-              <p className="mt-1 text-xs text-text-secondary">Conectado para sincronizar a agenda do Qqorvex.</p>
+              <p className="text-sm font-semibold text-fg">Google Calendar</p>
+              <p className="mt-1 text-xs text-fg-2">Conectado para sincronizar a agenda do Qqorvex.</p>
             </div>
             <Badge tone="success">Conectado</Badge>
           </div>
-          <p className="text-xs leading-relaxed text-text-muted">O consentimento atual permite ler e editar calendários Google. O app cria um calendário dedicado, mas o escopo autorizado pelo Google é amplo.</p>
+          <p className="text-xs leading-relaxed text-fg-3">O consentimento atual permite ler e editar calendários Google. O app cria um calendário dedicado, mas o escopo autorizado pelo Google é amplo.</p>
           <Button type="button" variant="destructive" size="sm" className="self-start" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
             {disconnect.isPending ? "Revogando acesso…" : "Revogar acesso ao Google"}
           </Button>
           {disconnect.error && <Notice tone="error">{disconnect.error instanceof Error ? disconnect.error.message : "Não foi possível revogar a conexão."}</Notice>}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-border px-4 py-4 text-sm leading-relaxed text-text-muted">Nenhum serviço externo tem uma integração de dados ativa no momento. Contas de login são gerenciadas no card ao lado.</p>
+        <p className="rounded-xl border border-dashed border-line px-4 py-4 text-sm leading-relaxed text-fg-3">Nenhum serviço externo tem uma integração de dados ativa no momento. Contas de login são gerenciadas no card ao lado.</p>
       )}
       {error && <Notice tone="error">Não foi possível verificar as permissões externas.</Notice>}
     </SecurityCard>
@@ -384,7 +384,7 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
   }
 
   const pinFieldClass =
-    "qv-field w-[150px] font-mono text-[15px] tracking-[.3em] placeholder:font-sans placeholder:text-[13px] placeholder:tracking-normal";
+    "q-input w-[150px] font-mono text-[15px] tracking-[.3em] placeholder:font-sans placeholder:text-[13px] placeholder:tracking-normal";
   const accessStatus = isLoading || passkeysLoading
     ? "Verificando acesso"
     : strongSignInMethods === 2
@@ -393,27 +393,27 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
         ? "Boa proteção"
         : "Reforce sua proteção";
   return (
-    <div className={`${embedded ? "flex w-full flex-col gap-5" : "qv-page editorial-module-page flex w-full max-w-none flex-col gap-5 pb-8"}`}>
+    <div className={`${embedded ? "flex w-full flex-col gap-5" : " editorial-module-page flex w-full max-w-none flex-col gap-5 pb-8"}`}>
       {embedded && (
         <div className="flex flex-col gap-1">
-          <p className="qv-eyebrow">Acesso e proteção</p>
-          <h2 className="font-display text-xl font-semibold text-text-primary text-balance">Segurança da conta</h2>
-          <p className="max-w-2xl text-sm leading-relaxed text-text-secondary text-pretty">Escolha uma área para revisar. Suas credenciais, dispositivos e opções de recuperação ficam organizados em etapas.</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Acesso e proteção</p>
+          <h2 className="font-display text-xl font-semibold text-fg text-balance">Segurança da conta</h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-fg-2 text-pretty">Escolha uma área para revisar. Suas credenciais, dispositivos e opções de recuperação ficam organizados em etapas.</p>
         </div>
       )}
       {!embedded && <section className="editorial-module-hero" aria-labelledby="security-page-title">
         <div className="max-w-3xl">
-          <p className="qv-eyebrow">Conta / Segurança</p>
-          <h1 id="security-page-title" className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-text-primary text-balance sm:text-4xl">Proteja seu acesso.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary text-pretty">Gerencie como você entra, revise os dispositivos conectados e proteja os documentos do Cofre — cada coisa no seu lugar.</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Conta / Segurança</p>
+          <h1 id="security-page-title" className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-fg text-balance sm:text-4xl">Proteja seu acesso.</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-2 text-pretty">Gerencie como você entra, revise os dispositivos conectados e proteja os documentos do Cofre — cada coisa no seu lugar.</p>
           </div>
       </section>}
 
-      <section className="qv-card flex min-w-0 flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Resumo de segurança">
+      <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Resumo de segurança">
         <div className="min-w-0">
-          <p className="qv-eyebrow">Estado do acesso</p>
-          <p className="mt-1 font-display text-lg font-semibold text-text-primary text-balance">{accessStatus}</p>
-          <p className="mt-1 text-sm text-text-secondary text-pretty">{isLoading || passkeysLoading ? "Conferindo seus métodos de entrada…" : `${strongSignInMethods} de 2 proteções recomendadas configuradas.`}</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Estado do acesso</p>
+          <p className="mt-1 font-display text-lg font-semibold text-fg text-balance">{accessStatus}</p>
+          <p className="mt-1 text-sm text-fg-2 text-pretty">{isLoading || passkeysLoading ? "Conferindo seus métodos de entrada…" : `${strongSignInMethods} de 2 proteções recomendadas configuradas.`}</p>
         </div>
         <div className="flex min-w-0 flex-wrap gap-2" aria-label="Métodos configurados">
           <Badge tone={isLoading ? "neutral" : verifiedTotp ? "success" : "neutral"}>2FA · {isLoading ? "…" : verifiedTotp ? "Ativa" : "Inativa"}</Badge>
@@ -443,14 +443,14 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                 <div className="grid min-w-0 gap-5 md:grid-cols-2">
                   <form onSubmit={(event) => void handleChangeEmail(event)} className="flex min-w-0 flex-col gap-3">
                     <div>
-                      <p className="text-xs text-text-muted">E-mail atual</p>
-                      <p className="mt-1 break-all text-sm font-medium text-text-primary">{session?.user.email ?? "Não disponível"}</p>
+                      <p className="text-xs text-fg-3">E-mail atual</p>
+                      <p className="mt-1 break-all text-sm font-medium text-fg">{session?.user.email ?? "Não disponível"}</p>
                     </div>
                     <Input label="Novo e-mail" type="email" autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="voce@exemplo.com" required />
                     <Button type="submit" variant="secondary" className="self-start" disabled={accountBusy || !newEmail.trim()}>{accountBusy ? "Enviando…" : "Solicitar troca de e-mail"}</Button>
                   </form>
-                  <form onSubmit={(event) => void handleChangePassword(event)} className="flex min-w-0 flex-col gap-3 border-t border-border pt-5 md:border-l md:border-t-0 md:pl-5 md:pt-0">
-                    <p className="text-xs leading-relaxed text-text-muted">A senha precisa ter pelo menos 8 caracteres.</p>
+                  <form onSubmit={(event) => void handleChangePassword(event)} className="flex min-w-0 flex-col gap-3 border-t border-line pt-5 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+                    <p className="text-xs leading-relaxed text-fg-3">A senha precisa ter pelo menos 8 caracteres.</p>
                     <Input label="Nova senha" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required />
                     <Input label="Confirmar nova senha" type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
                     <Button type="submit" variant="secondary" className="self-start" disabled={accountBusy || !newPassword || !confirmPassword}>{accountBusy ? "Salvando…" : "Atualizar senha"}</Button>
@@ -466,8 +466,8 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                   <form onSubmit={handleConfirm} className="flex min-w-0 flex-col gap-3">
                     <CardText>{verifiedTotpFactors.length > 0 ? "Este será um segundo app autenticador. Cadastre-o em outro dispositivo para ter uma alternativa se perder acesso ao primeiro." : "Escaneie o QR code com um app autenticador e digite o código de 6 dígitos para confirmar."}</CardText>
                     <img src={enrollment.qrCodeDataUri} alt="QR code do 2FA" className="h-40 w-40 self-center rounded-md bg-white p-2" />
-                    <p className="break-all rounded-lg border border-border bg-surface-1 p-3 font-mono text-xs text-text-muted">Não conseguiu escanear? Chave manual: {enrollment.secret}</p>
-                    <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Código de 6 dígitos" inputMode="numeric" autoComplete="one-time-code" aria-label="Código de 6 dígitos" className="qv-field w-full font-mono tracking-[.2em] placeholder:font-sans placeholder:tracking-normal" />
+                    <p className="break-all rounded-lg border border-line bg-canvas p-3 font-mono text-xs text-fg-3">Não conseguiu escanear? Chave manual: {enrollment.secret}</p>
+                    <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Código de 6 dígitos" inputMode="numeric" autoComplete="one-time-code" aria-label="Código de 6 dígitos" className="q-input w-full font-mono tracking-[.2em] placeholder:font-sans placeholder:tracking-normal" />
                     <div className="flex flex-wrap gap-2.5">
                       <Button type="submit" variant="primary" disabled={busy || code.trim().length !== 6}>{busy ? "Verificando…" : "Confirmar 2FA"}</Button>
                       <Button type="button" variant="ghost" onClick={() => { setEnrollment(null); setCode(""); }}>Cancelar</Button>
@@ -478,10 +478,10 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                     <CardText>O Supabase ainda não oferece códigos de backup. Para recuperação gratuita, cadastre outro app autenticador em um dispositivo separado e guarde-o em local seguro.</CardText>
                     <ul className="flex min-w-0 flex-col">
                       {factors.map((factor, index) => (
-                        <li key={factor.id} className="qv-row-top flex min-w-0 flex-wrap items-center gap-2.5 py-3">
+                        <li key={factor.id} className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-2.5 py-3">
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-text-primary">{factor.friendlyName || `App autenticador ${index + 1}`}</p>
-                            <p className="mt-0.5 text-xs text-text-muted">{factor.status === "verified" ? "Ativo" : "Cadastro pendente"}</p>
+                            <p className="truncate text-sm font-medium text-fg">{factor.friendlyName || `App autenticador ${index + 1}`}</p>
+                            <p className="mt-0.5 text-xs text-fg-3">{factor.status === "verified" ? "Ativo" : "Cadastro pendente"}</p>
                           </div>
                           <Button variant="quiet" size="xs" onClick={() => void handleRemove(factor.id)} disabled={busy}>{busy ? "Atualizando…" : "Remover"}</Button>
                         </li>
@@ -503,17 +503,17 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                 {passkeysLoading ? <SkeletonList rows={2} subtitle={false} className="py-2.5" /> : passkeys.length > 0 ? (
                   <ul className="flex min-w-0 flex-col">
                     {passkeys.map((passkey) => (
-                      <li key={passkey.id} className="qv-row-top flex min-w-0 flex-wrap items-center gap-2.5 py-3">
+                      <li key={passkey.id} className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-2.5 py-3">
                         {renamingId === passkey.id ? (
                           <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-                            <input value={renameValue} onChange={(event) => setRenameValue(event.target.value)} aria-label="Nome da passkey" className="qv-field min-w-[120px] flex-1" autoFocus />
+                            <input value={renameValue} onChange={(event) => setRenameValue(event.target.value)} aria-label="Nome da passkey" className="q-input min-w-[120px] flex-1" autoFocus />
                             <Button type="button" variant="secondary" size="sm" onClick={() => void handleSaveRename(passkey.id)} disabled={passkeyBusy || !renameValue.trim()}>{passkeyBusy ? "Salvando…" : "Salvar"}</Button>
                             <Button type="button" variant="quiet" size="sm" onClick={() => setRenamingId(null)} disabled={passkeyBusy}>Cancelar</Button>
                           </div>
                         ) : (
                           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <button type="button" title="Renomear passkey" onClick={() => { setRenamingId(passkey.id); setRenameValue(passkey.friendlyName ?? ""); }} className="truncate text-left text-sm font-medium text-text-primary hover:underline">{passkey.friendlyName ?? "Passkey sem nome"}</button>
-                            <span className="font-mono text-[11px] leading-relaxed text-text-muted">Criada {formatShortDate(passkey.createdAt)} · {passkey.lastUsedAt ? `usada ${formatRelativeTime(passkey.lastUsedAt)}` : "ainda não usada"}</span>
+                            <button type="button" title="Renomear passkey" onClick={() => { setRenamingId(passkey.id); setRenameValue(passkey.friendlyName ?? ""); }} className="truncate text-left text-sm font-medium text-fg hover:underline">{passkey.friendlyName ?? "Passkey sem nome"}</button>
+                            <span className="font-mono text-[11px] leading-relaxed text-fg-3">Criada {formatShortDate(passkey.createdAt)} · {passkey.lastUsedAt ? `usada ${formatRelativeTime(passkey.lastUsedAt)}` : "ainda não usada"}</span>
                           </div>
                         )}
                         {renamingId !== passkey.id && <Button type="button" variant="quiet" size="xs" onClick={() => setConfirmDeletePasskeyId(passkey.id)} disabled={passkeyBusy}>Remover</Button>}
@@ -521,7 +521,7 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                     ))}
                   </ul>
                 ) : (
-                  <p className="rounded-xl border border-dashed border-border px-3.5 py-3 text-xs leading-relaxed text-text-muted">Nenhuma passkey cadastrada. Você pode continuar entrando com sua senha.</p>
+                  <p className="rounded-xl border border-dashed border-line px-3.5 py-3 text-xs leading-relaxed text-fg-3">Nenhuma passkey cadastrada. Você pode continuar entrando com sua senha.</p>
                 )}
                 <Button variant="primary" className="self-start" onClick={() => void handleAddPasskey()} disabled={passkeyBusy}>{passkeyBusy ? "Aguardando dispositivo…" : "Cadastrar passkey"}</Button>
                 {passkeyError && <Notice tone="error">{passkeyError}</Notice>}
@@ -535,22 +535,22 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
               <SecurityCard title="Métodos disponíveis">
                 <CardText>Combine métodos diferentes para não perder o acesso. Estes são os recursos que estão realmente disponíveis nesta conta:</CardText>
                 <ul className="flex min-w-0 flex-col">
-                  <li className="qv-row-top flex min-w-0 flex-wrap items-center gap-2.5 py-3">
+                  <li className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-2.5 py-3">
                     <span className="min-w-0 flex-1 text-sm">E-mail principal</span>
                     <Badge tone={session?.user.email_confirmed_at ? "success" : "warning"}>{session?.user.email_confirmed_at ? "Verificado" : "Verifique o e-mail"}</Badge>
                   </li>
-                  <li className="qv-row-top flex min-w-0 flex-wrap items-center gap-2.5 py-3">
+                  <li className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-2.5 py-3">
                     <span className="min-w-0 flex-1 text-sm">Apps autenticadores</span>
                     <Badge tone={verifiedTotpFactors.length > 1 ? "success" : "neutral"}>{verifiedTotpFactors.length} cadastrado{verifiedTotpFactors.length === 1 ? "" : "s"}</Badge>
                   </li>
-                  <li className="qv-row-top flex min-w-0 flex-wrap items-center gap-2.5 py-3">
+                  <li className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-2.5 py-3">
                     <span className="min-w-0 flex-1 text-sm">Passkeys</span>
                     <Badge tone={passkeys.length ? "success" : "neutral"}>{passkeys.length} cadastrada{passkeys.length === 1 ? "" : "s"}</Badge>
                   </li>
                 </ul>
                 <div className="rounded-xl border border-warning/25 bg-warning-bg/30 p-3.5">
-                  <p className="text-xs font-medium text-text-primary">Telefone e códigos de backup</p>
-                  <p className="mt-1 text-xs leading-relaxed text-text-secondary">Não há envio de SMS/WhatsApp configurado. O Supabase também não oferece códigos de backup para TOTP; para uma alternativa gratuita, cadastre um segundo app autenticador em outro dispositivo.</p>
+                  <p className="text-xs font-medium text-fg">Telefone e códigos de backup</p>
+                  <p className="mt-1 text-xs leading-relaxed text-fg-2">Não há envio de SMS/WhatsApp configurado. O Supabase também não oferece códigos de backup para TOTP; para uma alternativa gratuita, cadastre um segundo app autenticador em outro dispositivo.</p>
                 </div>
                 <Button type="button" variant="secondary" size="sm" className="self-start" onClick={() => setActiveSection("access")}>Abrir métodos de acesso</Button>
               </SecurityCard>
@@ -569,14 +569,14 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                       const lastActivity = deviceSession.refreshedAt ?? deviceSession.createdAt;
                       const isRecent = isCurrent || Date.now() - new Date(lastActivity).getTime() < RECENT_ACTIVITY_MS;
                       return (
-                        <li key={deviceSession.id} className="qv-row-top flex min-w-0 flex-wrap items-center gap-3 py-3">
+                        <li key={deviceSession.id} className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-3 py-3">
                           <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isRecent ? "bg-success" : "bg-text-muted"}`} />
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-2">
-                              <span className="truncate text-sm font-medium text-text-primary">{browser} <span className="text-text-muted">·</span> {os}</span>
+                              <span className="truncate text-sm font-medium text-fg">{browser} <span className="text-fg-3">·</span> {os}</span>
                               {isCurrent && <Badge tone="info">Este dispositivo</Badge>}
                             </div>
-                            <span className="mt-0.5 block break-words font-mono text-[11px] leading-relaxed text-text-muted">{deviceSession.ip ?? "IP desconhecido"} · ativo {formatRelativeTime(lastActivity)}</span>
+                            <span className="mt-0.5 block break-words font-mono text-[11px] leading-relaxed text-fg-3">{deviceSession.ip ?? "IP desconhecido"} · ativo {formatRelativeTime(lastActivity)}</span>
                           </div>
                           {!isCurrent && <Button type="button" variant="quiet" size="xs" onClick={() => setConfirmRevokeSessionId(deviceSession.id)} disabled={sessionsBusy}>{sessionsBusy ? "Encerrando…" : "Encerrar"}</Button>}
                         </li>
@@ -584,7 +584,7 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                     })}
                   </ul>
                 ) : (
-                  <p className="rounded-xl border border-dashed border-border px-4 py-4 text-sm text-text-muted">Não foi possível listar sessões ativas agora.</p>
+                  <p className="rounded-xl border border-dashed border-line px-4 py-4 text-sm text-fg-3">Não foi possível listar sessões ativas agora.</p>
                 )}
                 {sessionError && <Notice tone="error">{sessionError}</Notice>}
                 <Button type="button" variant="destructive" className="self-start" onClick={() => setConfirmSignOutOthers(true)} disabled={sessionsBusy || sessionsLoading || sessions.length <= 1}>{sessionsBusy ? "Encerrando sessões…" : "Encerrar outras sessões"}</Button>
@@ -603,22 +603,22 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                     {loginEvents.map((event) => {
                       const { browser, os } = parseUserAgent(event.userAgent);
                       return (
-                        <li key={event.id} className="qv-row-top flex min-w-0 flex-wrap items-center gap-3 py-3">
-                          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-vex-cyan-bright" />
+                        <li key={event.id} className="border-t border-line-soft flex min-w-0 flex-wrap items-center gap-3 py-3">
+                          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-gold" />
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-2">
-                              <span className="truncate text-sm font-medium text-text-primary">{browser} <span className="text-text-muted">·</span> {os}</span>
+                              <span className="truncate text-sm font-medium text-fg">{browser} <span className="text-fg-3">·</span> {os}</span>
                               <Badge tone="info">{event.action === "user_signedup" ? "Conta criada" : "Login"}</Badge>
                             </div>
-                            <span className="mt-0.5 block text-xs text-text-secondary">{loginDateTime.format(new Date(event.occurredAt))}</span>
-                            <span className="mt-0.5 block break-all font-mono text-[11px] text-text-muted">IP: {event.ipAddress ?? "não registrado"}</span>
+                            <span className="mt-0.5 block text-xs text-fg-2">{loginDateTime.format(new Date(event.occurredAt))}</span>
+                            <span className="mt-0.5 block break-all font-mono text-[11px] text-fg-3">IP: {event.ipAddress ?? "não registrado"}</span>
                           </div>
                         </li>
                       );
                     })}
                   </ul>
                 ) : loginHistoryError ? null : (
-                  <p className="rounded-xl border border-dashed border-border px-4 py-4 text-sm leading-relaxed text-text-muted">Ainda não há eventos disponíveis. Para começar a registrar acessos, habilite o armazenamento de Audit Logs no banco em Supabase → Authentication → Audit Logs. O histórico começa a partir da ativação.</p>
+                  <p className="rounded-xl border border-dashed border-line px-4 py-4 text-sm leading-relaxed text-fg-3">Ainda não há eventos disponíveis. Para começar a registrar acessos, habilite o armazenamento de Audit Logs no banco em Supabase → Authentication → Audit Logs. O histórico começa a partir da ativação.</p>
                 )}
                 {loginHistoryError && <Notice tone="error">Não foi possível carregar o histórico: {loginHistoryError}</Notice>}
                 <Button type="button" variant="quiet" size="sm" className="self-start" onClick={() => void refreshLoginHistory()} disabled={loginHistoryLoading}>{loginHistoryLoading ? "Atualizando…" : "Atualizar histórico"}</Button>
@@ -640,7 +640,7 @@ export function SecuritySettingsPanel({ embedded = false }: { embedded?: boolean
                 <CardText>Este PIN protege somente os documentos marcados no Cofre. Ele não altera a senha nem o login da sua conta.</CardText>
                 {pinLoading ? <Skeleton className="h-11 w-full rounded-xl" /> : (
                   <form onSubmit={handleSetPin} className="flex min-w-0 flex-col gap-3.5">
-                    <p className="text-xs text-text-muted">Use pelo menos 6 dígitos numéricos.</p>
+                    <p className="text-xs text-fg-3">Use pelo menos 6 dígitos numéricos.</p>
                     <div className="flex min-w-0 flex-wrap gap-2.5">
                       {hasPin && <input type="password" inputMode="numeric" autoComplete="current-password" value={pinCurrentValue} onChange={(event) => setPinCurrentValue(event.target.value.replace(/\D/g, ""))} placeholder="PIN atual" aria-label="PIN atual" className={`${pinFieldClass} max-w-full`} />}
                       <input type="password" inputMode="numeric" autoComplete="new-password" value={pinValue} onChange={(event) => setPinValue(event.target.value.replace(/\D/g, ""))} placeholder={hasPin ? "Novo PIN" : "Criar PIN"} aria-label={hasPin ? "Novo PIN" : "Criar PIN"} className={`${pinFieldClass} max-w-full`} />

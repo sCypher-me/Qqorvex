@@ -252,17 +252,17 @@ export function PerfilPage() {
   const themeOptions = [...LEVEL_THEMES, VIP_THEME];
 
   return (
-    <div className="qv-page editorial-profile-page mx-auto flex w-full max-w-[1320px] flex-col gap-5 pb-8">
+    <div className=" editorial-profile-page mx-auto flex w-full max-w-[1320px] flex-col gap-5 pb-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="qv-eyebrow">Conta pessoal</p>
-          <h1 className="mt-1 font-display text-3xl font-semibold tracking-[-.04em] text-text-primary">Perfil</h1>
-          <p className="mt-1 text-sm text-text-secondary">Seus dados, sua identidade visual e a proteção da conta.</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Conta pessoal</p>
+          <h1 className="mt-1 font-display text-3xl font-semibold tracking-[-.04em] text-fg">Perfil</h1>
+          <p className="mt-1 text-sm text-fg-2">Seus dados, sua identidade visual e a proteção da conta.</p>
         </div>
-        <Link to="/assinatura" className="qv-btn qv-btn-secondary shrink-0">Planos e assinatura</Link>
+        <Link to="/assinatura" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 h-9 px-3.5 text-[13.5px] border border-line bg-raised text-fg hover:border-line-strong hover:bg-overlay shrink-0">Planos e assinatura</Link>
       </header>
 
-      <div className="-mx-1 overflow-x-auto border-b border-border px-1" aria-label="Seções do perfil">
+      <div className="-mx-1 overflow-x-auto border-b border-line px-1" aria-label="Seções do perfil">
         <ChipTabs options={PROFILE_SECTIONS} value={activeSection} onChange={changeSection} className="min-w-max flex-nowrap" />
       </div>
 
@@ -281,11 +281,11 @@ export function PerfilPage() {
       ) : (
         <>
           {activeSection === "dados" && (
-            <form onSubmit={handleSaveProfile} className="qv-card flex min-w-0 flex-col gap-5 p-5 sm:p-6">
+            <form onSubmit={handleSaveProfile} className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-5 p-5 sm:p-6">
               <div>
-                <p className="qv-eyebrow">Seus dados</p>
-                <h2 className="mt-1 font-display text-xl font-semibold text-text-primary">Informações do perfil</h2>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">Atualize como as pessoas encontram e reconhecem você no Qqorvex.</p>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Seus dados</p>
+                <h2 className="mt-1 font-display text-xl font-semibold text-fg">Informações do perfil</h2>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-fg-2">Atualize como as pessoas encontram e reconhecem você no Qqorvex.</p>
               </div>
               <div className="grid min-w-0 gap-4 sm:grid-cols-2">
                 <Input label="Nome de exibição" value={displayName} onChange={(event) => { setDisplayName(event.target.value); markProfileDirty(); }} placeholder="Como você quer ser chamado" autoComplete="name" />
@@ -313,30 +313,30 @@ export function PerfilPage() {
 
           {activeSection === "personalizacao" && (
             <div className="flex min-w-0 flex-col gap-5">
-              <section className="qv-card flex flex-wrap items-center gap-4 p-5 sm:p-6" aria-labelledby="profile-avatar-title">
+              <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex flex-wrap items-center gap-4 p-5 sm:p-6" aria-labelledby="profile-avatar-title">
                 <div className="relative h-16 w-16 shrink-0">
-                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="Foto atual do perfil" className="h-16 w-16 rounded-full border border-vex-cyan-dark object-cover" /> : <span aria-hidden className="grid h-16 w-16 place-items-center rounded-full border border-vex-cyan-dark bg-surface-3 font-display text-xl font-semibold">{nameInitials(draftName)}</span>}
-                  <label htmlFor="profile-avatar-file" title="Trocar foto de perfil" className={`absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full border border-vex-cyan-dark bg-surface-2 text-vex-cyan-bright shadow-lg hover:bg-surface-3 focus-within:ring-2 focus-within:ring-vex-cyan/30 ${avatarBusy ? "pointer-events-none opacity-60" : ""}`}>
+                  {profile?.avatar_url ? <img src={profile.avatar_url} alt="Foto atual do perfil" className="h-16 w-16 rounded-full border border-gold-line object-cover" /> : <span aria-hidden className="grid h-16 w-16 place-items-center rounded-full border border-gold-line bg-raised font-display text-xl font-semibold">{nameInitials(draftName)}</span>}
+                  <label htmlFor="profile-avatar-file" title="Trocar foto de perfil" className={`absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full border border-gold-line bg-surface text-gold-fg shadow-lg hover:bg-hover focus-within:ring-2 focus-within:ring-gold/30 ${avatarBusy ? "pointer-events-none opacity-60" : ""}`}>
                     <CameraIcon size={15} aria-hidden="true" />
                     <span className="sr-only">Trocar foto de perfil</span>
                   </label>
                   <input id="profile-avatar-file" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={avatarBusy} onChange={handleAvatarChange} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="qv-eyebrow">Sua identidade visual</p>
-                  <h2 id="profile-avatar-title" className="mt-1 font-display text-lg font-semibold text-text-primary">Foto de perfil</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-text-secondary">A imagem aparece junto ao seu nome na prévia e em áreas do app.</p>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Sua identidade visual</p>
+                  <h2 id="profile-avatar-title" className="mt-1 font-display text-lg font-semibold text-fg">Foto de perfil</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-fg-2">A imagem aparece junto ao seu nome na prévia e em áreas do app.</p>
                 </div>
                 {profile?.avatar_url && <Button type="button" variant="quiet" size="sm" disabled={avatarBusy} onClick={() => void handleRemoveAvatar()}>Remover foto</Button>}
-                {avatarBusy && <span role="status" className="text-xs text-text-muted">Atualizando…</span>}
+                {avatarBusy && <span role="status" className="text-xs text-fg-3">Atualizando…</span>}
               </section>
 
               <section className="flex min-w-0 flex-col gap-3.5" aria-labelledby="profile-themes-title">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="qv-eyebrow">Aparência do aplicativo</p>
-                    <h2 id="profile-themes-title" className="mt-1 font-display text-xl font-semibold text-text-primary">Tema do app</h2>
-                    <p className="mt-1 text-sm text-text-secondary">Temas de jornada são liberados por nível; o tema Coroa Vex acompanha o Plus.</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Aparência do aplicativo</p>
+                    <h2 id="profile-themes-title" className="mt-1 font-display text-xl font-semibold text-fg">Tema do app</h2>
+                    <p className="mt-1 text-sm text-fg-2">Temas de jornada são liberados por nível; o tema Coroa Vex acompanha o Plus.</p>
                   </div>
                   <Button type="button" variant="secondary" size="sm" disabled={skinSaving || skin === "default"} onClick={() => void handleChooseSkin("default")}>{skin === "default" ? "Tema original ativo" : "Restaurar original"}</Button>
                 </div>
@@ -365,32 +365,32 @@ export function PerfilPage() {
               </section>
 
               <form onSubmit={handleSaveProfile} className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(300px,.9fr)]">
-                <section className="qv-card flex min-w-0 flex-col gap-5 p-5 sm:p-6" aria-labelledby="profile-showcase-title">
+                <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-5 p-5 sm:p-6" aria-labelledby="profile-showcase-title">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="qv-eyebrow">Conquistas que representam você</p>
-                      <h2 id="profile-showcase-title" className="mt-1 font-display text-xl font-semibold text-text-primary">Títulos e badges</h2>
-                      <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">Escolha um título e até três insígnias conquistadas para sua vitrine.</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Conquistas que representam você</p>
+                      <h2 id="profile-showcase-title" className="mt-1 font-display text-xl font-semibold text-fg">Títulos e badges</h2>
+                      <p className="mt-1.5 text-[13px] leading-relaxed text-fg-2">Escolha um título e até três insígnias conquistadas para sua vitrine.</p>
                     </div>
-                    <span className="rounded-full border border-vex-gold-muted bg-chip-gold px-3 py-1 font-mono text-xs text-vex-gold-bright">{selectedBadgeKeys.length} / 3</span>
+                    <span className="rounded-full border border-gold-line bg-chip-gold px-3 py-1 font-mono text-xs text-gold-fg">{selectedBadgeKeys.length} / 3</span>
                   </div>
 
-                  <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-text-secondary">
+                  <label className="flex min-w-0 flex-col gap-2 text-xs font-medium text-fg-2">
                     Título em destaque
-                    <select value={selectedTitle} onChange={(event) => { setSelectedTitle(event.target.value); markProfileDirty(); }} className="qv-field h-11">
+                    <select value={selectedTitle} onChange={(event) => { setSelectedTitle(event.target.value); markProfileDirty(); }} className="q-input h-11">
                       {availableTitles.map((option) => <option key={option} value={option}>{option}</option>)}
                     </select>
                   </label>
 
                   <div>
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-xs font-medium text-text-secondary">Badges conquistados</span>
-                      <span className="text-[11px] text-text-muted">Selecione até 3</span>
+                      <span className="text-xs font-medium text-fg-2">Badges conquistados</span>
+                      <span className="text-[11px] text-fg-3">Selecione até 3</span>
                     </div>
                     {badgesLoading ? (
                       <div role="status" aria-label="Carregando badges" className="grid gap-2 sm:grid-cols-2"><SkeletonCards count={4} className="h-16 w-full rounded-xl" /></div>
                     ) : unlockedBadges.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border bg-surface-1/60 px-4 py-5 text-sm leading-relaxed text-text-muted">Conquiste seu primeiro marco para liberar badges nesta vitrine.</div>
+                      <div className="rounded-xl border border-dashed border-line bg-canvas/60 px-4 py-5 text-sm leading-relaxed text-fg-3">Conquiste seu primeiro marco para liberar badges nesta vitrine.</div>
                     ) : (
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {unlockedBadges.map((badge) => {
@@ -410,11 +410,11 @@ export function PerfilPage() {
                                 setSelectedBadgeKeys((current) => selected ? current.filter((key) => key !== badge.key) : [...current, badge.key]);
                                 markProfileDirty();
                               }}
-                              className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vex-gold-bright disabled:cursor-not-allowed disabled:opacity-40 ${selected ? "border-vex-gold-muted bg-chip-gold" : "border-border bg-surface-1 hover:border-vex-cyan-dark"}`}
+                              className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-40 ${selected ? "border-gold-line bg-chip-gold" : "border-line bg-canvas hover:border-gold-line"}`}
                             >
                               <span className="grid h-14 w-14 shrink-0 place-items-center"><SpecialBadgeArt badge={badge} className="h-14 w-14" /></span>
-                              <span className={`min-w-0 flex-1 truncate text-xs font-medium ${selected ? "text-vex-gold-bright" : "text-text-secondary"}`}>{badge.label}</span>
-                              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[11px] ${selected ? "border-vex-gold-bright text-vex-gold-bright" : "border-border text-transparent"}`} aria-hidden>✓</span>
+                              <span className={`min-w-0 flex-1 truncate text-xs font-medium ${selected ? "text-gold-fg" : "text-fg-2"}`}>{badge.label}</span>
+                              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[11px] ${selected ? "border-gold-line text-gold-fg" : "border-line text-transparent"}`} aria-hidden>✓</span>
                             </button>
                           );
                         })}
@@ -423,16 +423,16 @@ export function PerfilPage() {
                   </div>
                 </section>
 
-                <aside className="qv-card flex min-w-0 flex-col gap-4 p-5 sm:p-6" aria-labelledby="profile-preview-title">
+                <aside className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-4 p-5 sm:p-6" aria-labelledby="profile-preview-title">
                   <div>
-                    <p className="qv-eyebrow">Prévia do perfil</p>
-                    <h2 id="profile-preview-title" className="mt-1 font-display text-lg font-semibold text-text-primary">Assim as pessoas verão você</h2>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Prévia do perfil</p>
+                    <h2 id="profile-preview-title" className="mt-1 font-display text-lg font-semibold text-fg">Assim as pessoas verão você</h2>
                   </div>
-                  <div className="qv-well profile-preview-card flex min-w-0 items-start gap-3.5 p-4">
-                    {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full border border-vex-cyan-dark object-cover" /> : <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-vex-cyan-dark bg-surface-3 font-display font-semibold">{nameInitials(draftName)}</span>}
+                  <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 profile-preview-card flex min-w-0 items-start gap-3.5 p-4">
+                    {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full border border-gold-line object-cover" /> : <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-gold-line bg-raised font-display font-semibold">{nameInitials(draftName)}</span>}
                     <div className="min-w-0 flex-1">
-                      <p className="break-words text-sm font-semibold text-text-primary">{draftName}</p>
-                      <p className="mt-0.5 truncate text-xs text-text-muted">@{username || "seu_usuario"}</p>
+                      <p className="break-words text-sm font-semibold text-fg">{draftName}</p>
+                      <p className="mt-0.5 truncate text-xs text-fg-3">@{username || "seu_usuario"}</p>
                       <TitleBadge title={draftTitle} size="md" className="mt-2" />
                     </div>
                     <div className="profile-preview-badge-card" aria-label="Badges que aparecem no seu perfil">
@@ -443,7 +443,7 @@ export function PerfilPage() {
                       })}</div> : <small>Escolha até 3</small>}
                     </div>
                   </div>
-                  <p className="mt-auto text-xs leading-relaxed text-text-muted">A prévia acompanha suas escolhas e aparece no painel após salvar.</p>
+                  <p className="mt-auto text-xs leading-relaxed text-fg-3">A prévia acompanha suas escolhas e aparece no painel após salvar.</p>
                 </aside>
               </form>
             </div>
@@ -454,8 +454,8 @@ export function PerfilPage() {
       )}
 
       {profileDirty && (
-        <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-vex-cyan-dark bg-surface-2/95 p-3 shadow-xl backdrop-blur sm:px-5">
-          <p className="text-xs text-text-secondary">Você tem alterações de perfil não salvas.</p>
+        <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-line bg-surface/95 p-3 shadow-xl backdrop-blur sm:px-5">
+          <p className="text-xs text-fg-2">Você tem alterações de perfil não salvas.</p>
           <div className="flex items-center gap-2">
             <Button type="button" variant="quiet" size="sm" onClick={() => {
               if (!profile) return;

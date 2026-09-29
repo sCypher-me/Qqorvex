@@ -112,14 +112,14 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
   }
 
   return (
-    <div className="qv-card p-[22px] flex flex-col items-center gap-[18px]">
-      <h2 className="self-start font-display text-lg font-semibold text-text-primary">Pomodoro</h2>
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[22px] flex flex-col items-center gap-[18px]">
+      <h2 className="self-start font-display text-lg font-semibold text-fg">Pomodoro</h2>
 
       <ProgressRing value={progress * 100} size={180} thickness={14}>
-        <span className="font-mono text-[34px] font-semibold tabular-nums text-text-primary" role="timer">
+        <span className="font-mono text-[34px] font-semibold tabular-nums text-fg" role="timer">
           {String(minutesLeft).padStart(2, "0")}:{String(secondsLeft).padStart(2, "0")}
         </span>
-        <span className="text-[11px] tracking-[.1em] uppercase text-text-muted">
+        <span className="text-[11px] tracking-[.1em] uppercase text-fg-3">
           {session ? "foco" : "pronto"} · <span className="font-mono">{duration}</span> min
         </span>
       </ProgressRing>
@@ -129,7 +129,7 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
           <Button type="button" variant="quiet" className="w-full" onClick={handleCancel}>
             Encerrar
           </Button>
-          <span className="text-xs text-text-muted text-center leading-relaxed">
+          <span className="text-xs text-fg-3 text-center leading-relaxed">
             Encerrar antes do fim ou sair da aba perde a sessão.
           </span>
         </div>
@@ -147,8 +147,8 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
                   onClick={() => setDuration(d)}
                   className={`flex-1 rounded-xl py-2 font-mono text-[13px] border cursor-pointer transition-colors ${
                     selected
-                      ? "bg-chip-cyan border-vex-cyan-dark text-vex-cyan-bright"
-                      : "bg-vex-obsidian border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
+                      ? "bg-gold-soft border-gold-line text-gold-fg"
+                      : "bg-canvas border-line text-fg-2 hover:text-fg hover:border-line-strong"
                   }`}
                 >
                   {d}m
@@ -163,46 +163,46 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
       )}
 
       <div className="w-full flex flex-col">
-        <div className="qv-row-top flex items-baseline gap-2.5 py-2">
-          <span className="flex-1 text-[13px] text-text-primary">Concluídos hoje</span>
-          <span className="font-mono text-xs text-text-secondary">{completedToday}</span>
+        <div className="border-t border-line-soft flex items-baseline gap-2.5 py-2">
+          <span className="flex-1 text-[13px] text-fg">Concluídos hoje</span>
+          <span className="font-mono text-xs text-fg-2">{completedToday}</span>
         </div>
-        <div className="qv-row-top flex items-baseline gap-2.5 py-2">
-          <span className="flex-1 text-[13px] text-text-primary">Esta semana</span>
-          <span className="font-mono text-xs text-text-secondary">{completedThisWeek} sessões · {focusedMinutesThisWeek} min</span>
+        <div className="border-t border-line-soft flex items-baseline gap-2.5 py-2">
+          <span className="flex-1 text-[13px] text-fg">Esta semana</span>
+          <span className="font-mono text-xs text-fg-2">{completedThisWeek} sessões · {focusedMinutesThisWeek} min</span>
         </div>
       </div>
 
       {failedSession && (
-        <div className="w-full rounded-xl border border-error/30 bg-error/5 p-3" role="alert">
-          <p className="text-sm text-text-primary">A sessão terminou, mas não foi possível salvar o registro.</p>
+        <div className="w-full rounded-xl border border-danger/30 bg-error/5 p-3" role="alert">
+          <p className="text-sm text-fg">A sessão terminou, mas não foi possível salvar o registro.</p>
           <Button type="button" variant="quiet" size="sm" className="mt-2" disabled={logSession.isPending} onClick={() => saveSession(failedSession)}>
             {logSession.isPending ? "Salvando…" : "Tentar salvar novamente"}
           </Button>
         </div>
       )}
-      <section className="w-full border-t border-border pt-4" aria-labelledby="pomodoro-history-title">
+      <section className="w-full border-t border-line pt-4" aria-labelledby="pomodoro-history-title">
         <div className="mb-3 flex items-baseline gap-2">
-          <h3 id="pomodoro-history-title" className="flex-1 text-sm font-semibold text-text-primary">Sessões recentes</h3>
-          <span className="text-[11px] text-text-muted">concluídas e interrompidas</span>
+          <h3 id="pomodoro-history-title" className="flex-1 text-sm font-semibold text-fg">Sessões recentes</h3>
+          <span className="text-[11px] text-fg-3">concluídas e interrompidas</span>
         </div>
         {sessionsLoading ? (
           <SkeletonCards count={2} className="h-8 w-full rounded-xl" />
         ) : sessionsError ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-error/30 bg-error/5 p-3" role="alert">
-            <p className="flex-1 text-xs text-text-secondary">Não foi possível carregar as sessões salvas.</p>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/30 bg-error/5 p-3" role="alert">
+            <p className="flex-1 text-xs text-fg-2">Não foi possível carregar as sessões salvas.</p>
             <Button type="button" variant="quiet" size="sm" onClick={() => void retrySessions()}>Tentar novamente</Button>
           </div>
         ) : recentSessions.length === 0 ? (
-          <p className="qv-well px-3 py-2.5 text-xs leading-relaxed text-text-muted">Suas sessões aparecem aqui depois do primeiro foco.</p>
+          <p className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-3 py-2.5 text-xs leading-relaxed text-fg-3">Suas sessões aparecem aqui depois do primeiro foco.</p>
         ) : (
           <ul className="flex flex-col">
             {recentSessions.map((recent) => (
-              <li key={recent.id} className="qv-row-top flex items-center gap-2 py-2 text-xs">
+              <li key={recent.id} className="border-t border-line-soft flex items-center gap-2 py-2 text-xs">
                 <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${recent.status === "completed" ? "bg-success" : "bg-text-muted"}`} aria-hidden="true" />
-                <span className="flex-1 text-text-secondary">{formatSessionDate(recent.started_at)}</span>
-                <span className="font-mono text-text-primary">{recent.duration_minutes} min</span>
-                <span className="text-text-muted">{recent.status === "completed" ? "Concluída" : "Interrompida"}</span>
+                <span className="flex-1 text-fg-2">{formatSessionDate(recent.started_at)}</span>
+                <span className="font-mono text-fg">{recent.duration_minutes} min</span>
+                <span className="text-fg-3">{recent.status === "completed" ? "Concluída" : "Interrompida"}</span>
               </li>
             ))}
           </ul>

@@ -27,8 +27,8 @@ export function RedefinirSenhaPage() {
       <AuthLayout>
         <div className="flex flex-col gap-[18px] items-center text-center">
           <h1 className="font-display text-[24px] font-semibold m-0">Link inválido ou expirado</h1>
-          <p className="text-[13px] text-text-secondary m-0">Peça um novo link de redefinição.</p>
-          <Link to="/esqueci-senha" className="text-[13px] text-vex-cyan-bright hover:underline">
+          <p className="text-[13px] text-fg-2 m-0">Peça um novo link de redefinição.</p>
+          <Link to="/esqueci-senha" className="text-[13px] text-gold-fg hover:underline">
             Esqueci minha senha
           </Link>
         </div>
@@ -71,7 +71,7 @@ export function RedefinirSenhaPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[28px] font-semibold m-0">Nova senha</h1>
-          <p className="text-[13px] text-text-secondary m-0">Escolha uma nova senha pra sua conta.</p>
+          <p className="text-[13px] text-fg-2 m-0">Escolha uma nova senha pra sua conta.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -85,7 +85,7 @@ export function RedefinirSenhaPage() {
               required
             />
             {confirmPassword.length > 0 && (
-              <span className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${passwordsMatch ? "text-success" : "text-error"}`}>
+              <span className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${passwordsMatch ? "text-success" : "text-danger"}`}>
                 <StatusIcon ok={passwordsMatch} />
                 {passwordsMatch ? "As senhas coincidem." : "As senhas não coincidem."}
               </span>

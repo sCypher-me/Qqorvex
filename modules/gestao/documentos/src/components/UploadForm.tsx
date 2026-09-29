@@ -85,7 +85,7 @@ export function UploadForm({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={`qv-dropzone flex items-center gap-4 flex-wrap p-5 transition-colors ${
-          isDragging ? "border-vex-cyan-dark bg-chip-cyan" : ""
+          isDragging ? "border-gold-line bg-gold-soft" : ""
         }`}
       >
         <input
@@ -98,10 +98,10 @@ export function UploadForm({
           onChange={(event) => setSelectedFileName(event.target.files?.[0]?.name ?? null)}
         />
         <label htmlFor="qv-document-upload-file" className="flex-1 min-w-[220px] flex flex-col gap-1 cursor-pointer">
-          <span className="text-[15px] font-semibold text-text-primary truncate">
+          <span className="text-[15px] font-semibold text-fg truncate">
             {selectedFileName ?? "Arraste um arquivo ou selecione do computador"}
           </span>
-          <span className="text-[13px] text-text-secondary">
+          <span className="text-[13px] text-fg-2">
             {selectedFileName
               ? "Arquivo pronto. Escolha o tipo e envie — dá para corrigir o tipo depois."
               : "PDF, imagem ou documento. Você pode corrigir o tipo depois."}
@@ -112,7 +112,7 @@ export function UploadForm({
           defaultValue="outro"
           disabled={isUploading}
           aria-label="Tipo do documento"
-          className="qv-field w-auto py-2.5 px-3 text-[13px] text-text-secondary"
+          className="q-input w-auto py-2.5 px-3 text-[13px] text-fg-2"
         >
           {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
@@ -126,7 +126,7 @@ export function UploadForm({
             onChange={(event) => onFolderChange?.(event.target.value)}
             disabled={isUploading}
             aria-label="Salvar na pasta"
-            className="qv-field w-auto py-2.5 px-3 text-[13px] text-text-secondary"
+            className="q-input w-auto py-2.5 px-3 text-[13px] text-fg-2"
           >
             <option value="">Sem pasta</option>
             {folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}

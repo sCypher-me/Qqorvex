@@ -26,10 +26,10 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
   }
 
   return (
-    <section className="qv-card p-[18px] flex flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
-        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Contatos úteis</h2>
-        {!isLoading && <span className="font-mono text-xs text-text-muted">{contacts.length}</span>}
+        <h2 className="flex-1 text-[15px] font-semibold text-fg">Contatos úteis</h2>
+        {!isLoading && <span className="font-mono text-xs text-fg-3">{contacts.length}</span>}
       </div>
 
       {isLoading ? (
@@ -39,17 +39,17 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
       ) : (
         <ul className="flex flex-col gap-3">
           {contacts.map((contact) => (
-            <li key={contact.id} className="qv-row-top flex items-center gap-2.5 py-2">
-              <span className="flex-1 min-w-0 text-[13px] text-text-primary">
-                {contact.category && <span className="text-text-secondary">{contact.category} — </span>}
+            <li key={contact.id} className="border-t border-line-soft flex items-center gap-2.5 py-2">
+              <span className="flex-1 min-w-0 text-[13px] text-fg">
+                {contact.category && <span className="text-fg-2">{contact.category} — </span>}
                 {contact.name}
               </span>
               {contact.phone ? (
-                <a href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`} className="font-mono text-xs text-vex-cyan-bright hover:underline">{contact.phone}</a>
-              ) : <span className="font-mono text-xs text-text-muted">sem telefone</span>}
+                <a href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`} className="font-mono text-xs text-gold-fg hover:underline">{contact.phone}</a>
+              ) : <span className="font-mono text-xs text-fg-3">sem telefone</span>}
               <button
                 type="button"
-                className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
                 aria-label={`Excluir "${contact.name}"`}
                 title="Excluir"
                 onClick={() => setConfirmDeleteId(contact.id)}
@@ -62,7 +62,7 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
       )}
 
       {formOpen ? (
-        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+        <form onSubmit={handleSubmit} className="border-t border-line-soft pt-3 flex flex-col gap-2.5">
           <Input name="name" placeholder="Nome" aria-label="Nome" className="py-2 text-[13px]" autoFocus />
           <Input name="category" placeholder="Categoria (ex.: encanador)" aria-label="Categoria" className="py-2 text-[13px]" />
           <Input name="phone" placeholder="Telefone" aria-label="Telefone" className="py-2 text-[13px] font-mono" />
@@ -80,7 +80,7 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
           Adicionar
         </Button>
       )}
-      {createContact.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar. Os campos foram mantidos para você tentar novamente.</p>}
+      {createContact.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar. Os campos foram mantidos para você tentar novamente.</p>}
 
       <ConfirmDialog
         isOpen={confirmContact !== null}

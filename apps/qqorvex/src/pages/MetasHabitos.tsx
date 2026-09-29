@@ -92,15 +92,15 @@ export function MetasHabitosPage() {
   const showRoutines = view === "tudo" || view === "rotinas";
 
   return (
-    <div className="qv-page editorial-metas-page flex min-w-0 flex-col gap-6 pb-8">
+    <div className=" editorial-metas-page flex min-w-0 flex-col gap-6 pb-8">
       <section className="editorial-metas-header">
         <div className="flex min-w-0 flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0 max-w-2xl">
             <span className="editorial-eyebrow">{greeting().toUpperCase()} / SEU RITMO</span>
-            <h1 className="mt-4 font-display text-[clamp(34px,4vw,53px)] font-bold leading-none tracking-[-0.055em] text-text-primary">
+            <h1 className="mt-4 font-display text-[clamp(34px,4vw,53px)] font-bold leading-none tracking-[-0.055em] text-fg">
               Metas &amp; Hábitos
             </h1>
-            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-text-muted">
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-fg-3">
               Construa um ritmo que caiba na sua vida. Um passo por vez.
             </p>
           </div>
@@ -108,11 +108,11 @@ export function MetasHabitosPage() {
           {!isFirstRun && <div className="editorial-metas-focus min-w-0">
             <div className="flex items-baseline justify-between gap-5">
               <span className="editorial-eyebrow">HÁBITOS DE HOJE</span>
-              <strong className="text-2xl font-bold text-text-primary">{habitProgress}%</strong>
+              <strong className="text-2xl font-bold text-fg">{habitProgress}%</strong>
             </div>
             <ProgressBar value={habitProgress} tone="cyan" height={5} aria-label={`${habitProgress}% dos hábitos concluídos hoje`} />
-            <strong className="mt-3 block truncate text-sm font-semibold text-text-primary">{focusLabel}</strong>
-            <span className="mt-1 block text-xs text-text-muted">
+            <strong className="mt-3 block truncate text-sm font-semibold text-fg">{focusLabel}</strong>
+            <span className="mt-1 block text-xs text-fg-3">
                 {completedHabitsToday} de {activeHabits.length || 0} hábitos concluídos
             </span>
           </div>}
@@ -132,10 +132,10 @@ export function MetasHabitosPage() {
       )}
 
       {isFirstRun && (
-        <section className="editorial-metas-start border-l-[3px] border-brand-primary bg-surface-2 px-5 py-6 sm:px-7 sm:py-7" aria-labelledby="metas-start-title">
+        <section className="editorial-metas-start border-l-[3px] border-gold-line bg-surface px-5 py-6 sm:px-7 sm:py-7" aria-labelledby="metas-start-title">
           <span className="editorial-eyebrow">SEU PRIMEIRO PASSO</span>
-          <h2 id="metas-start-title" className="mt-2 font-display text-xl font-semibold text-text-primary">Comece pelo que faz sentido hoje.</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">Uma meta dá direção; um hábito ajuda a manter o ritmo. Escolha um para começar — você pode criar o outro depois.</p>
+          <h2 id="metas-start-title" className="mt-2 font-display text-xl font-semibold text-fg">Comece pelo que faz sentido hoje.</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-2">Uma meta dá direção; um hábito ajuda a manter o ritmo. Escolha um para começar — você pode criar o outro depois.</p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             <Button type="button" variant="primary" size="sm" onClick={() => setGoalModalOpen(true)}>
               <PlusIcon size={15} aria-hidden="true" /> Criar meta
@@ -157,7 +157,7 @@ export function MetasHabitosPage() {
       <div className="editorial-metas-toolbar flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <span className="editorial-eyebrow">SEU PAINEL</span>
-          <p className="mt-1 text-sm text-text-secondary">Acompanhe o que merece sua atenção agora.</p>
+          <p className="mt-1 text-sm text-fg-2">Acompanhe o que merece sua atenção agora.</p>
         </div>
         <ChipTabs options={VIEW_OPTIONS} value={view} onChange={setView} className="editorial-task-tabs" />
       </div>
@@ -227,7 +227,7 @@ export function MetasHabitosPage() {
               onAction={() => setHabitModalOpen(true)}
             />
           ) : (
-            <div className="qv-card overflow-hidden">
+            <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 overflow-hidden">
               {habits.map((habit) => (
                 <HabitCard
                   key={habit.id}
@@ -284,8 +284,8 @@ function MetricCard({
   tone: "gold" | "cyan" | "green" | "muted";
 }) {
   const toneClass = {
-    gold: "bg-brand-primary",
-    cyan: "bg-brand-primary",
+    gold: "bg-gold",
+    cyan: "bg-gold",
     green: "bg-success",
     muted: "bg-text-muted",
   }[tone];
@@ -293,9 +293,9 @@ function MetricCard({
   return (
     <div className="editorial-metas-stat min-w-0 p-4 sm:p-[18px]">
       <div className={`mb-3 h-[3px] w-6 rounded-full ${toneClass}`} />
-      <span className="block truncate text-xs uppercase tracking-[0.1em] text-text-muted">{label}</span>
-      <strong className="mt-1 block font-display text-[clamp(1.45rem,3vw,1.9rem)] font-semibold leading-none text-text-primary">{value}</strong>
-      <span className="mt-2 block truncate text-xs text-text-secondary">{detail}</span>
+      <span className="block truncate text-xs uppercase tracking-[0.1em] text-fg-3">{label}</span>
+      <strong className="mt-1 block font-display text-[clamp(1.45rem,3vw,1.9rem)] font-semibold leading-none text-fg">{value}</strong>
+      <span className="mt-2 block truncate text-xs text-fg-2">{detail}</span>
     </div>
   );
 }
@@ -314,12 +314,12 @@ function ResourceEmptyState({
   onAction: () => void;
 }) {
   return (
-    <div className="editorial-metas-empty relative overflow-hidden border-l-[3px] border-brand-primary bg-surface-2 px-5 py-6 sm:px-7 sm:py-7">
+    <div className="editorial-metas-empty relative overflow-hidden border-l-[3px] border-gold-line bg-surface px-5 py-6 sm:px-7 sm:py-7">
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         <div className="min-w-0 max-w-2xl">
           <span className="editorial-eyebrow">{eyebrow}</span>
-          <h3 className="mt-2 font-display text-lg font-semibold text-text-primary">{title}</h3>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{description}</p>
+          <h3 className="mt-2 font-display text-lg font-semibold text-fg">{title}</h3>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-fg-2">{description}</p>
         </div>
         <Button type="button" variant="secondary" size="sm" className="shrink-0 self-start sm:self-center" onClick={onAction}>
           {action}

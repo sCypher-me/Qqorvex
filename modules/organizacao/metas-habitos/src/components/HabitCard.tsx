@@ -70,10 +70,10 @@ function lastSevenDays(today: string): string[] {
 }
 
 const WEEK_CELL: Record<HabitLogState | "vazio", string> = {
-  concluido: "bg-vex-cyan border-vex-cyan-dark",
-  parcial: "bg-chip-cyan border-vex-cyan-dark",
-  pulado: "bg-transparent border-border",
-  vazio: "bg-transparent border-border",
+  concluido: "bg-gold border-gold-line",
+  parcial: "bg-gold-soft border-gold-line",
+  pulado: "bg-transparent border-line",
+  vazio: "bg-transparent border-line",
 };
 
 /** Linha de hábito (dentro do card-lista "Hábitos"): semana, sequência, status e registro do dia. */
@@ -99,13 +99,13 @@ export function HabitCard({
   const weeklyTarget = getHabitWeeklyTarget(habit);
 
   return (
-    <div className="qv-row flex items-center gap-x-4 gap-y-2.5 px-[18px] py-[14px] flex-wrap">
+    <div className="border-b border-line-soft last:border-b-0 flex items-center gap-x-4 gap-y-2.5 px-[18px] py-[14px] flex-wrap">
       <div className="flex-1 min-w-[160px] flex flex-col gap-[3px]">
-        <span className="text-sm font-medium text-text-primary">{habit.name}</span>
-        <span className="text-xs text-text-muted">
+        <span className="text-sm font-medium text-fg">{habit.name}</span>
+        <span className="text-xs text-fg-3">
           {cadenceLabel(habit)}{habit.category ? ` · ${habit.category}` : ""}
         </span>
-        {habit.description && <span className="mt-1 max-w-xl text-xs leading-relaxed text-text-secondary">{habit.description}</span>}
+        {habit.description && <span className="mt-1 max-w-xl text-xs leading-relaxed text-fg-2">{habit.description}</span>}
       </div>
 
       <div className="flex gap-1.5" aria-label={`Últimos 7 dias: ${completedThisWeek} concluídos`}>
@@ -122,10 +122,10 @@ export function HabitCard({
         })}
       </div>
 
-      <span className="font-mono text-[13px] text-text-secondary w-[66px] text-right">
+      <span className="font-mono text-[13px] text-fg-2 w-[66px] text-right">
         {streak} {streak === 1 ? "dia" : "dias"}
       </span>
-      <span className="font-mono text-[11px] text-text-muted">
+      <span className="font-mono text-[11px] text-fg-3">
         {habit.frequency_type === "mensal"
           ? `${logs.filter((log) => log.state === "concluido" && log.log_date >= shiftDateKey(today, -29)).length} nos últimos 30 dias`
           : weeklyTarget === null
@@ -154,7 +154,7 @@ export function HabitCard({
         </Button>
         <button
           type="button"
-          className="qv-icon-btn"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40"
           aria-label={`Excluir "${habit.name}"`}
           title="Excluir"
           onClick={() => setConfirmOpen(true)}

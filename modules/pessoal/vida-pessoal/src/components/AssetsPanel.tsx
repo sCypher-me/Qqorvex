@@ -33,10 +33,10 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
   }
 
   return (
-    <section className="qv-card p-[18px] flex flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
-        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Bens e inventário</h2>
-        {!isLoading && <span className="font-mono text-xs text-text-muted">{assets.length}</span>}
+        <h2 className="flex-1 text-[15px] font-semibold text-fg">Bens e inventário</h2>
+        {!isLoading && <span className="font-mono text-xs text-fg-3">{assets.length}</span>}
       </div>
 
       {isLoading ? (
@@ -48,17 +48,17 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
           {assets.map((asset) => {
             const details = [asset.category, asset.location].filter(Boolean).join(" · ");
             return (
-              <li key={asset.id} className="qv-row-top flex items-center gap-2.5 py-2">
+              <li key={asset.id} className="border-t border-line-soft flex items-center gap-2.5 py-2">
                 <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <span className="text-[13px] text-text-primary">{asset.name}</span>
-                  {details && <span className="text-xs text-text-muted">{details}</span>}
+                  <span className="text-[13px] text-fg">{asset.name}</span>
+                  {details && <span className="text-xs text-fg-3">{details}</span>}
                 </span>
-                <span className="font-mono text-xs text-text-secondary">
+                <span className="font-mono text-xs text-fg-2">
                   {asset.estimated_value ? brl.format(asset.estimated_value) : "—"}
                 </span>
                 <button
                   type="button"
-                  className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
                   aria-label={`Excluir "${asset.name}"`}
                   title="Excluir"
                   onClick={() => setConfirmDeleteId(asset.id)}
@@ -72,7 +72,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
       )}
 
       {formOpen ? (
-        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+        <form onSubmit={handleSubmit} className="border-t border-line-soft pt-3 flex flex-col gap-2.5">
           <Input name="name" placeholder="Item" aria-label="Item" className="py-2 text-[13px]" autoFocus />
           <div className="grid grid-cols-2 gap-2">
             <Input name="category" placeholder="Categoria" aria-label="Categoria" className="py-2 text-[13px]" />
@@ -114,7 +114,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
           Adicionar
         </Button>
       )}
-      {createAsset.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar o bem; os campos continuam preenchidos.</p>}
+      {createAsset.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar o bem; os campos continuam preenchidos.</p>}
 
       <ConfirmDialog
         isOpen={confirmAsset !== null}

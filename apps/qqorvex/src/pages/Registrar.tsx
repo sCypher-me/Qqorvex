@@ -91,11 +91,11 @@ export function RegistrarPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[28px] font-semibold m-0">Criar conta</h1>
-          <p className="text-[13px] text-text-secondary m-0">Você recebe um e-mail para confirmar o cadastro.</p>
+          <p className="text-[13px] text-fg-2 m-0">Você recebe um e-mail para confirmar o cadastro.</p>
         </div>
 
         <div className="flex flex-col gap-3.5">
-          <span className="qv-eyebrow">Identidade</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Identidade</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Nome completo"
@@ -119,7 +119,7 @@ export function RegistrarPage() {
             <PhoneField value={phone} onChange={setPhone} />
           </div>
 
-          <span className="qv-eyebrow mt-1.5">Acesso</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 mt-1.5">Acesso</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <PasswordField
               label="Senha"
@@ -139,7 +139,7 @@ export function RegistrarPage() {
                 required
               />
               {(confirmTouched || confirmPassword.length > 0) && confirmPassword.length > 0 && (
-                <span className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${passwordsMatch ? "text-success" : "text-error"}`}>
+                <span className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${passwordsMatch ? "text-success" : "text-danger"}`}>
                   <StatusIcon ok={passwordsMatch} />
                   {passwordsMatch ? "As senhas coincidem." : "As senhas não coincidem."}
                 </span>
@@ -169,7 +169,7 @@ export function RegistrarPage() {
 
         <OAuthButtons />
 
-        <Link to="/login" className="text-[13px] text-text-secondary hover:text-text-primary">
+        <Link to="/login" className="text-[13px] text-fg-2 hover:text-fg">
           Já tem conta? Entrar
         </Link>
       </form>

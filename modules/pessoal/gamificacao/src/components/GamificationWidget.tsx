@@ -41,10 +41,10 @@ export function GamificationWidget({ progress, title, highlight, stats }: Gamifi
   const rightStats = stats ?? [{ value: formatXp(progress.xp), label: "XP total" }];
 
   return (
-    <div className="qv-card-milestone w-full flex items-center gap-7 flex-wrap px-6 py-[22px]">
+    <div className="min-w-0 rounded-xl border border-gold-line bg-gold-soft/40 w-full flex items-center gap-7 flex-wrap px-6 py-[22px]">
       <ProgressRing value={progress.progressPercent} size={96} thickness={9} tone="gold">
-        <span className="font-mono text-[22px] font-semibold leading-none text-vex-gold-bright">{progress.level}</span>
-        <span className="text-[10px] tracking-[.1em] uppercase text-text-muted mt-0.5">Nível</span>
+        <span className="font-mono text-[22px] font-semibold leading-none text-gold-fg">{progress.level}</span>
+        <span className="text-[10px] tracking-[.1em] uppercase text-fg-3 mt-0.5">Nível</span>
       </ProgressRing>
 
       <div className="flex-1 min-w-[220px] flex flex-col gap-2.5">
@@ -52,18 +52,18 @@ export function GamificationWidget({ progress, title, highlight, stats }: Gamifi
           <span className="font-display text-[22px] font-semibold">{title}</span>
           {highlight && <Badge tone="premium">{highlight}</Badge>}
         </div>
-        <span className="text-[13px] text-text-secondary">
+        <span className="text-[13px] text-fg-2">
           <LevelProgressText progress={progress} />
         </span>
         <ProgressBar value={progress.progressPercent} tone="gold" height={7} />
       </div>
 
       {rightStats.length > 0 && (
-        <div className="flex gap-7 pl-3 border-l border-border">
+        <div className="flex gap-7 pl-3 border-l border-line">
           {rightStats.map((stat) => (
             <div key={stat.label} className="flex flex-col gap-[3px]">
               <span className="font-mono text-[26px] font-semibold leading-tight">{stat.value}</span>
-              <span className="text-[11px] tracking-[.08em] uppercase text-text-muted">{stat.label}</span>
+              <span className="text-[11px] tracking-[.08em] uppercase text-fg-3">{stat.label}</span>
             </div>
           ))}
         </div>

@@ -38,14 +38,14 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (mfaError) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg px-6 text-center">
-        <div className="qv-card w-full max-w-md p-6">
+        <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 w-full max-w-md p-6">
           <h1 className="font-display text-xl font-semibold">Não foi possível validar sua sessão</h1>
-          <p className="mt-2 text-sm text-text-secondary">
+          <p className="mt-2 text-sm text-fg-2">
             Verifique sua conexão e tente novamente. Por segurança, o acesso fica bloqueado até a validação terminar.
           </p>
           <button
             type="button"
-            className="qv-btn qv-btn-primary mt-5"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 h-9 px-3.5 text-[13.5px] bg-gold text-on-gold hover:bg-gold-hover mt-5"
             onClick={() => setRetry((value) => value + 1)}
           >
             Tentar novamente
@@ -59,10 +59,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       <main
         aria-busy="true"
         aria-label="Validando sua sessão"
-        className="flex min-h-screen items-center justify-center bg-bg px-6 text-text-secondary"
+        className="flex min-h-screen items-center justify-center bg-bg px-6 text-fg-2"
       >
         <div role="status" aria-live="polite" className="flex items-center gap-2.5 text-sm">
-          <span className="h-[7px] w-[7px] animate-core-glow rounded-full bg-vex-cyan-bright" />
+          <span className="h-[7px] w-[7px] animate-pulse-soft rounded-full bg-gold" />
           Validando sua sessão...
         </div>
       </main>

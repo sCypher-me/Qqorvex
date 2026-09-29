@@ -61,15 +61,15 @@ export function NewGoalForm({
         required
       />
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
-        Descrição <span className="text-xs font-normal text-text-muted">opcional</span>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+        Descrição <span className="text-xs font-normal text-fg-3">opcional</span>
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Por que essa meta importa? Qual resultado você espera?"
           rows={3}
           maxLength={600}
-          className="qv-field min-h-20 resize-y py-2.5"
+          className="q-input min-h-20 resize-y py-2.5"
         />
       </label>
 
@@ -81,23 +81,23 @@ export function NewGoalForm({
           placeholder="Ex.: saúde, carreira"
           maxLength={40}
         />
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
-          Prazo <span className="text-xs font-normal text-text-muted">opcional</span>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+          Prazo <span className="text-xs font-normal text-fg-3">opcional</span>
           <input
             type="date"
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
             min={localDateKey()}
-            className="qv-field py-2.5"
+            className="q-input py-2.5"
           />
         </label>
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium text-text-primary">Como acompanhar</legend>
+        <legend className="mb-1 text-sm font-medium text-fg">Como acompanhar</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {PROGRESS_OPTIONS.map((option) => (
-            <label key={option.value} className="qv-well flex cursor-pointer items-start gap-2.5 p-3">
+            <label key={option.value} className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex cursor-pointer items-start gap-2.5 p-3">
               <input
                 type="radio"
                 name="goal-progress-type"
@@ -107,8 +107,8 @@ export function NewGoalForm({
                 className="mt-1 accent-[var(--qv-brand-primary)]"
               />
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-text-primary">{option.label}</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-text-muted">{option.hint}</span>
+                <span className="block text-sm font-semibold text-fg">{option.label}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-fg-3">{option.hint}</span>
               </span>
             </label>
           ))}
@@ -116,25 +116,25 @@ export function NewGoalForm({
       </fieldset>
 
       {progressType === "marcos" && (
-        <p className="-mt-2 text-xs leading-relaxed text-text-muted">Você poderá adicionar etapas logo depois de criar a meta.</p>
+        <p className="-mt-2 text-xs leading-relaxed text-fg-3">Você poderá adicionar etapas logo depois de criar a meta.</p>
       )}
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
         Situação inicial
-        <select value={status} onChange={(event) => setStatus(event.target.value as "ativa" | "planejada")} className="qv-field py-2.5">
+        <select value={status} onChange={(event) => setStatus(event.target.value as "ativa" | "planejada")} className="q-input py-2.5">
           <option value="ativa">Começar agora</option>
           <option value="planejada">Deixar planejada</option>
         </select>
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
-        Lembrete pessoal <span className="text-xs font-normal text-text-muted">opcional</span>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+        Lembrete pessoal <span className="text-xs font-normal text-fg-3">opcional</span>
         <input
           value={motivationNote}
           onChange={(event) => setMotivationNote(event.target.value)}
           placeholder="O que você quer lembrar nos dias difíceis?"
           maxLength={240}
-          className="qv-field py-2.5"
+          className="q-input py-2.5"
         />
       </label>
 

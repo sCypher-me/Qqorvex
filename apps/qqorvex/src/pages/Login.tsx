@@ -78,7 +78,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[28px] font-semibold m-0">Entrar no Qqorvex</h1>
-          <p className="text-[13px] text-text-secondary m-0">Sessão protegida por 2FA. Você confirma cada ação sensível.</p>
+          <p className="text-[13px] text-fg-2 m-0">Sessão protegida por 2FA. Você confirma cada ação sensível.</p>
         </div>
 
         <div className="flex flex-col gap-3.5">
@@ -100,7 +100,7 @@ export function LoginPage() {
             required
             className="py-3 text-[15px]"
           />
-          <Link to="/esqueci-senha" className="self-end text-[13px] text-text-secondary hover:text-text-primary -mt-1.5">
+          <Link to="/esqueci-senha" className="self-end text-[13px] text-fg-2 hover:text-fg -mt-1.5">
             Esqueci minha senha
           </Link>
         </div>
@@ -137,7 +137,7 @@ export function LoginPage() {
 
         <OAuthButtons />
 
-        <Link to="/criar-conta" className="text-[13px] text-text-secondary hover:text-text-primary">
+        <Link to="/criar-conta" className="text-[13px] text-fg-2 hover:text-fg">
           Ainda não possui uma conta? Criar conta
         </Link>
       </form>

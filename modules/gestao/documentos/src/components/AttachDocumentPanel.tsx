@@ -30,19 +30,19 @@ export function AttachDocumentPanel({
 
   return (
     <div className="flex flex-col gap-[10px]">
-      <span className="qv-eyebrow">Documentos relacionados</span>
+      <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Documentos relacionados</span>
 
       {isLoading ? (
-        <div className="qv-well">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40">
           <SkeletonList rows={2} subtitle={false} className="px-3 py-2" />
         </div>
       ) : attached.length === 0 ? (
         <EmptyState>Nenhum documento relacionado.</EmptyState>
       ) : (
-        <ul className="qv-well flex flex-col">
+        <ul className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex flex-col">
           {attached.map((doc) => (
-            <li key={doc.id} className="qv-row flex items-center gap-3 px-3 py-[9px]">
-              <span className="w-[26px] h-[32px] shrink-0 rounded-[5px] border border-border bg-vex-obsidian flex items-center justify-center font-mono text-[9px] text-text-muted">
+            <li key={doc.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-3 px-3 py-[9px]">
+              <span className="w-[26px] h-[32px] shrink-0 rounded-[5px] border border-line bg-canvas flex items-center justify-center font-mono text-[9px] text-fg-3">
                 {documentExtension(doc)}
               </span>
               <span className="flex-1 min-w-0 text-[13px] truncate">{doc.file_name}</span>
@@ -60,7 +60,7 @@ export function AttachDocumentPanel({
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
             aria-label="Documento para relacionar"
-            className="qv-field flex-[1_1_200px] py-[7px] px-3 text-[13px]"
+            className="q-input flex-[1_1_200px] py-[7px] px-3 text-[13px]"
           >
             <option value="">Relacionar um documento...</option>
             {attachableDocuments.map((doc) => (

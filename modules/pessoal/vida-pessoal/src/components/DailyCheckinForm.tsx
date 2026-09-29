@@ -20,7 +20,7 @@ function ScaleSelector({
 }) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-[13px] text-text-secondary">{label}</span>
+      <span className="text-[13px] text-fg-2">{label}</span>
       <div className="flex gap-2" role="radiogroup" aria-label={label}>
         {SCALE.map((scaleValue) => {
           const selected = value === scaleValue;
@@ -35,8 +35,8 @@ function ScaleSelector({
               onClick={() => onChange(scaleValue)}
               className={`flex-1 rounded-xl py-3.5 text-[24px] leading-none border cursor-pointer transition-colors ${
                 selected
-                  ? "bg-chip-cyan border-vex-cyan-dark text-vex-cyan-bright"
-                  : "bg-vex-obsidian border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
+                  ? "bg-gold-soft border-gold-line text-gold-fg"
+                  : "bg-canvas border-line text-fg-2 hover:text-fg hover:border-line-strong"
               }`}
             >
               <span aria-hidden="true">{SCALE_EMOJI[scaleValue - 1]}</span>
@@ -44,7 +44,7 @@ function ScaleSelector({
           );
         })}
       </div>
-      <div className="flex justify-between text-[10px] text-text-muted"><span>{SCALE_HINT[0]}</span><span>{SCALE_HINT[4]}</span></div>
+      <div className="flex justify-between text-[10px] text-fg-3"><span>{SCALE_HINT[0]}</span><span>{SCALE_HINT[4]}</span></div>
     </div>
   );
 }
@@ -52,10 +52,10 @@ function ScaleSelector({
 function ScaleSummary({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-[13px] text-text-secondary">{label}</span>
+      <span className="text-[13px] text-fg-2">{label}</span>
       <div className="flex items-center gap-3.5">
         <ProgressBar value={(value / 5) * 100} className="flex-1" />
-        <span className="font-mono text-sm text-text-primary">{value}/5</span>
+        <span className="font-mono text-sm text-fg">{value}/5</span>
       </div>
     </div>
   );
@@ -63,9 +63,9 @@ function ScaleSummary({ label, value }: { label: string; value: number }) {
 
 function CheckinCard({ actions, children, showTitle = true }: { actions?: ReactNode; children: ReactNode; showTitle?: boolean }) {
   return (
-    <div className="qv-card p-[22px] flex flex-col gap-[18px]">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[22px] flex flex-col gap-[18px]">
       {(showTitle || actions) && <div className="flex items-center gap-3">
-        {showTitle && <h2 className="flex-1 font-display text-lg font-semibold text-text-primary">Check-in diário</h2>}
+        {showTitle && <h2 className="flex-1 font-display text-lg font-semibold text-fg">Check-in diário</h2>}
         {actions}
       </div>}
       {children}
@@ -82,9 +82,9 @@ function formatHistoryDate(isoDate: string): string {
 function HistoryMetric({ label, value }: { label: string; value: number }) {
   return (
     <div className="min-w-0">
-      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-text-muted">
+      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-fg-3">
         <span className="truncate">{label}</span>
-        <span className="font-mono text-text-secondary">{value}/5</span>
+        <span className="font-mono text-fg-2">{value}/5</span>
       </div>
       <ProgressBar value={(value / 5) * 100} height={4} />
     </div>
@@ -106,39 +106,39 @@ function CheckinHistory({ checkins, today, isLoading, error, onRetry }: {
     : null;
 
   return (
-    <section className="qv-card gap-4 p-[22px]" aria-labelledby="checkin-history-title">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 gap-4 p-[22px]" aria-labelledby="checkin-history-title">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
-          <p className="qv-eyebrow text-vex-gold-bright">Olhe para trás</p>
-          <h2 id="checkin-history-title" className="mt-1 font-display text-lg font-semibold text-text-primary">Histórico de check-ins</h2>
-          <p className="mt-1 text-xs text-text-muted">Uma visão curta dos últimos dias para perceber padrões, não para se cobrar.</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">Olhe para trás</p>
+          <h2 id="checkin-history-title" className="mt-1 font-display text-lg font-semibold text-fg">Histórico de check-ins</h2>
+          <p className="mt-1 text-xs text-fg-3">Uma visão curta dos últimos dias para perceber padrões, não para se cobrar.</p>
         </div>
-        {average && <span className="font-mono text-xs text-text-secondary">média de {previousCheckins.length} registros · {average}/5</span>}
+        {average && <span className="font-mono text-xs text-fg-2">média de {previousCheckins.length} registros · {average}/5</span>}
       </div>
       {isLoading ? (
         <SkeletonCards count={3} className="h-14 w-full rounded-xl" />
       ) : error ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-error/30 bg-error/5 px-3.5 py-3" role="alert">
-          <p className="flex-1 text-sm text-text-secondary">Não foi possível carregar o histórico agora.</p>
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/30 bg-error/5 px-3.5 py-3" role="alert">
+          <p className="flex-1 text-sm text-fg-2">Não foi possível carregar o histórico agora.</p>
           <Button type="button" variant="quiet" size="sm" onClick={onRetry}>Tentar novamente</Button>
         </div>
       ) : visibleCheckins.length === 0 ? (
-        <div className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-secondary">Seus registros anteriores aparecerão aqui depois do próximo check-in.</div>
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-3.5 py-3 text-sm leading-relaxed text-fg-2">Seus registros anteriores aparecerão aqui depois do próximo check-in.</div>
       ) : (
         <div className="flex flex-col gap-2">
           {visibleCheckins.map((checkin) => (
-            <article key={checkin.id} className="rounded-xl border border-border bg-vex-obsidian/55 p-3.5">
+            <article key={checkin.id} className="rounded-xl border border-line bg-vex-obsidian/55 p-3.5">
               <div className="mb-3 flex items-center gap-3">
-                <span className="font-mono text-xs uppercase tracking-[.08em] text-vex-cyan-bright">{formatHistoryDate(checkin.checkin_date)}</span>
+                <span className="font-mono text-xs uppercase tracking-[.08em] text-gold-fg">{formatHistoryDate(checkin.checkin_date)}</span>
                 <span className="h-px flex-1 bg-border" aria-hidden="true" />
-                {checkin.note && <span className="max-w-[45%] truncate text-xs text-text-muted" title={checkin.note}>nota registrada</span>}
+                {checkin.note && <span className="max-w-[45%] truncate text-xs text-fg-3" title={checkin.note}>nota registrada</span>}
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <HistoryMetric label="Humor" value={checkin.mood} />
                 <HistoryMetric label="Sono" value={checkin.sleep_quality} />
                 <HistoryMetric label="Energia" value={checkin.energy} />
               </div>
-              {checkin.note && <p className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-text-secondary">{checkin.note}</p>}
+              {checkin.note && <p className="mt-3 border-t border-line pt-3 text-xs leading-relaxed text-fg-2">{checkin.note}</p>}
             </article>
           ))}
         </div>
@@ -204,25 +204,25 @@ export function DailyCheckinForm({
           </Button>
         }
       >
-        <div className="qv-well flex items-center gap-3 px-3.5 py-3">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex items-center gap-3 px-3.5 py-3">
           <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-          <span className="text-sm text-text-primary">Check-in de hoje registrado</span>
-          <span className="ml-auto font-mono text-xs text-text-muted">{today.split("-").reverse().join("/")}</span>
+          <span className="text-sm text-fg">Check-in de hoje registrado</span>
+          <span className="ml-auto font-mono text-xs text-fg-3">{today.split("-").reverse().join("/")}</span>
         </div>
         <ScaleSummary label="Humor" value={checkin.mood} />
         <ScaleSummary label="Qualidade do sono" value={checkin.sleep_quality} />
         <ScaleSummary label="Energia" value={checkin.energy} />
-        {checkin.note && <p className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-primary">{checkin.note}</p>}
+        {checkin.note && <p className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-3.5 py-3 text-sm leading-relaxed text-fg">{checkin.note}</p>}
       </CheckinCard>
     );
   } else {
     currentCheckin = (
       <CheckinCard showTitle={showTitle}>
-        {checkinError && <div className="flex items-center gap-3 rounded-xl border border-error/30 bg-error/5 px-3.5 py-3" role="alert">
-          <p className="flex-1 text-sm text-text-secondary">Não foi possível confirmar se você já registrou o check-in de hoje.</p>
+        {checkinError && <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-error/5 px-3.5 py-3" role="alert">
+          <p className="flex-1 text-sm text-fg-2">Não foi possível confirmar se você já registrou o check-in de hoje.</p>
           <Button type="button" variant="quiet" size="sm" onClick={() => void retryCheckin()}>Recarregar</Button>
         </div>}
-        <div className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-secondary">Leva menos de um minuto. Use as notas para registrar contexto, não para criar mais uma tarefa.</div>
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-3.5 py-3 text-sm leading-relaxed text-fg-2">Leva menos de um minuto. Use as notas para registrar contexto, não para criar mais uma tarefa.</div>
         <ScaleSelector label="Como está seu humor hoje?" value={mood} onChange={setMood} />
         <ScaleSelector label="Qualidade do sono" value={sleepQuality} onChange={setSleepQuality} />
         <ScaleSelector label="Como está sua energia hoje?" value={energy} onChange={setEnergy} />
@@ -232,7 +232,7 @@ export function DailyCheckinForm({
           maxLength={500}
           placeholder="Uma linha sobre o dia (opcional, até 500 caracteres)"
           aria-label="Nota do dia"
-          className="qv-field"
+          className="q-input"
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -253,9 +253,9 @@ export function DailyCheckinForm({
             {upsertCheckin.isPending ? "Salvando…" : checkin ? "Salvar alterações" : "Salvar check-in"}
           </Button>
           {editing && checkin && <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancelar edição</Button>}
-          <span className="ml-auto text-[11px] text-text-muted">{note.length}/500</span>
+          <span className="ml-auto text-[11px] text-fg-3">{note.length}/500</span>
         </div>
-        {upsertCheckin.isError && <p className="text-sm text-error" role="alert">Não foi possível salvar. Seus dados continuam aqui; tente novamente.</p>}
+        {upsertCheckin.isError && <p className="text-sm text-danger" role="alert">Não foi possível salvar. Seus dados continuam aqui; tente novamente.</p>}
       </CheckinCard>
     );
   }

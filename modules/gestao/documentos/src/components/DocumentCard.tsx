@@ -73,15 +73,15 @@ export function DocumentCard({
 
   if (isMasked) {
     return (
-      <div className="qv-row flex items-center gap-[14px] px-[18px] py-[14px]" aria-label="Documento no Cofre">
+      <div className="border-b border-line-soft last:border-b-0 flex items-center gap-[14px] px-[18px] py-[14px]" aria-label="Documento no Cofre">
         <ExtThumb label={documentExtension(document)} />
         <div className="flex-[1_1_140px] min-w-0 flex flex-col gap-[3px]">
           <span className="text-sm font-medium truncate blur-[5px] select-none" aria-hidden="true">
             Documento protegido
           </span>
-          <span className="font-mono text-xs text-text-muted truncate">documento do cofre</span>
+          <span className="font-mono text-xs text-fg-3 truncate">documento do cofre</span>
         </div>
-        <span className="qv-pill qv-pill-warning shrink-0">Cofre</span>
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium bg-warning-soft text-warning shrink-0">Cofre</span>
         <span className="font-mono text-xs whitespace-nowrap shrink-0 text-right text-warning">bloqueado</span>
       </div>
     );
@@ -97,7 +97,7 @@ export function DocumentCard({
     .join(" · ");
 
   return (
-    <div className={`qv-row flex flex-col ${isFocused ? "bg-chip-cyan" : ""}`}>
+    <div className={`border-b border-line-soft last:border-b-0 flex flex-col ${isFocused ? "bg-gold-soft" : ""}`}>
       <div
         role="button"
         tabIndex={0}
@@ -109,11 +109,11 @@ export function DocumentCard({
             onFocus?.();
           }
         }}
-        className="flex items-center gap-[14px] px-[18px] py-[14px] cursor-pointer hover:bg-chip-neutral outline-none focus-visible:bg-chip-cyan"
+        className="flex items-center gap-[14px] px-[18px] py-[14px] cursor-pointer hover:bg-hover outline-none focus-visible:bg-gold-soft"
       >
         <ExtThumb label={documentExtension(document)} active={isFocused} />
         <div className="flex-[1_1_140px] min-w-0 flex flex-col gap-[3px]">
-          <span className="text-sm font-medium truncate text-text-primary">
+          <span className="text-sm font-medium truncate text-fg">
             {document.is_important && (
               <span className="text-warning mr-1.5" title="Importante">
                 ★
@@ -121,14 +121,14 @@ export function DocumentCard({
             )}
             {document.file_name}
           </span>
-          <span className="font-mono text-xs text-text-muted truncate">{meta}</span>
+          <span className="font-mono text-xs text-fg-3 truncate">{meta}</span>
         </div>
-        <span className={`qv-pill shrink-0 ${document.is_vault ? "qv-pill-warning" : ""}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0 ${document.is_vault ? "bg-warning-soft text-warning" : ""}`}>
           {document.is_vault ? "Cofre" : DOCUMENT_TYPE_LABELS[document.document_type]}
         </span>
         <span
           className="font-mono text-xs whitespace-nowrap shrink-0 text-right"
-          style={{ color: due?.color ?? "var(--color-text-muted)" }}
+          style={{ color: due?.color ?? "var(--q-fg-3)" }}
         >
           {due?.label ?? "—"}
         </span>
@@ -141,7 +141,7 @@ export function DocumentCard({
               value={document.document_type}
               onChange={(event) => onChangeType(event.target.value as DocumentType)}
               aria-label="Tipo do documento"
-              className="qv-field w-auto py-[7px] px-3 text-[13px]"
+              className="q-input w-auto py-[7px] px-3 text-[13px]"
             >
               {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -153,7 +153,7 @@ export function DocumentCard({
               value={document.folder_id ?? ""}
               onChange={(event) => onMoveToFolder(event.target.value || null)}
               aria-label="Pasta"
-              className="qv-field w-auto py-[7px] px-3 text-[13px]"
+              className="q-input w-auto py-[7px] px-3 text-[13px]"
             >
               <option value="">Sem pasta</option>
               {folders.map((folder) => (
@@ -217,8 +217,8 @@ export function DocumentCard({
             </Button>
           </div>
           {showExtractedText && document.extracted_text && (
-            <div className="qv-well p-3 flex flex-col gap-2">
-              <p className="text-[13px] leading-relaxed text-text-primary whitespace-pre-wrap">{document.extracted_text}</p>
+            <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 p-3 flex flex-col gap-2">
+              <p className="text-[13px] leading-relaxed text-fg whitespace-pre-wrap">{document.extracted_text}</p>
               <Button
                 type="button"
                 variant="quiet"
@@ -252,7 +252,7 @@ function ExtThumb({ label, active = false }: { label: string; active?: boolean }
   return (
     <span
       className={`w-[34px] h-[42px] shrink-0 rounded-[6px] border bg-vex-obsidian flex items-center justify-center font-mono text-[10px] ${
-        active ? "border-vex-cyan-dark text-vex-cyan-bright" : "border-border text-text-muted"
+        active ? "border-gold-line text-gold-fg" : "border-line text-fg-3"
       }`}
     >
       {label}

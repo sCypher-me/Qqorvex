@@ -33,20 +33,20 @@ export function WarrantiesPanel({ client, userId }: { client: SupabaseClient<Dat
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="qv-card overflow-hidden">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 overflow-hidden">
       <CardHeader
         divider
         title="Garantias"
         meta={isLoading ? undefined : `${warranties.length} ${warranties.length === 1 ? "garantia" : "garantias"}`}
       />
 
-      <form onSubmit={handleSubmit} className="flex flex-wrap gap-[10px] px-[18px] py-[14px] border-b border-border">
-        <input name="productName" placeholder="Produto" aria-label="Produto" className="qv-field flex-[2_1_180px]" />
+      <form onSubmit={handleSubmit} className="flex flex-wrap gap-[10px] px-[18px] py-[14px] border-b border-line">
+        <input name="productName" placeholder="Produto" aria-label="Produto" className="q-input flex-[2_1_180px]" />
         <input
           name="purchaseDate"
           type="date"
           aria-label="Data da compra"
-          className="qv-field flex-[0_1_160px] font-mono text-[13px]"
+          className="q-input flex-[0_1_160px] font-mono text-[13px]"
         />
         <input
           name="durationMonths"
@@ -54,14 +54,14 @@ export function WarrantiesPanel({ client, userId }: { client: SupabaseClient<Dat
           min={1}
           placeholder="Meses"
           aria-label="Duração em meses"
-          className="qv-field flex-[0_1_100px] font-mono"
+          className="q-input flex-[0_1_100px] font-mono"
         />
         {documents.length > 0 && (
           <select
             value={documentId}
             onChange={(event) => setDocumentId(event.target.value)}
             aria-label="Nota fiscal"
-            className="qv-field flex-[1_1_180px] text-[13px]"
+            className="q-input flex-[1_1_180px] text-[13px]"
           >
             <option value="">Nota fiscal (opcional)</option>
             {documents.map((doc) => (
@@ -87,18 +87,18 @@ export function WarrantiesPanel({ client, userId }: { client: SupabaseClient<Dat
           {warranties.map((warranty) => {
             const expired = warranty.end_date < today;
             return (
-              <li key={warranty.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[14px]">
+              <li key={warranty.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-[14px] px-[18px] py-[14px]">
                 <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
                   <span className="text-sm font-medium truncate">{warranty.product_name}</span>
-                  <span className="font-mono text-xs text-text-muted truncate">
+                  <span className="font-mono text-xs text-fg-3 truncate">
                     comprado em {formatDate(warranty.purchase_date)} · {warranty.duration_months}{" "}
                     {warranty.duration_months === 1 ? "mês" : "meses"}
                   </span>
                 </div>
-                <span className={`qv-pill shrink-0 ${expired ? "qv-pill-danger" : "qv-pill-success"}`}>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0 ${expired ? "bg-danger-soft text-danger" : "bg-success-soft text-success"}`}>
                   {expired ? "Vencida" : "Ativa"}
                 </span>
-                <span className={`font-mono text-xs whitespace-nowrap shrink-0 ${expired ? "text-error" : "text-text-secondary"}`}>
+                <span className={`font-mono text-xs whitespace-nowrap shrink-0 ${expired ? "text-danger" : "text-fg-2"}`}>
                   até {formatDate(warranty.end_date)}
                 </span>
               </li>

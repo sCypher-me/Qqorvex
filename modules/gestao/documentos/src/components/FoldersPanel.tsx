@@ -57,7 +57,7 @@ export function FoldersPanel({
                   onSelectFolder(null);
                   deleteFolder.mutate(folder.id);
                 }}
-                className="qv-icon-btn hover:text-error"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 hover:text-danger"
                 title="Excluir pasta"
                 aria-label={`Excluir pasta ${folder.name}`}
               >
@@ -82,7 +82,7 @@ export function FoldersPanel({
             placeholder="Nome da pasta"
             aria-label="Nome da nova pasta"
             autoFocus
-            className="qv-field w-44 py-[7px] px-3 text-[13px]"
+            className="q-input w-44 py-[7px] px-3 text-[13px]"
           />
           <Button type="submit" variant="primary" size="sm" disabled={createFolder.isPending}>
             Criar
@@ -92,7 +92,7 @@ export function FoldersPanel({
           </Button>
         </form>
       ) : (
-        <button type="button" onClick={() => setIsCreating(true)} className="qv-btn qv-btn-dashed rounded-full px-4 py-2">
+        <button type="button" onClick={() => setIsCreating(true)} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 h-9 px-3.5 text-[13.5px] border border-dashed border-line-strong text-fg-2 hover:border-fg-3 hover:text-fg rounded-full px-4 py-2">
           + Nova pasta
         </button>
       )}

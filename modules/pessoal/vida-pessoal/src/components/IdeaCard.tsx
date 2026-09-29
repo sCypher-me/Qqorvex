@@ -15,12 +15,12 @@ export function IdeaCard({ idea, onDelete }: { idea: Idea; onDelete: () => void 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
-    <div className="qv-card p-4 flex flex-col gap-[9px]">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-4 flex flex-col gap-[9px]">
       <div className="flex items-start gap-2">
-        <span className="flex-1 text-sm font-semibold leading-[1.35] text-text-primary">{idea.title}</span>
+        <span className="flex-1 text-sm font-semibold leading-[1.35] text-fg">{idea.title}</span>
         <button
           type="button"
-          className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
           aria-label={`Excluir "${idea.title}"`}
           title="Excluir"
           onClick={() => setConfirmOpen(true)}
@@ -28,7 +28,7 @@ export function IdeaCard({ idea, onDelete }: { idea: Idea; onDelete: () => void 
           ✕
         </button>
       </div>
-      <span className="text-[13px] leading-normal text-text-secondary">
+      <span className="text-[13px] leading-normal text-fg-2">
         {idea.description && <>{idea.description} · </>}
         Capturada em <span className="font-mono text-xs">{formatCapturedAt(idea.created_at)}</span>
       </span>

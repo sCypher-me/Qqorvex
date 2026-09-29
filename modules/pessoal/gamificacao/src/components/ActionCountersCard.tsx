@@ -19,10 +19,10 @@ const ACTIONS = Object.keys(XP_BY_ACTION) as GamificationAction[];
  */
 export function ActionCountersCard({ stats }: { stats: GamificationStats }) {
   return (
-    <div className="qv-card p-5 flex flex-col gap-3.5">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-5 flex flex-col gap-3.5">
       <div className="flex items-center gap-2.5">
         <span className="font-display text-[17px] font-semibold flex-1">De onde vem seu XP</span>
-        <span className="font-mono text-xs text-text-muted">{formatXp(stats.xp)} XP total</span>
+        <span className="font-mono text-xs text-fg-3">{formatXp(stats.xp)} XP total</span>
       </div>
       <div className="flex flex-col">
         {ACTIONS.map((action) => {
@@ -30,16 +30,16 @@ export function ActionCountersCard({ stats }: { stats: GamificationStats }) {
           const earned = count * XP_BY_ACTION[action];
           const share = stats.xp > 0 ? Math.round((earned / stats.xp) * 100) : 0;
           return (
-            <div key={action} className="qv-row-top flex flex-col gap-2 py-3">
+            <div key={action} className="border-t border-line-soft flex flex-col gap-2 py-3">
               <div className="flex items-center gap-2.5">
                 <span className="flex-1 min-w-0 text-sm font-medium">{ACTION_LABEL[action]}</span>
-                <span className="font-mono text-xs whitespace-nowrap text-vex-gold-bright">+{XP_BY_ACTION[action]} XP cada</span>
+                <span className="font-mono text-xs whitespace-nowrap text-gold-fg">+{XP_BY_ACTION[action]} XP cada</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <div className="qv-progress flex-1" style={{ height: 5 }}>
                   <span style={{ width: `${share}%` }} />
                 </div>
-                <span className="font-mono text-[11px] text-text-muted whitespace-nowrap">
+                <span className="font-mono text-[11px] text-fg-3 whitespace-nowrap">
                   {formatXp(count)} · {formatXp(earned)} XP
                 </span>
               </div>

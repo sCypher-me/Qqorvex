@@ -18,7 +18,7 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
   const today = new Date();
 
   return (
-    <div className="qv-card overflow-hidden">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 overflow-hidden">
       <CardHeader
         divider
         title="Lixeira"
@@ -35,10 +35,10 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
           {documents.map((document) => {
             const daysLeft = daysUntilTrashExpiry(document.deleted_at!, today);
             return (
-              <li key={document.id} className="qv-row flex items-center gap-[14px] px-[18px] py-[14px] flex-wrap">
+              <li key={document.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-[14px] px-[18px] py-[14px] flex-wrap">
                 <div className="flex-[1_1_180px] min-w-0 flex flex-col gap-[3px]">
                   <span className="text-sm font-medium truncate">{document.file_name}</span>
-                  <span className="font-mono text-xs text-text-muted truncate">
+                  <span className="font-mono text-xs text-fg-3 truncate">
                     excluído em {formatDate(document.deleted_at!)} · some em {daysLeft} {daysLeft === 1 ? "dia" : "dias"}
                   </span>
                 </div>

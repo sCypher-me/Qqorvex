@@ -33,10 +33,10 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
   }
 
   return (
-    <section className="qv-card p-[18px] flex flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
-        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Compras importantes</h2>
-        {!isLoading && <span className="font-mono text-xs text-text-muted">{purchases.length}</span>}
+        <h2 className="flex-1 text-[15px] font-semibold text-fg">Compras importantes</h2>
+        {!isLoading && <span className="font-mono text-xs text-fg-3">{purchases.length}</span>}
       </div>
 
       {isLoading ? (
@@ -46,29 +46,29 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
       ) : (
         <ul className="flex flex-col gap-3">
           {purchases.map((purchase) => (
-            <li key={purchase.id} className="qv-row-top flex items-center gap-2.5 py-2">
+            <li key={purchase.id} className="border-t border-line-soft flex items-center gap-2.5 py-2">
               <label className="flex-1 min-w-0 flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  className="qv-check"
+                  className="h-4 w-4 shrink-0 accent-[var(--q-gold)]"
                   checked={purchase.is_purchased}
                   onChange={(e) => togglePurchase.mutate({ purchaseId: purchase.id, isPurchased: e.target.checked })}
                 />
                 <span className="flex flex-col items-start gap-1 min-w-0">
                   <span
-                    className={`text-[13px] ${purchase.is_purchased ? "line-through text-text-muted" : "text-text-primary"}`}
+                    className={`text-[13px] ${purchase.is_purchased ? "line-through text-fg-3" : "text-fg"}`}
                   >
                     {purchase.title}
                   </span>
                   <Badge tone={PRIORITY_TONE[purchase.priority]}>{PRIORITY_LABELS[purchase.priority]}</Badge>
                 </span>
               </label>
-              <span className="font-mono text-xs text-text-secondary">
+              <span className="font-mono text-xs text-fg-2">
                 {purchase.estimated_price ? brl.format(purchase.estimated_price) : "—"}
               </span>
               <button
                 type="button"
-                className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
                 aria-label={`Excluir "${purchase.title}"`}
                 title="Excluir"
                 onClick={() => setConfirmDeleteId(purchase.id)}
@@ -81,7 +81,7 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
       )}
 
       {formOpen ? (
-        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+        <form onSubmit={handleSubmit} className="border-t border-line-soft pt-3 flex flex-col gap-2.5">
           <Input name="title" placeholder="O que você quer comprar?" aria-label="Item" className="py-2 text-[13px]" autoFocus />
           <div className="grid grid-cols-2 gap-2">
             <Input
@@ -113,7 +113,7 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
           Adicionar
         </Button>
       )}
-      {createPurchase.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar a compra; os campos continuam preenchidos.</p>}
+      {createPurchase.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar a compra; os campos continuam preenchidos.</p>}
 
       <ConfirmDialog
         isOpen={confirmPurchase !== null}

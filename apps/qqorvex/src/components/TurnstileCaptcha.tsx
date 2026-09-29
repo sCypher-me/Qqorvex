@@ -123,12 +123,12 @@ export function TurnstileCaptcha({
   return (
     <div className="flex min-w-0 flex-col items-start gap-1.5" aria-label="Verificação de segurança">
       <div ref={containerRef} className="min-h-[66px] w-full max-w-full overflow-hidden" />
-      <span className="text-xs text-text-muted" role="status" aria-live="polite">{status}</span>
+      <span className="text-xs text-fg-3" role="status" aria-live="polite">{status}</span>
       {state === "error" && (
         <button
           type="button"
           onClick={() => setRetry((value) => value + 1)}
-          className="text-xs text-vex-cyan-bright underline underline-offset-2"
+          className="text-xs text-gold-fg underline underline-offset-2"
         >
           Tentar carregar novamente
         </button>

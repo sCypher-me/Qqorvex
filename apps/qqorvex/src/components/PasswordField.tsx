@@ -11,9 +11,9 @@ const STRENGTH_LABEL: Record<PasswordStrengthLevel, string> = {
 };
 
 const STRENGTH_COLOR: Record<PasswordStrengthLevel, string> = {
-  fraca: "var(--color-error)",
+  fraca: "var(--q-danger)",
   media: "var(--color-warning)",
-  forte: "var(--color-vex-cyan)",
+  forte: "var(--q-gold)",
   "muito-forte": "var(--color-success)",
 };
 
@@ -69,7 +69,7 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
             onClick={() => setVisible((v) => !v)}
             aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
             tabIndex={-1}
-            className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-transparent text-text-muted hover:text-text-secondary cursor-pointer"
+            className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-transparent text-fg-3 hover:text-fg-2 cursor-pointer"
           >
             <EyeIcon open={visible} />
           </button>
@@ -95,7 +95,7 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
             {getPasswordChecklist(value).map((rule) => (
               <li
                 key={rule.id}
-                className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${rule.met ? "text-success" : "text-text-muted"}`}
+                className={`text-xs flex items-center gap-1.5 transition-colors duration-150 ${rule.met ? "text-success" : "text-fg-3"}`}
               >
                 <StatusIcon ok={rule.met} />
                 {rule.label}

@@ -128,16 +128,16 @@ export function GoalCard({
   const linkableHabits = habits.filter((h) => !linkedHabitIds.has(h.id));
 
   return (
-    <div className="qv-card p-[18px] flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <div className="flex items-start gap-2.5">
-        <span className="text-[15px] font-semibold flex-1 leading-[1.35] text-text-primary">{goal.title}</span>
+        <span className="text-[15px] font-semibold flex-1 leading-[1.35] text-fg">{goal.title}</span>
         <Badge tone={STATUS_TONE[goal.status]}>{STATUS_LABEL[goal.status]}</Badge>
       </div>
 
-      {goal.description && <p className="text-[13px] leading-relaxed text-text-secondary">{goal.description}</p>}
+      {goal.description && <p className="text-[13px] leading-relaxed text-fg-2">{goal.description}</p>}
 
       {metaParts.length > 0 && (
-        <span className="text-[13px] text-text-secondary leading-normal">{metaParts.join(" · ")}</span>
+        <span className="text-[13px] text-fg-2 leading-normal">{metaParts.join(" · ")}</span>
       )}
 
       {goal.category && <Badge tone="neutral">{goal.category}</Badge>}
@@ -145,7 +145,7 @@ export function GoalCard({
       {progressPercent !== null && (
         <div className="flex items-center gap-3">
           <ProgressBar value={progressPercent} tone={PROGRESS_TONE[goal.status]} className="flex-1" />
-          <span className="font-mono text-xs text-text-secondary">{Math.round(progressPercent)}%</span>
+          <span className="font-mono text-xs text-fg-2">{Math.round(progressPercent)}%</span>
         </div>
       )}
 
@@ -172,15 +172,15 @@ export function GoalCard({
       </div>
 
       {detailsOpen && (
-        <div className="qv-row-top pt-3.5 flex flex-col gap-4">
+        <div className="border-t border-line-soft pt-3.5 flex flex-col gap-4">
           {goal.motivation_note && (
-            <blockquote className="qv-well border-l-2 border-brand-primary px-3 py-2.5 text-[13px] italic leading-relaxed text-text-secondary">
+            <blockquote className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 border-l-2 border-gold-line px-3 py-2.5 text-[13px] italic leading-relaxed text-fg-2">
               {goal.motivation_note}
             </blockquote>
           )}
 
           <section className="flex flex-col gap-2" aria-label="Atualizações da meta">
-            <span className="qv-eyebrow">Atualizações</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Atualizações</span>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -198,7 +198,7 @@ export function GoalCard({
                 placeholder="O que avançou desde a última atualização?"
                 aria-label="Nova atualização da meta"
                 maxLength={300}
-                className="qv-field min-w-0 flex-1 py-2 px-3 text-[13px]"
+                className="q-input min-w-0 flex-1 py-2 px-3 text-[13px]"
               />
               <Button type="submit" variant="secondary" size="sm" disabled={!checkinNote.trim() || createCheckin.isPending}>
                 {createCheckin.isPending ? "Salvando…" : "Registrar"}
@@ -207,9 +207,9 @@ export function GoalCard({
             {checkins.length > 0 ? (
               <ol className="flex flex-col">
                 {checkins.slice(0, 4).map((checkin) => (
-                  <li key={checkin.id} className="qv-row-top flex items-start justify-between gap-3 py-2 text-[12px]">
-                    <span className="min-w-0 leading-relaxed text-text-secondary">{checkin.note || "Atualização registrada"}</span>
-                    <span className="shrink-0 font-mono text-text-muted">
+                  <li key={checkin.id} className="border-t border-line-soft flex items-start justify-between gap-3 py-2 text-[12px]">
+                    <span className="min-w-0 leading-relaxed text-fg-2">{checkin.note || "Atualização registrada"}</span>
+                    <span className="shrink-0 font-mono text-fg-3">
                       {formatDate(checkin.checkin_date)}
                       {checkin.progress_percent_snapshot !== null ? ` · ${Math.round(checkin.progress_percent_snapshot)}%` : ""}
                     </span>
@@ -217,21 +217,21 @@ export function GoalCard({
                 ))}
               </ol>
             ) : (
-              <p className="text-xs text-text-muted">Registre pequenos avanços para manter o contexto da sua jornada.</p>
+              <p className="text-xs text-fg-3">Registre pequenos avanços para manter o contexto da sua jornada.</p>
             )}
           </section>
 
           <div className="flex flex-col gap-2">
-            <span className="qv-eyebrow">Marcos</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Marcos</span>
             {milestones.map((milestone) => (
-              <label key={milestone.id} className="flex items-center gap-2.5 text-[13px] text-text-primary cursor-pointer">
+              <label key={milestone.id} className="flex items-center gap-2.5 text-[13px] text-fg cursor-pointer">
                 <input
                   type="checkbox"
-                  className="qv-check"
+                  className="h-4 w-4 shrink-0 accent-[var(--q-gold)]"
                   checked={milestone.is_done}
                   onChange={(e) => toggleMilestone.mutate({ milestoneId: milestone.id, isDone: e.target.checked })}
                 />
-                <span className={milestone.is_done ? "line-through text-text-muted" : ""}>{milestone.title}</span>
+                <span className={milestone.is_done ? "line-through text-fg-3" : ""}>{milestone.title}</span>
               </label>
             ))}
 
@@ -249,7 +249,7 @@ export function GoalCard({
                 onChange={(e) => setMilestoneTitle(e.target.value)}
                 placeholder="Novo marco"
                 aria-label="Novo marco"
-                className="qv-field flex-1 py-2 px-3 text-[13px]"
+                className="q-input flex-1 py-2 px-3 text-[13px]"
               />
               <Button type="submit" variant="secondary" size="sm">
                 Adicionar marco
@@ -258,9 +258,9 @@ export function GoalCard({
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="qv-eyebrow">Progresso financeiro</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Progresso financeiro</span>
             {derivedProgress && linkedAccount ? (
-              <div className="qv-well px-3 py-2.5 flex items-center justify-between gap-2 text-[13px] text-text-primary">
+              <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 px-3 py-2.5 flex items-center justify-between gap-2 text-[13px] text-fg">
                 <span>
                   {linkedAccount.name}:{" "}
                   <span className="font-mono">
@@ -278,7 +278,7 @@ export function GoalCard({
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
                   aria-label="Conta"
-                  className="qv-field flex-1 min-w-[140px] py-2 px-3 text-[13px]"
+                  className="q-input flex-1 min-w-[140px] py-2 px-3 text-[13px]"
                 >
                   <option value="">Vincular a uma Conta...</option>
                   {accounts.map((account) => (
@@ -293,7 +293,7 @@ export function GoalCard({
                   onChange={(e) => setTargetAmount(e.target.value)}
                   placeholder="Valor alvo"
                   aria-label="Valor alvo"
-                  className="qv-field w-28 py-2 px-3 text-[13px] font-mono"
+                  className="q-input w-28 py-2 px-3 text-[13px] font-mono"
                 />
                 <Button type="button" variant="secondary" size="sm" onClick={handleLinkAccount}>
                   Vincular
@@ -303,13 +303,13 @@ export function GoalCard({
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="qv-eyebrow">Hábitos vinculados</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Hábitos vinculados</span>
             {linkedHabits.length === 0 ? (
-              <p className="text-[13px] text-text-secondary">Nenhum hábito vinculado ainda.</p>
+              <p className="text-[13px] text-fg-2">Nenhum hábito vinculado ainda.</p>
             ) : (
               <ul className="flex flex-col">
                 {linkedHabits.map((habit) => (
-                  <li key={habit.id} className="qv-row flex items-center justify-between gap-2 py-1.5 text-[13px] text-text-primary">
+                  <li key={habit.id} className="border-b border-line-soft last:border-b-0 flex items-center justify-between gap-2 py-1.5 text-[13px] text-fg">
                     <span>{habit.name}</span>
                     <Button type="button" variant="quiet" size="xs" onClick={() => unlinkHabit.mutate({ goalId: goal.id, habitId: habit.id })}>
                       Desvincular
@@ -328,7 +328,7 @@ export function GoalCard({
                   linkHabit.mutate({ goalId: goal.id, habitId: e.target.value });
                   e.target.value = "";
                 }}
-                className="qv-field py-2 px-3 text-[13px]"
+                className="q-input py-2 px-3 text-[13px]"
               >
                 <option value="">Vincular um hábito...</option>
                 {linkableHabits.map((habit) => (

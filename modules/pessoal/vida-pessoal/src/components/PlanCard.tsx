@@ -49,12 +49,12 @@ export function PlanCard({
   const [goalsOpen, setGoalsOpen] = useState(false);
 
   return (
-    <div className="qv-card p-4 flex flex-col gap-[9px]">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-4 flex flex-col gap-[9px]">
       <div className="flex items-start gap-2">
-        <span className="flex-1 text-sm font-semibold leading-[1.35] text-text-primary">{plan.title}</span>
+        <span className="flex-1 text-sm font-semibold leading-[1.35] text-fg">{plan.title}</span>
         <button
           type="button"
-          className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
           aria-label={`Excluir "${plan.title}"`}
           title="Excluir"
           onClick={() => setConfirmOpen(true)}
@@ -62,7 +62,7 @@ export function PlanCard({
           ✕
         </button>
       </div>
-      <span className="text-[13px] leading-normal text-text-secondary">
+      <span className="text-[13px] leading-normal text-fg-2">
         {PLAN_TYPE_LABEL[plan.plan_type]} · <span className="font-mono text-xs">{computePlanLabel(plan)}</span>
         {plan.description && <> · {plan.description}</>}
       </span>
@@ -70,9 +70,9 @@ export function PlanCard({
         {STATUS_LABEL[plan.status]}
       </Badge>
 
-      <div className="qv-row-top pt-[9px] flex items-center gap-1.5 flex-wrap">
+      <div className="border-t border-line-soft pt-[9px] flex items-center gap-1.5 flex-wrap">
         <Button type="button" variant="ghost" size="xs" aria-expanded={goalsOpen} onClick={() => setGoalsOpen((v) => !v)}>
-          Metas <span className="font-mono text-text-muted">{linkedGoals.length}</span>
+          Metas <span className="font-mono text-fg-3">{linkedGoals.length}</span>
           <span aria-hidden>{goalsOpen ? "‹" : "›"}</span>
         </Button>
         <span className="flex-1" />
@@ -83,13 +83,13 @@ export function PlanCard({
 
       {goalsOpen && (
         <div className="flex flex-col gap-2">
-          <span className="qv-eyebrow">Metas vinculadas</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Metas vinculadas</span>
           {linkedGoals.length === 0 ? (
-            <p className="text-[13px] text-text-secondary">Nenhuma meta vinculada ainda.</p>
+            <p className="text-[13px] text-fg-2">Nenhuma meta vinculada ainda.</p>
           ) : (
             <ul className="flex flex-col">
               {linkedGoals.map((goal) => (
-                <li key={goal.id} className="qv-row flex items-center gap-2 py-1.5 text-[13px] text-text-primary">
+                <li key={goal.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-2 py-1.5 text-[13px] text-fg">
                   <span className="flex-1 min-w-0">{goal.title}</span>
                   <Button
                     type="button"
@@ -113,7 +113,7 @@ export function PlanCard({
                 linkGoal.mutate({ planId: plan.id, goalId: e.target.value });
                 e.target.value = "";
               }}
-              className="qv-field py-2 text-[13px]"
+              className="q-input py-2 text-[13px]"
             >
               <option value="">Vincular uma meta...</option>
               {linkableGoals.map((goal) => (

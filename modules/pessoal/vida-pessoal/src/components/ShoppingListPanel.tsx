@@ -25,10 +25,10 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
   }
 
   return (
-    <section className="qv-card p-[18px] flex flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
-        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Lista de compras</h2>
-        {!isLoading && <span className="font-mono text-xs text-text-muted">{items.length}</span>}
+        <h2 className="flex-1 text-[15px] font-semibold text-fg">Lista de compras</h2>
+        {!isLoading && <span className="font-mono text-xs text-fg-3">{items.length}</span>}
       </div>
 
       {isLoading ? (
@@ -37,28 +37,28 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
         <EmptyState>Lista de compras vazia.</EmptyState>
       ) : (
         <>
-        <div className="qv-well flex flex-col gap-2 px-3 py-2.5">
-          <div className="flex items-center justify-between gap-2 text-xs"><span className="text-text-secondary">{purchasedCount} de {items.length} itens comprados</span><span className="font-mono text-text-muted">{pendingCount} pendentes</span></div>
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex flex-col gap-2 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-2 text-xs"><span className="text-fg-2">{purchasedCount} de {items.length} itens comprados</span><span className="font-mono text-fg-3">{pendingCount} pendentes</span></div>
           <ProgressBar value={items.length ? (purchasedCount / items.length) * 100 : 0} height={4} />
         </div>
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
-            <li key={item.id} className="qv-row-top flex items-center gap-2.5 py-2">
+            <li key={item.id} className="border-t border-line-soft flex items-center gap-2.5 py-2">
               <label className="flex-1 min-w-0 flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  className="qv-check"
+                  className="h-4 w-4 shrink-0 accent-[var(--q-gold)]"
                   checked={item.is_purchased}
                   onChange={(e) => toggleItem.mutate({ itemId: item.id, isPurchased: e.target.checked })}
                 />
-                <span className={`text-[13px] ${item.is_purchased ? "line-through text-text-muted" : "text-text-primary"}`}>
+                <span className={`text-[13px] ${item.is_purchased ? "line-through text-fg-3" : "text-fg"}`}>
                   {item.name}
                 </span>
               </label>
-              <span className="font-mono text-xs text-text-secondary">{item.quantity || "—"}</span>
+              <span className="font-mono text-xs text-fg-2">{item.quantity || "—"}</span>
               <button
                 type="button"
-                className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
                 aria-label={`Excluir "${item.name}"`}
                 title="Excluir"
                 onClick={() => setConfirmDeleteId(item.id)}
@@ -72,7 +72,7 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
       )}
 
       {formOpen ? (
-        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+        <form onSubmit={handleSubmit} className="border-t border-line-soft pt-3 flex flex-col gap-2.5">
           <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
             <Input name="name" placeholder="Item" aria-label="Item" className="py-2 text-[13px]" autoFocus />
             <Input name="quantity" placeholder="Qtd. (ex.: 2kg)" aria-label="Quantidade" className="py-2 text-[13px] font-mono" />
@@ -91,7 +91,7 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
           Adicionar
         </Button>
       )}
-      {createItem.isError && <p className="text-xs text-error" role="alert">Não foi possível adicionar o item; os campos continuam preenchidos.</p>}
+      {createItem.isError && <p className="text-xs text-danger" role="alert">Não foi possível adicionar o item; os campos continuam preenchidos.</p>}
 
       <ConfirmDialog
         isOpen={confirmItem !== null}

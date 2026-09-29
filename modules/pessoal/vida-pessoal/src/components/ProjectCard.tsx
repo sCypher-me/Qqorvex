@@ -44,12 +44,12 @@ export function ProjectCard({
   const [tasksOpen, setTasksOpen] = useState(false);
 
   return (
-    <div className="qv-card p-4 flex flex-col gap-[9px]">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-4 flex flex-col gap-[9px]">
       <div className="flex items-start gap-2">
-        <span className="flex-1 text-sm font-semibold leading-[1.35] text-text-primary">{project.title}</span>
+        <span className="flex-1 text-sm font-semibold leading-[1.35] text-fg">{project.title}</span>
         <button
           type="button"
-          className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
           aria-label={`Excluir "${project.title}"`}
           title="Excluir"
           onClick={() => setConfirmOpen(true)}
@@ -57,7 +57,7 @@ export function ProjectCard({
           ✕
         </button>
       </div>
-      <span className="text-[13px] leading-normal text-text-secondary">
+      <span className="text-[13px] leading-normal text-fg-2">
         {project.description ? (
           project.description
         ) : (
@@ -71,9 +71,9 @@ export function ProjectCard({
         {STATUS_LABEL[project.status]}
       </Badge>
 
-      <div className="qv-row-top pt-[9px] flex items-center gap-1.5 flex-wrap">
+      <div className="border-t border-line-soft pt-[9px] flex items-center gap-1.5 flex-wrap">
         <Button type="button" variant="ghost" size="xs" aria-expanded={tasksOpen} onClick={() => setTasksOpen((v) => !v)}>
-          Tarefas <span className="font-mono text-text-muted">{linkedTasks.length}</span>
+          Tarefas <span className="font-mono text-fg-3">{linkedTasks.length}</span>
           <span aria-hidden>{tasksOpen ? "‹" : "›"}</span>
         </Button>
         <span className="flex-1" />
@@ -84,13 +84,13 @@ export function ProjectCard({
 
       {tasksOpen && (
         <div className="flex flex-col gap-2">
-          <span className="qv-eyebrow">Tarefas vinculadas</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Tarefas vinculadas</span>
           {linkedTasks.length === 0 ? (
-            <p className="text-[13px] text-text-secondary">Nenhuma tarefa vinculada ainda.</p>
+            <p className="text-[13px] text-fg-2">Nenhuma tarefa vinculada ainda.</p>
           ) : (
             <ul className="flex flex-col">
               {linkedTasks.map((task) => (
-                <li key={task.id} className="qv-row flex items-center gap-2 py-1.5 text-[13px] text-text-primary">
+                <li key={task.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-2 py-1.5 text-[13px] text-fg">
                   <span className="flex-1 min-w-0">{task.title}</span>
                   <Button
                     type="button"
@@ -114,7 +114,7 @@ export function ProjectCard({
                 linkTask.mutate({ projectId: project.id, taskId: e.target.value });
                 e.target.value = "";
               }}
-              className="qv-field py-2 text-[13px]"
+              className="q-input py-2 text-[13px]"
             >
               <option value="">Vincular uma tarefa...</option>
               {linkableTasks.map((task) => (

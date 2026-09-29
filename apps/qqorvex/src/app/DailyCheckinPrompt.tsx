@@ -39,7 +39,7 @@ export function DailyCheckinPrompt({ client, userId }: { client: SupabaseClient<
   return (
     <Modal isOpen={isOpen} onClose={dismissForThisSession} title="Seu check-in de hoje" size="md">
       <div className="flex flex-col gap-3">
-        <p className="m-0 text-sm leading-relaxed text-text-secondary">Antes de começar, reserve um minuto para perceber como você está. Seu registro fica privado e pode ser editado durante o dia.</p>
+        <p className="m-0 text-sm leading-relaxed text-fg-2">Antes de começar, reserve um minuto para perceber como você está. Seu registro fica privado e pode ser editado durante o dia.</p>
         <DailyCheckinForm client={client} userId={userId} includeHistory={false} showTitle={false} onSaved={dismissForThisSession} />
       </div>
     </Modal>

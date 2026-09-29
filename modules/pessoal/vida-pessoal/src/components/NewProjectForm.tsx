@@ -35,7 +35,7 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewPr
         maxLength={1000}
         aria-label="Descrição opcional do projeto"
         placeholder="Contexto, resultado ou próximos passos (opcional)"
-        className="qv-field min-h-20 resize-y"
+        className="q-input min-h-20 resize-y"
       />
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" disabled={!title.trim() || isSaving}>
@@ -47,7 +47,7 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewPr
           </Button>
         )}
       </div>
-      {error && <p className="text-xs text-error" role="alert">Não foi possível criar o projeto. Seus dados foram mantidos; tente novamente.</p>}
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o projeto. Seus dados foram mantidos; tente novamente.</p>}
     </form>
   );
 }

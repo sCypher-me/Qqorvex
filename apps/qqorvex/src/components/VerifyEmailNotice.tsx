@@ -51,8 +51,8 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
   return (
     <div className="flex flex-col gap-[18px] items-center text-center">
       <h1 className="font-display text-[24px] font-semibold m-0">Verifique seu e-mail</h1>
-      <p className="text-[13px] text-text-secondary m-0">
-        Enviamos um link de confirmação para <span className="text-text-primary font-medium">{maskEmail(email)}</span>.
+      <p className="text-[13px] text-fg-2 m-0">
+        Enviamos um link de confirmação para <span className="text-fg font-medium">{maskEmail(email)}</span>.
       </p>
       {captchaSiteKey && (
         <TurnstileCaptcha
@@ -69,7 +69,7 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
         <button
           type="button"
           onClick={onChangeEmail}
-          className="bg-transparent border-none p-0 text-[13px] text-text-secondary hover:text-text-primary cursor-pointer"
+          className="bg-transparent border-none p-0 text-[13px] text-fg-2 hover:text-fg cursor-pointer"
         >
           Alterar e-mail
         </button>

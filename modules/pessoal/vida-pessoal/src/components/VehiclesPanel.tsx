@@ -37,13 +37,13 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
   const details = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate].filter(Boolean).join(" · ");
 
   return (
-    <li className="qv-row-top flex flex-col gap-2.5 py-2">
+    <li className="border-t border-line-soft flex flex-col gap-2.5 py-2">
       <div className="flex items-center gap-2.5">
         <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span className="text-[13px] text-text-primary">{vehicle.nickname}</span>
-          <span className="text-xs text-text-muted">{details || "sem detalhes"}</span>
+          <span className="text-[13px] text-fg">{vehicle.nickname}</span>
+          <span className="text-xs text-fg-3">{details || "sem detalhes"}</span>
         </span>
-        <span className="font-mono text-xs text-text-secondary" title="Total gasto">
+        <span className="font-mono text-xs text-fg-2" title="Total gasto">
           {brl.format(totalSpent)}
         </span>
         <Button type="button" variant="ghost" size="xs" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
@@ -51,7 +51,7 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
         </Button>
         <button
           type="button"
-          className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 w-6 h-6 text-[11px] shrink-0"
           aria-label={`Excluir "${vehicle.nickname}"`}
           title="Excluir"
           onClick={() => setConfirmOpen(true)}
@@ -71,22 +71,22 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
       />
 
       {expanded && (
-        <div className="qv-well p-3 flex flex-col gap-3">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 p-3 flex flex-col gap-3">
           <div className="flex items-baseline gap-2.5">
-            <span className="flex-1 text-[13px] text-text-primary">Total gasto</span>
-            <span className="font-mono text-xs text-text-secondary">{brl.format(totalSpent)}</span>
+            <span className="flex-1 text-[13px] text-fg">Total gasto</span>
+            <span className="font-mono text-xs text-fg-2">{brl.format(totalSpent)}</span>
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="qv-eyebrow">Datas importantes (IPVA, seguro, revisão)</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4">Datas importantes (IPVA, seguro, revisão)</span>
             {dates.length === 0 ? (
               <EmptyState className="text-[13px]">Nenhuma data cadastrada.</EmptyState>
             ) : (
               <ul className="flex flex-col">
                 {dates.map((d) => (
-                  <li key={d.id} className="qv-row flex items-baseline gap-2.5 py-1.5">
-                    <span className="flex-1 text-[13px] text-text-primary">{d.label}</span>
-                    <span className="font-mono text-xs text-text-secondary">{formatIsoDate(d.date)}</span>
+                  <li key={d.id} className="border-b border-line-soft last:border-b-0 flex items-baseline gap-2.5 py-1.5">
+                    <span className="flex-1 text-[13px] text-fg">{d.label}</span>
+                    <span className="font-mono text-xs text-fg-2">{formatIsoDate(d.date)}</span>
                   </li>
                 ))}
               </ul>
@@ -120,7 +120,7 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
               <Button type="submit" variant="quiet" size="xs" className="self-start" disabled={addDate.isPending}>
                 {addDate.isPending ? "Salvando…" : "Adicionar data"}
               </Button>
-              {addDate.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar a data; os campos continuam preenchidos.</p>}
+              {addDate.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar a data; os campos continuam preenchidos.</p>}
             </form>
           </div>
 
@@ -154,10 +154,10 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
   }
 
   return (
-    <section className="qv-card p-[18px] flex flex-col gap-3">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
-        <h2 className="flex-1 text-[15px] font-semibold text-text-primary">Veículos</h2>
-        {!isLoading && <span className="font-mono text-xs text-text-muted">{vehicles.length}</span>}
+        <h2 className="flex-1 text-[15px] font-semibold text-fg">Veículos</h2>
+        {!isLoading && <span className="font-mono text-xs text-fg-3">{vehicles.length}</span>}
       </div>
 
       {isLoading ? (
@@ -173,7 +173,7 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
       )}
 
       {formOpen ? (
-        <form onSubmit={handleSubmit} className="qv-row-top pt-3 flex flex-col gap-2.5">
+        <form onSubmit={handleSubmit} className="border-t border-line-soft pt-3 flex flex-col gap-2.5">
           <Input name="nickname" placeholder="Apelido" aria-label="Apelido" className="py-2 text-[13px]" autoFocus />
           <div className="grid grid-cols-2 gap-2">
             <Input name="brand" placeholder="Marca" aria-label="Marca" className="py-2 text-[13px]" />
@@ -195,7 +195,7 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
           Adicionar
         </Button>
       )}
-      {createVehicle.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar o veículo; os campos continuam preenchidos.</p>}
+      {createVehicle.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar o veículo; os campos continuam preenchidos.</p>}
     </section>
   );
 }

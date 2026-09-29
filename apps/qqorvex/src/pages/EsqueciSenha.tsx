@@ -42,10 +42,10 @@ export function EsqueciSenhaPage() {
       <AuthLayout>
         <div className="flex flex-col gap-[18px] items-center text-center">
           <h1 className="font-display text-[24px] font-semibold m-0">Verifique seu e-mail</h1>
-          <p className="text-[13px] text-text-secondary m-0">
+          <p className="text-[13px] text-fg-2 m-0">
             Se existir uma conta associada a {email}, enviamos as instruções de recuperação.
           </p>
-          <Link to="/login" className="text-[13px] text-vex-cyan-bright hover:underline">
+          <Link to="/login" className="text-[13px] text-gold-fg hover:underline">
             Voltar para o login
           </Link>
         </div>
@@ -58,7 +58,7 @@ export function EsqueciSenhaPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[28px] font-semibold m-0">Esqueci minha senha</h1>
-          <p className="text-[13px] text-text-secondary m-0">
+          <p className="text-[13px] text-fg-2 m-0">
             Informe seu e-mail. Se existir uma conta associada a ele, enviamos um link pra redefinir a senha.
           </p>
         </div>
@@ -87,7 +87,7 @@ export function EsqueciSenhaPage() {
           {submitting ? "Enviando…" : "Enviar instruções"}
         </Button>
 
-        <Link to="/login" className="text-[13px] text-text-secondary hover:text-text-primary">
+        <Link to="/login" className="text-[13px] text-fg-2 hover:text-fg">
           Voltar para o login
         </Link>
       </form>

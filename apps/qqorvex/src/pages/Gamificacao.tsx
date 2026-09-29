@@ -146,7 +146,7 @@ export function GamificacaoPage() {
 
   if (!progress || !title || !stats) {
     return (
-      <div className="qv-page editorial-gamification flex w-full flex-col gap-5 pb-8">
+      <div className=" editorial-gamification flex w-full flex-col gap-5 pb-8">
         <Notice tone="error" title="Sua jornada não carregou">
           <span className="block">Não foi possível buscar seu nível e XP agora. Seu progresso continua salvo.</span>
           <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => void refetchStats()}>
@@ -197,7 +197,7 @@ export function GamificacaoPage() {
   }
 
   return (
-    <div className="qv-page editorial-gamification flex w-full flex-col gap-8 pb-4">
+    <div className=" editorial-gamification flex w-full flex-col gap-8 pb-4">
       {statsError && (
         <Notice tone="error" title="Não foi possível atualizar sua jornada">
           Os dados exibidos podem estar desatualizados. Seu progresso continua salvo.
@@ -211,18 +211,18 @@ export function GamificacaoPage() {
           <LevelBadge level={Math.min(progress.level, 50)} alt={progress.level > 50 ? "Última insígnia disponível, do nível 50" : `Insígnia atual do nível ${progress.level}`} className="h-24 w-24 shrink-0" />
           <div className="min-w-0">
             <span className="editorial-eyebrow">SUA JORNADA / {progress.level > 50 ? "INSÍGNIA MÁXIMA" : "INSÍGNIA ATUAL"}</span>
-            <h1 className="m-0 mt-2 font-display text-[clamp(42px,5.5vw,76px)] font-bold leading-none tracking-[-0.07em] text-text-primary">Nível {progress.level}</h1>
+            <h1 className="m-0 mt-2 font-display text-[clamp(42px,5.5vw,76px)] font-bold leading-none tracking-[-0.07em] text-fg">Nível {progress.level}</h1>
             <div className="mt-3"><TitleBadge title={profile?.selected_title || title} size="lg" /></div>
           </div>
         </div>
         <div className="editorial-gamification-progress">
-          <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-text-muted">
+          <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-fg-3">
             <span>{formatXp(currentLevelXp)} XP neste nível</span>
             <span>Próximo patamar · {formatXp(progress.xpForNextLevel)} XP acumulados</span>
           </div>
           <ProgressBar value={progress.progressPercent} tone="cyan" height={6} />
-          <p className="m-0 mt-2 text-xs text-text-muted">{formatXp(xpRemaining)} XP restantes para subir de nível</p>
-          {progress.level >= 50 && <p className="m-0 mt-2 text-xs text-text-secondary">As 50 insígnias estão completas; sua jornada de XP continua.</p>}
+          <p className="m-0 mt-2 text-xs text-fg-3">{formatXp(xpRemaining)} XP restantes para subir de nível</p>
+          {progress.level >= 50 && <p className="m-0 mt-2 text-xs text-fg-2">As 50 insígnias estão completas; sua jornada de XP continua.</p>}
         </div>
       </section>
 
@@ -259,10 +259,10 @@ export function GamificacaoPage() {
                     aria-current={isCurrent ? "step" : undefined}
                     className={`editorial-level-card border px-3 py-3 text-center transition-colors ${
                       isCurrent
-                        ? "border-brand-primary bg-chip-cyan text-brand-primary shadow-[0_0_0_1px_var(--qv-brand-primary)]"
+                        ? "border-gold-line bg-gold-soft text-gold-fg shadow-[0_0_0_1px_var(--qv-brand-primary)]"
                         : isComplete
-                          ? "border-border bg-surface-2 text-text-secondary"
-                          : "border-border bg-surface-2/50 text-text-muted"
+                          ? "border-line bg-surface text-fg-2"
+                          : "border-line bg-surface/50 text-fg-3"
                     }`}
                   >
                     <LevelBadge
@@ -271,15 +271,15 @@ export function GamificacaoPage() {
                       className={`h-[72px] w-[72px] shrink-0 ${isCurrent ? "" : isComplete ? "opacity-80" : "opacity-35 grayscale"}`}
                     />
                     <div className="min-w-0 w-full">
-                      <span className="block text-xs font-semibold text-text-primary">Nível {level}</span>
-                      <span className="mt-1 block truncate text-[9px] text-text-muted">
+                      <span className="block text-xs font-semibold text-fg">Nível {level}</span>
+                      <span className="mt-1 block truncate text-[9px] text-fg-3">
                         {isCurrent
                           ? progress.level > 50 ? `Insígnia máxima · você está no nível ${progress.level}` : "Seu nível atual"
                           : isComplete ? "Nível concluído" : "Ainda não desbloqueado"}
                       </span>
                     </div>
                     <span className={`mt-2 shrink-0 rounded-full border px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${
-                      isCurrent ? "border-brand-primary/40 bg-brand-primary/10 text-brand-primary" : isComplete ? "border-border text-text-secondary" : "border-border/70 text-text-muted"
+                      isCurrent ? "border-brand-primary/40 bg-brand-primary/10 text-gold-fg" : isComplete ? "border-line text-fg-2" : "border-line/70 text-fg-3"
                     }`}>
                       {isCurrent ? "Atual" : isComplete ? "Concluído" : "Bloqueado"}
                     </span>
@@ -301,14 +301,14 @@ export function GamificacaoPage() {
             </div>
           ))}
         </div>
-        <p className="m-0 text-[11px] text-text-muted">Deslize ou use as setas para avançar por páginas completas de níveis. Nenhuma insígnia fica cortada.</p>
+        <p className="m-0 text-[11px] text-fg-3">Deslize ou use as setas para avançar por páginas completas de níveis. Nenhuma insígnia fica cortada.</p>
       </section>
 
       <section className="flex flex-col gap-4" aria-label="Temas da jornada">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <SectionTitle meta={`${unlockedThemeCount} de ${LEVEL_THEMES.length} níveis · ${plusLoading ? "verificando Plus…" : hasPlus ? isOwner ? "Plus permanente · Dono" : "VIP desbloqueado" : "VIP exclusivo Plus"}`}>Temas da jornada</SectionTitle>
-            <p className="m-0 mt-2 max-w-2xl text-sm leading-relaxed text-text-muted">Uma identidade visual a cada 10 níveis; assinantes Plus liberam automaticamente o tema VIP.</p>
+            <p className="m-0 mt-2 max-w-2xl text-sm leading-relaxed text-fg-3">Uma identidade visual a cada 10 níveis; assinantes Plus liberam automaticamente o tema VIP.</p>
           </div>
           <Button type="button" variant="secondary" size="sm" disabled={skinSaving || skin === "default"} onClick={() => void chooseLevelTheme("default")}>
             {skin === "default" ? "Tema original ativo" : "Restaurar tema original"}
@@ -355,9 +355,9 @@ export function GamificacaoPage() {
             >
               {showDailyHistory ? "Ocultar histórico" : "Últimos 7 dias"}
             </button>
-            <div className="flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2">
-              <span className="qv-eyebrow text-text-muted">NOVOS EM</span>
-              <time className="font-mono text-sm font-semibold tabular-nums text-vex-cyan-bright">{formatDailyCountdown(now)}</time>
+            <div className="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-fg-3">NOVOS EM</span>
+              <time className="font-mono text-sm font-semibold tabular-nums text-gold-fg">{formatDailyCountdown(now)}</time>
             </div>
           </div>
         </div>
@@ -376,8 +376,8 @@ export function GamificacaoPage() {
         {showDailyHistory && (
           <section id="daily-challenge-history" className="editorial-daily-history flex flex-col gap-3" aria-label="Histórico de desafios dos últimos sete dias">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="m-0 text-sm font-semibold text-text-primary">Seu ritmo recente</h3>
-              <span className="text-xs text-text-muted">Desafios anteriores · recompensas em XP</span>
+              <h3 className="m-0 text-sm font-semibold text-fg">Seu ritmo recente</h3>
+              <span className="text-xs text-fg-3">Desafios anteriores · recompensas em XP</span>
             </div>
             {historyLoading ? (
               <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3" role="status" aria-label="Carregando histórico">
@@ -396,7 +396,7 @@ export function GamificacaoPage() {
 
       <section className="flex flex-col gap-3.5">
         <SectionTitle meta={`${unlockedCount} de ${badges.length} conquistadas · badge + título`}>Conquistas</SectionTitle>
-        <p className="-mt-1 m-0 max-w-[760px] text-sm leading-relaxed text-text-secondary">
+        <p className="-mt-1 m-0 max-w-[760px] text-sm leading-relaxed text-fg-2">
           Marcos permanentes da sua jornada. Complete cada requisito para liberar a insígnia visual e o título correspondente.
         </p>
         {badgesError ? (
@@ -415,10 +415,10 @@ export function GamificacaoPage() {
 
 function JourneyMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="editorial-gamification-metric min-w-0 border border-border bg-surface-1/70 px-4 py-3.5">
-      <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">{label}</span>
-      <strong className="mt-1 block font-mono text-xl font-semibold tabular-nums text-text-primary">{value}</strong>
-      <span className="mt-1 block truncate text-[11px] text-text-secondary">{detail}</span>
+    <div className="editorial-gamification-metric min-w-0 border border-line bg-canvas/70 px-4 py-3.5">
+      <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-fg-3">{label}</span>
+      <strong className="mt-1 block font-mono text-xl font-semibold tabular-nums text-fg">{value}</strong>
+      <span className="mt-1 block truncate text-[11px] text-fg-2">{detail}</span>
     </div>
   );
 }
@@ -428,14 +428,14 @@ function DailyHistoryCard({ day }: { day: ReturnType<typeof summarizeDailyChalle
   const label = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short" }).format(date);
 
   return (
-    <article className="editorial-daily-history-card flex min-w-0 flex-col gap-2 border border-border bg-surface-1/60 p-3.5">
+    <article className="editorial-daily-history-card flex min-w-0 flex-col gap-2 border border-line bg-canvas/60 p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <time dateTime={day.dateKey} className="text-xs font-semibold capitalize text-text-primary">{label}</time>
-        <span className="font-mono text-[11px] text-text-secondary">{day.completedCount}/{day.totalCount}</span>
+        <time dateTime={day.dateKey} className="text-xs font-semibold capitalize text-fg">{label}</time>
+        <span className="font-mono text-[11px] text-fg-2">{day.completedCount}/{day.totalCount}</span>
       </div>
       <ProgressBar value={(day.completedCount / day.totalCount) * 100} tone={day.completedCount === day.totalCount ? "success" : "cyan"} height={4} />
-      <span className="font-mono text-[11px] font-semibold text-vex-gold-bright">+{day.rewardXp} XP em bônus</span>
-      <p className="m-0 text-[11px] leading-relaxed text-text-muted">
+      <span className="font-mono text-[11px] font-semibold text-gold-fg">+{day.rewardXp} XP em bônus</span>
+      <p className="m-0 text-[11px] leading-relaxed text-fg-3">
         {day.completedTitles.length ? day.completedTitles.join(" · ") : "Nenhum desafio concluído nesse dia."}
       </p>
     </article>
@@ -511,26 +511,26 @@ function DailyChallengeCard({
   const current = Math.min(progress?.progress ?? 0, challenge.target);
   const completed = progressAvailable && Boolean(progress?.completed_at);
   return (
-    <article className={`editorial-challenge-card flex min-h-[190px] flex-col gap-4 border p-4 transition-colors ${completed ? "border-success-border/80 bg-success-bg/20" : "border-border hover:border-brand-primary"}`}>
+    <article className={`editorial-challenge-card flex min-h-[190px] flex-col gap-4 border p-4 transition-colors ${completed ? "border-success-border/80 bg-success-bg/20" : "border-line hover:border-gold-line"}`}>
       <div className="flex items-start justify-between gap-3">
         <span className={`rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${difficultyClassName(challenge.difficulty)}`}>
           {challenge.difficulty}
         </span>
-        <span className="rounded-full border border-warning-border bg-warning-bg px-2 py-1 font-mono text-[11px] font-semibold text-vex-gold-bright">
+        <span className="rounded-full border border-warning/40 bg-warning-soft px-2 py-1 font-mono text-[11px] font-semibold text-gold-fg">
           +{challenge.rewardXp} XP
         </span>
       </div>
       <div className="min-w-0">
-        <h3 className="m-0 text-sm font-semibold text-text-primary">{challenge.title}</h3>
-        <p className="m-0 mt-1 text-xs leading-relaxed text-text-secondary">{challenge.description}</p>
+        <h3 className="m-0 text-sm font-semibold text-fg">{challenge.title}</h3>
+        <p className="m-0 mt-1 text-xs leading-relaxed text-fg-2">{challenge.description}</p>
       </div>
-      <div className="mt-auto border-t border-border/70 pt-3">
-        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-text-muted">
+      <div className="mt-auto border-t border-line/70 pt-3">
+        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-fg-3">
           <span>{!progressAvailable ? "Progresso indisponível" : completed ? "Concluído" : `${current} / ${challenge.target} ${challenge.unit}`}</span>
           <span>Somente XP</span>
         </div>
         <ProgressBar value={progressAvailable ? (current / challenge.target) * 100 : 0} tone={completed ? "success" : "cyan"} height={5} />
-        <Link to={challenge.href} className="mt-3 inline-block text-xs font-semibold text-vex-cyan-bright transition-colors hover:text-text-primary">
+        <Link to={challenge.href} className="mt-3 inline-block text-xs font-semibold text-gold-fg transition-colors hover:text-fg">
           {completed ? "Desafio concluído" : challenge.actionLabel} <span aria-hidden="true">→</span>
         </Link>
       </div>
@@ -539,8 +539,8 @@ function DailyChallengeCard({
 }
 
 function difficultyClassName(difficulty: DailyChallengeDefinition["difficulty"]): string {
-  if (difficulty === "Difícil") return "border-error-border bg-error-bg text-error";
-  if (difficulty === "Médio") return "border-warning-border bg-warning-bg text-vex-gold-bright";
+  if (difficulty === "Difícil") return "border-danger/40 bg-danger-soft text-danger";
+  if (difficulty === "Médio") return "border-warning/40 bg-warning-soft text-gold-fg";
   if (difficulty === "Especial") return "border-violet-400/50 bg-violet-400/10 text-violet-200";
-  return "border-vex-cyan-dark bg-chip-cyan text-vex-cyan-bright";
+  return "border-gold-line bg-gold-soft text-gold-fg";
 }

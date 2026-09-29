@@ -20,11 +20,11 @@ export function VersionHistoryPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="qv-row px-[18px] py-[14px] flex flex-col gap-3 bg-chip-cyan">
+    <div className="border-b border-line-soft last:border-b-0 px-[18px] py-[14px] flex flex-col gap-3 bg-gold-soft">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
           <span className="text-sm font-semibold truncate">Versões de {document.file_name}</span>
-          <span className="font-mono text-xs text-text-muted">atual: v{document.current_version}</span>
+          <span className="font-mono text-xs text-fg-3">atual: v{document.current_version}</span>
         </div>
         <input
           ref={fileInputRef}
@@ -46,24 +46,24 @@ export function VersionHistoryPanel({
         >
           {uploadNewVersion.isPending ? "Enviando..." : "Enviar nova versão"}
         </Button>
-        <button type="button" onClick={onClose} className="qv-icon-btn" aria-label="Fechar versões">
+        <button type="button" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40" aria-label="Fechar versões">
           ✕
         </button>
       </div>
 
       {isLoading ? (
-        <div className="qv-well">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40">
           <SkeletonList rows={2} subtitle={false} className="px-[14px] py-2.5" />
         </div>
       ) : versions.length === 0 ? (
         <EmptyState>Nenhuma versão anterior ainda. Ao enviar uma nova versão, a atual fica guardada aqui.</EmptyState>
       ) : (
-        <ul className="qv-well flex flex-col">
+        <ul className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex flex-col">
           {versions.map((version) => (
-            <li key={version.id} className="qv-row flex items-center gap-3 px-[14px] py-[10px]">
-              <span className="font-mono text-xs text-text-secondary shrink-0">v{version.version_number}</span>
+            <li key={version.id} className="border-b border-line-soft last:border-b-0 flex items-center gap-3 px-[14px] py-[10px]">
+              <span className="font-mono text-xs text-fg-2 shrink-0">v{version.version_number}</span>
               <span className="flex-1 min-w-0 text-[13px] truncate">{version.file_name}</span>
-              <span className="font-mono text-xs text-text-muted shrink-0">
+              <span className="font-mono text-xs text-fg-3 shrink-0">
                 {new Date(version.created_at).toLocaleDateString("pt-BR")}
               </span>
               <Button

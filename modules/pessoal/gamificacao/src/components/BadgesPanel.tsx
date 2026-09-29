@@ -93,7 +93,7 @@ export function BadgeTile({ badge, stats }: { badge: BadgeWithStatus; stats?: Ga
   return (
     <div
       className={`relative overflow-hidden rounded-[16px] border p-4 transition-colors ${
-        got ? "border-vex-gold-muted/80 bg-[linear-gradient(145deg,rgba(54,40,25,0.8),rgba(17,20,24,0.96))]" : "border-border bg-surface-1/80"
+        got ? "border-gold/80 bg-[linear-gradient(145deg,rgba(54,40,25,0.8),rgba(17,20,24,0.96))]" : "border-line bg-canvas/80"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -104,20 +104,20 @@ export function BadgeTile({ badge, stats }: { badge: BadgeWithStatus; stats?: Ga
             <AchievementBadgeArt imageSrc={badge.imageSrc} badgeKey={badge.key} label={badge.label} locked={!got} />
           )}
         </div>
-        <span className={`rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${got ? "border-success-border bg-success-bg text-success" : "border-border bg-surface-2 text-text-muted"}`}>
+        <span className={`rounded-full border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] ${got ? "border-success/40 bg-success-soft text-success" : "border-line bg-surface text-fg-3"}`}>
           {got ? "Conquistada" : "Bloqueada"}
         </span>
       </div>
       <div className="mt-3 flex flex-col gap-1">
-        <span className="text-sm font-semibold leading-[1.3] text-text-primary">{badge.label}</span>
-        <div className="flex flex-wrap items-center gap-1.5"><span className="text-[10px] text-text-muted">Título</span><TitleBadge title={badge.title} size="sm" /></div>
-        <span className="text-xs leading-[1.45] text-text-secondary">{badge.description}</span>
+        <span className="text-sm font-semibold leading-[1.3] text-fg">{badge.label}</span>
+        <div className="flex flex-wrap items-center gap-1.5"><span className="text-[10px] text-fg-3">Título</span><TitleBadge title={badge.title} size="sm" /></div>
+        <span className="text-xs leading-[1.45] text-fg-2">{badge.description}</span>
       </div>
       <div className="mt-3 flex flex-col gap-2">
-        <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-          <div className={`h-full rounded-full transition-[width] ${got ? "bg-vex-gold-bright" : "bg-vex-cyan"}`} style={{ width: `${got ? 100 : percentage}%` }} />
+        <div className="h-1.5 overflow-hidden rounded-full bg-raised">
+          <div className={`h-full rounded-full transition-[width] ${got ? "bg-gold" : "bg-gold"}`} style={{ width: `${got ? 100 : percentage}%` }} />
         </div>
-        <span className={`font-mono text-[11px] ${got ? "text-vex-gold-bright" : "text-text-secondary"}`}>
+        <span className={`font-mono text-[11px] ${got ? "text-gold-fg" : "text-fg-2"}`}>
         {badgeStatus(badge, stats)}
         </span>
       </div>

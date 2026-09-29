@@ -48,7 +48,7 @@ export function MfaPage() {
       <AuthLayout>
         <div className="flex flex-col gap-4">
           <h1 className="font-display text-[28px] font-semibold m-0">Não foi possível validar o 2FA</h1>
-          <p className="text-[13px] text-text-secondary leading-[1.6] m-0">
+          <p className="text-[13px] text-fg-2 leading-[1.6] m-0">
             Verifique sua conexão e recarregue a página para tentar novamente.
           </p>
           <Button type="button" variant="primary" onClick={() => window.location.reload()} className="w-full py-3 text-[15px]">
@@ -115,7 +115,7 @@ export function MfaPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[28px] font-semibold m-0">Verificação em duas etapas</h1>
-          <p className="text-[13px] text-text-secondary leading-[1.6] m-0">
+          <p className="text-[13px] text-fg-2 leading-[1.6] m-0">
             Digite o código de 6 dígitos do seu app autenticador. A sessão só é liberada depois da confirmação.
           </p>
         </div>
@@ -129,19 +129,19 @@ export function MfaPage() {
         ) : (
           <>
             {verifiedFactors.length > 1 && (
-              <label className="flex flex-col gap-2 text-sm font-medium text-text-primary">
+              <label className="flex flex-col gap-2 text-sm font-medium text-fg">
                 App autenticador
                 <select
                   value={verifiedFactor?.id ?? ""}
                   onChange={(event) => setSelectedFactorId(event.target.value)}
-                  className="qv-field w-full"
+                  className="q-input w-full"
                   aria-label="Escolher app autenticador"
                 >
                   {verifiedFactors.map((factor, index) => (
                     <option key={factor.id} value={factor.id}>{factor.friendlyName || `App autenticador ${index + 1}`}</option>
                   ))}
                 </select>
-                <span className="text-xs font-normal leading-relaxed text-text-muted">Se perdeu acesso ao principal, escolha seu app autenticador de reserva.</span>
+                <span className="text-xs font-normal leading-relaxed text-fg-3">Se perdeu acesso ao principal, escolha seu app autenticador de reserva.</span>
               </label>
             )}
             <div className="grid grid-cols-6 gap-2.5" role="group" aria-label="Código de 6 dígitos">
@@ -161,7 +161,7 @@ export function MfaPage() {
                   autoFocus={index === 0}
                   aria-label={`Dígito ${index + 1}`}
                   placeholder="—"
-                  className="qv-field h-[60px] p-0 text-center font-mono text-[22px]"
+                  className="q-input h-[60px] p-0 text-center font-mono text-[22px]"
                 />
               ))}
             </div>

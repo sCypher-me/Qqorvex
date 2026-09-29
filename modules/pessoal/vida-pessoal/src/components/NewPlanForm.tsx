@@ -54,7 +54,7 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
         maxLength={1000}
         aria-label="Descrição opcional do plano"
         placeholder="O que essa visão significa para você? (opcional)"
-        className="qv-field min-h-20 resize-y"
+        className="q-input min-h-20 resize-y"
       />
       <div className="grid grid-cols-2 gap-2.5">
         <Select label="Tipo" value={planType} onChange={(e) => setPlanType(e.target.value as PlanType)}>
@@ -86,7 +86,7 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
           </Button>
         )}
       </div>
-      {error && <p className="text-xs text-error" role="alert">Não foi possível criar o plano. Seus dados foram mantidos; tente novamente.</p>}
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o plano. Seus dados foram mantidos; tente novamente.</p>}
     </form>
   );
 }

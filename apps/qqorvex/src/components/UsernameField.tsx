@@ -3,10 +3,10 @@ import { useAuth, useUsernameAvailability } from "@qqorvex/auth";
 import { StatusIcon } from "./StatusIcon";
 
 const STATUS_TEXT: Record<string, { label: string; className: string; icon?: boolean } | undefined> = {
-  checking: { label: "Verificando…", className: "text-text-muted" },
+  checking: { label: "Verificando…", className: "text-fg-3" },
   available: { label: "Nome disponível", className: "text-success", icon: true },
-  taken: { label: "Esse nome de usuário já está em uso.", className: "text-error", icon: true },
-  invalid: { label: "3–20 letras minúsculas, números ou _.", className: "text-text-muted" },
+  taken: { label: "Esse nome de usuário já está em uso.", className: "text-danger", icon: true },
+  invalid: { label: "3–20 letras minúsculas, números ou _.", className: "text-fg-3" },
   error: { label: "Não foi possível verificar agora. Tente novamente.", className: "text-warning" },
 };
 

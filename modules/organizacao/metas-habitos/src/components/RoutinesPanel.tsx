@@ -46,7 +46,7 @@ export function RoutinesPanel({ client, userId }: { client: SupabaseClient<Datab
   }
 
   return (
-    <div className="qv-card p-[18px] flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 p-[18px] flex flex-col gap-3">
       <span className="font-display text-base font-semibold">Rotinas</span>
 
       {isLoading ? (
@@ -83,7 +83,7 @@ export function RoutinesPanel({ client, userId }: { client: SupabaseClient<Datab
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da rotina (ex.: Manhã)"
           aria-label="Nome da rotina"
-          className="qv-field flex-1 min-w-[200px] py-2.5"
+          className="q-input flex-1 min-w-[200px] py-2.5"
         />
         <Button type="submit" variant="secondary">
           Criar rotina
@@ -120,17 +120,17 @@ function RoutineCard({
   const doneToday = routineHabits.filter((h) => logs.some((log) => log.habit_id === h.id && log.state === "concluido")).length;
 
   return (
-    <div className="qv-well p-[14px] flex flex-col gap-1.5">
+    <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 p-[14px] flex flex-col gap-1.5">
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          <span className="text-sm font-semibold text-text-primary">{routine.name}</span>
-          <span className="font-mono text-xs text-text-secondary">
+          <span className="text-sm font-semibold text-fg">{routine.name}</span>
+          <span className="font-mono text-xs text-fg-2">
             {routineHabits.length > 0 ? `${doneToday}/${routineHabits.length} hoje` : "0 hábitos"}
           </span>
         </div>
         <button
           type="button"
-          className="qv-icon-btn"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40"
           aria-label={`Excluir a rotina "${routine.name}"`}
           title="Excluir rotina"
           onClick={() => setConfirmOpen(true)}
@@ -140,15 +140,15 @@ function RoutineCard({
       </div>
 
       {routineHabits.length === 0 ? (
-        <span className="text-xs text-text-muted">Nenhum hábito nesta rotina ainda.</span>
+        <span className="text-xs text-fg-3">Nenhum hábito nesta rotina ainda.</span>
       ) : (
         <ul className="flex flex-col mt-1.5">
             {routineHabits.map((habit) => {
               const todayLog = logs.find((log) => log.habit_id === habit.id);
               return (
-                <li key={habit.id} className="qv-row-top flex flex-col gap-1.5 py-2">
+                <li key={habit.id} className="border-t border-line-soft flex flex-col gap-1.5 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] text-text-primary flex-1 min-w-0">{habit.name}</span>
+                    <span className="text-[13px] text-fg flex-1 min-w-0">{habit.name}</span>
                     <Button type="button" variant="ghost" size="xs" onClick={() => onRemoveHabit(habit.id)}>
                       Remover
                     </Button>
@@ -179,7 +179,7 @@ function RoutineCard({
             value={selectedHabitId}
             onChange={(e) => setSelectedHabitId(e.target.value)}
             aria-label="Adicionar hábito à rotina"
-            className="qv-field flex-1 py-[7px] px-2.5 text-[13px]"
+            className="q-input flex-1 py-[7px] px-2.5 text-[13px]"
           >
             <option value="">Adicionar hábito...</option>
             {availableHabits.map((habit) => (

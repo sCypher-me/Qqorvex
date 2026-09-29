@@ -86,38 +86,38 @@ export function NewHabitForm({
         required
       />
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
-        Descrição <span className="text-xs font-normal text-text-muted">opcional</span>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+        Descrição <span className="text-xs font-normal text-fg-3">opcional</span>
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Deixe a ação clara e pequena o bastante para caber no seu dia."
           rows={2}
           maxLength={300}
-          className="qv-field min-h-16 resize-y py-2.5"
+          className="q-input min-h-16 resize-y py-2.5"
         />
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
           Frequência
-          <select value={frequencyType} onChange={(event) => setFrequencyType(event.target.value as HabitFrequencyType)} className="qv-field py-2.5">
+          <select value={frequencyType} onChange={(event) => setFrequencyType(event.target.value as HabitFrequencyType)} className="q-input py-2.5">
             {FREQUENCIES.map((frequency) => <option key={frequency.value} value={frequency.value}>{frequency.label}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
-          Horário sugerido <span className="text-xs font-normal text-text-muted">opcional</span>
-          <input type="time" value={preferredTime} onChange={(event) => setPreferredTime(event.target.value)} className="qv-field py-2.5" />
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+          Horário sugerido <span className="text-xs font-normal text-fg-3">opcional</span>
+          <input type="time" value={preferredTime} onChange={(event) => setPreferredTime(event.target.value)} className="q-input py-2.5" />
         </label>
       </div>
 
       {frequencyType === "dias_especificos" && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium text-text-primary">Em quais dias?</legend>
+          <legend className="text-sm font-medium text-fg">Em quais dias?</legend>
           <div className="flex flex-wrap gap-2">
             {WEEK_DAYS.map((day) => (
-              <label key={day.value} className={`qv-well flex min-h-10 cursor-pointer items-center gap-2 px-3 text-sm ${days.includes(day.value) ? "border-brand-primary text-text-primary" : "text-text-secondary"}`}>
-                <input type="checkbox" checked={days.includes(day.value)} onChange={() => toggleDay(day.value)} className="qv-check" />
+              <label key={day.value} className={`min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex min-h-10 cursor-pointer items-center gap-2 px-3 text-sm ${days.includes(day.value) ? "border-gold-line text-fg" : "text-fg-2"}`}>
+                <input type="checkbox" checked={days.includes(day.value)} onChange={() => toggleDay(day.value)} className="h-4 w-4 shrink-0 accent-[var(--q-gold)]" />
                 {day.label}
               </label>
             ))}
@@ -126,9 +126,9 @@ export function NewHabitForm({
       )}
 
       {frequencyType === "x_vezes_semana" && (
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-text-primary">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
           Meta semanal
-          <select value={timesPerWeek} onChange={(event) => setTimesPerWeek(Number(event.target.value))} className="qv-field py-2.5">
+          <select value={timesPerWeek} onChange={(event) => setTimesPerWeek(Number(event.target.value))} className="q-input py-2.5">
             {[1, 2, 3, 4, 5, 6, 7].map((count) => <option key={count} value={count}>{count} {count === 1 ? "vez" : "vezes"} por semana</option>)}
           </select>
         </label>

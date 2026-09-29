@@ -20,8 +20,8 @@ type ManagerTab = "visao-geral" | "contas" | "codigos" | "config";
 
 function Panel({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <section className={`qv-card flex min-w-0 flex-col gap-4 p-5 sm:p-6 ${className}`}>
-      <h2 className="font-display text-lg font-semibold text-text-primary">{title}</h2>
+    <section className={`flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 flex min-w-0 flex-col gap-4 p-5 sm:p-6 ${className}`}>
+      <h2 className="font-display text-lg font-semibold text-fg">{title}</h2>
       {children}
     </section>
   );
@@ -33,30 +33,30 @@ function OwnerHero({ profile, email }: { profile: Profile; email: string }) {
   const tier = (profile.account_tier in TIER_LABEL ? profile.account_tier : "padrao") as AccountTier;
 
   return (
-    <section className="qv-card grid min-w-0 gap-5 border-vex-gold-muted/40 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,.55fr)] lg:items-center lg:p-7">
+    <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 grid min-w-0 gap-5 border-gold/40 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,.55fr)] lg:items-center lg:p-7">
       <div className="min-w-0">
-        <p className="qv-eyebrow text-vex-gold-bright">ESPAÇO ADMINISTRATIVO</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-text-primary sm:text-4xl">Central do Dono</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">ESPAÇO ADMINISTRATIVO</p>
+        <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em] text-fg sm:text-4xl">Central do Dono</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg-2">
           Contas, convites e configurações globais, organizados em um único painel privado.
         </p>
       </div>
-      <div className="flex min-w-0 items-center gap-3.5 rounded-2xl border border-border bg-surface-1 p-3.5 sm:p-4">
+      <div className="flex min-w-0 items-center gap-3.5 rounded-2xl border border-line bg-canvas p-3.5 sm:p-4">
         <div className="relative shrink-0">
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="h-12 w-12 rounded-full border border-vex-gold-muted/70 object-cover" />
+            <img src={profile.avatar_url} alt="" className="h-12 w-12 rounded-full border border-gold/70 object-cover" />
           ) : (
-            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-vex-gold-muted/70 bg-surface-3 font-mono text-sm font-semibold text-vex-gold-bright">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-gold/70 bg-raised font-mono text-sm font-semibold text-gold-fg">
               {name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
             </span>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text-primary">{name}</p>
-          <p className="truncate text-xs text-text-muted">{username}</p>
+          <p className="truncate text-sm font-semibold text-fg">{name}</p>
+          <p className="truncate text-xs text-fg-3">{username}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge tone="premium">Dono</Badge>
-            <span className="text-[11px] text-text-muted">Conta {TIER_LABEL[tier]}</span>
+            <span className="text-[11px] text-fg-3">Conta {TIER_LABEL[tier]}</span>
           </div>
         </div>
       </div>
@@ -89,12 +89,12 @@ export function ManagerPage() {
   const [tab, setTab] = useState<ManagerTab>("visao-geral");
 
   if (profileLoading) {
-    return <div className="qv-page mx-auto flex w-full max-w-[1440px] flex-col gap-5"><SkeletonCards count={3} className="h-28 rounded-[20px]" /></div>;
+    return <div className=" mx-auto flex w-full max-w-[1440px] flex-col gap-5"><SkeletonCards count={3} className="h-28 rounded-[20px]" /></div>;
   }
 
   if (!profile || profile.role !== "dono") {
     return (
-      <div className="qv-page mx-auto w-full max-w-[900px]">
+      <div className=" mx-auto w-full max-w-[900px]">
         <Panel title="Área restrita">
           <Notice tone="warning" title="Acesso exclusivo ao Dono">Esta conta não possui permissão para abrir a Central do Dono.</Notice>
         </Panel>
@@ -103,9 +103,9 @@ export function ManagerPage() {
   }
 
   return (
-    <div className="qv-page mx-auto flex w-full max-w-[1440px] flex-col gap-5 pb-8">
+    <div className=" mx-auto flex w-full max-w-[1440px] flex-col gap-5 pb-8">
       <OwnerHero profile={profile} email={session!.user.email ?? ""} />
-      <div className="-mx-1 overflow-x-auto border-b border-border px-1 pb-3">
+      <div className="-mx-1 overflow-x-auto border-b border-line px-1 pb-3">
       <ChipTabs value={tab} onChange={setTab} className="min-w-max flex-nowrap" options={[
         { value: "visao-geral", label: "Visão geral" },
         { value: "contas", label: "Contas" },
@@ -139,26 +139,26 @@ function OverviewSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
   return (
     <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.75fr)]">
       <Panel title="Visão do sistema" className="min-w-0">
-        <p className="-mt-2 text-sm leading-relaxed text-text-secondary">Indicadores gerais dos dados registrados no Qqorvex.</p>
+        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Indicadores gerais dos dados registrados no Qqorvex.</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {stats.map(([label, value]) => (
-            <div key={label} className="qv-tile flex min-h-[104px] min-w-0 flex-col justify-between gap-3 p-4 sm:p-5">
-              <span className="truncate text-[10px] font-medium uppercase tracking-[.12em] text-text-muted sm:text-[11px]">{label}</span>
-              <span className="font-display text-2xl font-semibold text-text-primary qv-num sm:text-3xl">{value.toLocaleString("pt-BR")}</span>
+            <div key={label} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong flex min-h-[104px] min-w-0 flex-col justify-between gap-3 p-4 sm:p-5">
+              <span className="truncate text-[10px] font-medium uppercase tracking-[.12em] text-fg-3 sm:text-[11px]">{label}</span>
+              <span className="font-display text-2xl font-semibold text-fg tabular-nums sm:text-3xl">{value.toLocaleString("pt-BR")}</span>
             </div>
           ))}
         </div>
       </Panel>
       <Panel title="Atalhos de gestão" className="min-w-0">
-        <p className="-mt-2 text-sm leading-relaxed text-text-secondary">Acesse rapidamente as tarefas mais comuns do painel.</p>
+        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Acesse rapidamente as tarefas mais comuns do painel.</p>
         {[
           { title: "Gerenciar contas", description: "Consultar acessos e contas", tab: "contas" as const },
           { title: "Criar código", description: "Gerar um convite de acesso", tab: "codigos" as const },
           { title: "Configurar integrações", description: "Gerenciar chaves do sistema", tab: "config" as const },
         ].map((action) => (
-          <button key={action.tab} type="button" onClick={() => onNavigate(action.tab)} className="qv-row group flex w-full items-center justify-between gap-3 rounded-xl px-3.5 py-3.5 text-left transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-vex-cyan-dark">
-            <span className="min-w-0"><strong className="block text-sm font-semibold text-text-primary">{action.title}</strong><span className="mt-0.5 block text-xs text-text-muted">{action.description}</span></span>
-            <span aria-hidden="true" className="shrink-0 text-lg text-vex-cyan-bright transition-transform group-hover:translate-x-0.5">→</span>
+          <button key={action.tab} type="button" onClick={() => onNavigate(action.tab)} className="border-b border-line-soft last:border-b-0 group flex w-full items-center justify-between gap-3 rounded-xl px-3.5 py-3.5 text-left transition-colors hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold">
+            <span className="min-w-0"><strong className="block text-sm font-semibold text-fg">{action.title}</strong><span className="mt-0.5 block text-xs text-fg-3">{action.description}</span></span>
+            <span aria-hidden="true" className="shrink-0 text-lg text-gold-fg transition-transform group-hover:translate-x-0.5">→</span>
           </button>
         ))}
       </Panel>
@@ -182,7 +182,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
 
   return (
     <Panel title="Contas e acessos">
-      <div className="flex min-w-0 flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
         <Input label="Buscar uma conta" placeholder="Nome, usuário ou e-mail" value={search} onChange={(event) => setSearch(event.target.value)} wrapperClassName="w-full sm:max-w-xl" />
         <div className="flex flex-wrap gap-2 pb-0.5">
           <Badge tone="info">{accounts.length} no total</Badge>
@@ -197,15 +197,15 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
       ) : (
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {filteredAccounts.map((account) => (
-            <article key={account.id} className="qv-tile flex min-w-0 flex-col gap-4 p-4 sm:p-5">
+            <article key={account.id} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong flex min-w-0 flex-col gap-4 p-4 sm:p-5">
               <div className="flex min-w-0 items-start gap-3">
-                <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface-2 font-display text-sm font-semibold text-text-secondary">
+                <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line bg-surface font-display text-sm font-semibold text-fg-2">
                   {(account.displayName || account.username || account.email).trim().slice(0, 1).toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm font-semibold text-text-primary">{account.displayName || account.username || "Sem nome definido"}</p>
-                  <p className="mt-1 break-all text-xs text-text-muted">{account.email}</p>
-                  {account.username && <p className="mt-1 truncate text-xs text-vex-cyan-bright">@{account.username}</p>}
+                  <p className="break-words text-sm font-semibold text-fg">{account.displayName || account.username || "Sem nome definido"}</p>
+                  <p className="mt-1 break-all text-xs text-fg-3">{account.email}</p>
+                  {account.username && <p className="mt-1 truncate text-xs text-gold-fg">@{account.username}</p>}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -213,8 +213,8 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
                 {account.id === currentUserId && <Badge tone="info">Sua conta</Badge>}
                 <Badge tone={TIER_TONE[account.accountTier]}>{TIER_LABEL[account.accountTier]}</Badge>
               </div>
-              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <span className="text-[11px] text-text-muted">Membro desde {shortDate.format(new Date(account.createdAt))}</span>
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+                <span className="text-[11px] text-fg-3">Membro desde {shortDate.format(new Date(account.createdAt))}</span>
                 {account.id !== currentUserId && (
                   <Button variant="destructive" size="sm" disabled={deleteAccountMutation.isPending} onClick={() => { deleteAccountMutation.reset(); setConfirming({ id: account.id, email: account.email }); }}>
                     {deleteAccountMutation.isPending && deleteAccountMutation.variables === account.id ? "Excluindo…" : "Excluir conta"}
@@ -275,7 +275,7 @@ function CodesSection({ userId }: { userId: string }) {
   return (
     <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(300px,.72fr)_minmax(0,1.28fr)]">
       <Panel title="Gerar código de convite">
-        <p className="-mt-2 text-sm leading-relaxed text-text-secondary">Crie códigos para conceder acesso Parceiro, Lifetime ou reconhecer participantes oficiais do beta.</p>
+        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Crie códigos para conceder acesso Parceiro, Lifetime ou reconhecer participantes oficiais do beta.</p>
         <form onSubmit={handleCreate} className="flex min-w-0 flex-col gap-4">
           <Select label="Acesso concedido" value={tier} onChange={(event) => setTier(event.target.value as typeof tier)}>
             <option value="parceiro">Parceiro</option>
@@ -287,13 +287,13 @@ function CodesSection({ userId }: { userId: string }) {
         </form>
         {createError && <Notice tone="error">{createError}</Notice>}
         {lastGenerated && (
-          <div className="rounded-xl border border-success/30 bg-success-bg p-4">
+          <div className="rounded-xl border border-success/30 bg-success-soft p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-success">Código criado</p>
             <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 break-all font-mono text-base font-semibold tracking-[.06em] text-text-primary">{lastGenerated}</code>
+              <code className="min-w-0 flex-1 break-all font-mono text-base font-semibold tracking-[.06em] text-fg">{lastGenerated}</code>
               <Button type="button" variant="secondary" size="sm" onClick={() => void handleCopyCode()}>Copiar</Button>
             </div>
-            {copyMessage && <p className="mt-2 text-xs leading-relaxed text-text-secondary" role="status">{copyMessage}</p>}
+            {copyMessage && <p className="mt-2 text-xs leading-relaxed text-fg-2" role="status">{copyMessage}</p>}
           </div>
         )}
       </Panel>
@@ -302,10 +302,10 @@ function CodesSection({ userId }: { userId: string }) {
         {!isLoading && !error && codes.length > 0 && (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {[
-              { label: "Total", value: codes.length, tone: "text-text-primary" },
-              { label: "Pendentes", value: codes.filter((code) => !code.redeemed_by).length, tone: "text-vex-gold-bright" },
+              { label: "Total", value: codes.length, tone: "text-fg" },
+              { label: "Pendentes", value: codes.filter((code) => !code.redeemed_by).length, tone: "text-gold-fg" },
               { label: "Resgatados", value: codes.filter((code) => Boolean(code.redeemed_by)).length, tone: "text-success" },
-            ].map((stat) => <div key={stat.label} className="qv-tile min-w-0 p-3.5"><p className="text-[10px] font-medium uppercase tracking-[.1em] text-text-muted">{stat.label}</p><p className={`mt-1 font-display text-xl font-semibold ${stat.tone}`}>{stat.value}</p></div>)}
+            ].map((stat) => <div key={stat.label} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong min-w-0 p-3.5"><p className="text-[10px] font-medium uppercase tracking-[.1em] text-fg-3">{stat.label}</p><p className={`mt-1 font-display text-xl font-semibold ${stat.tone}`}>{stat.value}</p></div>)}
           </div>
         )}
         {isLoading ? (
@@ -317,16 +317,16 @@ function CodesSection({ userId }: { userId: string }) {
         ) : (
           <div className="grid min-w-0 gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
             {codes.map((code) => (
-              <article key={code.id} className="qv-tile flex min-w-0 flex-col gap-3 p-4">
+              <article key={code.id} className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong flex min-w-0 flex-col gap-3 p-4">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                  <code className="break-all font-mono text-sm font-semibold text-text-primary">{code.code}</code>
+                  <code className="break-all font-mono text-sm font-semibold text-fg">{code.code}</code>
                   <Badge tone={code.redeemed_by ? "success" : "outline"}>{code.redeemed_by ? "Resgatado" : "Pendente"}</Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={code.tier === "lifetime" ? "premium" : "info"}>{code.tier === "beta_tester" ? "Beta Tester" : TIER_LABEL[code.tier as AccountTier]}</Badge>
-                  <span className="text-[11px] text-text-muted">Criado {shortDate.format(new Date(code.created_at))}</span>
+                  <span className="text-[11px] text-fg-3">Criado {shortDate.format(new Date(code.created_at))}</span>
                 </div>
-                {code.note && <p className="truncate border-t border-border pt-2 text-xs text-text-muted" title={code.note}>{code.note}</p>}
+                {code.note && <p className="truncate border-t border-line pt-2 text-xs text-fg-3" title={code.note}>{code.note}</p>}
               </article>
             ))}
           </div>
@@ -396,7 +396,7 @@ function SecretsSection() {
       </Panel>
 
       <Panel title="Adicionar configuração" className="min-w-0">
-        <p className="-mt-2 text-sm leading-relaxed text-text-secondary">Cadastre segredos usados pelas funções de servidor do Qqorvex. Não coloque chaves privadas no código do app; credenciais de Edge Functions, como Stripe, continuam configuradas nos segredos do Supabase.</p>
+        <p className="-mt-2 text-sm leading-relaxed text-fg-2">Cadastre segredos usados pelas funções de servidor do Qqorvex. Não coloque chaves privadas no código do app; credenciais de Edge Functions, como Stripe, continuam configuradas nos segredos do Supabase.</p>
         <form
           className="flex min-w-0 flex-col gap-4"
           onSubmit={async (event) => {
@@ -460,11 +460,11 @@ function SecretRow({
   }
 
   return (
-    <article className="qv-row flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <article className="border-b border-line-soft last:border-b-0 flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <div className="min-w-0 flex-1">
-          <p className="break-words text-sm font-medium text-text-primary">{label}</p>
-          <p className="mt-0.5 break-all font-mono text-[11px] text-text-muted">{secretKey}</p>
+          <p className="break-words text-sm font-medium text-fg">{label}</p>
+          <p className="mt-0.5 break-all font-mono text-[11px] text-fg-3">{secretKey}</p>
         </div>
         <Badge tone={hasValue ? "success" : "outline"}>{hasValue ? "Configurada" : "Sem valor"}</Badge>
       </div>

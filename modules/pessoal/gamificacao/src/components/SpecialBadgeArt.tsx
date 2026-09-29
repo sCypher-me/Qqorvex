@@ -29,7 +29,7 @@ export function SpecialBadgeArt({
       {badge.subscriptionMonths != null && (
         <span
           aria-hidden="true"
-          className="relative z-10 col-start-1 row-start-1 font-display font-bold leading-none tracking-tight text-vex-gold-bright [text-shadow:0_1px_2px_rgba(0,0,0,0.95)]"
+          className="relative z-10 col-start-1 row-start-1 font-display font-bold leading-none tracking-tight text-gold-fg [text-shadow:0_1px_2px_rgba(0,0,0,0.95)]"
           style={{ fontSize: "32cqw" }}
         >
           {badge.subscriptionMonths}
