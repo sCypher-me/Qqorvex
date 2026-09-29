@@ -2,15 +2,19 @@ import { useState, type FormEvent } from "react";
 import { AddressBookIcon, CopyIcon, PhoneIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, ConfirmDialog, IconButton, Input, SkeletonList, initialsOf } from "@qqorvex/ui";
-import { useCreateUsefulContact, useDeleteUsefulContact, useUsefulContacts } from "../hooks/useVidaPratica";
-import { PanelEmpty, PanelRow, PanelShell } from "./PanelShell";
+import { useCreateUsefulContact, useDeleteUsefulContact, useUpdateUsefulContact, useUsefulContacts } from "../hooks/useVidaPratica";
+import type { UsefulContact } from "../types";
+import { PanelEditingNote, PanelEmpty, PanelRow, PanelShell } from "./PanelShell";
 
 /** NÃO é uma agenda de contatos genérica (decisão explícita do usuário) — só profissionais/serviços úteis. */
 export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { contacts, isLoading } = useUsefulContacts(client);
   const createContact = useCreateUsefulContact(client, userId);
+  const updateContact = useUpdateUsefulContact(client);
   const deleteContact = useDeleteUsefulContact(client);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<UsefulContact | null>(null);
+  const saving = editing ? updateContact : createContact;
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const confirmContact = contacts.find((c) => c.id === confirmDeleteId) ?? null;
@@ -22,34 +26,37 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
     const form = new FormData(formElement);
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
-    createContact.mutate(
-      {
-        name,
-        category: String(form.get("category") ?? "").trim() || undefined,
-        phone: String(form.get("phone") ?? "").trim() || undefined,
+    const input = {
+      name,
+      category: String(form.get("category") ?? "").trim() || undefined,
+      phone: String(form.get("phone") ?? "").trim() || undefined,
+    };
+    if (editing) {
+      updateContact.mutate({ contactId: editing.id, input }, { onSuccess: () => setEditing(null) });
+      return;
+    }
+    createContact.mutate(input, {
+      onSuccess: () => {
+        formElement.reset();
+        setFormOpen(false);
       },
-      {
-        onSuccess: () => {
-          formElement.reset();
-          setFormOpen(false);
-        },
-      },
-    );
+    });
   }
 
   const form = (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <form key={editing?.id ?? "novo"} onSubmit={handleSubmit} className="flex flex-col gap-2">
+      {editing && <PanelEditingNote name={editing.name} onCancel={() => setEditing(null)} />}
       <div className="grid grid-cols-2 gap-2">
-        <Input name="name" placeholder="Nome" aria-label="Nome" fieldSize="sm" autoFocus />
-        <Input name="category" placeholder="Serviço (ex.: eletricista)" aria-label="Serviço" fieldSize="sm" />
+        <Input name="name" defaultValue={editing?.name} placeholder="Nome" aria-label="Nome" fieldSize="sm" autoFocus />
+        <Input name="category" defaultValue={editing?.category ?? ""} placeholder="Serviço (ex.: eletricista)" aria-label="Serviço" fieldSize="sm" />
       </div>
       <div className="flex gap-2">
-        <Input name="phone" type="tel" placeholder="Telefone" aria-label="Telefone" fieldSize="sm" wrapperClassName="flex-1" />
-        <Button type="submit" size="sm" loading={createContact.isPending}>
-          Salvar
+        <Input name="phone" type="tel" defaultValue={editing?.phone ?? ""} placeholder="Telefone" aria-label="Telefone" fieldSize="sm" wrapperClassName="flex-1" />
+        <Button type="submit" size="sm" loading={saving.isPending}>
+          {editing ? "Salvar alterações" : "Salvar"}
         </Button>
       </div>
-      {createContact.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar. Os campos foram mantidos.</p>}
+      {saving.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar. Os campos foram mantidos.</p>}
     </form>
   );
 
@@ -60,8 +67,8 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
       meta={isLoading ? undefined : contacts.length || undefined}
       summary="Profissionais e serviços de confiança"
       addLabel="Adicionar contato"
-      formOpen={formOpen}
-      onToggleForm={() => setFormOpen((value) => !value)}
+      formOpen={formOpen || editing !== null}
+      onToggleForm={() => (editing ? setEditing(null) : setFormOpen((value) => !value))}
       form={form}
     >
       {isLoading ? (
@@ -73,7 +80,16 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
           {sorted.map((contact) => {
             const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^\d+]/g, "")}` : null;
             return (
-              <PanelRow key={contact.id} onDelete={() => setConfirmDeleteId(contact.id)} deleteLabel={`Excluir "${contact.name}"`}>
+              <PanelRow
+                key={contact.id}
+                onEdit={() => {
+                  setFormOpen(false);
+                  setEditing(contact);
+                }}
+                editLabel={`Editar "${contact.name}"`}
+                onDelete={() => setConfirmDeleteId(contact.id)}
+                deleteLabel={`Excluir "${contact.name}"`}
+              >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold-soft text-[11px] font-semibold text-gold-fg" aria-hidden="true">
                   {initialsOf(contact.name)}
                 </span>

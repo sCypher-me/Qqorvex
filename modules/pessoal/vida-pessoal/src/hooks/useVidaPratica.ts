@@ -20,8 +20,12 @@ import {
   listVehicles,
   toggleImportantPurchase,
   toggleShoppingListItem,
+  updateAsset,
+  updateImportantPurchase,
+  updateUsefulContact,
+  updateVehicle,
 } from "../repository";
-import type { NewAssetInput, NewImportantPurchaseInput, NewShoppingListItemInput, NewUsefulContactInput, NewVehicleInput } from "../types";
+import type { NewAssetInput, NewImportantPurchaseInput, NewShoppingListItemInput, NewUsefulContactInput, NewVehicleInput, UsefulContactEditInput } from "../types";
 
 const USEFUL_CONTACTS_KEY = ["useful-contacts"] as const;
 const VEHICLES_KEY = ["vehicles"] as const;
@@ -43,6 +47,14 @@ export function useCreateUsefulContact(client: SupabaseClient<Database>, userId:
   });
 }
 
+export function useUpdateUsefulContact(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contactId, input }: { contactId: string; input: UsefulContactEditInput }) => updateUsefulContact(client, contactId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: USEFUL_CONTACTS_KEY }),
+  });
+}
+
 export function useDeleteUsefulContact(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -60,6 +72,14 @@ export function useCreateVehicle(client: SupabaseClient<Database>, userId: strin
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewVehicleInput) => createVehicle(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: VEHICLES_KEY }),
+  });
+}
+
+export function useUpdateVehicle(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vehicleId, input }: { vehicleId: string; input: NewVehicleInput }) => updateVehicle(client, vehicleId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: VEHICLES_KEY }),
   });
 }
@@ -98,6 +118,14 @@ export function useCreateAsset(client: SupabaseClient<Database>, userId: string)
   });
 }
 
+export function useUpdateAsset(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assetId, input }: { assetId: string; input: NewAssetInput }) => updateAsset(client, assetId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ASSETS_KEY }),
+  });
+}
+
 export function useDeleteAsset(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -115,6 +143,14 @@ export function useCreateImportantPurchase(client: SupabaseClient<Database>, use
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewImportantPurchaseInput) => createImportantPurchase(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: IMPORTANT_PURCHASES_KEY }),
+  });
+}
+
+export function useUpdateImportantPurchase(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ purchaseId, input }: { purchaseId: string; input: NewImportantPurchaseInput }) => updateImportantPurchase(client, purchaseId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: IMPORTANT_PURCHASES_KEY }),
   });
 }

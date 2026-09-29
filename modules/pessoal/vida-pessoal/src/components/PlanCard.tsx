@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArchiveIcon, ArrowCounterClockwiseIcon, CaretDownIcon, CheckCircleIcon, TargetIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
+import { ArchiveIcon, ArrowCounterClockwiseIcon, CaretDownIcon, CheckCircleIcon, PencilSimpleIcon, TargetIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Badge, ConfirmDialog, IconButton, ProgressBar, cx, type BadgeTone } from "@qqorvex/ui";
 import { useGoals } from "@qqorvex/module-metas-habitos";
@@ -12,8 +12,9 @@ export const PLAN_STATUS_LABEL: Record<PlanStatus, string> = { ativo: "Ativo", c
 export const PLAN_STATUS_TONE: Record<PlanStatus, BadgeTone> = { ativo: "gold", concluido: "success", arquivado: "neutral" };
 const PLAN_TYPE_LABEL: Record<PlanType, string> = { mensal: "Mensal", anual: "Anual", quinquenal: "5 anos" };
 
-export function statusMenu(status: PlanStatus, onChange: (status: PlanStatus) => void, onDelete: () => void) {
+export function statusMenu(status: PlanStatus, onChange: (status: PlanStatus) => void, onDelete: () => void, onEdit?: () => void) {
   return [
+    ...(onEdit ? [{ label: "Editar", icon: <PencilSimpleIcon />, onSelect: onEdit }] : []),
     ...(status === "ativo" ? [{ label: "Marcar como concluído", icon: <CheckCircleIcon />, onSelect: () => onChange("concluido") }] : []),
     ...(status !== "arquivado" ? [{ label: "Arquivar", icon: <ArchiveIcon />, onSelect: () => onChange("arquivado") }] : []),
     ...(status !== "ativo" ? [{ label: "Reativar", icon: <ArrowCounterClockwiseIcon />, onSelect: () => onChange("ativo") }] : []),
@@ -27,11 +28,13 @@ export function PlanCard({
   client,
   plan,
   onChangeStatus,
+  onEdit,
   onDelete,
 }: {
   client: SupabaseClient<Database>;
   plan: Plan;
   onChangeStatus: (status: PlanStatus) => void;
+  onEdit?: () => void;
   onDelete: () => void;
 }) {
   const { goals } = useGoals(client);
@@ -59,7 +62,7 @@ export function PlanCard({
           {plan.description && <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-fg-2">{plan.description}</p>}
         </div>
         {plan.status !== "ativo" && <Badge tone={PLAN_STATUS_TONE[plan.status]}>{PLAN_STATUS_LABEL[plan.status]}</Badge>}
-        <KebabMenu label={`Ações para ${plan.title}`} items={statusMenu(plan.status, onChangeStatus, () => setConfirmOpen(true))} />
+        <KebabMenu label={`Ações para ${plan.title}`} items={statusMenu(plan.status, onChangeStatus, () => setConfirmOpen(true), onEdit)} />
       </div>
 
       <button type="button" onClick={() => setGoalsOpen((value) => !value)} aria-expanded={goalsOpen} className="flex w-full items-center gap-3 border-t border-line-soft px-4 py-2.5 text-left hover:bg-hover">

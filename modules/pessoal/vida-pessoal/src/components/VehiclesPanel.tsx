@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from "react";
-import { CalendarBlankIcon, CarProfileIcon, CaretDownIcon, TrashIcon } from "@phosphor-icons/react";
+import { CalendarBlankIcon, CarProfileIcon, CaretDownIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { AttachDocumentPanel } from "@qqorvex/module-documentos";
 import { useTransactions, computeVehicleSpending } from "@qqorvex/module-financas";
 import { Button, ConfirmDialog, Input, SkeletonList, cx } from "@qqorvex/ui";
-import { useAddVehicleImportantDate, useCreateVehicle, useDeleteVehicle, useVehicleImportantDates, useVehicles } from "../hooks/useVidaPratica";
+import { useAddVehicleImportantDate, useCreateVehicle, useDeleteVehicle, useUpdateVehicle, useVehicleImportantDates, useVehicles } from "../hooks/useVidaPratica";
 import { localDateKey } from "../service";
 import type { Vehicle } from "../types";
-import { PanelEmpty, PanelShell, brlCents } from "./PanelShell";
+import { PanelEditingNote, PanelEmpty, PanelShell, brlCents } from "./PanelShell";
 
 /** `yyyy-mm-dd` → `dd/mm/aaaa` sem passar por `Date` (evita deslocamento de fuso). */
 function formatIsoDate(iso: string): string {
@@ -33,7 +33,7 @@ function relativeDays(days: number): string {
  * Total gasto por Veículo: busca as transações do usuário e soma via `computeVehicleSpending()`
  * (puro, em `@qqorvex/module-financas`) — Vida Pessoal conhece Finanças aqui, nunca o contrário.
  */
-function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Database>; vehicle: Vehicle; onDelete: () => void }) {
+function VehicleRow({ client, vehicle, onEdit, onDelete }: { client: SupabaseClient<Database>; vehicle: Vehicle; onEdit: () => void; onDelete: () => void }) {
   const { dates } = useVehicleImportantDates(client, vehicle.id);
   const addDate = useAddVehicleImportantDate(client, vehicle.id);
   const { transactions } = useTransactions(client);
@@ -124,9 +124,14 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
 
           <AttachDocumentPanel client={client} relatedModule="vida-pessoal" relatedEntityId={vehicle.id} />
 
-          <Button variant="ghost" size="sm" leadingIcon={<TrashIcon size={14} />} className="self-start text-danger" onClick={() => setConfirmOpen(true)}>
-            Excluir veículo
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" leadingIcon={<PencilSimpleIcon size={14} />} onClick={onEdit}>
+              Editar veículo
+            </Button>
+            <Button variant="ghost" size="sm" leadingIcon={<TrashIcon size={14} />} className="text-danger" onClick={() => setConfirmOpen(true)}>
+              Excluir veículo
+            </Button>
+          </div>
         </div>
       )}
 
@@ -149,8 +154,11 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
 export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { vehicles, isLoading } = useVehicles(client);
   const createVehicle = useCreateVehicle(client, userId);
+  const updateVehicle = useUpdateVehicle(client);
   const deleteVehicle = useDeleteVehicle(client);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Vehicle | null>(null);
+  const saving = editing ? updateVehicle : createVehicle;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -158,36 +166,39 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
     const form = new FormData(formElement);
     const nickname = String(form.get("nickname") ?? "").trim();
     if (!nickname) return;
-    createVehicle.mutate(
-      {
-        nickname,
-        brand: String(form.get("brand") ?? "").trim() || undefined,
-        model: String(form.get("model") ?? "").trim() || undefined,
-        plate: String(form.get("plate") ?? "").trim() || undefined,
-        year: form.get("year") ? Number(form.get("year")) : undefined,
+    const input = {
+      nickname,
+      brand: String(form.get("brand") ?? "").trim() || undefined,
+      model: String(form.get("model") ?? "").trim() || undefined,
+      plate: String(form.get("plate") ?? "").trim() || undefined,
+      year: form.get("year") ? Number(form.get("year")) : undefined,
+    };
+    if (editing) {
+      updateVehicle.mutate({ vehicleId: editing.id, input }, { onSuccess: () => setEditing(null) });
+      return;
+    }
+    createVehicle.mutate(input, {
+      onSuccess: () => {
+        formElement.reset();
+        setFormOpen(false);
       },
-      {
-        onSuccess: () => {
-          formElement.reset();
-          setFormOpen(false);
-        },
-      },
-    );
+    });
   }
 
   const form = (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <Input name="nickname" placeholder="Como você chama o veículo (ex.: Onix prata)" aria-label="Apelido" fieldSize="sm" autoFocus />
+    <form key={editing?.id ?? "novo"} onSubmit={handleSubmit} className="flex flex-col gap-2">
+      {editing && <PanelEditingNote name={editing.nickname} onCancel={() => setEditing(null)} />}
+      <Input name="nickname" defaultValue={editing?.nickname} placeholder="Como você chama o veículo (ex.: Onix prata)" aria-label="Apelido" fieldSize="sm" autoFocus />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Input name="brand" placeholder="Marca" aria-label="Marca" fieldSize="sm" />
-        <Input name="model" placeholder="Modelo" aria-label="Modelo" fieldSize="sm" />
-        <Input name="year" type="number" placeholder="Ano" aria-label="Ano" fieldSize="sm" />
-        <Input name="plate" placeholder="Placa" aria-label="Placa" fieldSize="sm" className="uppercase" />
+        <Input name="brand" defaultValue={editing?.brand ?? ""} placeholder="Marca" aria-label="Marca" fieldSize="sm" />
+        <Input name="model" defaultValue={editing?.model ?? ""} placeholder="Modelo" aria-label="Modelo" fieldSize="sm" />
+        <Input name="year" type="number" defaultValue={editing?.year ?? ""} placeholder="Ano" aria-label="Ano" fieldSize="sm" />
+        <Input name="plate" defaultValue={editing?.plate ?? ""} placeholder="Placa" aria-label="Placa" fieldSize="sm" className="uppercase" />
       </div>
-      <Button type="submit" size="sm" className="self-start" loading={createVehicle.isPending}>
-        Salvar veículo
+      <Button type="submit" size="sm" className="self-start" loading={saving.isPending}>
+        {editing ? "Salvar alterações" : "Salvar veículo"}
       </Button>
-      {createVehicle.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar o veículo; os campos continuam preenchidos.</p>}
+      {saving.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar o veículo; os campos continuam preenchidos.</p>}
     </form>
   );
 
@@ -198,8 +209,8 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
       meta={isLoading ? undefined : vehicles.length || undefined}
       summary="Datas, gastos e documentos de cada um"
       addLabel="Adicionar veículo"
-      formOpen={formOpen}
-      onToggleForm={() => setFormOpen((value) => !value)}
+      formOpen={formOpen || editing !== null}
+      onToggleForm={() => (editing ? setEditing(null) : setFormOpen((value) => !value))}
       form={form}
     >
       {isLoading ? (
@@ -209,7 +220,16 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
       ) : (
         <ul className="divide-y divide-line-soft">
           {vehicles.map((vehicle) => (
-            <VehicleRow key={vehicle.id} client={client} vehicle={vehicle} onDelete={() => deleteVehicle.mutate(vehicle.id)} />
+            <VehicleRow
+              key={vehicle.id}
+              client={client}
+              vehicle={vehicle}
+              onEdit={() => {
+                setFormOpen(false);
+                setEditing(vehicle);
+              }}
+              onDelete={() => deleteVehicle.mutate(vehicle.id)}
+            />
           ))}
         </ul>
       )}

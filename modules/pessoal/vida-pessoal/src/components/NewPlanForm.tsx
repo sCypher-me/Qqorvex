@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button, Input, Select, Textarea } from "@qqorvex/ui";
 import { computePlanPeriod } from "../service";
-import type { NewPlanInput, PlanType } from "../types";
+import type { NewPlanInput, Plan, PlanType } from "../types";
 
 const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   mensal: "Mensal",
@@ -9,17 +9,20 @@ const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   quinquenal: "5 anos",
 };
 
-/** A pessoa só escolhe um mês ou ano, nunca duas datas soltas — ver `computePlanPeriod`. */
-export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanInput) => void | Promise<void>; onCancel?: () => void }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+/**
+ * A pessoa só escolhe um mês ou ano, nunca duas datas soltas — ver `computePlanPeriod`. Com
+ * `initial`, edita um plano existente (o período sempre começa no dia 1, então mês e ano saem
+ * direto de `period_start`).
+ */
+export function NewPlanForm({ initial, onSubmit, onCancel }: { initial?: Plan; onSubmit: (input: NewPlanInput) => void | Promise<void>; onCancel?: () => void }) {
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
-  const [planType, setPlanType] = useState<PlanType>("anual");
-  const currentYear = new Date().getFullYear();
+  const [planType, setPlanType] = useState<PlanType>(initial?.plan_type ?? "anual");
   const localNow = new Date();
-  const [month, setMonth] = useState(`${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}`);
-  const [year, setYear] = useState(currentYear);
+  const [month, setMonth] = useState(initial?.period_start.slice(0, 7) ?? `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}`);
+  const [year, setYear] = useState(initial ? Number(initial.period_start.slice(0, 4)) : localNow.getFullYear());
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -29,9 +32,11 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
     setIsSaving(true);
     setError(false);
     try {
-      await onCreate({ title: trimmed, description: description.trim() || undefined, planType, periodStart, periodEnd });
-      setTitle("");
-      setDescription("");
+      await onSubmit({ title: trimmed, description: description.trim() || undefined, planType, periodStart, periodEnd });
+      if (!initial) {
+        setTitle("");
+        setDescription("");
+      }
     } catch {
       setError(true);
     } finally {
@@ -75,7 +80,7 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
           />
         )}
       </div>
-      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o plano. Seus dados foram mantidos; tente novamente.</p>}
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível salvar o plano. Seus dados foram mantidos; tente novamente.</p>}
       <div className="flex justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
@@ -83,7 +88,7 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
           </Button>
         )}
         <Button type="submit" variant="primary" loading={isSaving} disabled={!title.trim()}>
-          Criar plano
+          {initial ? "Salvar alterações" : "Criar plano"}
         </Button>
       </div>
     </form>

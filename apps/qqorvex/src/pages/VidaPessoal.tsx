@@ -6,6 +6,7 @@ import {
   DailyCheckinForm,
   IdeaCard,
   ImportantPurchasesPanel,
+  NewIdeaForm,
   NewPlanForm,
   NewProjectForm,
   PlanCard,
@@ -27,10 +28,15 @@ import {
   usePlans,
   usePomodoroSessions,
   useProjects,
+  useUpdateIdea,
+  useUpdatePlan,
   useUpdatePlanStatus,
+  useUpdateProject,
   useUpdateProjectStatus,
   type Idea,
+  type Plan,
   type PlanStatus,
+  type Project,
 } from "@qqorvex/module-vida-pessoal";
 import { Button, IconButton, Modal, PageContainer, PageHeader, Segmented, SkeletonCards, Tabs, useToast } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
@@ -138,7 +144,7 @@ export function VidaPessoalPage() {
 
       <Modal isOpen={modal === "plano"} onClose={() => setModal(null)} title="Novo plano" description="Uma direção ampla — depois vincule as metas que levam até ela." size="md">
         <NewPlanForm
-          onCreate={async (input) => {
+          onSubmit={async (input) => {
             await createPlan.mutateAsync(input);
             setModal(null);
           }}
@@ -147,7 +153,7 @@ export function VidaPessoalPage() {
       </Modal>
       <Modal isOpen={modal === "projeto"} onClose={() => setModal(null)} title="Novo projeto" description="Agrupe tarefas que fazem uma entrega andar." size="md">
         <NewProjectForm
-          onCreate={async (input) => {
+          onSubmit={async (input) => {
             await createProject.mutateAsync(input);
             setModal(null);
           }}
@@ -165,17 +171,22 @@ function PlanningTab({ userId, onNewPlan, onNewProject }: { userId: string; onNe
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ativo");
   const [ideaTitle, setIdeaTitle] = useState("");
+  const [editing, setEditing] = useState<{ kind: "plano"; plan: Plan } | { kind: "projeto"; project: Project } | { kind: "ideia"; idea: Idea } | null>(null);
 
   const { plans, isLoading: plansLoading } = usePlans(supabase);
+  const updatePlan = useUpdatePlan(supabase);
   const updatePlanStatus = useUpdatePlanStatus(supabase);
   const deletePlan = useDeletePlan(supabase);
   const { projects, isLoading: projectsLoading } = useProjects(supabase);
   const createProject = useCreateProject(supabase, userId);
+  const updateProject = useUpdateProject(supabase);
   const updateProjectStatus = useUpdateProjectStatus(supabase);
   const deleteProject = useDeleteProject(supabase);
   const { ideas, isLoading: ideasLoading } = useIdeas(supabase);
   const createIdea = useCreateIdea(supabase, userId);
+  const updateIdea = useUpdateIdea(supabase);
   const deleteIdea = useDeleteIdea(supabase);
+  const closeEdit = () => setEditing(null);
 
   const term = search.trim().toLocaleLowerCase("pt-BR");
   const matches = (item: { title: string; description?: string | null }) => !term || `${item.title} ${item.description ?? ""}`.toLocaleLowerCase("pt-BR").includes(term);
@@ -236,6 +247,7 @@ function PlanningTab({ userId, onNewPlan, onNewProject }: { userId: string; onNe
                 client={supabase}
                 plan={plan}
                 onChangeStatus={(next) => updatePlanStatus.mutate({ planId: plan.id, status: next })}
+                onEdit={() => setEditing({ kind: "plano", plan })}
                 onDelete={() => deletePlan.mutate(plan.id)}
               />
             ))
@@ -255,6 +267,7 @@ function PlanningTab({ userId, onNewPlan, onNewProject }: { userId: string; onNe
                 project={project}
                 userId={userId}
                 onChangeStatus={(next) => updateProjectStatus.mutate({ projectId: project.id, status: next })}
+                onEdit={() => setEditing({ kind: "projeto", project })}
                 onDelete={() => deleteProject.mutate(project.id)}
               />
             ))
@@ -273,12 +286,55 @@ function PlanningTab({ userId, onNewPlan, onNewProject }: { userId: string; onNe
           {ideasLoading ? (
             <SkeletonCards count={2} className="h-16 w-full rounded-xl" />
           ) : visibleIdeas.length ? (
-            visibleIdeas.map((idea) => <IdeaCard key={idea.id} idea={idea} onDelete={() => deleteIdea.mutate(idea.id)} onPromote={() => void promoteIdea(idea)} />)
+            visibleIdeas.map((idea) => <IdeaCard key={idea.id} idea={idea} onEdit={() => setEditing({ kind: "ideia", idea })} onDelete={() => deleteIdea.mutate(idea.id)} onPromote={() => void promoteIdea(idea)} />)
           ) : (
             <ColumnEmpty icon={<LightbulbIcon />} text={term ? `Nenhuma ideia com “${search.trim()}”.` : "Sem ideias guardadas. Quando uma amadurecer, transforme em projeto."} />
           )}
         </PlanningColumn>
       </div>
+
+      <Modal isOpen={editing?.kind === "plano"} onClose={closeEdit} title="Editar plano" size="md">
+        {editing?.kind === "plano" && (
+          <NewPlanForm
+            key={editing.plan.id}
+            initial={editing.plan}
+            onCancel={closeEdit}
+            onSubmit={async (input) => {
+              await updatePlan.mutateAsync({ planId: editing.plan.id, input });
+              closeEdit();
+              toast({ title: "Plano atualizado", description: input.title, tone: "success" });
+            }}
+          />
+        )}
+      </Modal>
+      <Modal isOpen={editing?.kind === "projeto"} onClose={closeEdit} title="Editar projeto" size="md">
+        {editing?.kind === "projeto" && (
+          <NewProjectForm
+            key={editing.project.id}
+            initial={editing.project}
+            onCancel={closeEdit}
+            onSubmit={async (input) => {
+              await updateProject.mutateAsync({ projectId: editing.project.id, input });
+              closeEdit();
+              toast({ title: "Projeto atualizado", description: input.title, tone: "success" });
+            }}
+          />
+        )}
+      </Modal>
+      <Modal isOpen={editing?.kind === "ideia"} onClose={closeEdit} title="Editar ideia" size="md">
+        {editing?.kind === "ideia" && (
+          <NewIdeaForm
+            key={editing.idea.id}
+            initial={editing.idea}
+            onCancel={closeEdit}
+            onSubmit={async (input) => {
+              await updateIdea.mutateAsync({ ideaId: editing.idea.id, input });
+              closeEdit();
+              toast({ title: "Ideia atualizada", tone: "success" });
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
