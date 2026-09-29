@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LockIcon, StarIcon } from "@phosphor-icons/react";
 import { Button, ConfirmDialog } from "@qqorvex/ui";
 import { DOCUMENT_TYPE_LABELS, TRASH_RETENTION_DAYS, isImageMimeType } from "../service";
 import type { Document, DocumentType, Folder } from "../types";
@@ -79,10 +80,11 @@ export function DocumentCard({
           <span className="text-sm font-medium truncate blur-[5px] select-none" aria-hidden="true">
             Documento protegido
           </span>
-          <span className="font-mono text-xs text-fg-3 truncate">documento do cofre</span>
+          <span className="truncate text-xs text-fg-3">Desbloqueie o Cofre para ver</span>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium bg-warning-soft text-warning shrink-0">Cofre</span>
-        <span className="font-mono text-xs whitespace-nowrap shrink-0 text-right text-warning">bloqueado</span>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-warning">
+          <LockIcon size={11} weight="bold" /> Cofre
+        </span>
       </div>
     );
   }
@@ -114,24 +116,19 @@ export function DocumentCard({
         <ExtThumb label={documentExtension(document)} active={isFocused} />
         <div className="flex-[1_1_140px] min-w-0 flex flex-col gap-[3px]">
           <span className="text-sm font-medium truncate text-fg">
-            {document.is_important && (
-              <span className="text-warning mr-1.5" title="Importante">
-                ★
-              </span>
-            )}
+            {document.is_important && <StarIcon size={13} weight="fill" className="mr-1.5 inline -translate-y-px text-gold-fg" aria-label="Importante" />}
             {document.file_name}
           </span>
-          <span className="font-mono text-xs text-fg-3 truncate">{meta}</span>
+          <span className="truncate text-xs text-fg-3">{meta}</span>
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium shrink-0 ${document.is_vault ? "bg-warning-soft text-warning" : ""}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${document.is_vault ? "bg-warning-soft text-warning" : "bg-hover text-fg-2"}`}>
           {document.is_vault ? "Cofre" : DOCUMENT_TYPE_LABELS[document.document_type]}
         </span>
-        <span
-          className="font-mono text-xs whitespace-nowrap shrink-0 text-right"
-          style={{ color: due?.color ?? "var(--q-fg-3)" }}
-        >
-          {due?.label ?? "—"}
-        </span>
+        {due && (
+          <span className="hidden shrink-0 whitespace-nowrap text-right text-xs sm:inline" style={{ color: due.color }}>
+            {due.label}
+          </span>
+        )}
       </div>
 
       {isFocused && (
@@ -248,13 +245,16 @@ export function DocumentCard({
   );
 }
 
+const EXT_COLOR: Record<string, string> = { PDF: "var(--q-danger)", JPG: "var(--q-info)", JPEG: "var(--q-info)", PNG: "var(--q-info)", WEBP: "var(--q-info)", HEIC: "var(--q-info)", DOC: "var(--q-cat-6)", DOCX: "var(--q-cat-6)", XLS: "var(--q-success)", XLSX: "var(--q-success)", CSV: "var(--q-success)" };
+
 function ExtThumb({ label, active = false }: { label: string; active?: boolean }) {
+  const color = EXT_COLOR[label] ?? "var(--q-fg-3)";
   return (
     <span
-      className={`w-[34px] h-[42px] shrink-0 rounded-[6px] border bg-vex-obsidian flex items-center justify-center font-mono text-[10px] ${
-        active ? "border-gold-line text-gold-fg" : "border-line text-fg-3"
-      }`}
+      className={`relative flex h-10 w-8 shrink-0 items-end justify-center overflow-hidden rounded-md border pb-1 font-mono text-[9px] font-semibold ${active ? "border-gold-line" : "border-line"}`}
+      style={{ background: `color-mix(in srgb, ${color} 10%, var(--q-raised))`, color }}
     >
+      <span aria-hidden="true" className="absolute right-0 top-0 h-2.5 w-2.5 rounded-bl-[3px] border-b border-l border-line bg-canvas/60" />
       {label}
     </span>
   );

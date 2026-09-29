@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Button, ChipTabs, EmptyState, Input, Modal, Notice, PlusIcon, SkeletonList } from "@qqorvex/ui";
+import { CloudIcon, FilesIcon, LockIcon, LockOpenIcon, MagnifyingGlassIcon, UploadSimpleIcon } from "@phosphor-icons/react";
+import { Badge, Button, EmptyState, Modal, Notice, PageContainer, PageHeader, ProgressBar, SkeletonList, Tabs, cx, useToast } from "@qqorvex/ui";
 import { useAuth, verifySecurityPin } from "@qqorvex/auth";
 import {
   useDocuments,
@@ -27,16 +28,10 @@ import {
 } from "@qqorvex/module-documentos";
 import { getDownloadUrl } from "@qqorvex/module-documentos";
 import { supabase } from "../app/supabase";
+import { usePageMeta } from "../app/shell/PageMeta";
 import { useCurrentItem } from "../vex/CurrentItemContext";
 
 type DocumentsView = "lista" | "arquivados" | "garantias" | "lixeira";
-
-const DOCUMENT_VIEWS: { value: DocumentsView; label: string }[] = [
-  { value: "lista", label: "Meus documentos" },
-  { value: "arquivados", label: "Arquivados" },
-  { value: "garantias", label: "Garantias" },
-  { value: "lixeira", label: "Lixeira" },
-];
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -64,6 +59,8 @@ function formatMonthYear(isoDate: string): string {
 export function DocumentosPage() {
   const { session } = useAuth();
   const userId = session!.user.id;
+  const { toast } = useToast();
+  usePageMeta({ title: "Documentos" });
   const [view, setView] = useState<DocumentsView>("lista");
   const [versionsDocumentId, setVersionsDocumentId] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -182,45 +179,41 @@ export function DocumentosPage() {
     return { label: `garantia até ${formatMonthYear(linked.end_date)}`, color: "var(--color-success)" };
   }
 
-  return (
-    <div className=" editorial-module-page flex flex-col gap-6 pb-8">
-      <section className="qv-hero editorial-module-hero" aria-labelledby="documents-page-title">
-        <div className="relative flex flex-wrap items-end justify-between gap-5">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-gold-fg">Arquivo central</p>
-            <h1 id="documents-page-title" className="mt-2 font-display text-3xl font-semibold tracking-[-0.03em] text-fg sm:text-4xl">Documentos</h1>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-fg-2">Guarde arquivos importantes, encontre tudo rapidamente e mantenha garantias e versões sob controle.</p>
-          </div>
-          <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
-            <div className="rounded-full border border-line bg-canvas/50 px-3 py-2 text-xs text-fg-2">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />Privado por padrão
-            </div>
-            <Button type="button" variant="primary" onClick={() => setIsUploadDialogOpen(true)}>
-              <PlusIcon size={16} aria-hidden="true" /> Adicionar arquivo
-            </Button>
-          </div>
-        </div>
-      </section>
+  const storagePercent = storageQuota && storageQuota.quotaBytes ? Math.min(100, Math.round((storageQuota.usedBytes / storageQuota.quotaBytes) * 100)) : null;
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedFolderId(null);
+    setSelectedType("");
+    setQuickFilter("all");
+  };
 
-      <section className="flex flex-wrap gap-2" aria-label="Filtros rápidos dos documentos">
-        {[
-          { label: "Ativos", value: allDocuments.length, filter: "all" as const },
-          { label: "Importantes", value: importantCount, filter: "important" as const },
-          { label: "No Cofre", value: vaultCount, filter: "vault" as const },
-          { label: "Recentes", value: recentCount, filter: "recent" as const },
-        ].map(({ label, value, filter }) => (
-          <button
-            key={label}
-            type="button"
-            aria-pressed={view === "lista" && quickFilter === filter}
-            onClick={() => activateQuickFilter(filter)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 h-9 px-3.5 text-[13.5px] border border-line bg-raised text-fg hover:border-line-strong hover:bg-overlay min-h-9 gap-2 px-3 text-xs ${view === "lista" && quickFilter === filter ? "border-gold-line bg-gold-soft text-fg" : ""}`}
-          >
-            <span>{label}</span>
-            <span className="font-mono text-fg-3">{value}</span>
-          </button>
-        ))}
-      </section>
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Documentos"
+        description={
+          isLoading
+            ? "Carregando…"
+            : `${allDocuments.length} ${allDocuments.length === 1 ? "arquivo" : "arquivos"}${storageQuota ? ` · ${formatDocumentStorage(storageQuota.usedBytes)} de ${formatDocumentStorage(storageQuota.quotaBytes)} usados` : ""}`
+        }
+        actions={
+          <Button leadingIcon={<UploadSimpleIcon size={16} />} onClick={() => setIsUploadDialogOpen(true)}>
+            Adicionar arquivo
+          </Button>
+        }
+      >
+        <Tabs<DocumentsView>
+          label="Seções"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "lista", label: "Arquivos", count: allDocuments.length || null },
+            { value: "arquivados", label: "Arquivados" },
+            { value: "garantias", label: "Garantias", count: warranties.length || null },
+            { value: "lixeira", label: "Lixeira" },
+          ]}
+        />
+      </PageHeader>
 
       <Modal
         isOpen={isUploadDialogOpen}
@@ -228,12 +221,10 @@ export function DocumentosPage() {
           if (!uploadDocument.isPending) setIsUploadDialogOpen(false);
         }}
         title="Adicionar arquivo"
+        description={storageQuota ? `Até ${formatDocumentStorage(storageQuota.maxFileBytes)} por arquivo · ${formatDocumentStorage(Math.max(0, storageQuota.quotaBytes - storageQuota.usedBytes))} livres` : "Arraste um arquivo ou escolha do dispositivo."}
         size="lg"
+        icon={<UploadSimpleIcon />}
       >
-        <div className="-mt-3 flex flex-col gap-1">
-          <p className="m-0 text-sm leading-relaxed text-fg-3">Arraste um arquivo ou escolha do computador. Você pode alterar o tipo depois do envio.</p>
-          {storageQuota && <p className="m-0 text-xs text-fg-2">Nuvem: {formatDocumentStorage(storageQuota.usedBytes)} de {formatDocumentStorage(storageQuota.quotaBytes)} · até {formatDocumentStorage(storageQuota.maxFileBytes)} por arquivo</p>}
-        </div>
         <UploadForm
           isUploading={uploadDocument.isPending}
           folders={folders}
@@ -242,238 +233,228 @@ export function DocumentosPage() {
           onUpload={async (file, documentType, options) => {
             await uploadDocument.mutateAsync({ file, fileName: file.name, documentType, force: options?.force, folderId: options?.folderId });
             setIsUploadDialogOpen(false);
+            toast({ title: "Arquivo enviado", description: file.name, tone: "success" });
           }}
         />
       </Modal>
 
-      <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 gap-4 p-4 sm:p-5" aria-labelledby="document-filters-title">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 id="document-filters-title" className="font-display text-lg font-semibold text-fg">Organização</h2>
-            <p className="mt-1 text-xs text-fg-3">Pastas e filtros para chegar ao arquivo certo sem procurar demais.</p>
-          </div>
-          <ChipTabs options={DOCUMENT_VIEWS} value={view} onChange={setView} />
-        </div>
-        <FoldersPanel
-          client={supabase}
-          userId={userId}
-          selectedFolderId={selectedFolderId}
-          onSelectFolder={(folderId) => {
-            setSelectedFolderId(folderId);
-            if (view !== "arquivados") setUploadFolderId(folderId ?? "");
-            if (view === "garantias" || view === "lixeira") setView("lista");
-          }}
-          actions={
-            <select
-              value={selectedType}
-              onChange={(event) => {
-                setSelectedType(event.target.value);
-                if (view === "garantias" || view === "lixeira") setView("lista");
-              }}
-              aria-label="Filtrar por tipo"
-              className="q-input w-auto py-2 px-3 text-[13px] text-fg-2"
-            >
-              <option value="">Todos os tipos</option>
-              {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          }
-        />
-      </section>
-
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,.75fr)]">
-        {view === "lixeira" ? (
-          <TrashPanel client={supabase} />
-        ) : view === "garantias" ? (
-          <WarrantiesPanel client={supabase} userId={userId} />
-        ) : (
-          <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 overflow-hidden" aria-labelledby="document-list-title">
-            <div className="flex flex-wrap items-end gap-3 border-b border-line px-5 py-5">
-              <div className="min-w-0 flex-1">
-                <h2 id="document-list-title" className="font-display text-xl font-semibold text-fg">{view === "arquivados" ? "Documentos arquivados" : "Seus arquivos"}</h2>
-                <p className="mt-1 text-xs text-fg-3">{documents.length} {documents.length === 1 ? "resultado" : "resultados"} · {view === "arquivados" ? "itens arquivados" : "busca também no texto extraído"}{selectedType ? ` · ${DOCUMENT_TYPE_LABELS[selectedType as keyof typeof DOCUMENT_TYPE_LABELS]}` : ""}</p>
+      {view === "lixeira" ? (
+        <TrashPanel client={supabase} />
+      ) : view === "garantias" ? (
+        <WarrantiesPanel client={supabase} userId={userId} />
+      ) : (
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <div className="relative col-span-2 min-w-[200px] sm:flex-1">
+                <MagnifyingGlassIcon size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-4" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, tipo ou texto do arquivo" aria-label="Buscar documentos" data-size="sm" className="q-input pl-8!" />
               </div>
-              <Input
-                aria-label="Buscar documentos"
-                placeholder="Nome, tipo ou conteúdo..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="h-10 w-full sm:w-64"
-              />
-              <select
-                value={sortOrder}
-                onChange={(event) => setSortOrder(event.target.value as DocumentSortOrder)}
-                aria-label="Ordenar documentos"
-                className="q-input w-full py-2.5 px-3 text-[13px] text-fg-2 sm:w-auto"
-              >
+              <select value={selectedType} onChange={(event) => setSelectedType(event.target.value)} aria-label="Filtrar por tipo" data-size="sm" className="q-input sm:w-auto">
+                <option value="">Todos os tipos</option>
+                {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as DocumentSortOrder)} aria-label="Ordenar documentos" data-size="sm" className="q-input sm:w-auto">
                 <option value="newest">Mais recentes</option>
                 <option value="oldest">Mais antigos</option>
                 <option value="name">Nome A–Z</option>
                 <option value="largest">Maior tamanho</option>
               </select>
             </div>
-            {activeDocumentsError && sourceDocuments.length === 0 ? (
-              <Notice
-                tone="error"
-                title="Não foi possível carregar seus documentos"
-                className="m-4"
-                actions={
-                  <Button type="button" variant="secondary" size="sm" onClick={() => void retryDocuments()}>
-                    Tentar novamente
-                  </Button>
-                }
-              >
-                Seus arquivos continuam armazenados. Confira a conexão e tente atualizar a lista.
-              </Notice>
-                ) : activeDocumentsLoading && sourceDocuments.length === 0 ? (
-              <SkeletonList rows={4} className="px-5 py-3" />
-            ) : (
-              <>
-                {extractError && <Notice tone="error" title="Falha ao ler texto da imagem" className="m-4">{extractError}</Notice>}
-                {setArchived.error && <Notice tone="error" title="Não foi possível arquivar o documento" className="m-4">O arquivo continua na lista. Tente novamente pelas opções do documento.</Notice>}
-                {activeDocumentsError && (
-                  <Notice tone="warning" title="Mostrando a última lista disponível" className="m-4">
-                    A atualização falhou, mas os arquivos já carregados continuam disponíveis.
-                  </Notice>
-                )}
-                {documents.length === 0 ? (
-                  <div className="flex flex-col items-center gap-3 px-5 py-8 text-center">
-                    <EmptyState>
-                      {view === "arquivados" && archivedDocuments.length === 0
-                        ? "Nenhum documento arquivado. Use ‘Arquivar’ nas opções de um arquivo para guardá-lo sem misturar com os itens ativos."
-                        : sourceDocuments.length === 0
-                          ? "Nenhum documento ainda. Envie o primeiro arquivo pela área acima."
-                          : "Nenhum documento combina com esta busca e estes filtros. Ajuste ou limpe os filtros."}
-                    </EmptyState>
-                  {hasActiveFilters && (
-                    <Button type="button" variant="secondary" size="sm" onClick={() => {
-                      setSearch("");
-                      setSelectedFolderId(null);
-                      setSelectedType("");
-                      setQuickFilter("all");
-                    }}>
-                      Limpar filtros
-                    </Button>
-                  )}
-                  </div>
-                ) : (
-                  documents.map((document) =>
-                    versionsDocumentId === document.id ? (
-                      <VersionHistoryPanel
-                        key={document.id}
-                        client={supabase}
-                        document={document}
-                        onClose={() => setVersionsDocumentId(null)}
-                      />
-                    ) : (
-                      <DocumentCard
-                        key={document.id}
-                        document={document}
-                        folders={folders}
-                        due={dueFor(document.id)}
-                        onDownload={async () => {
-                          const url = await getDownloadUrl(supabase, document.storage_path);
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        }}
-                        onToggleImportant={() =>
-                          toggleImportant.mutate({ documentId: document.id, isImportant: !document.is_important })
-                        }
-                        onToggleVault={() => toggleVault.mutate({ documentId: document.id, isVault: !document.is_vault })}
-                        onDelete={() => deleteDocument.mutate(document.id)}
-                        onOpenVersions={() => setVersionsDocumentId(document.id)}
-                        isArchived={view === "arquivados"}
-                        onToggleArchive={() => setArchived.mutate({ documentId: document.id, isArchived: view !== "arquivados" })}
-                        onMoveToFolder={(folderId) => moveToFolder.mutate({ documentId: document.id, folderId })}
-                        onChangeType={(documentType) => updateType.mutate({ documentId: document.id, documentType })}
-                        onExtractText={() => handleExtractText(document.id, document.storage_path)}
-                        isExtractingText={extractingDocumentId === document.id}
-                        extractProgress={extractingDocumentId === document.id ? extractProgress : undefined}
-                        isFocused={currentItem?.type === "documento" && currentItem.id === document.id}
-                        onFocus={() =>
-                          currentItem?.type === "documento" && currentItem.id === document.id
-                            ? setCurrentItem(null)
-                            : setCurrentItem({ type: "documento", id: document.id, label: document.file_name })
-                        }
-                        isMasked={document.is_vault && !vaultUnlocked}
-                      />
-                    ),
-                  )
-                )}
-              </>
-            )}
-          </section>
-        )}
 
-        <aside className="flex flex-col gap-4">
-          {vaultCount > 0 && (
-            <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 gap-3 p-5" aria-labelledby="vault-title">
-              <div className="flex items-center gap-2">
-                <span id="vault-title" className="font-display text-lg font-semibold">Cofre</span>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${vaultUnlocked ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}>
-                  {vaultUnlocked ? "Aberto" : "Bloqueado"}
-                </span>
-              </div>
-              {vaultUnlocked ? (
-                <>
-                  <span className="text-[13px] leading-normal text-fg-2">
-                    <span className="font-mono">{vaultCount}</span> {vaultCount === 1 ? "documento está visível" : "documentos estão visíveis"} nesta
-                    sessão. Bloqueie de novo quando terminar.
-                  </span>
-                  <Button type="button" variant="quiet" size="sm" className="self-start" onClick={() => setVaultUnlocked(false)}>
-                    Bloquear
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="text-[13px] leading-normal text-fg-2">
-                    <span className="font-mono">{vaultCount}</span>{" "}
-                    {vaultCount === 1 ? "documento fica mascarado" : "documentos ficam mascarados"} até você digitar o PIN.
-                    Nada é aberto automaticamente.
-                  </span>
-                  <form onSubmit={handleUnlockVault} className="flex gap-2">
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      value={pinInput}
-                      onChange={(e) => setPinInput(e.target.value)}
-                      placeholder="PIN"
-                      aria-label="PIN do Cofre"
-                      aria-invalid={pinError ? true : undefined}
-                      className="q-input flex-1 py-2.5 px-3 font-mono tracking-[.3em]"
-                    />
-                    <Button type="submit" variant="primary" size="sm" className="py-2.5" disabled={pinBusy || !pinInput.trim()}>
-                      {pinBusy ? "Verificando..." : "Abrir"}
-                    </Button>
-                  </form>
-                  {pinError && <span className="text-xs text-danger">{pinError}</span>}
-                </>
-              )}
-            </section>
-          )}
-
-          <section className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 gap-3 p-5" aria-labelledby="warranty-summary-title">
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="warranty-summary-title" className="font-display text-lg font-semibold">Prazos próximos</h2>
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium bg-hover text-fg-2">{upcomingWarranties.length}</span>
-            </div>
-            {upcomingWarranties.length === 0 ? (
-              <EmptyState>Nenhuma garantia vencendo. Cadastre garantias para acompanhar prazos sem perder uma data importante.</EmptyState>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {upcomingWarranties.map(({ warranty, days }) => (
-                  <div key={warranty.id} className="flex items-center gap-3 rounded-[10px] border border-line px-3 py-2.5">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${days <= 30 ? "bg-warning" : "bg-success"}`} aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate text-[13px]">{warranty.product_name}</span>
-                    <span className={`shrink-0 font-mono text-xs ${days <= 30 ? "text-warning" : "text-fg-2"}`}>
-                      {formatDistance(days)}
-                    </span>
-                  </div>
+            {view === "lista" && (
+              <div className="flex flex-wrap items-center gap-1.5" aria-label="Filtros rápidos">
+                {[
+                  { label: "Todos", value: allDocuments.length, filter: "all" as const },
+                  { label: "Importantes", value: importantCount, filter: "important" as const },
+                  { label: "No Cofre", value: vaultCount, filter: "vault" as const },
+                  { label: "Últimos 7 dias", value: recentCount, filter: "recent" as const },
+                ].map(({ label, value, filter }) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    aria-pressed={quickFilter === filter}
+                    onClick={() => activateQuickFilter(filter)}
+                    className={cx("inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors", quickFilter === filter ? "border-gold-line bg-gold-soft text-gold-fg" : "border-line text-fg-2 hover:bg-hover hover:text-fg")}
+                  >
+                    {label}
+                    <span className="tabular-nums text-fg-4">{value}</span>
+                  </button>
                 ))}
               </div>
             )}
-          </section>
-        </aside>
-      </div>
-    </div>
+
+            <FoldersPanel
+              client={supabase}
+              userId={userId}
+              selectedFolderId={selectedFolderId}
+              onSelectFolder={(folderId) => {
+                setSelectedFolderId(folderId);
+                if (view !== "arquivados") setUploadFolderId(folderId ?? "");
+              }}
+            />
+
+            {extractError && <Notice title="Não foi possível ler o texto da imagem">{extractError}</Notice>}
+            {setArchived.error && <Notice title="Não foi possível arquivar">O arquivo continua na lista. Tente de novo.</Notice>}
+            {activeDocumentsError && sourceDocuments.length > 0 && <Notice tone="warning" title="Mostrando a última lista carregada">A atualização falhou; os arquivos já carregados continuam aqui.</Notice>}
+
+            <section className="overflow-hidden rounded-xl border border-line bg-surface" aria-label={view === "arquivados" ? "Documentos arquivados" : "Seus arquivos"}>
+              {activeDocumentsError && sourceDocuments.length === 0 ? (
+                <Notice
+                  title="Não foi possível carregar seus documentos"
+                  className="m-4"
+                  actions={
+                    <Button variant="secondary" size="sm" onClick={() => void retryDocuments()}>
+                      Tentar de novo
+                    </Button>
+                  }
+                >
+                  Seus arquivos continuam guardados. Confira a conexão.
+                </Notice>
+              ) : activeDocumentsLoading && sourceDocuments.length === 0 ? (
+                <SkeletonList rows={4} leading />
+              ) : documents.length === 0 ? (
+                <EmptyState
+                  icon={<FilesIcon />}
+                  title={view === "arquivados" && archivedDocuments.length === 0 ? "Nada arquivado" : sourceDocuments.length === 0 ? "Nenhum documento ainda" : "Nada encontrado"}
+                  description={
+                    view === "arquivados" && archivedDocuments.length === 0
+                      ? "Arquive arquivos que não usa mais para deixar a lista limpa sem apagar nada."
+                      : sourceDocuments.length === 0
+                        ? "Guarde contratos, notas fiscais, receitas, comprovantes e documentos pessoais. Imagens podem ter o texto extraído para busca."
+                        : "Ajuste a busca ou os filtros."
+                  }
+                  action={
+                    hasActiveFilters ? (
+                      <Button variant="secondary" size="sm" onClick={clearFilters}>
+                        Limpar filtros
+                      </Button>
+                    ) : sourceDocuments.length === 0 && view === "lista" ? (
+                      <Button leadingIcon={<UploadSimpleIcon size={16} />} onClick={() => setIsUploadDialogOpen(true)}>
+                        Adicionar arquivo
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                documents.map((document) =>
+                  versionsDocumentId === document.id ? (
+                    <VersionHistoryPanel key={document.id} client={supabase} document={document} onClose={() => setVersionsDocumentId(null)} />
+                  ) : (
+                    <DocumentCard
+                      key={document.id}
+                      document={document}
+                      folders={folders}
+                      due={dueFor(document.id)}
+                      onDownload={async () => {
+                        const url = await getDownloadUrl(supabase, document.storage_path);
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }}
+                      onToggleImportant={() => toggleImportant.mutate({ documentId: document.id, isImportant: !document.is_important })}
+                      onToggleVault={() => toggleVault.mutate({ documentId: document.id, isVault: !document.is_vault })}
+                      onDelete={() => deleteDocument.mutate(document.id, { onSuccess: () => toast({ title: "Movido para a lixeira", description: `Fica lá por 30 dias.`, tone: "success" }) })}
+                      onOpenVersions={() => setVersionsDocumentId(document.id)}
+                      isArchived={view === "arquivados"}
+                      onToggleArchive={() => setArchived.mutate({ documentId: document.id, isArchived: view !== "arquivados" })}
+                      onMoveToFolder={(folderId) => moveToFolder.mutate({ documentId: document.id, folderId })}
+                      onChangeType={(documentType) => updateType.mutate({ documentId: document.id, documentType })}
+                      onExtractText={() => handleExtractText(document.id, document.storage_path)}
+                      isExtractingText={extractingDocumentId === document.id}
+                      extractProgress={extractingDocumentId === document.id ? extractProgress : undefined}
+                      isFocused={currentItem?.type === "documento" && currentItem.id === document.id}
+                      onFocus={() =>
+                        currentItem?.type === "documento" && currentItem.id === document.id ? setCurrentItem(null) : setCurrentItem({ type: "documento", id: document.id, label: document.file_name })
+                      }
+                      isMasked={document.is_vault && !vaultUnlocked}
+                    />
+                  ),
+                )
+              )}
+            </section>
+          </div>
+
+          <aside className="flex flex-col gap-4">
+            {vaultCount > 0 && (
+              <section className="rounded-xl border border-line bg-surface p-4" aria-labelledby="vault-title">
+                <div className="flex items-center gap-2">
+                  {vaultUnlocked ? <LockOpenIcon size={17} className="text-success" /> : <LockIcon size={17} className="text-warning" />}
+                  <h2 id="vault-title" className="flex-1 text-[14px] font-semibold text-fg">
+                    Cofre
+                  </h2>
+                  <Badge tone={vaultUnlocked ? "success" : "warning"}>{vaultUnlocked ? "Aberto" : "Bloqueado"}</Badge>
+                </div>
+                {vaultUnlocked ? (
+                  <div className="mt-2">
+                    <p className="text-[13px] text-fg-2">
+                      {vaultCount} {vaultCount === 1 ? "documento visível" : "documentos visíveis"} nesta sessão.
+                    </p>
+                    <Button variant="secondary" size="sm" className="mt-3" leadingIcon={<LockIcon size={14} />} onClick={() => setVaultUnlocked(false)}>
+                      Bloquear agora
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-2 text-[13px] leading-relaxed text-fg-2">
+                      {vaultCount} {vaultCount === 1 ? "documento fica oculto" : "documentos ficam ocultos"} até você digitar o PIN de segurança.
+                    </p>
+                    <form onSubmit={handleUnlockVault} className="mt-3 flex gap-2">
+                      <input type="password" inputMode="numeric" autoComplete="off" value={pinInput} onChange={(event) => setPinInput(event.target.value)} placeholder="PIN" aria-label="PIN do Cofre" aria-invalid={pinError ? true : undefined} data-size="sm" className="q-input flex-1 font-mono tracking-[.3em]" />
+                      <Button type="submit" size="sm" disabled={!pinInput.trim()} loading={pinBusy}>
+                        Abrir
+                      </Button>
+                    </form>
+                    {pinError && <p className="mt-2 text-xs text-danger">{pinError}</p>}
+                  </>
+                )}
+              </section>
+            )}
+
+            <section className="rounded-xl border border-line bg-surface" aria-labelledby="warranty-summary-title">
+              <header className="flex items-center justify-between border-b border-line px-4 py-3">
+                <h2 id="warranty-summary-title" className="text-[14px] font-semibold text-fg">
+                  Garantias a vencer
+                </h2>
+                <button type="button" onClick={() => setView("garantias")} className="text-xs text-fg-3 hover:text-fg">
+                  Ver todas
+                </button>
+              </header>
+              {upcomingWarranties.length === 0 ? (
+                <p className="px-4 py-4 text-[13px] leading-relaxed text-fg-3">Cadastre garantias de produtos para ser avisado antes de vencerem.</p>
+              ) : (
+                <ul className="divide-y divide-line-soft">
+                  {upcomingWarranties.map(({ warranty, days }) => (
+                    <li key={warranty.id} className="flex items-center gap-3 px-4 py-2.5">
+                      <span className={cx("h-2 w-2 shrink-0 rounded-full", days <= 30 ? "bg-warning" : "bg-success")} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{warranty.product_name}</span>
+                      <span className={cx("shrink-0 text-xs tabular-nums", days <= 30 ? "text-warning" : "text-fg-3")}>{formatDistance(days)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {storageQuota && storagePercent !== null && (
+              <section className="rounded-xl border border-line bg-surface p-4">
+                <div className="mb-2 flex items-center justify-between text-[13px]">
+                  <span className="flex items-center gap-2 font-semibold text-fg">
+                    <CloudIcon size={16} className="text-fg-3" /> Armazenamento
+                  </span>
+                  <span className="text-xs tabular-nums text-fg-3">{storagePercent}%</span>
+                </div>
+                <ProgressBar value={storagePercent} height={5} tone={storagePercent > 90 ? "danger" : storagePercent > 75 ? "warning" : "gold"} label="Armazenamento usado" />
+                <p className="mt-2 text-xs text-fg-3">
+                  {formatDocumentStorage(storageQuota.usedBytes)} de {formatDocumentStorage(storageQuota.quotaBytes)} · privado e criptografado no envio
+                </p>
+              </section>
+            )}
+          </aside>
+        </div>
+      )}
+    </PageContainer>
   );
 }
 

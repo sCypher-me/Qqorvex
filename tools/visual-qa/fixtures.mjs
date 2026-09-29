@@ -326,7 +326,7 @@ export const fixtures = {
 };
 
 export const rpcFixtures = {
-  get_my_document_storage_quota: { used_bytes: 1_462_000, limit_bytes: 25 * 1024 * 1024, plan: "free" },
+  get_my_document_storage_quota: [{ used_bytes: 1_462_000, quota_bytes: 250 * 1024 * 1024, max_file_bytes: 10 * 1024 * 1024, is_plus: false }],
   has_google_calendar_connection: false,
   has_security_pin: false,
   is_username_available: true,
