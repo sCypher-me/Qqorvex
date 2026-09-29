@@ -243,7 +243,7 @@ const library = [
   { title: "Severance", item_type: "series", status: "em_andamento", progress_current: 6, progress_total: 10, progress_unit: "episódios", year: 2022 },
   { title: "Oppenheimer", item_type: "movie", status: "quero_consumir", year: 2023 },
   { title: "O Poder do Hábito", subtitle: "Charles Duhigg", item_type: "book", status: "quero_consumir", year: 2012 },
-].map((l) => ({ ...base, id: id("r0000000"), is_archived: false, is_favorite: false, tags: [], progress_mode: "manual", ...l }));
+].map((l) => ({ ...base, id: id("r0000000"), is_archived: false, is_favorite: false, tags: [], progress_mode: l.progress_total ? "numerico" : null, ...l }));
 
 const folders = [{ ...base, id: id("d0000000"), name: "Casa" }, { ...base, id: id("d0000000"), name: "Trabalho" }];
 const documents = [

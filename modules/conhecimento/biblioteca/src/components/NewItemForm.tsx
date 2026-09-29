@@ -175,7 +175,7 @@ export function NewItemForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
       <div className="flex flex-col gap-[7px]">
-        <label htmlFor="library-new-item-title" className="qv-field-label">
+        <label htmlFor="library-new-item-title" className="text-[13px] font-medium text-fg-2">
           Título
         </label>
         <input
@@ -187,7 +187,7 @@ export function NewItemForm({
             resetSearch();
           }}
           placeholder="Livro, filme, série, curso..."
-          className="qv-field"
+          className="q-input"
           required
           maxLength={180}
         />
@@ -195,7 +195,7 @@ export function NewItemForm({
 
       <div className="flex gap-2.5 items-end flex-wrap">
         <div className="flex flex-col gap-[7px] flex-1 min-w-[160px]">
-          <label htmlFor="library-new-item-type" className="qv-field-label">
+          <label htmlFor="library-new-item-type" className="text-[13px] font-medium text-fg-2">
             Tipo
           </label>
           <select
@@ -205,7 +205,7 @@ export function NewItemForm({
               setItemType(e.target.value as LibraryItemType);
               resetSearch();
             }}
-            className="qv-field"
+            className="q-input"
           >
             {Object.entries(LIBRARY_ITEM_TYPE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -225,25 +225,25 @@ export function NewItemForm({
       </div>
 
       {results && (
-        <div className="qv-well p-1.5 flex flex-col gap-0.5 max-h-72 overflow-auto">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 p-1.5 flex flex-col gap-0.5 max-h-72 overflow-auto">
           {results.length === 0 ? (
-            <p className="text-sm text-text-secondary px-2.5 py-2">Nenhum resultado encontrado.</p>
+            <p className="text-sm text-fg-2 px-2.5 py-2">Nenhum resultado encontrado.</p>
           ) : (
             results.map((result, index) => (
               <button
                 key={index}
                 type="button"
                 onClick={() => selectResult(result)}
-                className="flex items-center gap-3 text-left rounded-[10px] px-2.5 py-2 hover:bg-chip-neutral transition-colors"
+                className="flex items-center gap-3 text-left rounded-[10px] px-2.5 py-2 hover:bg-hover transition-colors"
               >
                 {result.coverUrl ? (
                   <img src={result.coverUrl} alt="" className="w-8 h-12 object-cover rounded-[6px] shrink-0" />
                 ) : (
-                  <span className="w-8 h-12 rounded-[6px] shrink-0 bg-surface-3" aria-hidden />
+                  <span className="w-8 h-12 rounded-[6px] shrink-0 bg-raised" aria-hidden />
                 )}
-                <span className="text-sm text-text-primary min-w-0">
+                <span className="text-sm text-fg min-w-0">
                   {result.title}
-                  {result.year ? <span className="font-mono text-xs text-text-muted ml-1.5">{result.year}</span> : null}
+                  {result.year ? <span className="font-mono text-xs text-fg-3 ml-1.5">{result.year}</span> : null}
                 </span>
               </button>
             ))
@@ -251,13 +251,13 @@ export function NewItemForm({
         </div>
       )}
 
-      {searchError && <p role="alert" className="m-0 text-xs text-vex-gold-bright">{searchError}</p>}
+      {searchError && <p role="alert" className="m-0 text-xs text-gold-fg">{searchError}</p>}
 
       {selected && (
-        <div className="qv-tile p-2.5 flex items-center gap-3 border-vex-cyan-dark">
+        <div className="min-w-0 rounded-lg border border-line bg-raised transition-colors hover:border-line-strong p-2.5 flex items-center gap-3 border-gold-line">
           {selected.coverUrl && <img src={selected.coverUrl} alt="" className="w-8 h-12 object-cover rounded-[6px] shrink-0" />}
-          <span className="text-[13px] leading-normal text-text-secondary flex-1 min-w-0">
-            Metadados de <span className="text-text-primary">"{selected.title}"</span> foram encontrados. Você pode revisar ou editar os campos abaixo.
+          <span className="text-[13px] leading-normal text-fg-2 flex-1 min-w-0">
+            Metadados de <span className="text-fg">"{selected.title}"</span> foram encontrados. Você pode revisar ou editar os campos abaixo.
           </span>
           <Button type="button" variant="quiet" size="xs" onClick={resetSearch}>
             Limpar
@@ -265,11 +265,11 @@ export function NewItemForm({
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-surface-2/45 p-3">
+      <div className="rounded-xl border border-line bg-surface/45 p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <span className="qv-eyebrow text-text-muted">Metadados opcionais</span>
-            <p className="m-0 mt-1 text-xs text-text-secondary">Adicione capa, descrição e outros detalhes manualmente.</p>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-fg-3">Metadados opcionais</span>
+            <p className="m-0 mt-1 text-xs text-fg-2">Adicione capa, descrição e outros detalhes manualmente.</p>
           </div>
           <Button type="button" variant="quiet" size="xs" onClick={() => setManualDetailsOpen((open) => !open)}>
             {manualDetailsOpen ? "Ocultar" : "Adicionar"}
@@ -277,60 +277,60 @@ export function NewItemForm({
         </div>
 
         {manualDetailsOpen && (
-          <div className="mt-3 grid gap-3 border-t border-border/70 pt-3">
+          <div className="mt-3 grid gap-3 border-t border-line/70 pt-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
               <div className="flex flex-col gap-[7px]">
-                <label htmlFor="library-new-item-subtitle" className="qv-field-label">Subtítulo</label>
-                <input id="library-new-item-subtitle" value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Edição, temporada ou complemento" className="qv-field" />
+                <label htmlFor="library-new-item-subtitle" className="text-[13px] font-medium text-fg-2">Subtítulo</label>
+                <input id="library-new-item-subtitle" value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Edição, temporada ou complemento" className="q-input" />
               </div>
               <div className="flex flex-col gap-[7px]">
-                <label htmlFor="library-new-item-year" className="qv-field-label">Ano</label>
-                <input id="library-new-item-year" type="number" min="0" max="3000" value={year} onChange={(event) => setYear(event.target.value)} placeholder="2026" className="qv-field" />
+                <label htmlFor="library-new-item-year" className="text-[13px] font-medium text-fg-2">Ano</label>
+                <input id="library-new-item-year" type="number" min="0" max="3000" value={year} onChange={(event) => setYear(event.target.value)} placeholder="2026" className="q-input" />
               </div>
             </div>
             <div className="flex flex-col gap-[7px]">
-              <label htmlFor="library-new-item-description" className="qv-field-label">Descrição</label>
-              <textarea id="library-new-item-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Uma breve descrição do item" rows={3} className="qv-field min-h-20 resize-y" />
+              <label htmlFor="library-new-item-description" className="text-[13px] font-medium text-fg-2">Descrição</label>
+              <textarea id="library-new-item-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Uma breve descrição do item" rows={3} className="q-input min-h-20 resize-y" />
             </div>
             <div className="flex flex-col gap-[7px]">
-              <label htmlFor="library-new-item-cover" className="qv-field-label">URL da capa</label>
-              <input id="library-new-item-cover" type="url" value={coverUrl} onChange={(event) => setCoverUrl(event.target.value)} placeholder="https://.../capa.jpg" className="qv-field" />
-              <span className="text-[11px] text-text-muted">Você também pode buscar uma capa automaticamente para livros, filmes, séries e animes.</span>
+              <label htmlFor="library-new-item-cover" className="text-[13px] font-medium text-fg-2">URL da capa</label>
+              <input id="library-new-item-cover" type="url" value={coverUrl} onChange={(event) => setCoverUrl(event.target.value)} placeholder="https://.../capa.jpg" className="q-input" />
+              <span className="text-[11px] text-fg-3">Você também pode buscar uma capa automaticamente para livros, filmes, séries e animes.</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div className="flex flex-col gap-[7px]">
-                <label htmlFor="library-new-item-cover-file" className="qv-field-label">Ou escolha uma capa do dispositivo</label>
+                <label htmlFor="library-new-item-cover-file" className="text-[13px] font-medium text-fg-2">Ou escolha uma capa do dispositivo</label>
                 <input
                   id="library-new-item-cover-file"
                   ref={coverFileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(event) => handleCoverChange(event.currentTarget.files?.[0])}
-                  className="qv-field file:mr-3 file:rounded-lg file:border-0 file:bg-surface-3 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-text-primary"
+                  className="q-input file:mr-3 file:rounded-lg file:border-0 file:bg-raised file:px-3 file:py-2 file:text-xs file:font-semibold file:text-fg"
                 />
-                <span className="text-[11px] text-text-muted">PNG, JPG ou WebP · até 5 MB · salva em privado na sua conta.</span>
+                <span className="text-[11px] text-fg-3">PNG, JPG ou WebP · até 5 MB · salva em privado na sua conta.</span>
               </div>
               {coverFile && <Button type="button" variant="quiet" size="sm" onClick={clearCoverFile}>Remover imagem</Button>}
             </div>
             {coverError && <p role="alert" className="m-0 text-xs text-danger">{coverError}</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-[7px]">
-                <label htmlFor="library-new-item-creators" className="qv-field-label">Autor / criador(es)</label>
-                <input id="library-new-item-creators" value={creatorsText} onChange={(event) => setCreatorsText(event.target.value)} placeholder="Separe por vírgulas" className="qv-field" />
+                <label htmlFor="library-new-item-creators" className="text-[13px] font-medium text-fg-2">Autor / criador(es)</label>
+                <input id="library-new-item-creators" value={creatorsText} onChange={(event) => setCreatorsText(event.target.value)} placeholder="Separe por vírgulas" className="q-input" />
               </div>
               <div className="flex flex-col gap-[7px]">
-                <label htmlFor="library-new-item-origin" className="qv-field-label">Fonte ou link</label>
-                <input id="library-new-item-origin" type="url" value={originUrl} onChange={(event) => setOriginUrl(event.target.value)} placeholder="https://..." className="qv-field" />
+                <label htmlFor="library-new-item-origin" className="text-[13px] font-medium text-fg-2">Fonte ou link</label>
+                <input id="library-new-item-origin" type="url" value={originUrl} onChange={(event) => setOriginUrl(event.target.value)} placeholder="https://..." className="q-input" />
               </div>
             </div>
             <div className="flex flex-col gap-[7px]">
-              <label htmlFor="library-new-item-tags" className="qv-field-label">Etiquetas</label>
-              <input id="library-new-item-tags" value={tagsText} onChange={(event) => setTagsText(event.target.value)} placeholder="ficção, favoritos, para pesquisar" className="qv-field" />
-              <span className="text-[11px] text-text-muted">Separe por vírgulas ou ponto e vírgula; elas também serão pesquisáveis.</span>
+              <label htmlFor="library-new-item-tags" className="text-[13px] font-medium text-fg-2">Etiquetas</label>
+              <input id="library-new-item-tags" value={tagsText} onChange={(event) => setTagsText(event.target.value)} placeholder="ficção, favoritos, para pesquisar" className="q-input" />
+              <span className="text-[11px] text-fg-3">Separe por vírgulas ou ponto e vírgula; elas também serão pesquisáveis.</span>
             </div>
-            {(coverPreviewUrl || coverUrl.trim()) && <div className="qv-well flex items-center gap-3 p-3">
-              <img src={coverPreviewUrl ?? coverUrl.trim()} alt={`Prévia da capa de ${title || "novo item"}`} className="h-20 w-14 rounded-md border border-border object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
-              <div className="min-w-0"><span className="block text-xs font-medium text-text-primary">Prévia da capa</span>{coverFile && <span className="mt-1 block truncate text-[11px] text-text-muted">{coverFile.name}</span>}</div>
+            {(coverPreviewUrl || coverUrl.trim()) && <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex items-center gap-3 p-3">
+              <img src={coverPreviewUrl ?? coverUrl.trim()} alt={`Prévia da capa de ${title || "novo item"}`} className="h-20 w-14 rounded-md border border-line object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+              <div className="min-w-0"><span className="block text-xs font-medium text-fg">Prévia da capa</span>{coverFile && <span className="mt-1 block truncate text-[11px] text-fg-3">{coverFile.name}</span>}</div>
             </div>}
           </div>
         )}
