@@ -37,6 +37,8 @@
     background-position: right 12px center;
     background-repeat: no-repeat;
   }
+  select.q-input[data-size="sm"] { padding-right: 30px; background-position: right 10px center; }
+  select.q-input[data-size="lg"] { padding-right: 38px; background-position: right 14px center; }
   input.q-input[type="date"], input.q-input[type="time"], input.q-input[type="datetime-local"], input.q-input[type="month"] { color-scheme: inherit; }
   input.q-input[type="color"] { padding: 3px; }
   input.q-input[type="file"] { height: auto; padding: 8px; }

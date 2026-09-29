@@ -51,7 +51,7 @@ export function TransactionTable({ client, transactions, categories, accounts, c
   const dates = [...groups.keys()].sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+    <div className="overflow-clip rounded-xl border border-line bg-surface">
       {dates.map((date) => {
         const items = groups.get(date)!;
         const net = items.reduce((sum, t) => (t.status === "cancelada" || t.transaction_type === "transferencia" ? sum : sum + (t.transaction_type === "entrada" ? t.amount : -t.amount)), 0);

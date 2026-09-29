@@ -485,8 +485,8 @@ function TransactionsTab({
             ]}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select fieldSize="sm" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} aria-label="Categoria" className="w-auto">
+        <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+          <Select fieldSize="sm" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} aria-label="Categoria" className="sm:w-auto">
             <option value="">Todas as categorias</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
@@ -494,7 +494,7 @@ function TransactionsTab({
               </option>
             ))}
           </Select>
-          <Select fieldSize="sm" value={accountId} onChange={(event) => setAccountId(event.target.value)} aria-label="Conta ou cartão" className="w-auto">
+          <Select fieldSize="sm" value={accountId} onChange={(event) => setAccountId(event.target.value)} aria-label="Conta ou cartão" className="sm:w-auto">
             <option value="">Todas as contas</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
@@ -507,7 +507,7 @@ function TransactionsTab({
               </option>
             ))}
           </Select>
-          <Select fieldSize="sm" value={status} onChange={(event) => setStatus(event.target.value as typeof status)} aria-label="Situação" className="w-auto">
+          <Select fieldSize="sm" value={status} onChange={(event) => setStatus(event.target.value as typeof status)} aria-label="Situação" className="sm:w-auto">
             <option value="todos">Todas as situações</option>
             <option value="concluida">Concluídas</option>
             <option value="futura">Agendadas</option>
@@ -515,11 +515,11 @@ function TransactionsTab({
             <option value="vencida">Vencidas</option>
             <option value="cancelada">Canceladas</option>
           </Select>
-          <label className="flex items-center gap-2 text-xs text-fg-3">
+          <label className="flex h-8 items-center gap-2 px-1 text-xs text-fg-3">
             <input type="checkbox" checked={allPeriods} onChange={(event) => setAllPeriods(event.target.checked)} />
             Todo o período
           </label>
-          <span className="flex-1" />
+          <span className="hidden flex-1 sm:block" />
           <Button
             size="sm"
             variant="ghost"
