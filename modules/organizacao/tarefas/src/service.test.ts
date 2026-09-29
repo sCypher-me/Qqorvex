@@ -85,3 +85,64 @@ describe("computeNextTaskOccurrenceDate", () => {
     expect(computeNextTaskOccurrenceDate("2026-12-15", "mensal")).toBe("2027-01-15");
   });
 });
+
+import { compareTasksForAction, dueBucketOf, formatDueLabel, parseQuickTask } from "./service";
+
+describe("parseQuickTask", () => {
+  const today = "2026-09-29"; // terça-feira
+
+  it("reconhece data relativa, prioridade e tags e limpa o título", () => {
+    const parsed = parseQuickTask("Pagar conta de luz amanhã !alta #casa #Contas", today);
+    expect(parsed.title).toBe("Pagar conta de luz");
+    expect(parsed.dueDate).toBe("2026-09-30");
+    expect(parsed.priority).toBe("alta");
+    expect(parsed.tags).toEqual(["casa", "contas"]);
+  });
+
+  it("entende dias da semana a partir de hoje", () => {
+    expect(parseQuickTask("Reunião sexta", today).dueDate).toBe("2026-10-02");
+    expect(parseQuickTask("Ligar na terça", today).dueDate).toBe(today);
+    expect(parseQuickTask("Ligar na próxima terça", today).dueDate).toBe("2026-10-06");
+  });
+
+  it("entende datas numéricas, 'dia N' e 'em N dias'", () => {
+    expect(parseQuickTask("Entregar relatório 15/10", today).dueDate).toBe("2026-10-15");
+    expect(parseQuickTask("Renovar CNH 10/01", today).dueDate).toBe("2027-01-10");
+    expect(parseQuickTask("Pagar aluguel dia 5", today).dueDate).toBe("2026-10-05");
+    expect(parseQuickTask("Revisar em 3 dias", today).dueDate).toBe("2026-10-02");
+    expect(parseQuickTask("Planejar semana que vem", today).dueDate).toBe("2026-10-06");
+  });
+
+  it("mantém o texto quando nada é reconhecido", () => {
+    const parsed = parseQuickTask("Comprar 2 kg de café", today);
+    expect(parsed).toMatchObject({ title: "Comprar 2 kg de café", tags: [], dueDate: undefined, priority: undefined });
+  });
+});
+
+describe("agrupamento por prazo", () => {
+  const today = "2026-09-29";
+  it("classifica prazos em faixas", () => {
+    expect(dueBucketOf("2026-09-20", today)).toBe("atrasadas");
+    expect(dueBucketOf(today, today)).toBe("hoje");
+    expect(dueBucketOf("2026-09-30", today)).toBe("amanha");
+    expect(dueBucketOf("2026-10-04", today)).toBe("semana");
+    expect(dueBucketOf("2026-11-01", today)).toBe("depois");
+    expect(dueBucketOf(null, today)).toBe("sem_prazo");
+  });
+
+  it("ordena por prazo e depois prioridade", () => {
+    const base = { created_at: "2026-09-01" } as Task;
+    const tasks = [
+      { ...base, id: "a", due_date: null, priority: "alta" },
+      { ...base, id: "b", due_date: "2026-10-01", priority: "baixa" },
+      { ...base, id: "c", due_date: "2026-10-01", priority: "alta" },
+    ] as Task[];
+    expect([...tasks].sort(compareTasksForAction).map((t) => t.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("formata rótulos curtos de prazo", () => {
+    expect(formatDueLabel(today, today)).toBe("Hoje");
+    expect(formatDueLabel("2026-09-30", today)).toBe("Amanhã");
+    expect(formatDueLabel("2026-09-28", today)).toBe("Ontem");
+  });
+});

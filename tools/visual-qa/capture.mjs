@@ -142,7 +142,16 @@ try {
           .waitForFunction(() => !document.querySelector('[aria-busy="true"]') && document.querySelector("#root")?.childElementCount, null, { timeout: 45_000 })
           .catch(() => problems.push(`[timeout] ${route} (${viewportName}/${theme}): ainda carregando`));
         await page.waitForTimeout(Number(args.wait ?? 900));
-        const name = `${route === "/" ? "hoje" : route.replace(/^\//, "").replace(/\//g, "_")}-${viewportName}-${theme}.png`;
+        // Passos opcionais: --steps='[{"click":"Texto"},{"press":"Escape"},{"wait":400},{"fill":["placeholder","texto"]}]'
+        for (const step of args.steps ? JSON.parse(args.steps) : []) {
+          if (step.click) await page.getByText(step.click, { exact: step.exact ?? false }).first().click();
+          if (step.clickRole) await page.getByRole(step.clickRole[0], { name: step.clickRole[1] }).first().click();
+          if (step.press) await page.keyboard.press(step.press);
+          if (step.fill) await page.getByPlaceholder(step.fill[0]).first().fill(step.fill[1]);
+          await page.waitForTimeout(step.wait ?? 450);
+        }
+        const suffix = args.name ? `-${args.name}` : "";
+        const name = `${route === "/" ? "hoje" : route.replace(/^\//, "").replace(/\//g, "_").replace(/[?=&]/g, "-")}${suffix}-${viewportName}-${theme}.png`;
         await page.screenshot({ path: `${outDir}${name}`, fullPage: args.full === "true" });
         console.log(`✓ ${name}`);
         await page.close();

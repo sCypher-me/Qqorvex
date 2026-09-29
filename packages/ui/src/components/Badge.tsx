@@ -57,19 +57,14 @@ export function Badge({ tone = "neutral", size = "sm", dot = false, icon, classN
   );
 }
 
-/** Tag colorida por categoria (paleta fechada). `color` deve ser uma `var(--q-cat-*)`. */
+/** Etiqueta de categoria: texto neutro com um ponto na cor da categoria (`var(--q-cat-*)`). */
 export function Tag({ color, children, className, onRemove }: { color?: string; children: ReactNode; className?: string; onRemove?: () => void }) {
   return (
-    <span
-      className={cx("inline-flex h-5 max-w-full items-center gap-1 rounded-md px-1.5 text-2xs font-medium", className)}
-      style={{
-        color: color ?? "var(--q-fg-2)",
-        background: color ? `color-mix(in srgb, ${color} 14%, transparent)` : "var(--q-hover)",
-      }}
-    >
+    <span className={cx("inline-flex h-5 max-w-full items-center gap-1.5 rounded-md bg-hover px-1.5 text-2xs font-medium text-fg-2", className)}>
+      {color && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />}
       <span className="truncate">{children}</span>
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label={`Remover ${typeof children === "string" ? children : "etiqueta"}`} className="-mr-0.5 rounded opacity-70 hover:opacity-100">
+        <button type="button" onClick={onRemove} aria-label={`Remover ${typeof children === "string" ? children : "etiqueta"}`} className="-mr-0.5 rounded text-fg-4 hover:text-fg">
           ×
         </button>
       )}

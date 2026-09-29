@@ -21,7 +21,7 @@ import {
   updateTaskStatus,
 } from "../repository";
 import { deriveTaskConditions, wouldCreateCycle } from "../service";
-import type { NewTaskInput, RecurringTask, TaskPriority, TaskRecurrenceFrequency, TaskStatus, TaskUpdateInput } from "../types";
+import type { NewTaskInput, RecurringTask, Task, TaskPriority, TaskRecurrenceFrequency, TaskStatus, TaskUpdateInput } from "../types";
 
 const TASKS_KEY = ["tasks"] as const;
 const ALL_TASKS_KEY = ["tasks", "all"] as const;
@@ -86,12 +86,26 @@ export function useCreateTask(client: SupabaseClient<Database>, userId: string) 
   });
 }
 
+/** Atualiza o status com resposta otimista (a lista reage na hora; volta se o servidor falhar). */
 export function useUpdateTaskStatus(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
       updateTaskStatus(client, taskId, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    onMutate: async ({ taskId, status }) => {
+      await queryClient.cancelQueries({ queryKey: TASKS_KEY });
+      const snapshots = queryClient.getQueriesData<Task[]>({ queryKey: TASKS_KEY });
+      const completedAt = status === "concluido" ? new Date().toISOString() : null;
+      for (const [key, data] of snapshots) {
+        if (!Array.isArray(data)) continue;
+        queryClient.setQueryData<Task[]>(key, data.map((task) => (task.id === taskId ? { ...task, status, completed_at: completedAt } : task)));
+      }
+      return { snapshots };
+    },
+    onError: (_error, _variables, context) => {
+      for (const [key, data] of context?.snapshots ?? []) queryClient.setQueryData(key, data);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
   });
 }
 
