@@ -2,16 +2,18 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import { awardXp } from "@qqorvex/module-gamificacao";
 import type {
   Goal,
+  GoalEditInput,
   GoalMilestone,
   GoalCheckin,
   Habit,
+  HabitEditInput,
   HabitLog,
   HabitLogState,
   NewGoalInput,
   NewHabitInput,
   Routine,
 } from "./types";
-import { toGoalInsert, toHabitInsert } from "./types";
+import { toGoalInsert, toGoalUpdate, toHabitInsert, toHabitUpdate } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -23,6 +25,12 @@ export async function listGoals(client: Client): Promise<Goal[]> {
 
 export async function createGoal(client: Client, userId: string, input: NewGoalInput): Promise<Goal> {
   const { data, error } = await client.from("goals").insert(toGoalInsert(userId, input)).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateGoal(client: Client, goalId: string, input: GoalEditInput): Promise<Goal> {
+  const { data, error } = await client.from("goals").update(toGoalUpdate(input)).eq("id", goalId).select("*").single();
   if (error) throw error;
   return data;
 }
@@ -109,6 +117,17 @@ export async function toggleMilestone(client: Client, milestoneId: string, isDon
   return data;
 }
 
+export async function updateMilestone(client: Client, milestoneId: string, title: string): Promise<GoalMilestone> {
+  const { data, error } = await client.from("goal_milestones").update({ title }).eq("id", milestoneId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteMilestone(client: Client, milestoneId: string): Promise<void> {
+  const { error } = await client.from("goal_milestones").delete().eq("id", milestoneId);
+  if (error) throw error;
+}
+
 /** Todo check-in registrado é um sinal real de engajamento — premia XP sempre, sem checar estado anterior (é sempre um insert novo, nunca upsert). */
 export async function createCheckin(
   client: Client,
@@ -140,6 +159,12 @@ export async function listHabits(client: Client): Promise<Habit[]> {
 
 export async function createHabit(client: Client, userId: string, input: NewHabitInput): Promise<Habit> {
   const { data, error } = await client.from("habits").insert(toHabitInsert(userId, input)).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateHabit(client: Client, habitId: string, input: HabitEditInput): Promise<Habit> {
+  const { data, error } = await client.from("habits").update(toHabitUpdate(input)).eq("id", habitId).select("*").single();
   if (error) throw error;
   return data;
 }

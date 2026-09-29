@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button, Input } from "@qqorvex/ui";
 import { billingLimitMessage } from "@qqorvex/database";
-import type { HabitFrequencyType, NewHabitInput } from "../types";
+import type { Habit, HabitFrequencyConfig, HabitFrequencyType, NewHabitInput } from "../types";
 
 const WEEK_DAYS = [
   { value: "mon", label: "Seg" },
@@ -21,20 +21,27 @@ const FREQUENCIES: { value: HabitFrequencyType; label: string }[] = [
   { value: "mensal", label: "Uma vez por mês" },
 ];
 
+/** Códigos antigos em português ainda aparecem em hábitos criados antes da troca para inglês. */
+const LEGACY_DAY_CODES: Record<string, string> = { dom: "sun", seg: "mon", ter: "tue", qua: "wed", qui: "thu", sex: "fri", sab: "sat" };
+
+/** Cria um hábito ou, com `initial`, edita um existente (mesmos campos). */
 export function NewHabitForm({
-  onCreate,
+  initial,
+  onSubmit,
   onCancel,
 }: {
-  onCreate: (habit: NewHabitInput) => Promise<void>;
+  initial?: Habit;
+  onSubmit: (habit: NewHabitInput) => Promise<void>;
   onCancel?: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [preferredTime, setPreferredTime] = useState("");
-  const [frequencyType, setFrequencyType] = useState<HabitFrequencyType>("diaria");
-  const [days, setDays] = useState<string[]>([]);
-  const [timesPerWeek, setTimesPerWeek] = useState(3);
+  const initialConfig = (initial?.frequency_config ?? {}) as unknown as HabitFrequencyConfig;
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [preferredTime, setPreferredTime] = useState(initial?.preferred_time?.slice(0, 5) ?? "");
+  const [frequencyType, setFrequencyType] = useState<HabitFrequencyType>(initial?.frequency_type ?? "diaria");
+  const [days, setDays] = useState<string[]>(() => [...new Set((initialConfig.days ?? []).map((day) => LEGACY_DAY_CODES[day] ?? day))]);
+  const [timesPerWeek, setTimesPerWeek] = useState(initialConfig.timesPerWeek ?? 3);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +57,7 @@ export function NewHabitForm({
     setIsSaving(true);
     setError(null);
     try {
-      await onCreate({
+      await onSubmit({
         name: trimmedName,
         description: description.trim() || undefined,
         category: category.trim() || undefined,
@@ -147,7 +154,7 @@ export function NewHabitForm({
       <div className="flex flex-wrap justify-end gap-2.5">
         {onCancel && <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving}>Cancelar</Button>}
         <Button type="submit" variant="primary" disabled={!name.trim() || isSaving}>
-          {isSaving ? "Salvando…" : "Criar hábito"}
+          {isSaving ? "Salvando…" : initial ? "Salvar alterações" : "Criar hábito"}
         </Button>
       </div>
     </form>

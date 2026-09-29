@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckIcon, CircleHalfIcon, DotsThreeIcon, FireIcon, MinusIcon, PauseIcon, PlayIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
+import { CheckIcon, CircleHalfIcon, DotsThreeIcon, FireIcon, MinusIcon, PauseIcon, PencilSimpleIcon, PlayIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { Badge, ConfirmDialog, DropdownMenu, cx } from "@qqorvex/ui";
 import { computeHabitStreak, formatHabitStreak, getHabitWeeklyTarget, shiftDateKey } from "../service";
 import type { Habit, HabitFrequencyConfig, HabitLog, HabitLogState } from "../types";
@@ -51,11 +51,12 @@ export interface HabitRowProps {
   busy?: boolean;
   onSetLog: (state: HabitLogState | null) => void;
   onToggleStatus: () => void;
+  onEdit?: () => void;
   onDelete: () => void;
 }
 
 /** Linha de hábito: marcar o dia com um toque, a semana, a sequência e a meta semanal. */
-export function HabitRow({ habit, logs, today, offSchedule = false, busy = false, onSetLog, onToggleStatus, onDelete }: HabitRowProps) {
+export function HabitRow({ habit, logs, today, offSchedule = false, busy = false, onSetLog, onToggleStatus, onEdit, onDelete }: HabitRowProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const byDate = new Map(logs.map((log) => [log.log_date, log.state]));
   const todayState = byDate.get(today);
@@ -128,6 +129,7 @@ export function HabitRow({ habit, logs, today, offSchedule = false, busy = false
                 "separator" as const,
               ]
             : []),
+          ...(onEdit ? [{ label: "Editar hábito", icon: <PencilSimpleIcon />, onSelect: onEdit }] : []),
           active ? { label: "Pausar hábito", icon: <PauseIcon />, onSelect: onToggleStatus } : { label: "Retomar hábito", icon: <PlayIcon />, onSelect: onToggleStatus },
           { label: "Excluir", icon: <TrashIcon />, danger: true, onSelect: () => setConfirmDelete(true) },
         ]}

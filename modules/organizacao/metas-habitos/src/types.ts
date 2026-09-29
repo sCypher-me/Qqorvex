@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert, Json } from "@qqorvex/database";
+import type { Tables, TablesInsert, TablesUpdate, Json } from "@qqorvex/database";
 
 /**
  * Metas & Hábitos é a única fonte de verdade de metas, marcos, check-ins, hábitos, rotinas e
@@ -48,6 +48,20 @@ export function toGoalInsert(userId: string, input: NewGoalInput): TablesInsert<
   };
 }
 
+/** Campos que o usuário edita numa meta. Status e forma de progresso têm fluxos próprios. */
+export type GoalEditInput = Pick<NewGoalInput, "title" | "description" | "dueDate" | "category" | "motivationNote">;
+
+/** Opcional em branco vira `null`, para que editar consiga de fato limpar o campo. */
+export function toGoalUpdate(input: GoalEditInput): TablesUpdate<"goals"> {
+  return {
+    title: input.title,
+    description: input.description ?? null,
+    due_date: input.dueDate ?? null,
+    category: input.category ?? null,
+    motivation_note: input.motivationNote ?? null,
+  };
+}
+
 export interface HabitFrequencyConfig {
   days?: string[];
   timesPerWeek?: number;
@@ -73,5 +87,19 @@ export function toHabitInsert(userId: string, input: NewHabitInput): TablesInser
     preferred_time: input.preferredTime ?? null,
     category: input.category ?? null,
     tags: input.tags ?? [],
+  };
+}
+
+/** Campos que o usuário edita num hábito — os mesmos do formulário de criação. */
+export type HabitEditInput = Omit<NewHabitInput, "tags">;
+
+export function toHabitUpdate(input: HabitEditInput): TablesUpdate<"habits"> {
+  return {
+    name: input.name,
+    description: input.description ?? null,
+    frequency_type: input.frequencyType ?? "diaria",
+    frequency_config: (input.frequencyConfig ?? {}) as unknown as Json,
+    preferred_time: input.preferredTime ?? null,
+    category: input.category ?? null,
   };
 }

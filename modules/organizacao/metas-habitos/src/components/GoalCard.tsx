@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { CheckCircleIcon, DotsThreeIcon, FlagIcon, PauseIcon, PlayIcon, TrashIcon, XCircleIcon } from "@phosphor-icons/react";
-import { Badge, Button, Checkbox, DropdownMenu, ProgressBar, cx, type BadgeTone } from "@qqorvex/ui";
+import { CheckCircleIcon, CheckIcon, DotsThreeIcon, FlagIcon, PauseIcon, PencilSimpleIcon, PlayIcon, TrashIcon, XCircleIcon, XIcon } from "@phosphor-icons/react";
+import { Badge, Button, Checkbox, DropdownMenu, IconButton, ProgressBar, cx, type BadgeTone } from "@qqorvex/ui";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { useAccounts, useTransactions, computeAccountBalance } from "@qqorvex/module-financas";
 import {
   useCreateMilestone,
   useCreateCheckin,
+  useDeleteMilestone,
   useGoalCheckins,
   useGoalHabitRelations,
   useLinkGoalHabit,
@@ -13,10 +14,11 @@ import {
   useToggleMilestone,
   useUnlinkGoalHabit,
   useUpdateGoalProgressSource,
+  useUpdateMilestone,
 } from "../hooks/useGoals";
 import { useHabits } from "../hooks/useHabits";
 import { computeDerivedProgress, computeMilestoneProgress, localDateKey } from "../service";
-import type { Goal, GoalStatus } from "../types";
+import type { Goal, GoalMilestone, GoalStatus } from "../types";
 
 export const GOAL_STATUS: Record<GoalStatus, { label: string; tone: BadgeTone }> = {
   planejada: { label: "Planejada", tone: "neutral" },
@@ -66,11 +68,12 @@ export interface GoalCardProps {
   goal: Goal;
   onOpen: () => void;
   onChangeStatus: (status: GoalStatus) => void;
+  onEdit?: () => void;
   onDelete: () => void;
 }
 
 /** Resumo da meta: prazo, progresso e o próximo passo. Clique abre os detalhes. */
-export function GoalCard({ client, goal, onOpen, onChangeStatus, onDelete }: GoalCardProps) {
+export function GoalCard({ client, goal, onOpen, onChangeStatus, onEdit, onDelete }: GoalCardProps) {
   const { percent, milestones, milestonesDone, derived } = useGoalProgress(client, goal);
   const status = GOAL_STATUS[goal.status];
   const days = goal.due_date ? daysUntil(goal.due_date) : null;
@@ -88,6 +91,7 @@ export function GoalCard({ client, goal, onOpen, onChangeStatus, onDelete }: Goa
           <DropdownMenu
             label={`Ações para ${goal.title}`}
             items={[
+              ...(onEdit ? [{ label: "Editar", icon: <PencilSimpleIcon />, onSelect: onEdit }] : []),
               ...(goal.status === "planejada" || goal.status === "pausada" ? [{ label: goal.status === "planejada" ? "Ativar" : "Retomar", icon: <PlayIcon />, onSelect: () => onChangeStatus("ativa") }] : []),
               ...(goal.status === "ativa" ? [{ label: "Pausar", icon: <PauseIcon />, onSelect: () => onChangeStatus("pausada") }] : []),
               ...(goal.status !== "concluida" ? [{ label: "Marcar como concluída", icon: <CheckCircleIcon />, onSelect: () => onChangeStatus("concluida") }] : []),
@@ -139,10 +143,83 @@ export function GoalCard({ client, goal, onOpen, onChangeStatus, onDelete }: Goa
 }
 
 /** Detalhes da meta (painel lateral): motivação, atualizações, marcos, progresso financeiro e hábitos. */
+/** Marco com edição no lugar: lápis troca o texto por um campo (Enter salva, Esc cancela). */
+function MilestoneItem({
+  milestone,
+  onToggle,
+  onRename,
+  onDelete,
+}: {
+  milestone: GoalMilestone;
+  onToggle: (isDone: boolean) => void;
+  onRename: (title: string) => Promise<unknown>;
+  onDelete: () => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  if (draft !== null) {
+    const save = async () => {
+      const title = draft.trim();
+      if (title && title !== milestone.title) await onRename(title);
+      setDraft(null);
+    };
+    return (
+      <li>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+          className="flex items-center gap-1.5"
+        >
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                // Esc cancela só a edição do marco, sem fechar o painel da meta (<dialog> nativo).
+                event.preventDefault();
+                setDraft(null);
+              }
+            }}
+            aria-label="Texto do marco"
+            maxLength={200}
+            autoFocus
+            data-size="sm"
+            className="q-input flex-1"
+          />
+          <IconButton label="Salvar marco" size="sm" type="submit" disabled={!draft.trim()}>
+            <CheckIcon />
+          </IconButton>
+          <IconButton label="Cancelar edição" size="sm" onClick={() => setDraft(null)}>
+            <XIcon />
+          </IconButton>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li className="group flex items-center gap-1">
+      <Checkbox label={milestone.title} checked={milestone.is_done} onChange={(event) => onToggle(event.target.checked)} className={cx("min-w-0 flex-1", milestone.is_done && "[&_span]:text-fg-3 [&_span]:line-through")} />
+      <span className="flex shrink-0 gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        <IconButton label={`Editar marco ${milestone.title}`} size="sm" onClick={() => setDraft(milestone.title)}>
+          <PencilSimpleIcon />
+        </IconButton>
+        <IconButton label={`Excluir marco ${milestone.title}`} size="sm" variant="danger" onClick={onDelete}>
+          <TrashIcon />
+        </IconButton>
+      </span>
+    </li>
+  );
+}
+
 export function GoalDetails({ client, goal }: { client: SupabaseClient<Database>; goal: Goal }) {
   const { milestones, milestonesDone, derived, percent, accounts } = useGoalProgress(client, goal);
   const createMilestone = useCreateMilestone(client, goal.id);
   const toggleMilestone = useToggleMilestone(client, goal.id);
+  const updateMilestone = useUpdateMilestone(client, goal.id);
+  const deleteMilestone = useDeleteMilestone(client, goal.id);
   const createCheckin = useCreateCheckin(client, goal.id);
   const { checkins } = useGoalCheckins(client, goal.id, true);
   const { habits } = useHabits(client);
@@ -182,9 +259,13 @@ export function GoalDetails({ client, goal }: { client: SupabaseClient<Database>
         {milestones.length > 0 && (
           <ul className="mb-2 flex flex-col gap-1">
             {milestones.map((milestone) => (
-              <li key={milestone.id}>
-                <Checkbox label={milestone.title} checked={milestone.is_done} onChange={(event) => toggleMilestone.mutate({ milestoneId: milestone.id, isDone: event.target.checked })} className={cx(milestone.is_done && "[&_span]:text-fg-3 [&_span]:line-through")} />
-              </li>
+              <MilestoneItem
+                key={milestone.id}
+                milestone={milestone}
+                onToggle={(isDone) => toggleMilestone.mutate({ milestoneId: milestone.id, isDone })}
+                onRename={(title) => updateMilestone.mutateAsync({ milestoneId: milestone.id, title })}
+                onDelete={() => deleteMilestone.mutate(milestone.id)}
+              />
             ))}
           </ul>
         )}
