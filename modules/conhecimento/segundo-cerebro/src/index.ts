@@ -6,8 +6,6 @@ export * from "./hoje-provider";
 export * from "./hooks/usePages";
 export * from "./hooks/usePageDetail";
 export * from "./hooks/useBases";
-export * from "./components/NewPageForm";
-export * from "./components/PageCard";
 export * from "./components/GraphView";
 export * from "./components/BasesPanel";
 export * from "./components/CheckpointsPanel";
