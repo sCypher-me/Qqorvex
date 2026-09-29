@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createEvent as createAgendaEvent, listEventsByAssessment, type CalendarEvent } from "@qqorvex/module-agenda";
+import { createEvent as createAgendaEvent, listEventsByAssessment, updateEvent as updateAgendaEvent, type CalendarEvent } from "@qqorvex/module-agenda";
 import type { LibraryItem } from "@qqorvex/module-biblioteca";
 import { awardXp, recordHighAccuracyQuiz } from "@qqorvex/module-gamificacao";
 import { computeNextReview, type GeneratedQuizQuestion } from "./service";
@@ -218,6 +218,12 @@ export async function createErrorDoubt(
   return data;
 }
 
+export async function updateErrorDoubt(client: Client, id: string, description: string): Promise<ErrorDoubt> {
+  const { data, error } = await client.from("errors_doubts").update({ description }).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function resolveErrorDoubt(client: Client, id: string, isResolved: boolean): Promise<ErrorDoubt> {
   const { data, error } = await client
     .from("errors_doubts")
@@ -250,6 +256,48 @@ export async function createAssessment(
     .select("*")
     .single();
   if (error) throw error;
+  return data;
+}
+
+/**
+ * Edita a avaliação e mantém o evento dela na Agenda (criado por `createEventForAssessment`) com a
+ * mesma data. O título do evento só acompanha o novo nome se ainda for o automático
+ * ("Avaliação: <nome antigo>") — um título escrito pela pessoa na Agenda é preservado. Sem data,
+ * o evento fica como está; sem mudança de nome/data, o evento nem é consultado (evita reenviar ao
+ * Google Calendar à toa).
+ */
+export async function updateAssessment(
+  client: Client,
+  assessmentId: string,
+  input: { name: string; assessmentDate?: string; expectedContent?: string },
+): Promise<Assessment> {
+  const { data: before, error: beforeError } = await client.from("assessments").select("name, assessment_date").eq("id", assessmentId).single();
+  if (beforeError) throw beforeError;
+
+  const { data, error } = await client
+    .from("assessments")
+    .update({ name: input.name, assessment_date: input.assessmentDate ?? null, expected_content: input.expectedContent ?? null })
+    .eq("id", assessmentId)
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  const date = data.assessment_date;
+  if (!date || (before.name === data.name && before.assessment_date === date)) return data;
+
+  const oldAutoTitle = `Avaliação: ${before.name}`;
+  for (const event of await listEventsByAssessment(client, assessmentId)) {
+    await updateAgendaEvent(client, event.id, {
+      title: event.title === oldAutoTitle ? `Avaliação: ${data.name}` : event.title,
+      description: event.description ?? undefined,
+      location: event.location ?? undefined,
+      meetingLink: event.meeting_link ?? undefined,
+      category: event.category,
+      isAllDay: true,
+      startAt: `${date}T00:00:00`,
+      endAt: `${date}T23:59:59`,
+    });
+  }
   return data;
 }
 
@@ -449,6 +497,12 @@ export async function updateFlashcard(client: Client, flashcardId: string, input
 export async function deleteFlashcard(client: Client, flashcardId: string): Promise<void> {
   const { error } = await client.from("flashcards").delete().eq("id", flashcardId);
   if (error) throw error;
+}
+
+export async function updateTopic(client: Client, topicId: string, title: string): Promise<Topic> {
+  const { data, error } = await client.from("topics").update({ title }).eq("id", topicId).select("*").single();
+  if (error) throw error;
+  return data;
 }
 
 export async function deleteTopic(client: Client, topicId: string): Promise<void> {
