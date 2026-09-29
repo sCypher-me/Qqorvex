@@ -1,4 +1,43 @@
-import type { CalendarEvent, RecurringEventFrequency } from "./types";
+import type { TablesUpdate } from "@qqorvex/database";
+import { localDateInputValue } from "./dateUtils";
+import type { CalendarEvent, RecurringEvent, RecurringEventFrequency } from "./types";
+
+export interface RecurringEventEditInput {
+  title: string;
+  isAllDay: boolean;
+  /** HH:MM:SS; ignorado em dia inteiro. */
+  startTime?: string;
+  endTime?: string;
+  frequency: RecurringEventFrequency;
+  nextOccurrenceDate: string;
+}
+
+/**
+ * Edição de uma série de eventos: vale da próxima ocorrência em diante (eventos já criados não
+ * mudam). Mudar a próxima data move também `start_date`, âncora do dia do mês na série mensal.
+ * A data nova não pode ficar no passado — o cron recupera datas vencidas e criaria vários eventos.
+ * Descrição, local, link, folgas e fuso não estão no formulário e ficam como estão.
+ */
+export function toRecurringEventUpdate(
+  current: Pick<RecurringEvent, "next_occurrence_date">,
+  input: RecurringEventEditInput,
+  today = localDateInputValue(new Date()),
+): TablesUpdate<"recurring_events"> {
+  const dateChanged = input.nextOccurrenceDate !== current.next_occurrence_date;
+  if (dateChanged && input.nextOccurrenceDate < today) throw new Error("A próxima data não pode ficar no passado.");
+  if (!input.isAllDay && (!input.startTime || !input.endTime || input.endTime <= input.startTime)) {
+    throw new Error("O término precisa ser depois do início.");
+  }
+  return {
+    title: input.title,
+    is_all_day: input.isAllDay,
+    start_time: input.isAllDay ? null : input.startTime,
+    end_time: input.isAllDay ? null : input.endTime,
+    frequency: input.frequency,
+    next_occurrence_date: input.nextOccurrenceDate,
+    ...(dateChanged ? { start_date: input.nextOccurrenceDate } : {}),
+  };
+}
 
 interface TimeRange {
   start: Date;

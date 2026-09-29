@@ -24,6 +24,7 @@ import {
   updateCardClosingConfig,
   updateTransaction,
   updateRecurringStatus,
+  updateRecurringTransaction,
   updateTransactionStatus,
   createTransactionsBulk,
   updateAccount,
@@ -45,6 +46,7 @@ import type {
   TransactionType,
   UpdateTransactionInput,
 } from "../types";
+import type { RecurringTransactionEditInput } from "../service";
 
 const TRANSACTIONS_KEY = ["transactions"] as const;
 const ACCOUNTS_KEY = ["accounts"] as const;
@@ -205,6 +207,15 @@ export function useCreateRecurringTransaction(client: SupabaseClient<Database>, 
       cardId?: string;
     }) => createRecurringTransaction(client, userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: RECURRING_KEY }),
+  });
+}
+
+export function useUpdateRecurringTransaction(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ current, input }: { current: RecurringTransaction; input: RecurringTransactionEditInput }) => updateRecurringTransaction(client, current, input),
+    // Mesmo no erro "a série avançou", recarrega para mostrar a data atual.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: RECURRING_KEY }),
   });
 }
 

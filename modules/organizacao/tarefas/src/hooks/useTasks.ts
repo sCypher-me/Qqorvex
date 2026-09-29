@@ -14,13 +14,14 @@ import {
   listRecurringTasks,
   materializeDueRecurringTasks,
   removeDependency,
+  updateRecurringTask,
   updateRecurringTaskStatus,
   updateTaskCancelled,
   updateTask,
   updateTaskChecklistItem,
   updateTaskStatus,
 } from "../repository";
-import { deriveTaskConditions, wouldCreateCycle } from "../service";
+import { deriveTaskConditions, wouldCreateCycle, type RecurringTaskEditInput } from "../service";
 import type { NewTaskInput, RecurringTask, Task, TaskPriority, TaskRecurrenceFrequency, TaskStatus, TaskUpdateInput } from "../types";
 
 const TASKS_KEY = ["tasks"] as const;
@@ -188,6 +189,22 @@ export function useCreateRecurringTask(client: SupabaseClient<Database>, userId:
       return recurring;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: RECURRING_TASKS_KEY });
+      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+    },
+  });
+}
+
+/** Edita a série; se ela está ativa e a nova data já chegou, a tarefa do dia aparece na hora. */
+export function useUpdateRecurringTask(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ current, input }: { current: RecurringTask; input: RecurringTaskEditInput }) => {
+      const recurring = await updateRecurringTask(client, current, input);
+      if (recurring.status === "ativa") await materializeDueRecurringTasks(client, recurring.user_id);
+      return recurring;
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: RECURRING_TASKS_KEY });
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
     },

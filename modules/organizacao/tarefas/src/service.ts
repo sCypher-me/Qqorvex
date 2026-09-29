@@ -1,4 +1,34 @@
-import type { Task, TaskRecurrenceFrequency, TaskWithConditions } from "./types";
+import type { TablesUpdate } from "@qqorvex/database";
+import type { RecurringTask, Task, TaskPriority, TaskRecurrenceFrequency, TaskWithConditions } from "./types";
+
+export interface RecurringTaskEditInput {
+  title: string;
+  priority: TaskPriority;
+  frequency: TaskRecurrenceFrequency;
+  nextOccurrenceDate: string;
+}
+
+/**
+ * Edição de uma série: vale da próxima ocorrência em diante (tarefas já geradas não mudam). Mudar
+ * a próxima data move também `start_date`, que é a âncora do dia do mês na série mensal — senão a
+ * série voltaria ao dia antigo depois da primeira ocorrência. A data nova não pode ficar no
+ * passado: a geração recupera datas vencidas uma a uma e criaria várias tarefas de uma vez.
+ */
+export function toRecurringTaskUpdate(
+  current: Pick<RecurringTask, "next_occurrence_date">,
+  input: RecurringTaskEditInput,
+  today = localDateKey(),
+): TablesUpdate<"recurring_tasks"> {
+  const dateChanged = input.nextOccurrenceDate !== current.next_occurrence_date;
+  if (dateChanged && input.nextOccurrenceDate < today) throw new Error("A próxima data não pode ficar no passado.");
+  return {
+    title: input.title,
+    priority: input.priority,
+    frequency: input.frequency,
+    next_occurrence_date: input.nextOccurrenceDate,
+    ...(dateChanged ? { start_date: input.nextOccurrenceDate } : {}),
+  };
+}
 
 type DependencyEdge = { task_id: string; depends_on_task_id: string };
 

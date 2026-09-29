@@ -6,7 +6,9 @@ import {
   computeNextOccurrenceDate,
   computeStatementDueDate,
   deriveInitialStatus,
+  toRecurringTransactionUpdate,
   toReferenceMonth,
+  type RecurringTransactionEditInput,
 } from "./service";
 import type {
   Account,
@@ -180,6 +182,27 @@ export async function createRecurringTransaction(
     })
     .select("*")
     .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Grava a edição só se a série ainda estiver na data que a pessoa abriu — a geração pode tê-la
+ * avançado nesse meio-tempo, e gravar a data antiga duplicaria um lançamento.
+ */
+export async function updateRecurringTransaction(
+  client: Client,
+  current: RecurringTransaction,
+  input: RecurringTransactionEditInput,
+): Promise<RecurringTransaction> {
+  const { data, error } = await client
+    .from("recurring_transactions")
+    .update(toRecurringTransactionUpdate(current, input))
+    .eq("id", current.id)
+    .eq("next_occurrence_date", current.next_occurrence_date)
+    .select("*")
+    .single();
+  if (error?.code === "PGRST116") throw new Error("Esta recorrência avançou enquanto você editava. Abra de novo para ver a data atual.");
   if (error) throw error;
   return data;
 }
