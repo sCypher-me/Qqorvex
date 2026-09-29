@@ -359,7 +359,7 @@ export function BlockRow({
             </Link>
             <Button
               type="button"
-              variant="quiet"
+              variant="ghost"
               size="xs"
               onClick={() => {
                 const next = { pageId: null };
@@ -553,7 +553,7 @@ export function BlockRow({
             </span>
             <Button
               type="button"
-              variant="quiet"
+              variant="ghost"
               size="xs"
               onClick={() => {
                 const next = { entityType: null, entityId: null };
@@ -573,7 +573,7 @@ export function BlockRow({
             </span>
             <Button
               type="button"
-              variant="quiet"
+              variant="ghost"
               size="xs"
               onClick={() => {
                 const next = { entityType: null, entityId: null };
@@ -792,7 +792,7 @@ function MediaBlockBody({
           Abrir →
         </a>
       )}
-      <Button type="button" variant="quiet" size="xs" onClick={() => onUpdateContent({ documentId: null })}>
+      <Button type="button" variant="ghost" size="xs" onClick={() => onUpdateContent({ documentId: null })}>
         Trocar
       </Button>
     </div>

@@ -139,9 +139,6 @@ export const MODULE_ROUTES: Record<string, { label: string; to: string }> = {
   "vida-pessoal": { label: "Pessoal", to: "/vida/pessoal" },
 };
 
-/** @deprecated use MODULE_ROUTES */
-export const MODULE_LABELS: Record<string, string> = Object.fromEntries(Object.entries(MODULE_ROUTES).map(([key, value]) => [key, value.label]));
-
 export interface RouteContext {
   area: NavArea | null;
   section: NavSection | null;
@@ -175,11 +172,3 @@ export function getRouteContext(pathname: string): RouteContext {
   const title = account?.title ?? "Qqorvex";
   return { area: null, section: null, title, trail: [{ label: title, to: pathname }] };
 }
-
-/** @deprecated use `BrandSymbol`, `Wordmark` e `VexAvatar` de @qqorvex/ui. */
-export const BRAND_ASSETS = {
-  symbol: "/brand/symbol.png",
-  wordmark: "/brand/wordmark.png",
-  vexAvatar: "/brand/vex-avatar-256.webp",
-  vexPattern: "/brand/vex-pattern.png",
-};

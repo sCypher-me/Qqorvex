@@ -158,7 +158,7 @@ function RoutineCard({
                       <Button
                         key={option.state}
                         type="button"
-                        variant={todayLog?.state === option.state ? "vex" : "quiet"}
+                        variant={todayLog?.state === option.state ? "ai" : "ghost"}
                         size="xs"
                         aria-pressed={todayLog?.state === option.state}
                         onClick={() => onLogHabit(habit.id, option.state)}

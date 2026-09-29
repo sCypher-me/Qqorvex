@@ -68,7 +68,7 @@ export function VersionHistoryPanel({
               </span>
               <Button
                 type="button"
-                variant="quiet"
+                variant="ghost"
                 size="xs"
                 onClick={() => restoreVersion.mutate({ document, version })}
                 disabled={restoreVersion.isPending}

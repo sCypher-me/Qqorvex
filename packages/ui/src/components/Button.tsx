@@ -12,14 +12,7 @@ export type ButtonVariant =
   | "danger"
   | "ai"
   | "dashed"
-  | "link"
-  /** @deprecated aliases do design antigo */
-  | "quiet"
-  | "destructive"
-  | "vex"
-  | "premium"
-  | "chip"
-  | "chip-accent";
+  | "link";
 
 export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
@@ -38,12 +31,6 @@ const variants: Record<ButtonVariant, string> = {
   ai: "border border-ai-line bg-ai-soft text-ai-fg hover:bg-ai/20",
   dashed: "border border-dashed border-line-strong text-fg-2 hover:border-fg-3 hover:text-fg",
   link: "h-auto! px-0! text-gold-fg underline-offset-4 hover:underline",
-  quiet: "text-fg-2 hover:bg-hover hover:text-fg",
-  destructive: "border border-danger/30 bg-danger-soft text-danger hover:border-danger/50 hover:bg-danger/20",
-  vex: "border border-ai-line bg-ai-soft text-ai-fg hover:bg-ai/20",
-  premium: "bg-gold text-on-gold shadow-[inset_0_1px_0_rgb(255_255_255/0.22)] hover:bg-gold-hover",
-  chip: "border border-line bg-transparent text-fg-2 hover:bg-hover hover:text-fg",
-  "chip-accent": "border border-gold-line bg-gold-soft text-gold-fg hover:bg-gold/20",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -63,11 +50,8 @@ const iconOnlySizes: Record<ButtonSize, string> = {
 /** Ação "pesada" vibra; navegação e ações leves não, para o toque não virar ruído. */
 const HAPTIC: Partial<Record<ButtonVariant, HapticLevel>> = {
   primary: "light",
-  premium: "light",
   ai: "light",
-  vex: "light",
   danger: "warning",
-  destructive: "warning",
 };
 
 export interface ButtonStyleOptions {
@@ -78,7 +62,7 @@ export interface ButtonStyleOptions {
 }
 
 export function buttonClasses({ variant = "primary", size, fullWidth, iconOnly }: ButtonStyleOptions = {}): string {
-  const resolvedSize = size ?? (variant === "chip" || variant === "chip-accent" ? "sm" : "md");
+  const resolvedSize = size ?? "md";
   return cx(base, variants[variant], sizes[resolvedSize], iconOnly && iconOnlySizes[resolvedSize], fullWidth && "w-full");
 }
 

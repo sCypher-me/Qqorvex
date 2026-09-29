@@ -330,7 +330,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
 
               <div className="mt-8 flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  {step > 0 && <Button type="button" variant="quiet" disabled={saving || avatarBusy} onClick={previous}><ArrowLeftIcon size={17} /> Voltar</Button>}
+                  {step > 0 && <Button type="button" variant="ghost" disabled={saving || avatarBusy} onClick={previous}><ArrowLeftIcon size={17} /> Voltar</Button>}
                 </div>
                 {step < STEPS.length - 1 ? (
                   <Button type="button" variant="primary" disabled={saving || avatarBusy} onClick={next}>

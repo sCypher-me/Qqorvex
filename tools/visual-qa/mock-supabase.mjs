@@ -270,7 +270,7 @@ export async function installSupabaseMock(page, { log = false, onboarding = fals
     }
 
     if (path.startsWith("/storage/v1/")) {
-      if (path.includes("/object/sign")) return json({ signedURL: "/brand/symbol.png", signedUrl: "/brand/symbol.png" });
+      if (path.includes("/object/sign")) return json({ signedURL: "/favicon.png", signedUrl: "/favicon.png" });
       return json([]);
     }
 

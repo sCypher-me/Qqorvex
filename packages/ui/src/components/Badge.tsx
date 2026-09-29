@@ -9,11 +9,7 @@ export type BadgeTone =
   | "danger"
   | "warning"
   | "info"
-  | "outline"
-  /** @deprecated aliases do design antigo */
-  | "error"
-  | "premium"
-  | "module";
+  | "outline";
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
@@ -32,9 +28,6 @@ const tones: Record<BadgeTone, string> = {
   warning: "bg-warning-soft text-warning",
   info: "bg-info-soft text-info",
   outline: "border border-line text-fg-2",
-  error: "bg-danger-soft text-danger",
-  premium: "bg-gold-soft text-gold-fg",
-  module: "bg-hover text-fg-3 uppercase tracking-[0.06em]",
 };
 
 /** Etiqueta de status/categoria. Estado nunca só por cor: o texto é obrigatório. */
@@ -73,15 +66,13 @@ export function Tag({ color, children, className, onRemove }: { color?: string; 
 }
 
 /** Indicador de status mínimo (bolinha + rótulo opcional). */
-export function StatusDot({ tone = "neutral", label, pulse = false }: { tone?: Exclude<BadgeTone, "outline" | "module">; label?: string; pulse?: boolean }) {
+export function StatusDot({ tone = "neutral", label, pulse = false }: { tone?: Exclude<BadgeTone, "outline">; label?: string; pulse?: boolean }) {
   const color: Record<string, string> = {
     neutral: "bg-fg-4",
     gold: "bg-gold",
-    premium: "bg-gold",
     ai: "bg-ai",
     success: "bg-success",
     danger: "bg-danger",
-    error: "bg-danger",
     warning: "bg-warning",
     info: "bg-info",
   };

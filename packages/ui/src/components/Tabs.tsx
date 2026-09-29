@@ -121,10 +121,6 @@ export function Segmented<T extends string>({ options, value, onChange, classNam
   );
 }
 
-/** @deprecated use `Segmented` (mesma API). */
-export function ChipTabs<T extends string>(props: { options: { value: T; label: string }[]; value: T; onChange: (value: T) => void; className?: string }) {
-  return <Segmented {...props} />;
-}
 
 export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean;

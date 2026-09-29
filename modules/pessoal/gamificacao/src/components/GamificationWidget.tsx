@@ -50,7 +50,7 @@ export function GamificationWidget({ progress, title, highlight, stats }: Gamifi
       <div className="flex-1 min-w-[220px] flex flex-col gap-2.5">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-display text-[22px] font-semibold">{title}</span>
-          {highlight && <Badge tone="premium">{highlight}</Badge>}
+          {highlight && <Badge tone="gold">{highlight}</Badge>}
         </div>
         <span className="text-[13px] text-fg-2">
           <LevelProgressText progress={progress} />

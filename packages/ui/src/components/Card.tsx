@@ -8,21 +8,13 @@ export type CardVariant =
   | "outline"
   | "interactive"
   | "gold"
-  | "ai"
-  /** @deprecated aliases do design antigo */
-  | "vex"
-  | "milestone"
-  | "tile"
-  | "well"
-  | "column";
+  | "ai";
 
 export type CardPadding = "none" | "sm" | "md" | "lg";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: CardVariant;
   padding?: CardPadding;
-  /** @deprecated use `padding="none"` */
-  flush?: boolean;
   /** Mantém o layout em coluna com espaçamento (padrão). `false` deixa o conteúdo livre. */
   stack?: boolean;
 }
@@ -35,11 +27,6 @@ const variants: Record<CardVariant, string> = {
   interactive: "border border-line bg-surface transition-[border-color,background-color,transform] duration-150 ease-q hover:border-line-strong hover:bg-raised",
   gold: "border border-gold-line bg-[color-mix(in_srgb,var(--q-gold)_6%,var(--q-surface))]",
   ai: "border border-ai-line bg-[color-mix(in_srgb,var(--q-ai)_6%,var(--q-surface))]",
-  vex: "border border-ai-line bg-[color-mix(in_srgb,var(--q-ai)_6%,var(--q-surface))]",
-  milestone: "border border-gold-line bg-[color-mix(in_srgb,var(--q-gold)_6%,var(--q-surface))]",
-  tile: "border border-line bg-raised transition-[border-color] duration-150 hover:border-line-strong",
-  well: "border border-line-soft bg-canvas/60",
-  column: "border border-line-soft bg-canvas/40",
 };
 
 const paddings: Record<CardPadding, string> = {
@@ -51,10 +38,10 @@ const paddings: Record<CardPadding, string> = {
 
 /** Contêiner base. Superfícies se diferenciam por luminância e borda, não por sombra. */
 export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
-  { variant = "default", padding, flush = false, stack = true, className, ...props },
+  { variant = "default", padding, stack = true, className, ...props },
   ref,
 ) {
-  const resolvedPadding: CardPadding = flush ? "none" : padding ?? (variant === "tile" || variant === "well" ? "sm" : "md");
+  const resolvedPadding: CardPadding = padding ?? "md";
   return (
     <div
       ref={ref}
@@ -74,8 +61,6 @@ export interface CardHeaderProps {
   actions?: ReactNode;
   /** Linha divisória abaixo — use em cards com `padding="none"`. */
   divider?: boolean;
-  /** @deprecated sem efeito — títulos de card seguem uma única escala. */
-  display?: boolean;
   className?: string;
 }
 

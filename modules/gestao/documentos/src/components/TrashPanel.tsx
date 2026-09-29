@@ -43,10 +43,10 @@ export function TrashPanel({ client }: { client: SupabaseClient<Database> }) {
                   </span>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button type="button" variant="quiet" size="sm" onClick={() => restore.mutate(document.id)}>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => restore.mutate(document.id)}>
                     Restaurar
                   </Button>
-                  <Button type="button" variant="destructive" size="sm" onClick={() => setConfirmPurgeId(document.id)}>
+                  <Button type="button" variant="danger" size="sm" onClick={() => setConfirmPurgeId(document.id)}>
                     Excluir para sempre
                   </Button>
                 </div>

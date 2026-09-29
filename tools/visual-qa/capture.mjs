@@ -39,7 +39,7 @@ export const DEFAULT_ROUTES = [
   "/vida/documentos",
   "/vida/pessoal",
   "/vex",
-  "/perfil",
+  "/configuracoes/seguranca",
   "/conquistas",
   "/assinatura",
   "/configuracoes",

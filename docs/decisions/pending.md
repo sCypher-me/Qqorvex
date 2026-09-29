@@ -1499,7 +1499,7 @@
   (`#090b0e`/gold `#b88a54`/cyan `#43b9d2`) que a v1 baseada só no Xmind, sistema de classes `qv-*`
   em `tokens.css`, novo shell (`apps/qqorvex/src/app/shell/`: header, paleta de comando Cmd+K,
   painel da Vex), páginas novas (`AuthLayout`, `Gamificacao`, `Perfil`). Detalhes completos em
-  `docs/design-system/tokens.md`, que agora é a fonte de verdade do design system (a versão
+  `DESIGN.md`, que agora é a fonte de verdade do design system (a versão
   anterior deste arquivo estava obsoleta). `designq.zip` (40MB, material bruto trazido da outra
   sessão) e `.superpowers/` adicionados ao `.gitignore`. **Pendências reais**: nada commitado
   ainda (perguntar antes do primeiro commit); decidir o que fazer com `designq.zip` em disco.
@@ -1755,7 +1755,7 @@
   `critical` → `#df5f70`, ~16–18% em direção ao branco) — `critical` continua visivelmente mais
   escuro/saturado que `--color-error` (`#f05d6c`), preservando a distinção de severidade entre os
   dois. Atualizado em `tokens.css`, `colors.ts` (mesmo valor, documentado como espelhando o CSS) e
-  `docs/design-system/tokens.md`.
+  `DESIGN.md`.
   **Foco em diálogos (achado real, corrigido)**: `Modal.tsx` (usado por `ConfirmDialog` — toda
   confirmação de exclusão do app passa por aqui) abria sem mover o foco pra dentro, sem prender
   Tab lá dentro (dava pra tabular pro conteúdo atrás do fundo escurecido) e sem devolver o foco pro

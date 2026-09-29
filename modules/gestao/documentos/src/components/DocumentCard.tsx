@@ -164,25 +164,25 @@ export function DocumentCard({
             <Button type="button" variant="primary" size="sm" onClick={onDownload}>
               Abrir
             </Button>
-            <Button type="button" variant="quiet" size="sm" onClick={onToggleImportant}>
+            <Button type="button" variant="ghost" size="sm" onClick={onToggleImportant}>
               {document.is_important ? "Desmarcar importante" : "Importante"}
             </Button>
-            <Button type="button" variant="quiet" size="sm" onClick={onToggleVault}>
+            <Button type="button" variant="ghost" size="sm" onClick={onToggleVault}>
               {document.is_vault ? "Tirar do Cofre" : "Marcar no Cofre"}
             </Button>
-            <Button type="button" variant="quiet" size="sm" onClick={onOpenVersions}>
+            <Button type="button" variant="ghost" size="sm" onClick={onOpenVersions}>
               Versões
               {document.current_version > 1 && <span className="font-mono text-xs">v{document.current_version}</span>}
             </Button>
             {onToggleArchive && (
-              <Button type="button" variant="quiet" size="sm" onClick={onToggleArchive}>
+              <Button type="button" variant="ghost" size="sm" onClick={onToggleArchive}>
                 {isArchived ? "Restaurar do arquivo" : "Arquivar"}
               </Button>
             )}
             {canExtractText && (
               <Button
                 type="button"
-                variant="quiet"
+                variant="ghost"
                 size="sm"
                 onClick={() => {
                   if (document.extracted_text) {
@@ -209,7 +209,7 @@ export function DocumentCard({
               </Button>
             )}
             <span className="flex-1" />
-            <Button type="button" variant="destructive" size="sm" onClick={() => setConfirmOpen(true)}>
+            <Button type="button" variant="danger" size="sm" onClick={() => setConfirmOpen(true)}>
               Excluir
             </Button>
           </div>
@@ -218,7 +218,7 @@ export function DocumentCard({
               <p className="text-[13px] leading-relaxed text-fg whitespace-pre-wrap">{document.extracted_text}</p>
               <Button
                 type="button"
-                variant="quiet"
+                variant="ghost"
                 size="xs"
                 className="self-start"
                 onClick={() => navigator.clipboard.writeText(document.extracted_text!)}

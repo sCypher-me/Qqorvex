@@ -259,7 +259,7 @@ export function NewItemForm({
           <span className="text-[13px] leading-normal text-fg-2 flex-1 min-w-0">
             Metadados de <span className="text-fg">"{selected.title}"</span> foram encontrados. Você pode revisar ou editar os campos abaixo.
           </span>
-          <Button type="button" variant="quiet" size="xs" onClick={resetSearch}>
+          <Button type="button" variant="ghost" size="xs" onClick={resetSearch}>
             Limpar
           </Button>
         </div>
@@ -271,7 +271,7 @@ export function NewItemForm({
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 text-fg-3">Metadados opcionais</span>
             <p className="m-0 mt-1 text-xs text-fg-2">Adicione capa, descrição e outros detalhes manualmente.</p>
           </div>
-          <Button type="button" variant="quiet" size="xs" onClick={() => setManualDetailsOpen((open) => !open)}>
+          <Button type="button" variant="ghost" size="xs" onClick={() => setManualDetailsOpen((open) => !open)}>
             {manualDetailsOpen ? "Ocultar" : "Adicionar"}
           </Button>
         </div>
@@ -310,7 +310,7 @@ export function NewItemForm({
                 />
                 <span className="text-[11px] text-fg-3">PNG, JPG ou WebP · até 5 MB · salva em privado na sua conta.</span>
               </div>
-              {coverFile && <Button type="button" variant="quiet" size="sm" onClick={clearCoverFile}>Remover imagem</Button>}
+              {coverFile && <Button type="button" variant="ghost" size="sm" onClick={clearCoverFile}>Remover imagem</Button>}
             </div>
             {coverError && <p role="alert" className="m-0 text-xs text-danger">{coverError}</p>}
             <div className="grid gap-3 sm:grid-cols-2">
