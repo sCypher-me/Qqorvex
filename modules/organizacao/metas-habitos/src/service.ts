@@ -88,3 +88,22 @@ export function computeDerivedProgress(currentBalance: number, targetAmount: num
   if (targetAmount <= 0) return 0;
   return Math.max(0, Math.min(100, Math.round((currentBalance / targetAmount) * 100)));
 }
+
+const WEEKDAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const LEGACY_WEEKDAY_CODES = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+
+/**
+ * Como o hábito se encaixa num dia: "fixo" (diário ou dia da semana marcado), "flexível" (cota
+ * semanal/mensal — pode ser feito em qualquer dia) ou `null` (não se aplica / inativo).
+ */
+export function habitScheduleOn(habit: Habit, date: Date): "fixo" | "flexivel" | null {
+  if (habit.status !== "ativo") return null;
+  if (habit.frequency_type === "diaria") return "fixo";
+  if (habit.frequency_type === "dias_especificos") {
+    const config = (habit.frequency_config ?? {}) as unknown as HabitFrequencyConfig;
+    const code = WEEKDAY_CODES[date.getDay()] ?? "sun";
+    const legacy = LEGACY_WEEKDAY_CODES[date.getDay()] ?? "dom";
+    return (config.days ?? []).some((day) => day === code || day === legacy) ? "fixo" : null;
+  }
+  return "flexivel";
+}

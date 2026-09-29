@@ -71,7 +71,7 @@ const habits = [
   { name: "Meditar 10 minutos", frequency_type: "diaria", category: "bem-estar", preferred_time: "07:00" },
   { name: "Beber 2L de água", frequency_type: "diaria", category: "saúde" },
   { name: "Ler 20 páginas", frequency_type: "diaria", category: "leitura", preferred_time: "22:00" },
-  { name: "Treinar", frequency_type: "x_vezes_semana", frequency_config: { times: 4 }, category: "saúde" },
+  { name: "Treinar", frequency_type: "x_vezes_semana", frequency_config: { timesPerWeek: 4 }, category: "saúde" },
 ].map((h) => ({ ...base, id: id("h0000000"), status: "ativo", frequency_config: {}, ...h }));
 
 const habitLogs = [];

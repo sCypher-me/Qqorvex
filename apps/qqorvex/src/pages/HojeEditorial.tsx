@@ -1,188 +1,447 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowRightIcon, BooksIcon, CalendarBlankIcon, CheckIcon, CheckSquareIcon,
-  ClockIcon, NotebookIcon, PlayIcon, PlusIcon, WalletIcon,
+  ArrowRightIcon,
+  ArrowSquareOutIcon,
+  BooksIcon,
+  CalendarBlankIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  FireIcon,
+  MapPinIcon,
+  NotebookIcon,
+  PlusIcon,
+  SparkleIcon,
+  TargetIcon,
+  WalletIcon,
 } from "@phosphor-icons/react";
-import { useAuth, useProfile } from "@qqorvex/auth";
 import { useHojeSummary } from "@qqorvex/module-hoje";
-import { useTasks, useUpdateTaskStatus } from "@qqorvex/module-tarefas";
-import { endOfDay, startOfDay, useEventsInRange } from "@qqorvex/module-agenda";
-import { TitleBadge, useGamificationStats, useUnlockedBadges } from "@qqorvex/module-gamificacao";
-import { useHabits, useHabitLogs, useLogHabit, type Habit } from "@qqorvex/module-metas-habitos";
-import { LIBRARY_ITEM_TYPE_LABELS, LIBRARY_STATUS_LABELS, useLibraryItems } from "@qqorvex/module-biblioteca";
-import { computeBalances, useTransactions } from "@qqorvex/module-financas";
-import { useEnsureDailyNote } from "@qqorvex/module-segundo-cerebro";
+import {
+  CompleteToggle,
+  DueChip,
+  PriorityFlag,
+  SmartAdd,
+  compareTasksForAction,
+  localDateKey,
+  addDaysToKey,
+  useCreateTask,
+  useAllTasks,
+  useTasks,
+  useUpdateTaskStatus,
+  type NewTaskInput,
+  type TaskWithConditions,
+} from "@qqorvex/module-tarefas";
+import { addDays, eventCategory, startOfDay, useEventsInRange, type CalendarEvent } from "@qqorvex/module-agenda";
+import { computeCurrentStreak, getHabitWeeklyTarget, habitScheduleOn, useHabitLogsInRange, useHabits, useToggleHabitLog, type Habit } from "@qqorvex/module-metas-habitos";
+import { useTransactions } from "@qqorvex/module-financas";
+import { useLibraryItems } from "@qqorvex/module-biblioteca";
+import { usePages } from "@qqorvex/module-segundo-cerebro";
+import { BarChart, Button, ButtonLink, EmptyState, ExternalButtonLink, ProgressBar, Skeleton, cx, useToast } from "@qqorvex/ui";
+import { useAccount } from "../app/account";
+import { useQuickCreate } from "../app/shell/QuickCreate";
+import { MODULE_ROUTES } from "../app/shell/navigation";
 import { supabase } from "../app/supabase";
-import { useCurrentItem } from "../vex/CurrentItemContext";
+import { useVexLauncher } from "../vex/VexLauncher";
 
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const priorityOrder: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3, sem_prioridade: 4 };
-const sourcePath: Record<string, string> = {
-  tarefas: "/planejar/tarefas", agenda: "/planejar/agenda", "metas-habitos": "/planejar/metas",
-  estudos: "/conhecimento/estudos", "segundo-cerebro": "/conhecimento/notas",
-  biblioteca: "/conhecimento/biblioteca", documentos: "/vida/documentos", financas: "/vida/financas", "vida-pessoal": "/vida/pessoal",
-};
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
-function shortTime(value: string) {
-  return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+function greetingFor(date: Date): string {
+  const hour = date.getHours();
+  if (hour < 5) return "Boa noite";
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
 }
 
-function selectedName(name: string) {
-  return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).join(" ");
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function HabitCheck({ habit }: { habit: Habit }) {
-  const { logs } = useHabitLogs(supabase, habit.id);
-  const logHabit = useLogHabit(supabase, habit.id);
-  const date = new Date();
-  const today = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  const done = logs.some((log) => log.log_date === today && log.state === "concluido");
-  return <button type="button" disabled={done || logHabit.isPending} onClick={() => logHabit.mutate({ logDate: today, state: "concluido" })} className="editorial-habit"><span className={done ? "done" : ""}>{done && <CheckIcon size={13} />}</span><span>{habit.name}</span><small>{done ? "Feito hoje" : "Marcar"}</small></button>;
+function relativeMinutes(target: Date, now: Date): string {
+  const minutes = Math.round((target.getTime() - now.getTime()) / 60_000);
+  if (minutes <= 0) return "agora";
+  if (minutes < 60) return `em ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `em ${hours}h${String(rest).padStart(2, "0")}` : `em ${hours}h`;
+}
+
+function Panel({ title, icon, action, children, className }: { title: string; icon?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={cx("flex min-w-0 flex-col rounded-xl border border-line bg-surface", className)} aria-label={title}>
+      <header className="flex items-center gap-2 px-4 pb-2 pt-3.5 sm:px-5">
+        {icon && <span className="flex text-fg-4 [&_svg]:size-[17px]">{icon}</span>}
+        <h2 className="text-[14px] font-semibold text-fg">{title}</h2>
+        <span className="flex-1" />
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function MetricTile({ label, value, hint, icon, progress, to }: { label: string; value: ReactNode; hint?: ReactNode; icon: ReactNode; progress?: number; to: string }) {
+  return (
+    <Link to={to} className="group flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong hover:bg-raised">
+      <div className="flex items-center gap-2 text-[12.5px] font-medium text-fg-3 [&_svg]:size-4">
+        <span className="text-fg-4 group-hover:text-gold-fg">{icon}</span>
+        {label}
+      </div>
+      <div className="min-w-0 truncate font-display text-[22px] font-semibold leading-tight tracking-[-0.01em] text-fg">{value}</div>
+      {progress !== undefined && <ProgressBar value={progress} height={4} />}
+      {hint && <p className="truncate text-xs text-fg-3">{hint}</p>}
+    </Link>
+  );
 }
 
 export function HojeEditorialPage() {
-  const { session } = useAuth();
-  const userId = session!.user.id;
+  const { userId, firstName } = useAccount();
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const { setCurrentItem } = useCurrentItem();
-  const [now] = useState(() => new Date());
+  const quickCreate = useQuickCreate();
+  const openVex = useVexLauncher();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const today = localDateKey(now);
   const { tasks, isLoading: tasksLoading } = useTasks(supabase, userId);
+  const { tasks: allTasks } = useAllTasks(supabase);
+  const createTask = useCreateTask(supabase, userId);
   const updateStatus = useUpdateTaskStatus(supabase);
-  const { events, isLoading: eventsLoading } = useEventsInRange(supabase, startOfDay(now), endOfDay(now));
-  const { summary } = useHojeSummary();
-  const { profile } = useProfile(supabase, userId);
-  const { progress, title: levelTitle } = useGamificationStats(supabase, userId);
-  const { badges } = useUnlockedBadges(supabase, userId, profile?.role === "dono");
+  const { events, isLoading: eventsLoading } = useEventsInRange(supabase, startOfDay(now), addDays(startOfDay(now), 1));
   const { habits } = useHabits(supabase);
+  const { logs: habitLogs } = useHabitLogsInRange(supabase, addDaysToKey(today, -60), today);
+  const toggleHabit = useToggleHabitLog(supabase);
+  const monthStart = `${today.slice(0, 8)}01`;
+  const { transactions, isLoading: financeLoading } = useTransactions(supabase, monthStart);
   const { items: libraryItems } = useLibraryItems(supabase);
-  const { transactions, isLoading: financeLoading } = useTransactions(supabase);
-  const ensureDailyNote = useEnsureDailyNote(supabase, userId);
-  const balances = computeBalances(transactions);
+  const { pages } = usePages(supabase);
+  const { summary } = useHojeSummary();
 
-  const activeTasks = tasks.filter((task) => task.status !== "concluido" && !task.parent_task_id);
-  const priorities = [...activeTasks].sort((a, b) => {
-    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
-    const priority = (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4);
-    return priority || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
-  });
-  const focus = priorities[0];
-  const todayEvents = [...events].sort((a, b) => a.start_at.localeCompare(b.start_at)).slice(0, 3);
-  const firstLibraryItem = libraryItems.find((item) => item.status === "em_andamento")
-    ?? libraryItems.find((item) => item.status === "quero_consumir")
-    ?? libraryItems.find((item) => item.status === "pausado")
-    ?? libraryItems.find((item) => item.status !== "abandonado")
-    ?? libraryItems[0];
-  const highlightedBadgeKeys = profile?.role === "dono"
-    ? ["dono", ...(profile.selected_badge_keys ?? []).filter((key) => key !== "dono").slice(0, 2)]
-    : profile?.selected_badge_keys ?? [];
-  const selectedBadges = badges.filter((badge) => badge.isUnlockedForUser && highlightedBadgeKeys.includes(badge.key)).slice(0, 3);
-  const nextStepItems = summary.items.slice(0, 4).map((item) => ({
-    ...item,
-    displayTitle: item.id === "financas-saldo" && !financeLoading && transactions.length === 0
-      ? "Configure seu espaço financeiro"
-      : item.title,
-  }));
-  const displayName = selectedName(profile?.display_name || profile?.full_name || profile?.username || session!.user.email?.split("@")[0] || "Você");
-  const greeting = now.getHours() < 12 ? "Bom dia!" : now.getHours() < 18 ? "Boa tarde!" : "Boa noite!";
-  const dateLabel = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(now).toLocaleUpperCase("pt-BR");
+  /* ── Tarefas ── */
+  const todayTasks = tasks.filter((task) => (task.status !== "concluido" && ((task.due_date !== null && task.due_date <= today) || task.status === "em_andamento")) || (task.status === "concluido" && task.completed_at && localDateKey(new Date(task.completed_at)) === today));
+  const doneToday = todayTasks.filter((task) => task.status === "concluido").length;
+  const focus = useMemo(
+    () =>
+      tasks
+        .filter((task) => task.status !== "concluido" && ((task.due_date !== null && task.due_date <= today) || task.status === "em_andamento" || task.priority === "alta"))
+        .sort((a, b) => Number(b.status === "em_andamento") - Number(a.status === "em_andamento") || compareTasksForAction(a, b))
+        .slice(0, 7),
+    [tasks, today],
+  );
 
-  function openFocus() {
-    if (focus) {
-      setCurrentItem({ type: "tarefa", id: focus.id, label: focus.title });
-      navigate("/planejar/tarefas");
-    } else navigate("/planejar/tarefas", { state: { focusCapture: true } });
+  function toggleTask(task: TaskWithConditions) {
+    const next = task.status === "concluido" ? "nao_iniciado" : "concluido";
+    updateStatus.mutate(
+      { taskId: task.id, status: next },
+      {
+        onSuccess: () => {
+          if (next === "concluido") toast({ title: "Tarefa concluída", description: task.title, tone: "success", action: { label: "Desfazer", onClick: () => updateStatus.mutate({ taskId: task.id, status: task.status }) } });
+        },
+      },
+    );
   }
 
-  async function openDailyNote() {
-    try {
-      const page = await ensureDailyNote.mutateAsync(new Date());
-      navigate(`/conhecimento/notas/${page.id}`);
-    } catch {
-      navigate("/conhecimento/notas");
-    }
+  async function addTodayTask(input: NewTaskInput) {
+    await createTask.mutateAsync(input);
   }
 
-  return <div className="editorial-today">
-    <div className="editorial-today-main">
-      <section className="editorial-today-hero" aria-labelledby="hoje-title">
-        <span className="editorial-eyebrow">{dateLabel}</span>
-        <h1 id="hoje-title">{greeting}<br /><span>Hoje é um novo capítulo.</span></h1>
-        <p>Foque no que importa e avance com consistência.</p>
-        <div className="editorial-hero-actions">
-          <button type="button" onClick={openFocus} className="editorial-primary"><PlayIcon size={20} weight="fill" />Começar meu dia</button>
-          <Link to="/planejar/agenda" className="editorial-quiet"><CalendarBlankIcon size={21} />Revisar minha semana</Link>
+  /* ── Agenda ── */
+  const dayEvents = [...events].sort((a, b) => a.start_at.localeCompare(b.start_at));
+  const timedEvents = dayEvents.filter((event) => !event.is_all_day);
+  const currentEvent = timedEvents.find((event) => new Date(event.start_at) <= now && new Date(event.end_at) > now) ?? null;
+  const nextEvent = timedEvents.find((event) => new Date(event.start_at) > now) ?? null;
+
+  /* ── Hábitos ── */
+  const habitRows = habits
+    .map((habit) => {
+      const schedule = habitScheduleOn(habit, now);
+      const logs = habitLogs.filter((log) => log.habit_id === habit.id);
+      const doneTodayHabit = logs.some((log) => log.log_date === today && log.state === "concluido");
+      const weekStart = addDaysToKey(today, -now.getDay());
+      const weekCount = logs.filter((log) => log.log_date >= weekStart && log.state === "concluido").length;
+      return { habit, schedule, done: doneTodayHabit, streak: computeCurrentStreak(logs, now), weekCount, weekTarget: getHabitWeeklyTarget(habit) };
+    })
+    .filter((row) => row.schedule !== null);
+  const fixedHabits = habitRows.filter((row) => row.schedule === "fixo");
+  const flexibleHabits = habitRows.filter((row) => row.schedule === "flexivel");
+  const habitsDone = fixedHabits.filter((row) => row.done).length;
+
+  /* ── Finanças ── */
+  const monthIncome = transactions.filter((t) => t.transaction_type === "entrada" && t.status === "concluida").reduce((sum, t) => sum + t.amount, 0);
+  const monthExpense = transactions.filter((t) => t.transaction_type === "saida" && t.status === "concluida").reduce((sum, t) => sum + t.amount, 0);
+  const monthBalance = monthIncome - monthExpense;
+
+  /* ── Semana ── */
+  const weekChart = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) => {
+        const key = addDaysToKey(today, index - 6);
+        const [y = 0, m = 1, d = 1] = key.split("-").map(Number);
+        const date = new Date(y, m - 1, d);
+        const completed = allTasks.filter((task) => task.completed_at && localDateKey(new Date(task.completed_at)) === key).length;
+        return { label: date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""), fullLabel: date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" }), values: { tarefas: completed } };
+      }),
+    [allTasks, today],
+  );
+  const weekTotal = weekChart.reduce((sum, day) => sum + (day.values.tarefas ?? 0), 0);
+
+  /* ── Atenção (outros módulos) ── */
+  const attention = summary.items.filter((item) => !["tarefas", "agenda", "metas-habitos"].includes(item.source) && item.id !== "financas-saldo").slice(0, 6);
+
+  /* ── Continuar ── */
+  const readingNow = libraryItems.find((item) => item.status === "em_andamento");
+  const lastPage = [...pages].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+
+  const summaryLine = tasksLoading || eventsLoading
+    ? "Organizando seu dia…"
+    : [
+        timedEvents.length ? `${timedEvents.length} ${timedEvents.length === 1 ? "compromisso" : "compromissos"}` : "agenda livre",
+        `${todayTasks.length - doneToday} ${todayTasks.length - doneToday === 1 ? "tarefa" : "tarefas"} para hoje`,
+        fixedHabits.length ? `${fixedHabits.length - habitsDone} ${fixedHabits.length - habitsDone === 1 ? "hábito" : "hábitos"} a fazer` : null,
+      ].filter(Boolean).join(" · ");
+
+  return (
+    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-fg-3">{(() => { const label = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }); return label.charAt(0).toUpperCase() + label.slice(1); })()}</p>
+          <h1 className="mt-1 font-display text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-fg sm:text-[34px]">
+            {greetingFor(now)}{firstName ? `, ${firstName}` : ""}.
+          </h1>
+          <p className="mt-1.5 text-[14px] text-fg-3">{summaryLine}</p>
         </div>
-      </section>
-      <div className="editorial-today-work">
-        <section className="editorial-agenda" aria-labelledby="editorial-agenda-title">
-          <div className="editorial-section-title"><div><CalendarBlankIcon size={22} /><h2 id="editorial-agenda-title">Minha agenda de hoje</h2></div><Link to="/planejar/agenda">Ver agenda <ArrowRightIcon size={16} /></Link></div>
-          {eventsLoading ? <p className="editorial-muted">Carregando sua agenda...</p> : todayEvents.length ? <div className="editorial-agenda-list">{todayEvents.map((event) => <Link to="/planejar/agenda" key={event.id} className="editorial-agenda-item"><span className="editorial-agenda-time">{event.is_all_day ? "Dia" : shortTime(event.start_at)}<small>{event.is_all_day ? "todo" : shortTime(event.end_at)}</small></span><i aria-hidden="true" /><span className="editorial-agenda-copy"><strong>{event.title}</strong><small>{event.location || event.category || "Compromisso"}</small></span></Link>)}</div> : <div className="editorial-empty"><ClockIcon size={22} /><p>Agenda livre por enquanto.</p><Link to="/planejar/agenda">Criar evento <ArrowRightIcon size={15} /></Link></div>}
-          <Link to="/planejar/agenda" className="editorial-text-link">Ver dia completo <ArrowRightIcon size={16} /></Link>
-        </section>
-        <section className="editorial-priorities" aria-labelledby="editorial-priorities-title">
-          <div className="editorial-section-title"><div><CheckSquareIcon size={22} /><h2 id="editorial-priorities-title">Minhas prioridades de hoje</h2></div><Link to="/planejar/tarefas">Ver todas <ArrowRightIcon size={16} /></Link></div>
-          {tasksLoading ? <p className="editorial-muted">Carregando suas tarefas...</p> : priorities.length ? <ol className="editorial-priority-list">{priorities.slice(0, 3).map((task, index) => <li key={task.id}><span className="editorial-rank">{index + 1}</span><button type="button" className="editorial-priority-copy" onClick={() => { setCurrentItem({ type: "tarefa", id: task.id, label: task.title }); navigate("/planejar/tarefas"); }}><strong>{task.title}</strong><small>{task.description || (task.isOverdue ? "Atrasada — merece sua atenção." : task.due_date ? `Prazo: ${new Date(`${task.due_date}T12:00:00`).toLocaleDateString("pt-BR")}` : "Um passo de cada vez.")}</small><span>{task.tags?.[0] || (task.isOverdue ? "Atrasada" : task.priority === "sem_prioridade" ? "Tarefa" : task.priority)}</span></button><button type="button" disabled={updateStatus.isPending || task.isBlocked} onClick={() => updateStatus.mutate({ taskId: task.id, status: "concluido" })} aria-label={`Concluir ${task.title}`} title={task.isBlocked ? "Conclua as dependências primeiro" : "Concluir tarefa"} className="editorial-task-check"><CheckIcon size={15} /></button></li>)}</ol> : <div className="editorial-empty"><CheckSquareIcon size={22} /><p>Tudo concluído por agora.</p><Link to="/planejar/tarefas">Planejar uma tarefa <ArrowRightIcon size={15} /></Link></div>}
-          <Link to="/planejar/tarefas" state={{ focusCapture: true }} className="editorial-text-link"><PlusIcon size={16} /> Adicionar tarefa</Link>
-        </section>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="ai"
+            size="sm"
+            leadingIcon={<SparkleIcon size={15} weight="fill" />}
+            onClick={() => openVex("Monte um plano realista para o meu dia de hoje considerando minhas tarefas, prazos, compromissos e hábitos. Sugira a ordem e horários.")}
+          >
+            Planejar o dia com a Vex
+          </Button>
+          <Button size="sm" leadingIcon={<PlusIcon size={15} weight="bold" />} onClick={() => quickCreate.open("task", { date: today })}>
+            Nova tarefa
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricTile
+          label="Tarefas de hoje"
+          icon={<CheckCircleIcon />}
+          value={tasksLoading ? <Skeleton className="h-6 w-16" /> : <span className="tabular-nums">{doneToday}<span className="text-fg-4">/{todayTasks.length}</span></span>}
+          progress={todayTasks.length ? (doneToday / todayTasks.length) * 100 : 0}
+          hint={todayTasks.length === 0 ? "Nada com prazo hoje" : doneToday === todayTasks.length ? "Tudo feito por hoje" : `${todayTasks.length - doneToday} restantes`}
+          to="/planejar/tarefas"
+        />
+        <MetricTile
+          label={currentEvent ? "Acontecendo agora" : "Próximo compromisso"}
+          icon={<ClockIcon />}
+          value={eventsLoading ? <Skeleton className="h-6 w-24" /> : currentEvent ? currentEvent.title : nextEvent ? fmtTime(nextEvent.start_at) : "—"}
+          hint={currentEvent ? `até ${fmtTime(currentEvent.end_at)}` : nextEvent ? `${nextEvent.title} · ${relativeMinutes(new Date(nextEvent.start_at), now)}` : "Sem mais compromissos hoje"}
+          to="/planejar/agenda"
+        />
+        <MetricTile
+          label="Hábitos"
+          icon={<TargetIcon />}
+          value={<span className="tabular-nums">{habitsDone}<span className="text-fg-4">/{fixedHabits.length}</span></span>}
+          progress={fixedHabits.length ? (habitsDone / fixedHabits.length) * 100 : 0}
+          hint={fixedHabits.length === 0 ? "Nenhum previsto para hoje" : habitsDone === fixedHabits.length ? "Sequência mantida" : "Marque ao concluir"}
+          to="/planejar/metas"
+        />
+        <MetricTile
+          label="Resultado do mês"
+          icon={<WalletIcon />}
+          value={financeLoading ? <Skeleton className="h-6 w-24" /> : <span className={cx("tabular-nums", monthBalance < 0 && "text-danger")}>{money.format(monthBalance)}</span>}
+          hint={`${money.format(monthIncome)} entraram · ${money.format(monthExpense)} saíram`}
+          to="/vida/financas"
+        />
       </div>
-    </div>
 
-    <aside className="editorial-today-aside" aria-label="Contexto do dia">
-      <div className="editorial-aside-block"><div className="editorial-aside-title"><span aria-hidden="true" /><h2>Em foco hoje</h2></div><blockquote>{focus ? `“${focus.title}” é o próximo passo que merece sua atenção.` : "Escolha um passo para movimentar seu dia."}</blockquote><h3>Próximos passos</h3><div className="editorial-next-steps">{nextStepItems.map((item) => <Link key={`${item.source}-${item.id}`} to={sourcePath[item.source] ?? "/"}><span aria-hidden="true" />{item.displayTitle}</Link>)}{summary.items.length === 0 && <p className="editorial-muted">Nada pendente por enquanto.</p>}</div></div>
-      <div className="editorial-aside-block editorial-interest"><h3>Talvez te interesse</h3><Link to="/conhecimento/notas"><NotebookIcon size={22} /><span>Suas notas e ideias<small>Continue de onde parou</small></span></Link><Link to="/conhecimento/biblioteca"><BooksIcon size={22} /><span>Na sua biblioteca<small>Retome sua próxima leitura</small></span></Link><Link to="/vida/financas"><WalletIcon size={22} /><span>Seu panorama financeiro<small>Acompanhe o mês</small></span></Link></div>
-    </aside>
-
-    <div className="editorial-banner"><img src="/brand/editorial-mountains.png" alt="" /><div><small>LEMBRE-SE</small><p>Grandes resultados nascem de dias bem direcionados.</p></div><span>PLANEJAR<br />EXECUTAR<br />EVOLUIR</span></div>
-
-    <section className="editorial-continuation" aria-label="Mais sobre seu dia">
-      <div className="editorial-continuation-intro"><span className="editorial-eyebrow">SEU ESPAÇO</span><h2>O que continua além de hoje</h2><p>Seu progresso e seus outros caminhos ficam a um toque de distância.</p></div>
-      <div className="editorial-overview-grid">
-        <div className="editorial-overview-card editorial-profile-card">
-          <div className="editorial-overview-heading"><span>SEU PERFIL</span><Link to="/perfil">Ver perfil <ArrowRightIcon size={15} /></Link></div>
-          <div className="editorial-profile-overview">
-            <div className="editorial-profile-identity">
-              {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : <span aria-hidden="true">{displayName.charAt(0).toUpperCase()}</span>}
-              <div className="editorial-profile-copy">
-                <strong>{displayName}</strong>
-                <small>@{profile?.username || "usuario"}</small>
-                <TitleBadge title={profile?.selected_title || levelTitle || "Iniciante"} size="sm" />
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Panel title="Foco do dia" icon={<CheckCircleIcon />} action={<ButtonLink to="/planejar/tarefas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Todas</ButtonLink>}>
+            <div className="px-4 pb-2 sm:px-5">
+              <SmartAdd onCreate={addTodayTask} defaults={{ dueDate: today }} placeholder="Adicionar ao seu dia…" />
+            </div>
+            {tasksLoading ? (
+              <div className="flex flex-col gap-2 px-5 py-3">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-2/3" />
               </div>
-            </div>
-            <div className="editorial-profile-showcase" aria-label="Badges escolhidos para o perfil">
-              <span>EM DESTAQUE</span>
-              {selectedBadges.length > 0 ? (
-                <div className="editorial-selected-badges">
-                  {selectedBadges.map((badge) => <span key={badge.key} title={badge.label}><img src={badge.imageSrc} alt={badge.label} /></span>)}
-                </div>
-              ) : <small>Seus badges favoritos aparecem aqui.</small>}
-            </div>
-            <div className="editorial-profile-level">
-              <div><span>SUA EVOLUÇÃO</span><strong>{progress ? `Nível ${progress.level}` : "Começando"}</strong></div>
-              <span className="editorial-profile-level-caption">{progress ? `${progress.progressPercent}% até o próximo nível` : "Cada passo conta."}</span>
-              <div className="editorial-progress" role="progressbar" aria-label="Progresso para o próximo nível" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress?.progressPercent ?? 0}><span style={{ width: `${progress?.progressPercent ?? 0}%` }} /></div>
-            </div>
-          </div>
+            ) : focus.length === 0 ? (
+              <EmptyState size="sm" icon={<CheckCircleIcon />} title="Nada urgente por aqui" description="Sem tarefas atrasadas, para hoje ou de alta prioridade. Aproveite para planejar a semana." />
+            ) : (
+              <ul className="divide-y divide-line-soft pb-1">
+                {focus.map((task) => (
+                  <li key={task.id} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-hover sm:px-5">
+                    <CompleteToggle done={task.status === "concluido"} label={`Concluir ${task.title}`} onToggle={() => toggleTask(task)} disabled={task.isBlocked} />
+                    <button type="button" onClick={() => navigate(`/planejar/tarefas?tarefa=${task.id}`)} className="min-w-0 flex-1 text-left">
+                      <span className="block truncate text-[13.5px] text-fg">{task.title}</span>
+                      {task.status === "em_andamento" && <span className="text-2xs font-medium text-gold-fg">Em andamento</span>}
+                    </button>
+                    <PriorityFlag priority={task.priority} />
+                    {task.due_date && <DueChip dueDate={task.due_date} />}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel title="Agenda de hoje" icon={<CalendarBlankIcon />} action={<ButtonLink to="/planejar/agenda" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Abrir agenda</ButtonLink>}>
+            {eventsLoading ? (
+              <div className="flex flex-col gap-2 px-5 py-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : dayEvents.length === 0 ? (
+              <EmptyState size="sm" icon={<CalendarBlankIcon />} title="Agenda livre" description="Nenhum compromisso hoje. Que tal reservar um bloco de foco?" action={<Button size="xs" variant="secondary" onClick={() => quickCreate.open("event")}>Adicionar evento</Button>} />
+            ) : (
+              <ol className="flex flex-col px-4 pb-3 sm:px-5">
+                {dayEvents.map((event) => (
+                  <TimelineItem key={event.id} event={event} now={now} isCurrent={event.id === currentEvent?.id} isNext={event.id === nextEvent?.id} />
+                ))}
+              </ol>
+            )}
+          </Panel>
         </div>
-        <div className="editorial-overview-card"><div className="editorial-overview-heading"><span>FINANÇAS</span><Link to="/vida/financas">Abrir <ArrowRightIcon size={15} /></Link></div><p>Saldo realizado</p><strong className="editorial-balance">{financeLoading ? "—" : money.format(balances.saldoAtual)}</strong><small>Projeção prevista · {financeLoading ? "—" : money.format(balances.saldoProjetado)}</small></div>
-        <div className="editorial-overview-card editorial-library-card">
-          <div className="editorial-overview-heading"><span>{firstLibraryItem?.status === "em_andamento" ? "CONTINUE DE ONDE PAROU" : "SUA BIBLIOTECA"}</span></div>
-          {firstLibraryItem ? (
-            <Link to="/conhecimento/biblioteca" className="editorial-library-feature">
-              {firstLibraryItem.cover_url ? <img src={firstLibraryItem.cover_url} alt={`Capa de ${firstLibraryItem.title}`} /> : <span className="editorial-library-cover-placeholder" aria-hidden="true"><BooksIcon size={30} /></span>}
-              <span className="editorial-library-copy">
-                <span className="editorial-library-meta"><span>{LIBRARY_ITEM_TYPE_LABELS[firstLibraryItem.item_type]}</span><span>{LIBRARY_STATUS_LABELS[firstLibraryItem.status]}</span></span>
-                <strong>{firstLibraryItem.title}</strong>
-                {firstLibraryItem.subtitle && <small>{firstLibraryItem.subtitle}</small>}
-                <span className="editorial-library-cta">{firstLibraryItem.status === "em_andamento" ? "Retomar acompanhamento" : "Explorar na biblioteca"}<ArrowRightIcon size={15} /></span>
-              </span>
-            </Link>
-          ) : (
-            <div className="editorial-library-empty"><span className="editorial-library-cover-placeholder" aria-hidden="true"><BooksIcon size={30} /></span><div><strong>Seu próximo favorito começa aqui.</strong><p>Guarde livros, filmes, cursos e tudo o que quiser acompanhar.</p><Link to="/conhecimento/biblioteca">Explorar biblioteca <ArrowRightIcon size={15} /></Link></div></div>
+
+        <div className="flex min-w-0 flex-col gap-6">
+          <Panel title="Hábitos de hoje" icon={<FireIcon />} action={<ButtonLink to="/planejar/metas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Metas</ButtonLink>}>
+            {habitRows.length === 0 ? (
+              <EmptyState size="sm" icon={<TargetIcon />} title="Nenhum hábito ativo" description="Pequenas rotinas diárias constroem grandes resultados." action={<ButtonLink to="/planejar/metas" size="xs" variant="secondary">Criar hábito</ButtonLink>} />
+            ) : (
+              <ul className="flex flex-col pb-2">
+                {[...fixedHabits, ...flexibleHabits].map((row) => (
+                  <HabitRow
+                    key={row.habit.id}
+                    habit={row.habit}
+                    done={row.done}
+                    streak={row.streak}
+                    weekly={row.schedule === "flexivel" && row.weekTarget ? `${row.weekCount}/${row.weekTarget} na semana` : undefined}
+                    onToggle={() => toggleHabit.mutate({ habitId: row.habit.id, logDate: today, done: !row.done })}
+                  />
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          {attention.length > 0 && (
+            <Panel title="Pedem sua atenção" icon={<ClockIcon />}>
+              <ul className="flex flex-col pb-2">
+                {attention.map((item) => {
+                  const route = MODULE_ROUTES[item.source];
+                  return (
+                    <li key={`${item.source}-${item.id}`}>
+                      <Link to={route?.to ?? "/"} className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-hover sm:px-5">
+                        <span aria-hidden="true" className={cx("h-1.5 w-1.5 shrink-0 rounded-full", item.priority === "urgente" ? "bg-danger" : item.priority === "importante" ? "bg-warning" : "bg-gold")} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] text-fg">{item.title}</span>
+                          <span className="text-2xs text-fg-4">{route?.label ?? item.source}</span>
+                        </span>
+                        {item.time && <span className="shrink-0 text-2xs tabular-nums text-fg-4">{new Date(item.time.length === 10 ? `${item.time}T12:00:00` : item.time).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Panel>
+          )}
+
+          <Panel title="Sua semana" icon={<CheckCircleIcon />} action={<span className="text-xs tabular-nums text-fg-3">{weekTotal} {weekTotal === 1 ? "tarefa concluída" : "tarefas concluídas"}</span>}>
+            <div className="px-3 pb-3 sm:px-4">
+              <BarChart label="Tarefas concluídas por dia nos últimos 7 dias" data={weekChart} series={[{ key: "tarefas", label: "Tarefas concluídas" }]} height={150} highlightIndex={6} format={(value) => `${value}`} integer />
+            </div>
+          </Panel>
+
+          {(readingNow || lastPage) && (
+            <Panel title="Continue de onde parou">
+              <div className="flex flex-col gap-1 px-2 pb-2">
+                {lastPage && (
+                  <Link to={`/conhecimento/notas/${lastPage.id}`} className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-hover">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hover text-fg-3"><NotebookIcon size={18} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium text-fg">{lastPage.title || "Sem título"}</span>
+                      <span className="text-2xs text-fg-4">Última nota editada</span>
+                    </span>
+                  </Link>
+                )}
+                {readingNow && (
+                  <Link to={`/conhecimento/biblioteca?item=${readingNow.id}`} className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-hover">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-hover text-fg-3">
+                      {readingNow.cover_url ? <img src={readingNow.cover_url} alt="" className="h-full w-full object-cover" /> : <BooksIcon size={18} />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium text-fg">{readingNow.title}</span>
+                      <span className="text-2xs text-fg-4">
+                        {readingNow.progress_total ? `${readingNow.progress_current ?? 0} de ${readingNow.progress_total} ${readingNow.progress_unit ?? ""}` : "Em andamento"}
+                      </span>
+                    </span>
+                    {readingNow.progress_total ? <span className="w-14"><ProgressBar value={((readingNow.progress_current ?? 0) / readingNow.progress_total) * 100} height={4} /></span> : null}
+                  </Link>
+                )}
+              </div>
+            </Panel>
           )}
         </div>
       </div>
-      <div className="editorial-lower-actions"><div><h3>Hábitos em movimento</h3>{habits.filter((habit) => habit.status === "ativo").slice(0, 3).map((habit) => <HabitCheck key={habit.id} habit={habit} />)}{!habits.some((habit) => habit.status === "ativo") && <p className="editorial-muted">Seus hábitos aparecerão aqui.</p>}<Link to="/planejar/metas" className="editorial-text-link">Ver hábitos <ArrowRightIcon size={16} /></Link></div><div><h3>Nota do dia</h3><p>Registre o que importa agora para reencontrar depois no Segundo Cérebro.</p><button type="button" disabled={ensureDailyNote.isPending} onClick={openDailyNote} className="editorial-quiet">{ensureDailyNote.isPending ? "Abrindo..." : "Abrir minha nota"}<ArrowRightIcon size={16} /></button></div></div>
-    </section>
-  </div>;
+    </div>
+  );
+}
+
+function TimelineItem({ event, now, isCurrent, isNext }: { event: CalendarEvent; now: Date; isCurrent: boolean; isNext: boolean }) {
+  const category = eventCategory(event.category);
+  const past = !event.is_all_day && new Date(event.end_at) <= now;
+  return (
+    <li className={cx("relative grid grid-cols-[52px_14px_minmax(0,1fr)] gap-2.5 py-2", past && "opacity-55")}>
+      <span className="pt-0.5 text-xs tabular-nums text-fg-3">{event.is_all_day ? "Dia" : fmtTime(event.start_at)}</span>
+      <span className="relative flex justify-center">
+        <span aria-hidden="true" className="absolute bottom-[-10px] top-4 w-px bg-line" />
+        <span aria-hidden="true" className={cx("relative mt-1 h-2.5 w-2.5 rounded-full ring-2 ring-surface", isCurrent ? "bg-gold" : "")} style={isCurrent ? undefined : { background: category.color }} />
+      </span>
+      <div className={cx("min-w-0 rounded-lg", (isCurrent || isNext) && "-my-1 border border-line bg-raised px-3 py-2")}>
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-fg">{event.title}</p>
+          {isCurrent && <span className="shrink-0 rounded-md bg-gold-soft px-1.5 py-0.5 text-2xs font-semibold text-gold-fg">Agora</span>}
+          {isNext && !isCurrent && <span className="shrink-0 text-2xs font-medium text-fg-3">{relativeMinutes(new Date(event.start_at), now)}</span>}
+        </div>
+        <p className="mt-0.5 flex items-center gap-2 truncate text-xs text-fg-4">
+          {!event.is_all_day && <span className="tabular-nums">{fmtTime(event.start_at)} – {fmtTime(event.end_at)}</span>}
+          {event.location && (
+            <span className="inline-flex min-w-0 items-center gap-1 truncate">
+              <MapPinIcon size={11} /> {event.location}
+            </span>
+          )}
+        </p>
+        {event.meeting_link && (isCurrent || isNext) && (
+          <ExternalButtonLink href={event.meeting_link} size="xs" variant="primary" className="mt-2" trailingIcon={<ArrowSquareOutIcon size={12} />}>
+            Entrar na reunião
+          </ExternalButtonLink>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function HabitRow({ habit, done, streak, weekly, onToggle }: { habit: Habit; done: boolean; streak: number; weekly?: string; onToggle: () => void }) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-hover sm:px-5">
+      <CompleteToggle done={done} label={done ? `Desmarcar ${habit.name}` : `Marcar ${habit.name} como feito`} onToggle={onToggle} />
+      <span className="min-w-0 flex-1">
+        <span className={cx("block truncate text-[13.5px]", done ? "text-fg-3" : "text-fg")}>{habit.name}</span>
+        {(habit.preferred_time || weekly) && <span className="text-2xs text-fg-4">{[habit.preferred_time?.slice(0, 5), weekly].filter(Boolean).join(" · ")}</span>}
+      </span>
+      {streak > 0 && (
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-gold-fg" title={`${streak} dias seguidos`}>
+          <FireIcon size={13} weight="fill" />
+          {streak}
+        </span>
+      )}
+    </li>
+  );
 }

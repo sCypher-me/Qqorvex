@@ -6,6 +6,7 @@ import { DailyCheckinPrompt } from "./DailyCheckinPrompt";
 import { VexSessionProvider, useVexSession } from "../vex/VexSessionContext";
 import { CurrentItemProvider } from "../vex/CurrentItemContext";
 import { VexPanel } from "../vex/VexPanel";
+import { VexLauncherContext } from "../vex/VexLauncher";
 import { AccountProvider } from "./account";
 import { PageMetaProvider } from "./shell/PageMeta";
 import { Sidebar } from "./shell/Sidebar";
@@ -166,6 +167,7 @@ function Shell() {
   }
 
   return (
+    <VexLauncherContext.Provider value={openVex}>
     <div className="flex min-h-dvh bg-canvas">
       <div className="hidden lg:block">
         <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((value) => !value)} onOpenPalette={() => setPaletteOpen(true)} onOpenVex={() => openVex()} />
@@ -191,5 +193,6 @@ function Shell() {
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} />
       <DailyCheckinPrompt client={supabase} userId={user.id} />
     </div>
+    </VexLauncherContext.Provider>
   );
 }

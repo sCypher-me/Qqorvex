@@ -114,18 +114,28 @@ export interface BarChartProps {
   className?: string;
   /** Descrição acessível do gráfico. */
   label: string;
+  /** Valores inteiros (contagens): eixo com passos inteiros. */
+  integer?: boolean;
+}
+
+function axisTicks(maxValue: number, integer: boolean): { max: number; ticks: number[] } {
+  if (integer && maxValue <= 5) {
+    const max = Math.max(1, Math.ceil(maxValue));
+    return { max, ticks: Array.from({ length: max + 1 }, (_, index) => index) };
+  }
+  const max = niceMax(maxValue);
+  return { max, ticks: [0, 0.25, 0.5, 0.75, 1].map((ratio) => max * ratio) };
 }
 
 /** Colunas agrupadas (1–3 séries). */
-export function BarChart({ data, series, height = 200, format = (v) => v.toLocaleString("pt-BR"), axisFormat = formatCompact, highlightIndex, className, label }: BarChartProps) {
+export function BarChart({ data, series, height = 200, format = (v) => v.toLocaleString("pt-BR"), axisFormat = formatCompact, highlightIndex, className, label, integer = false }: BarChartProps) {
   const { ref, width } = useWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   const titleId = useId();
   const padding = { top: 12, right: 4, bottom: 24, left: 40 };
   const innerWidth = Math.max(0, width - padding.left - padding.right);
   const innerHeight = height - padding.top - padding.bottom;
-  const max = niceMax(Math.max(0, ...data.flatMap((datum) => series.map((item) => datum.values[item.key] ?? 0))));
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => max * ratio);
+  const { max, ticks } = axisTicks(Math.max(0, ...data.flatMap((datum) => series.map((item) => datum.values[item.key] ?? 0))), integer);
   const band = data.length ? innerWidth / data.length : 0;
   const barWidth = Math.max(4, Math.min(24, (band * 0.62 - (series.length - 1) * 2) / Math.max(1, series.length)));
   const groupWidth = barWidth * series.length + (series.length - 1) * 2;
