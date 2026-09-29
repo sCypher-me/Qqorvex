@@ -74,9 +74,9 @@ export function OAuthButtons() {
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-3 text-xs text-fg-3">
-        <span className="flex-1 h-px bg-border" />
+        <span className="h-px flex-1 bg-line" />
         ou continue com
-        <span className="flex-1 h-px bg-border" />
+        <span className="h-px flex-1 bg-line" />
       </div>
       <div className="grid grid-cols-3 gap-2.5">
         {OAUTH_PROVIDERS.map(({ id, label }) => {
@@ -90,13 +90,11 @@ export function OAuthButtons() {
               disabled={pending !== null}
               title={`Continuar com ${label}`}
               aria-label={`Continuar com ${label}`}
-              className="flex items-center justify-center py-3"
+              size="lg"
+              className="w-full"
             >
-              {pending === id ? (
-                <span className="w-[7px] h-[7px] rounded-full bg-gold animate-pulse-soft" aria-hidden="true" />
-              ) : (
-                <Icon />
-              )}
+              {pending === id ? <span className="h-[7px] w-[7px] animate-pulse-soft rounded-full bg-gold" aria-hidden="true" /> : <Icon />}
+              <span className="hidden text-[13.5px] sm:inline">{label}</span>
             </Button>
           );
         })}

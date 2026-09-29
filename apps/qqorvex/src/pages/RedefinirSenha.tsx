@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { Button, Notice } from "@qqorvex/ui";
+import { LinkBreakIcon } from "@phosphor-icons/react";
+import { Button, ButtonLink, Notice } from "@qqorvex/ui";
 import { useAuth, isPasswordValid } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordField } from "../components/PasswordField";
@@ -25,11 +26,19 @@ export function RedefinirSenhaPage() {
   if (!session) {
     return (
       <AuthLayout>
-        <div className="flex flex-col gap-[18px] items-center text-center">
-          <h1 className="font-display text-[24px] font-semibold m-0">Link inválido ou expirado</h1>
-          <p className="text-[13px] text-fg-2 m-0">Peça um novo link de redefinição.</p>
-          <Link to="/esqueci-senha" className="text-[13px] text-gold-fg hover:underline">
-            Esqueci minha senha
+        <div className="flex flex-col items-center gap-4 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-warning-soft text-warning">
+            <LinkBreakIcon size={24} />
+          </span>
+          <div className="flex flex-col gap-1.5">
+            <h1 className="m-0 font-display text-[26px] font-semibold tracking-[-0.02em] text-fg">Link inválido ou expirado</h1>
+            <p className="m-0 text-[14px] leading-relaxed text-fg-3">Por segurança, cada link de redefinição vale uma vez e por pouco tempo. Peça um novo — chega em segundos.</p>
+          </div>
+          <ButtonLink to="/esqueci-senha" variant="primary" size="lg" fullWidth>
+            Pedir novo link
+          </ButtonLink>
+          <Link to="/login" className="text-[13.5px] font-medium text-gold-fg hover:underline">
+            Voltar para entrar
           </Link>
         </div>
       </AuthLayout>
@@ -68,13 +77,13 @@ export function RedefinirSenhaPage() {
 
   return (
     <AuthLayout>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[28px] font-semibold m-0">Nova senha</h1>
-          <p className="text-[13px] text-fg-2 m-0">Escolha uma nova senha pra sua conta.</p>
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Nova senha</h1>
+          <p className="m-0 text-[14px] text-fg-3">Ao salvar, as outras sessões abertas são encerradas.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div className="flex flex-col gap-3.5">
           <PasswordField label="Nova senha" value={password} onChange={setPassword} autoComplete="new-password" required showChecklist />
           <div className="flex flex-col gap-2">
             <PasswordField
@@ -95,7 +104,7 @@ export function RedefinirSenhaPage() {
 
         {error && <Notice tone="error">{error}</Notice>}
 
-        <Button type="submit" variant="primary" disabled={submitting} className="w-full py-3 text-[15px]">
+        <Button type="submit" variant="primary" disabled={submitting} size="lg" fullWidth>
           {submitting ? "Salvando…" : "Redefinir senha"}
         </Button>
       </form>

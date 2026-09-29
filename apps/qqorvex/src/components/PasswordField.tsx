@@ -25,12 +25,13 @@ interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
   onChange: (value: string) => void;
   /** Mostra a checklist de requisitos abaixo (cadastro/redefinição) — login não precisa. */
   showChecklist?: boolean;
+  fieldSize?: "sm" | "md" | "lg";
   wrapperClassName?: string;
   className?: string;
 }
 
 /** Mostrar/ocultar não muda cursor, não perde foco, não quebra autofill — é só o `type` do input alternando. */
-export function PasswordField({ label, value, onChange, onBlur, showChecklist, wrapperClassName, className, ...props }: PasswordFieldProps) {
+export function PasswordField({ label, value, onChange, onBlur, showChecklist, fieldSize = "md", wrapperClassName, className, ...props }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
   const [touched, setTouched] = useState(false);
   const strength = getPasswordStrength(value);
@@ -47,6 +48,7 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
           onBlur?.();
         }}
         maxLength={MAX_PASSWORD_LENGTH}
+        fieldSize={fieldSize}
         wrapperClassName={wrapperClassName}
         className={className}
         trailingAdornment={

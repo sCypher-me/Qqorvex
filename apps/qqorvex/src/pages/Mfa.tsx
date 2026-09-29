@@ -47,11 +47,11 @@ export function MfaPage() {
     return (
       <AuthLayout>
         <div className="flex flex-col gap-4">
-          <h1 className="font-display text-[28px] font-semibold m-0">Não foi possível validar o 2FA</h1>
-          <p className="text-[13px] text-fg-2 leading-[1.6] m-0">
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Não foi possível validar o 2FA</h1>
+          <p className="m-0 text-[14px] leading-relaxed text-fg-3">
             Verifique sua conexão e recarregue a página para tentar novamente.
           </p>
-          <Button type="button" variant="primary" onClick={() => window.location.reload()} className="w-full py-3 text-[15px]">
+          <Button type="button" variant="primary" onClick={() => window.location.reload()} size="lg" fullWidth>
             Tentar novamente
           </Button>
         </div>
@@ -112,10 +112,10 @@ export function MfaPage() {
 
   return (
     <AuthLayout>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[28px] font-semibold m-0">Verificação em duas etapas</h1>
-          <p className="text-[13px] text-fg-2 leading-[1.6] m-0">
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Verificação em duas etapas</h1>
+          <p className="m-0 text-[14px] leading-relaxed text-fg-3">
             Digite o código de 6 dígitos do seu app autenticador. A sessão só é liberada depois da confirmação.
           </p>
         </div>
@@ -160,8 +160,8 @@ export function MfaPage() {
                   maxLength={CODE_LENGTH}
                   autoFocus={index === 0}
                   aria-label={`Dígito ${index + 1}`}
-                  placeholder="—"
-                  className="q-input h-[60px] p-0 text-center font-mono text-[22px]"
+                  placeholder="·"
+                  className="q-input h-14 p-0! text-center font-mono text-[22px] font-semibold"
                 />
               ))}
             </div>
@@ -171,12 +171,13 @@ export function MfaPage() {
                 type="submit"
                 variant="primary"
                 disabled={busy || code.length < CODE_LENGTH || !verifiedFactor}
-                className="w-full py-3 text-[15px]"
+                size="lg"
+                fullWidth
               >
-                {busy ? "Verificando..." : "Verificar"}
+                {busy ? "Verificando…" : "Verificar"}
               </Button>
-              <Button type="button" variant="quiet" onClick={handleBack} className="w-full py-3 text-[15px]">
-                Voltar
+              <Button type="button" variant="ghost" onClick={handleBack} size="lg" fullWidth>
+                Usar outra conta
               </Button>
             </div>
           </>

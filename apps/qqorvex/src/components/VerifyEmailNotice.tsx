@@ -1,3 +1,4 @@
+import { EnvelopeSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { Button, Notice } from "@qqorvex/ui";
 import { useAuth } from "@qqorvex/auth";
@@ -49,9 +50,12 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
   }
 
   return (
-    <div className="flex flex-col gap-[18px] items-center text-center">
-      <h1 className="font-display text-[24px] font-semibold m-0">Verifique seu e-mail</h1>
-      <p className="text-[13px] text-fg-2 m-0">
+    <div className="flex flex-col items-center gap-4 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft text-gold-fg">
+        <EnvelopeSimpleIcon size={24} />
+      </span>
+      <h1 className="m-0 font-display text-[26px] font-semibold tracking-[-0.02em] text-fg">Verifique seu e-mail</h1>
+      <p className="m-0 text-[14px] leading-relaxed text-fg-3">
         Enviamos um link de confirmação para <span className="text-fg font-medium">{maskEmail(email)}</span>.
       </p>
       {captchaSiteKey && (
@@ -63,13 +67,13 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
       )}
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
       <div className="flex flex-col gap-2.5 w-full">
-        <Button type="button" variant="secondary" onClick={handleResend} disabled={cooldown > 0 || sending || (Boolean(captchaSiteKey) && !captchaToken)} className="w-full">
+        <Button type="button" variant="secondary" size="lg" fullWidth onClick={handleResend} disabled={cooldown > 0 || sending || (Boolean(captchaSiteKey) && !captchaToken)}>
           {cooldown > 0 ? `Reenviar em ${cooldown}s` : sending ? "Enviando…" : "Reenviar e-mail"}
         </Button>
         <button
           type="button"
           onClick={onChangeEmail}
-          className="bg-transparent border-none p-0 text-[13px] text-fg-2 hover:text-fg cursor-pointer"
+          className="cursor-pointer text-[13.5px] font-medium text-gold-fg hover:underline"
         >
           Alterar e-mail
         </button>

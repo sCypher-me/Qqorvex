@@ -88,10 +88,10 @@ export function RegistrarPage() {
 
   return (
     <AuthLayout>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[28px] font-semibold m-0">Criar conta</h1>
-          <p className="text-[13px] text-fg-2 m-0">Você recebe um e-mail para confirmar o cadastro.</p>
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Criar conta</h1>
+          <p className="m-0 text-[14px] text-fg-3">Grátis, com todos os módulos. Leva um minuto.</p>
         </div>
 
         <div className="flex flex-col gap-3.5">
@@ -120,7 +120,7 @@ export function RegistrarPage() {
           </div>
 
           <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 mt-1.5">Acesso</span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="flex flex-col gap-3.5">
             <PasswordField
               label="Senha"
               value={password}
@@ -162,16 +162,21 @@ export function RegistrarPage() {
           type="submit"
           variant="primary"
           disabled={submitting || !canSubmit}
-          className="w-full py-3 text-[15px]"
+          size="lg"
+          fullWidth
         >
-          {submitting ? "Criando…" : "Criar conta"}
+          {submitting ? "Criando…" : "Criar conta grátis"}
         </Button>
 
         <OAuthButtons />
 
-        <Link to="/login" className="text-[13px] text-fg-2 hover:text-fg">
-          Já tem conta? Entrar
-        </Link>
+        <p className="m-0 text-center text-[13.5px] text-fg-3">
+          Já tem conta?{" "}
+          <Link to="/login" className="font-medium text-gold-fg hover:underline">
+            Entrar
+          </Link>
+        </p>
+        <p className="m-0 text-center text-xs leading-relaxed text-fg-4">Você recebe um e-mail para confirmar o cadastro antes do primeiro acesso.</p>
       </form>
     </AuthLayout>
   );

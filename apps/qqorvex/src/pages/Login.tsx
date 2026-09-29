@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { FingerprintIcon } from "@phosphor-icons/react";
 import { Button, Input, Notice } from "@qqorvex/ui";
 import { useAuth, signInWithPasskey } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
@@ -75,10 +76,10 @@ export function LoginPage() {
 
   return (
     <AuthLayout>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[22px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[28px] font-semibold m-0">Entrar no Qqorvex</h1>
-          <p className="text-[13px] text-fg-2 m-0">Sessão protegida por 2FA. Você confirma cada ação sensível.</p>
+          <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Que bom ter você de volta</h1>
+          <p className="m-0 text-[14px] text-fg-3">Entre para continuar de onde parou.</p>
         </div>
 
         <div className="flex flex-col gap-3.5">
@@ -90,7 +91,8 @@ export function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="py-3 text-[15px]"
+            fieldSize="lg"
+            placeholder="voce@exemplo.com"
           />
           <PasswordField
             label="Senha"
@@ -98,9 +100,9 @@ export function LoginPage() {
             onChange={setPassword}
             autoComplete="current-password"
             required
-            className="py-3 text-[15px]"
+            fieldSize="lg"
           />
-          <Link to="/esqueci-senha" className="self-end text-[13px] text-fg-2 hover:text-fg -mt-1.5">
+          <Link to="/esqueci-senha" className="-mt-1.5 self-end text-[13px] font-medium text-gold-fg hover:underline">
             Esqueci minha senha
           </Link>
         </div>
@@ -119,27 +121,35 @@ export function LoginPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={submitting || (Boolean(captchaSiteKey) && !captchaToken)}
-            className="w-full py-3 text-[15px]"
+            size="lg"
+            fullWidth
+            loading={submitting}
+            disabled={Boolean(captchaSiteKey) && !captchaToken}
           >
-            {submitting ? "Entrando…" : "Entrar"}
+            Entrar
           </Button>
           <Button
             type="button"
             variant="secondary"
             onClick={handlePasskeyLogin}
-            disabled={passkeySubmitting || (Boolean(captchaSiteKey) && !captchaToken)}
-            className="w-full py-3 text-[15px]"
+            size="lg"
+            fullWidth
+            loading={passkeySubmitting}
+            disabled={Boolean(captchaSiteKey) && !captchaToken}
+            leadingIcon={<FingerprintIcon size={17} />}
           >
-            Entrar com Passkey
+            Entrar com passkey
           </Button>
         </div>
 
         <OAuthButtons />
 
-        <Link to="/criar-conta" className="text-[13px] text-fg-2 hover:text-fg">
-          Ainda não possui uma conta? Criar conta
-        </Link>
+        <p className="m-0 text-center text-[13.5px] text-fg-3">
+          Ainda não tem conta?{" "}
+          <Link to="/criar-conta" className="font-medium text-gold-fg hover:underline">
+            Criar conta grátis
+          </Link>
+        </p>
       </form>
     </AuthLayout>
   );
