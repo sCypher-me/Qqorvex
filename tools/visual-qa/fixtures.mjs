@@ -383,7 +383,10 @@ export const rpcFixtures = {
   has_google_calendar_connection: false,
   has_security_pin: false,
   is_username_available: true,
-  list_my_sessions: [],
+  list_my_sessions: [
+    { id: "qa-session", created_at: at(-12, 9), refreshed_at: at(0, 8), user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", ip: "189.40.12.8" },
+    { id: "11111111-0000-4000-8000-000000000002", created_at: at(-30, 20), refreshed_at: at(-3, 22), user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1", ip: "177.92.4.110" },
+  ],
   list_my_security_login_history: [],
   sync_my_gamification_badges: null,
   consume_billing_quota: { allowed: true, used: 12, limit: 50 },

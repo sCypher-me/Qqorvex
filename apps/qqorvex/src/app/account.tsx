@@ -16,6 +16,8 @@ interface AccountValue {
   firstName: string;
   isOwner: boolean;
   isPlus: boolean;
+  /** Assinatura ainda carregando — não trate como "sem Plus" nesse intervalo. */
+  planLoading: boolean;
   isLoading: boolean;
   refresh: () => void;
 }
@@ -64,6 +66,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     firstName: displayName.trim().split(/\s+/)[0] ?? displayName,
     isOwner,
     isPlus: hasPlusEntitlement(subscriptionQuery.data, Date.now(), isOwner),
+    planLoading: subscriptionQuery.isLoading || profileQuery.isLoading,
     isLoading: profileQuery.isLoading,
     refresh: () => {
       void queryClient.invalidateQueries({ queryKey: [ACCOUNT_PROFILE_KEY, userId] });

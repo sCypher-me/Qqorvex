@@ -1,4 +1,5 @@
 import { useState, type InputHTMLAttributes } from "react";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { Input } from "@qqorvex/ui";
 import { getPasswordChecklist, getPasswordStrength, MAX_PASSWORD_LENGTH, type PasswordStrengthLevel } from "@qqorvex/auth";
 import { StatusIcon } from "./StatusIcon";
@@ -12,25 +13,10 @@ const STRENGTH_LABEL: Record<PasswordStrengthLevel, string> = {
 
 const STRENGTH_COLOR: Record<PasswordStrengthLevel, string> = {
   fraca: "var(--q-danger)",
-  media: "var(--color-warning)",
+  media: "var(--q-warning)",
   forte: "var(--q-gold)",
-  "muito-forte": "var(--color-success)",
+  "muito-forte": "var(--q-success)",
 };
-
-/** Olho aberto/fechado em SVG simples — sem ícone lib só por isso. */
-function EyeIcon({ open }: { open: boolean }) {
-  return open ? (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ) : (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.6 19.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.5 19.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  );
-}
 
 interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "onChange" | "onBlur"> {
   onBlur?: () => void;
@@ -69,9 +55,9 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
             onClick={() => setVisible((v) => !v)}
             aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
             tabIndex={-1}
-            className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-transparent text-fg-3 hover:text-fg-2 cursor-pointer"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-fg-3 hover:bg-hover hover:text-fg"
           >
-            <EyeIcon open={visible} />
+            {visible ? <EyeSlashIcon size={16} /> : <EyeIcon size={16} />}
           </button>
         }
         {...props}
@@ -80,7 +66,7 @@ export function PasswordField({ label, value, onChange, onBlur, showChecklist, w
         <div className="flex flex-col gap-2.5" aria-live="polite">
           {value.length > 0 && (
             <div className="flex items-center gap-2.5">
-              <div className="flex-1 h-[5px] rounded-full bg-vex-border overflow-hidden">
+              <div className="h-[5px] flex-1 overflow-hidden rounded-full bg-selected">
                 <div
                   className="h-full rounded-full transition-[width,background-color] duration-300"
                   style={{ width: `${strength.percent}%`, background: STRENGTH_COLOR[strength.level] }}

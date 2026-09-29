@@ -17,7 +17,7 @@ import { PageTransition } from "./shell/PageTransition";
 import { QuickCreateProvider } from "./shell/QuickCreate";
 import { supabase } from "./supabase";
 import { Onboarding } from "./Onboarding";
-import { APP_SKIN_STORAGE_KEY, isAppSkin, useTheme, type AppTheme } from "./ThemeContext";
+import { APP_SKIN_STORAGE_KEY, isAppSkin, useTheme, type ThemePreference } from "./ThemeContext";
 
 type AuthUser = NonNullable<ReturnType<typeof useAuth>["session"]>["user"];
 
@@ -91,7 +91,7 @@ function Shell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session } = useAuth();
-  const { setTheme, setSkin } = useTheme();
+  const { setPreference, setSkin } = useTheme();
   const { setPendingPrompt } = useVexSession();
   const isVexPage = location.pathname === "/vex";
   const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSED_KEY));
@@ -99,7 +99,7 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [onboardingFinished, setOnboardingFinished] = useState(false);
   const user = session!.user;
-  const remotePreferences = user.user_metadata.qqorvex_preferences as { theme?: AppTheme; skin?: unknown } | undefined;
+  const remotePreferences = user.user_metadata.qqorvex_preferences as { theme?: ThemePreference; skin?: unknown } | undefined;
 
   useEffect(() => {
     let hasLocalTheme = false;
@@ -110,7 +110,7 @@ function Shell() {
     } catch {
       /* opcional */
     }
-    if (!hasLocalTheme && (remotePreferences?.theme === "dark" || remotePreferences?.theme === "light")) setTheme(remotePreferences.theme);
+    if (!hasLocalTheme && (remotePreferences?.theme === "dark" || remotePreferences?.theme === "light" || remotePreferences?.theme === "system")) setPreference(remotePreferences.theme);
     if (!hasLocalSkin && isAppSkin(remotePreferences?.skin)) setSkin(remotePreferences.skin);
     // Sincroniza só uma vez por usuário.
     // eslint-disable-next-line react-hooks/exhaustive-deps

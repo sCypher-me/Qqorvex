@@ -103,7 +103,7 @@ export interface AccountLink {
 }
 
 export const ACCOUNT_LINKS: AccountLink[] = [
-  { key: "perfil", label: "Perfil", to: "/perfil", icon: UserCircleIcon },
+  { key: "perfil", label: "Perfil", to: "/configuracoes/perfil", icon: UserCircleIcon },
   { key: "conquistas", label: "Conquistas", to: "/conquistas", icon: TrophyIcon },
   { key: "assinatura", label: "Plano e assinatura", to: "/assinatura", icon: LightningIcon },
   { key: "configuracoes", label: "Configurações", to: "/configuracoes", icon: GearSixIcon },
@@ -123,6 +123,7 @@ export const LEGACY_REDIRECTS: Array<{ from: string; to: string }> = [
   { from: "/vida-pessoal", to: "/vida/pessoal" },
   { from: "/gamificacao", to: "/conquistas" },
   { from: "/seguranca", to: "/configuracoes/seguranca" },
+  { from: "/perfil", to: "/configuracoes/perfil" },
 ];
 
 /** Módulo de origem de um item da Hoje (`HojeItem.source`) → rota e rótulo. */
@@ -150,7 +151,6 @@ export interface RouteContext {
 }
 
 const ACCOUNT_TITLES: Array<{ prefix: string; title: string }> = [
-  { prefix: "/perfil", title: "Perfil" },
   { prefix: "/conquistas", title: "Conquistas" },
   { prefix: "/assinatura", title: "Plano e assinatura" },
   { prefix: "/configuracoes", title: "Configurações" },

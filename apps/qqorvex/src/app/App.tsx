@@ -34,7 +34,7 @@ const BibliotecaPage = lazy(() => import("../pages/Biblioteca").then((m) => ({ d
 const DocumentosPage = lazy(() => import("../pages/Documentos").then((m) => ({ default: m.DocumentosPage })));
 const FinancasPage = lazy(() => import("../pages/Financas").then((m) => ({ default: m.FinancasPage })));
 const VidaPessoalPage = lazy(() => import("../pages/VidaPessoal").then((m) => ({ default: m.VidaPessoalPage })));
-const PerfilPage = lazy(() => import("../pages/Perfil").then((m) => ({ default: m.PerfilPage })));
+const ConfiguracoesPage = lazy(() => import("../pages/Configuracoes").then((m) => ({ default: m.ConfiguracoesPage })));
 const AssinaturaPage = lazy(() => import("../pages/Assinatura").then((m) => ({ default: m.AssinaturaPage })));
 const ManagerPage = lazy(() => import("../pages/Manager").then((m) => ({ default: m.ManagerPage })));
 const GamificacaoPage = lazy(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
@@ -89,10 +89,10 @@ export function App() {
                     <Route path="pessoal" element={<VidaPessoalPage />} />
                   </Route>
                   <Route path="/vex" element={<VexPage />} />
-                  <Route path="/perfil" element={<PerfilPage />} />
                   <Route path="/conquistas" element={<GamificacaoPage />} />
                   <Route path="/assinatura" element={<AssinaturaPage />} />
-                  <Route path="/configuracoes/*" element={<PerfilPage />} />
+                  <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+                  <Route path="/configuracoes/:secao" element={<ConfiguracoesPage />} />
                   <Route path="/manager" element={<ManagerPage />} />
                   {LEGACY_REDIRECTS.map((redirect) => (
                     <Route key={redirect.from} path={`${redirect.from}/*`} element={<LegacyRedirect from={redirect.from} to={redirect.to} />} />

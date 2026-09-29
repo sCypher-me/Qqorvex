@@ -1,3 +1,4 @@
+import { ProgressBar } from "@qqorvex/ui";
 import { XP_BY_ACTION } from "../service";
 import type { GamificationAction, GamificationStats } from "../types";
 import { GAMIFICATION_COUNTER_FIELD } from "../types";
@@ -36,9 +37,7 @@ export function ActionCountersCard({ stats }: { stats: GamificationStats }) {
                 <span className="font-mono text-xs whitespace-nowrap text-gold-fg">+{XP_BY_ACTION[action]} XP cada</span>
               </div>
               <div className="flex items-center gap-2.5">
-                <div className="qv-progress flex-1" style={{ height: 5 }}>
-                  <span style={{ width: `${share}%` }} />
-                </div>
+                <ProgressBar value={share} height={5} className="flex-1" label={`Parte do XP vinda de ${ACTION_LABEL[action]}`} />
                 <span className="font-mono text-[11px] text-fg-3 whitespace-nowrap">
                   {formatXp(count)} · {formatXp(earned)} XP
                 </span>

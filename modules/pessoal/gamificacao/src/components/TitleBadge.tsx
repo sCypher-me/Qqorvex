@@ -23,11 +23,29 @@ function TitleMark({ theme }: { theme: TitleTheme }) {
   return <svg viewBox="0 0 20 20" className="h-[1em] w-[1em] shrink-0" fill="none" aria-hidden="true"><path d="m10 2 2 5.2 5.5.4-4.2 3.5 1.4 5.3-4.7-2.9-4.7 2.9 1.4-5.3-4.2-3.5 5.5-.4L10 2Z" fill="currentColor" fillOpacity=".2" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.25" /></svg>;
 }
 
-/** A shared, themed title treatment for profile, navigation and achievement showcases. */
+const THEME_CLASS: Record<TitleTheme, string> = {
+  owner: "border-gold-line bg-gold-soft text-gold-fg [font-variant:small-caps] tracking-[.08em]",
+  subscription: "border-ai-line bg-ai-soft text-ai-fg",
+  pioneer: "border-gold-line bg-gold-soft text-gold-fg italic",
+  productive: "border-danger/35 bg-danger-soft text-danger",
+  consistent: "border-success/35 bg-success-soft text-success",
+  scholar: "border-info/35 bg-info-soft text-info italic",
+  reader: "border-warning/35 bg-warning-soft text-warning italic",
+  level: "border-gold-line bg-gold-soft text-gold-fg",
+  default: "border-line bg-hover text-fg-2",
+};
+
+const SIZE_CLASS = {
+  sm: "gap-1 px-2 py-0.5 text-[10.5px]",
+  md: "gap-1.5 px-2.5 py-1 text-xs",
+  lg: "gap-2 px-3 py-1.5 text-sm",
+} as const;
+
+/** Título em destaque do perfil: cor por família de conquista, legível no tema claro e no escuro. */
 export function TitleBadge({ title, size = "md", className = "" }: { title: string; size?: "sm" | "md" | "lg"; className?: string }) {
   const theme = getTheme(title);
   return (
-    <span className={`qv-title-badge qv-title-badge--${theme} qv-title-badge--${size} ${className}`} title={title}>
+    <span className={`inline-flex w-fit max-w-full items-center rounded-full border font-semibold leading-tight whitespace-nowrap ${THEME_CLASS[theme]} ${SIZE_CLASS[size]} ${className}`} title={title}>
       <TitleMark theme={theme} />
       <span className="min-w-0 truncate">{title}</span>
     </span>

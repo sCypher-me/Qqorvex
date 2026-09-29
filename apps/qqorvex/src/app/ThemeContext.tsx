@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type AppTheme = "dark" | "light";
+/** Preferência salva: um tema fixo ou acompanhar o sistema operacional. */
+export type ThemePreference = AppTheme | "system";
 export type AppSkin = "default" | "aurora" | "sakura" | "solstice" | "nebula" | "eclipse" | "vip";
 
 const STORAGE_KEY = "qqorvex.theme";
@@ -61,21 +63,27 @@ export function isAppSkin(value: unknown): value is AppSkin {
   return value === "default" || value === VIP_THEME.id || LEVEL_THEMES.some((theme) => theme.id === value);
 }
 
-function readSavedTheme(): AppTheme {
+function readSavedPreference(): ThemePreference {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved === "light" || saved === "system" ? saved : "dark";
   } catch {
     return "dark";
   }
 }
 
+function systemTheme(): AppTheme {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+function resolveTheme(preference: ThemePreference): AppTheme {
+  return preference === "system" ? systemTheme() : preference;
+}
+
 function applyTheme(theme: AppTheme) {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute(
-    "content",
-    theme === "dark" ? "#171717" : "#f8f6f3",
-  );
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#100f0e" : "#f6f2ea");
 }
 
 function readSavedSkin(): AppSkin {
@@ -91,15 +99,20 @@ function applySkin(skin: AppSkin) {
   document.documentElement.dataset.skin = skin;
 }
 
-const initialTheme = readSavedTheme();
+const initialPreference = readSavedPreference();
 const initialSkin = readSavedSkin();
 if (typeof document !== "undefined") {
-  applyTheme(initialTheme);
+  applyTheme(resolveTheme(initialPreference));
   applySkin(initialSkin);
 }
 
 const ThemeContext = createContext<{
+  /** Tema efetivo na tela agora. */
   theme: AppTheme;
+  /** Escolha salva (inclui "system"). */
+  preference: ThemePreference;
+  setPreference: (preference: ThemePreference) => void;
+  /** Fixa um tema (sai do modo automático). */
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
   skin: AppSkin;
@@ -107,17 +120,28 @@ const ThemeContext = createContext<{
 } | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<AppTheme>(initialTheme);
+  const [preference, setPreference] = useState<ThemePreference>(initialPreference);
+  const [system, setSystem] = useState<AppTheme>(systemTheme);
   const [skin, setSkin] = useState<AppSkin>(initialSkin);
+  const theme: AppTheme = preference === "system" ? system : preference;
 
   useEffect(() => {
-    applyTheme(theme);
+    const media = window.matchMedia?.("(prefers-color-scheme: light)");
+    if (!media) return;
+    const onChange = () => setSystem(media.matches ? "light" : "dark");
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => applyTheme(theme), [theme]);
+
+  useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, theme);
+      window.localStorage.setItem(STORAGE_KEY, preference);
     } catch {
       // A escolha continua funcionando nesta sessão se o armazenamento estiver indisponível.
     }
-  }, [theme]);
+  }, [preference]);
 
   useEffect(() => {
     applySkin(skin);
@@ -130,7 +154,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function syncTheme(event: StorageEvent) {
-      if (event.key === STORAGE_KEY) setTheme(event.newValue === "light" ? "light" : "dark");
+      if (event.key === STORAGE_KEY) setPreference(event.newValue === "light" || event.newValue === "system" ? event.newValue : "dark");
       if (event.key === APP_SKIN_STORAGE_KEY) setSkin(isAppSkin(event.newValue) ? event.newValue : "default");
     }
     window.addEventListener("storage", syncTheme);
@@ -139,11 +163,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     theme,
-    setTheme,
-    toggleTheme: () => setTheme((current) => current === "dark" ? "light" : "dark"),
+    preference,
+    setPreference,
+    setTheme: (next: AppTheme) => setPreference(next),
+    toggleTheme: () => setPreference(theme === "dark" ? "light" : "dark"),
     skin,
     setSkin,
-  }), [theme, skin]);
+  }), [theme, preference, skin]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
