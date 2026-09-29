@@ -336,7 +336,7 @@ export function BlockRow({
           <div className="flex flex-1 items-center gap-2.5">
             <KindLabel>Página</KindLabel>
             <Link
-              to={`/segundo-cerebro/${referencedPage.id}`}
+              to={`/conhecimento/notas/${referencedPage.id}`}
               className="flex-1 text-[15px] font-medium text-vex-cyan-bright hover:underline"
             >
               {referencedPage.title} →

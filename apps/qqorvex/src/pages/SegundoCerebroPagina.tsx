@@ -54,11 +54,11 @@ export function SegundoCerebroPaginaPage() {
   return (
     <div className="qv-page mx-auto flex w-full max-w-[1280px] flex-col gap-5 pb-8">
       <div className="flex flex-wrap items-center gap-2 text-[12px] text-text-muted">
-        <Link to="/segundo-cerebro" className="text-vex-cyan transition-colors hover:text-vex-cyan-bright">Segundo Cérebro</Link>
+        <Link to="/conhecimento/notas" className="text-vex-cyan transition-colors hover:text-vex-cyan-bright">Segundo Cérebro</Link>
         <span aria-hidden="true">/</span>
         <span>{pageTypeLabel}</span>
         <span className="flex-1" />
-        <Link to="/segundo-cerebro?view=mapa" className="qv-btn qv-btn-quiet qv-btn-xs">Abrir mapa mental</Link>
+        <Link to="/conhecimento/notas?view=mapa" className="qv-btn qv-btn-quiet qv-btn-xs">Abrir mapa mental</Link>
       </div>
 
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -67,7 +67,7 @@ export function SegundoCerebroPaginaPage() {
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--qv-chip-cyan)] font-display text-lg text-vex-cyan-bright">{page?.page_type === "mapa_mental" ? "⌁" : "✦"}</span>
             <span className="qv-eyebrow text-vex-cyan-bright">{pageTypeLabel}</span>
-            <Link to="/segundo-cerebro" className="qv-btn qv-btn-quiet qv-btn-xs ml-auto">‹ Voltar</Link>
+            <Link to="/conhecimento/notas" className="qv-btn qv-btn-quiet qv-btn-xs ml-auto">‹ Voltar</Link>
           </div>
           {isEditingTitle ? (
             <form onSubmit={async (event) => { event.preventDefault(); const title = titleDraft.trim(); if (!title || !page) return; try { await updatePageTitle.mutateAsync({ pageId, title }); setIsEditingTitle(false); } catch { /* O aviso inline mantém o usuário no editor para tentar novamente. */ } }} className="flex max-w-[850px] flex-wrap items-center gap-2">
@@ -169,7 +169,7 @@ export function SegundoCerebroPaginaPage() {
               {backlinks.map((backlink) => (
                 <Link
                   key={backlink.id}
-                  to={`/segundo-cerebro/${backlink.id}`}
+                  to={`/conhecimento/notas/${backlink.id}`}
                   className="rounded-full bg-chip-cyan px-[9px] py-[3px] text-[11px] text-vex-cyan-bright transition-colors hover:bg-chip-cyan"
                 >
                   {backlink.title}

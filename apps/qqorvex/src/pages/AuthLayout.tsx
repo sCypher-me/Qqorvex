@@ -1,38 +1,52 @@
 import type { ReactNode } from "react";
-import { BRAND_ASSETS } from "../app/shell/navigation";
+import { CalendarCheckIcon, SparkleIcon, WalletIcon } from "@phosphor-icons/react";
+import { BrandSymbol, Wordmark } from "@qqorvex/ui";
 import { ThemeToggle } from "../app/shell/ThemeToggle";
 
+const HIGHLIGHTS = [
+  { icon: <CalendarCheckIcon />, title: "Seu dia em um só painel", text: "Tarefas, agenda, hábitos e prazos organizados pela manhã." },
+  { icon: <WalletIcon />, title: "Dinheiro sob controle", text: "Gastos, orçamento e cartões com uma leitura clara do mês." },
+  { icon: <SparkleIcon />, title: "A Vex trabalha com você", text: "Uma assistente que conhece suas telas e age com a sua confirmação." },
+];
+
+/** Moldura das telas públicas (entrar, criar conta, recuperar senha, 2FA). */
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="relative grid min-h-svh grid-cols-1 bg-surface-1 desktop:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      <div className="absolute right-5 top-5 z-10"><ThemeToggle /></div>
-      <section className="relative hidden overflow-hidden border-r border-border/70 bg-background p-8 desktop:flex desktop:flex-col desktop:justify-between wide:p-12">
-        <div className="relative z-[2] flex items-center gap-3">
-          <img src={BRAND_ASSETS.symbol} alt="" className="h-8 w-8 object-contain" />
-          <img src={BRAND_ASSETS.wordmark} alt="Qqorvex" className="h-[22px] object-contain" />
+    <main className="relative grid min-h-svh grid-cols-1 bg-canvas lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      <div className="absolute right-4 top-4 z-10">
+        <ThemeToggle />
+      </div>
+
+      <section className="relative flex min-w-0 flex-col px-5 pb-10 pt-6 sm:px-10 lg:px-16">
+        <div className="flex items-center gap-2.5">
+          <BrandSymbol size={26} />
+          <Wordmark size={20} />
         </div>
-        <div className="relative z-[2] flex max-w-[620px] flex-col gap-6 pr-3">
-          <p className="qv-eyebrow m-0 text-brand-primary">Seu mapa pessoal</p>
-          <h2 className="m-0 font-display text-[clamp(3rem,4.2vw,5rem)] font-semibold leading-[1.02] tracking-[-0.04em]">
-            Um lugar para enxergar o que importa.
-          </h2>
-          <p className="m-0 max-w-[470px] text-[16px] leading-[1.7] text-text-secondary">
-            Tarefas, agenda, estudos, finanças e memória na mesma casa. Você mantém o controle; a Vex participa quando chamada.
-          </p>
-          <div className="qv-observatory-track mt-4 max-w-[430px] border-t border-border/70 pt-5" aria-label="Observar, organizar, continuar">
-            <span>Observar</span><span>Organizar</span><span>Continuar</span>
-          </div>
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-[420px] animate-fade-up">{children}</div>
         </div>
-        <span className="relative z-[2] border-t border-border/70 pt-5 text-xs text-text-muted">Observação · memória · continuidade</span>
+        <p className="text-center text-xs text-fg-4 lg:text-left">© {new Date().getFullYear()} Qqorvex · Seus dados são privados e protegidos.</p>
       </section>
 
-      <section className="relative flex min-w-0 items-center justify-center px-5 py-8 sm:px-8 desktop:px-12 desktop:py-16">
-        <div className="flex w-full max-w-[490px] flex-col gap-8 animate-page-in">
-          <div className="flex items-center gap-3 border-b border-border/70 pb-6 desktop:hidden">
-            <img src={BRAND_ASSETS.symbol} alt="" className="w-[26px] h-[26px] object-contain" />
-            <img src={BRAND_ASSETS.wordmark} alt="Qqorvex" className="h-[22px] object-contain" />
-          </div>
-          {children}
+      <section aria-hidden="true" className="relative hidden overflow-hidden border-l border-line-soft bg-sidebar lg:flex lg:flex-col lg:justify-center lg:px-16 xl:px-20">
+        <div className="pointer-events-none absolute -right-40 -top-40 h-[560px] w-[560px] rounded-full bg-[radial-gradient(circle,var(--q-gold-soft),transparent_65%)]" />
+        <BrandSymbol size={420} className="pointer-events-none absolute -bottom-24 -right-24 text-gold opacity-[0.07]" />
+        <div className="relative max-w-[520px]">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gold-fg">Organização pessoal, sem ruído</p>
+          <h2 className="mt-4 font-display text-[44px] font-semibold leading-[1.05] tracking-[-0.03em] text-fg xl:text-[52px]">
+            Clareza para o que importa na sua vida.
+          </h2>
+          <ul className="mt-10 flex flex-col gap-6">
+            {HIGHLIGHTS.map((item) => (
+              <li key={item.title} className="flex gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-gold-fg [&_svg]:size-5">{item.icon}</span>
+                <span>
+                  <span className="block text-[15px] font-semibold text-fg">{item.title}</span>
+                  <span className="mt-0.5 block text-[14px] leading-relaxed text-fg-3">{item.text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </main>

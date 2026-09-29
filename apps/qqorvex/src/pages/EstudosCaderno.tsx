@@ -179,7 +179,7 @@ export function EstudosCadernoPage() {
         <div className="absolute right-[-56px] top-[-92px] h-56 w-56 rounded-full border border-vex-cyan/10" aria-hidden="true" />
         <div className="relative flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 text-[12px] text-text-muted">
-            <Link to="/estudos" className="text-vex-cyan hover:text-vex-cyan-bright">← Estudos</Link>
+            <Link to="/conhecimento/estudos" className="text-vex-cyan hover:text-vex-cyan-bright">← Estudos</Link>
             <span aria-hidden="true">/</span>
             <span>{notebook?.notebook_type?.replaceAll("_", " ") ?? "Caderno"}</span>
             {notebook && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -222,7 +222,7 @@ export function EstudosCadernoPage() {
       {/* Coluna esquerda: voltar + lista de notas (resumos) */}
       <div className={`qv-card p-[14px] flex flex-col gap-1.5 max-h-[230px] overflow-y-auto lg:sticky lg:top-4 lg:max-h-[calc(100dvh-150px)] ${showingSummary ? "" : "hidden"}`}>
         <Link
-          to="/estudos"
+          to="/conhecimento/estudos"
           className="text-left text-[13px] text-text-secondary hover:text-text-primary px-2 py-1.5 transition-colors"
         >
           ← Todos os cadernos

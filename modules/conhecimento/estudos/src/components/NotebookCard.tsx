@@ -63,7 +63,7 @@ export function NotebookCard({ notebook, onDelete, onToggleFavorite }: { noteboo
   return (
     <div className="group relative transition-transform duration-200 hover:-translate-y-1">
       <Link
-        to={`/estudos/${notebook.id}`}
+        to={`/conhecimento/estudos/${notebook.id}`}
         className="qv-card p-5 min-h-[190px] flex flex-col gap-4 text-left transition-[border-color,background,box-shadow] duration-200 group-hover:border-text-muted group-hover:bg-vex-raised"
       >
         <div className="flex items-start justify-between gap-3">

@@ -1,6 +1,9 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "@qqorvex/ui";
+import { AreaLayout } from "./shell/AreaLayout";
+import { LEGACY_REDIRECTS } from "./shell/navigation";
 
 /**
  * Code-splitting por rota: cada página vira o próprio chunk, carregado só quando visitada.
@@ -37,62 +40,75 @@ const ManagerPage = lazy(() => import("../pages/Manager").then((m) => ({ default
 const GamificacaoPage = lazy(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
 const VexPage = lazy(() => import("../pages/Vex").then((m) => ({ default: m.VexPage })));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 20_000, refetchOnWindowFocus: true, retry: 1 },
+  },
+});
 
 function PageFallback() {
   return (
-    <main
-      aria-busy="true"
-      aria-label="Carregando Qqorvex"
-      className="flex min-h-screen flex-1 items-center justify-center py-24"
-    >
-      <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
-        <h1 className="sr-only">Carregando Qqorvex</h1>
-        <span className="flex items-center gap-2.5 text-sm text-text-secondary">
-          <span className="w-[7px] h-[7px] rounded-full bg-vex-cyan-bright animate-core-glow" />
-          Carregando...
-        </span>
-      </div>
-    </main>
+    <div aria-busy="true" aria-label="Carregando" role="status" className="flex min-h-[50vh] flex-1 items-center justify-center">
+      <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-gold" />
+      <span className="sr-only">Carregando…</span>
+    </div>
   );
+}
+
+function LegacyRedirect({ from, to }: { from: string; to: string }) {
+  const location = useLocation();
+  const rest = location.pathname.slice(from.length);
+  return <Navigate to={`${to}${rest}${location.search}`} replace />;
 }
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Suspense fallback={<PageFallback />}>
-          <AppRuntime>
-            <Routes>
-              <Route element={<ProtectedLayout />}>
-                <Route path="/" element={<HojePage />} />
-                <Route path="/tarefas" element={<TarefasPage />} />
-                <Route path="/agenda" element={<AgendaPage />} />
-                <Route path="/metas-habitos" element={<MetasHabitosPage />} />
-                <Route path="/estudos" element={<EstudosPage />} />
-                <Route path="/estudos/:notebookId" element={<EstudosCadernoPage />} />
-                <Route path="/segundo-cerebro" element={<SegundoCerebroPage />} />
-                <Route path="/segundo-cerebro/:pageId" element={<SegundoCerebroPaginaPage />} />
-                <Route path="/biblioteca" element={<BibliotecaPage />} />
-                <Route path="/documentos" element={<DocumentosPage />} />
-                <Route path="/financas" element={<FinancasPage />} />
-                <Route path="/vida-pessoal" element={<VidaPessoalPage />} />
-                <Route path="/perfil" element={<PerfilPage />} />
-                <Route path="/assinatura" element={<AssinaturaPage />} />
-                <Route path="/gamificacao" element={<GamificacaoPage />} />
-                <Route path="/manager" element={<ManagerPage />} />
-                <Route path="/seguranca" element={<Navigate to="/perfil?aba=seguranca" replace />} />
-                <Route path="/vex" element={<VexPage />} />
-              </Route>
-              <Route path="/mfa" element={<MfaPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/criar-conta" element={<RegistrarPage />} />
-              <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
-              <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
-            </Routes>
-          </AppRuntime>
-        </Suspense>
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <Suspense fallback={<PageFallback />}>
+            <AppRuntime>
+              <Routes>
+                <Route element={<ProtectedLayout />}>
+                  <Route path="/" element={<HojePage />} />
+                  <Route path="/planejar" element={<AreaLayout areaKey="planejar" />}>
+                    <Route path="tarefas" element={<TarefasPage />} />
+                    <Route path="agenda" element={<AgendaPage />} />
+                    <Route path="metas" element={<MetasHabitosPage />} />
+                  </Route>
+                  <Route path="/conhecimento" element={<AreaLayout areaKey="conhecimento" />}>
+                    <Route path="estudos" element={<EstudosPage />} />
+                    <Route path="estudos/:notebookId" element={<EstudosCadernoPage />} />
+                    <Route path="notas" element={<SegundoCerebroPage />} />
+                    <Route path="notas/:pageId" element={<SegundoCerebroPaginaPage />} />
+                    <Route path="biblioteca" element={<BibliotecaPage />} />
+                  </Route>
+                  <Route path="/vida" element={<AreaLayout areaKey="vida" />}>
+                    <Route path="financas" element={<FinancasPage />} />
+                    <Route path="documentos" element={<DocumentosPage />} />
+                    <Route path="pessoal" element={<VidaPessoalPage />} />
+                  </Route>
+                  <Route path="/vex" element={<VexPage />} />
+                  <Route path="/perfil" element={<PerfilPage />} />
+                  <Route path="/conquistas" element={<GamificacaoPage />} />
+                  <Route path="/assinatura" element={<AssinaturaPage />} />
+                  <Route path="/configuracoes/*" element={<PerfilPage />} />
+                  <Route path="/manager" element={<ManagerPage />} />
+                  {LEGACY_REDIRECTS.map((redirect) => (
+                    <Route key={redirect.from} path={`${redirect.from}/*`} element={<LegacyRedirect from={redirect.from} to={redirect.to} />} />
+                  ))}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+                <Route path="/mfa" element={<MfaPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/criar-conta" element={<RegistrarPage />} />
+                <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+                <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+              </Routes>
+            </AppRuntime>
+          </Suspense>
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

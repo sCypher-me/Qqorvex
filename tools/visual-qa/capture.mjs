@@ -14,7 +14,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
-import { installSupabaseMock, MOCK_SUPABASE_URL } from "./mock-supabase.mjs";
+import { installSupabaseMock, MOCK_SUPABASE_URL, STORAGE_KEY } from "./mock-supabase.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const outDir = fileURLToPath(new URL("./out/", import.meta.url));
@@ -119,7 +119,16 @@ try {
         const page = await context.newPage();
         const isPublic = ["/login", "/criar-conta", "/esqueci-senha", "/redefinir-senha", "/mfa"].includes(route);
         if (!isPublic) await installSupabaseMock(page, { log: args.log === "true" });
-        else await page.route(`${MOCK_SUPABASE_URL}/**`, (r) => r.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
+        else {
+          await page.addInitScript((key) => {
+            try {
+              window.localStorage.removeItem(key);
+            } catch {
+              // opcional
+            }
+          }, STORAGE_KEY);
+          await page.route(`${MOCK_SUPABASE_URL}/**`, (r) => r.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
+        }
         page.on("pageerror", (error) => {
           pageErrors += 1;
           problems.push(`[pageerror] ${route} (${viewportName}/${theme}): ${error.message}`);

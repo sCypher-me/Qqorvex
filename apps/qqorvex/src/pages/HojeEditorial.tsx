@@ -19,9 +19,9 @@ import { useCurrentItem } from "../vex/CurrentItemContext";
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const priorityOrder: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3, sem_prioridade: 4 };
 const sourcePath: Record<string, string> = {
-  tarefas: "/tarefas", agenda: "/agenda", "metas-habitos": "/metas-habitos",
-  estudos: "/estudos", "segundo-cerebro": "/segundo-cerebro",
-  biblioteca: "/biblioteca", documentos: "/documentos", financas: "/financas", "vida-pessoal": "/vida-pessoal",
+  tarefas: "/planejar/tarefas", agenda: "/planejar/agenda", "metas-habitos": "/planejar/metas",
+  estudos: "/conhecimento/estudos", "segundo-cerebro": "/conhecimento/notas",
+  biblioteca: "/conhecimento/biblioteca", documentos: "/vida/documentos", financas: "/vida/financas", "vida-pessoal": "/vida/pessoal",
 };
 
 function shortTime(value: string) {
@@ -90,16 +90,16 @@ export function HojeEditorialPage() {
   function openFocus() {
     if (focus) {
       setCurrentItem({ type: "tarefa", id: focus.id, label: focus.title });
-      navigate("/tarefas");
-    } else navigate("/tarefas", { state: { focusCapture: true } });
+      navigate("/planejar/tarefas");
+    } else navigate("/planejar/tarefas", { state: { focusCapture: true } });
   }
 
   async function openDailyNote() {
     try {
       const page = await ensureDailyNote.mutateAsync(new Date());
-      navigate(`/segundo-cerebro/${page.id}`);
+      navigate(`/conhecimento/notas/${page.id}`);
     } catch {
-      navigate("/segundo-cerebro");
+      navigate("/conhecimento/notas");
     }
   }
 
@@ -111,26 +111,26 @@ export function HojeEditorialPage() {
         <p>Foque no que importa e avance com consistência.</p>
         <div className="editorial-hero-actions">
           <button type="button" onClick={openFocus} className="editorial-primary"><PlayIcon size={20} weight="fill" />Começar meu dia</button>
-          <Link to="/agenda" className="editorial-quiet"><CalendarBlankIcon size={21} />Revisar minha semana</Link>
+          <Link to="/planejar/agenda" className="editorial-quiet"><CalendarBlankIcon size={21} />Revisar minha semana</Link>
         </div>
       </section>
       <div className="editorial-today-work">
         <section className="editorial-agenda" aria-labelledby="editorial-agenda-title">
-          <div className="editorial-section-title"><div><CalendarBlankIcon size={22} /><h2 id="editorial-agenda-title">Minha agenda de hoje</h2></div><Link to="/agenda">Ver agenda <ArrowRightIcon size={16} /></Link></div>
-          {eventsLoading ? <p className="editorial-muted">Carregando sua agenda...</p> : todayEvents.length ? <div className="editorial-agenda-list">{todayEvents.map((event) => <Link to="/agenda" key={event.id} className="editorial-agenda-item"><span className="editorial-agenda-time">{event.is_all_day ? "Dia" : shortTime(event.start_at)}<small>{event.is_all_day ? "todo" : shortTime(event.end_at)}</small></span><i aria-hidden="true" /><span className="editorial-agenda-copy"><strong>{event.title}</strong><small>{event.location || event.category || "Compromisso"}</small></span></Link>)}</div> : <div className="editorial-empty"><ClockIcon size={22} /><p>Agenda livre por enquanto.</p><Link to="/agenda">Criar evento <ArrowRightIcon size={15} /></Link></div>}
-          <Link to="/agenda" className="editorial-text-link">Ver dia completo <ArrowRightIcon size={16} /></Link>
+          <div className="editorial-section-title"><div><CalendarBlankIcon size={22} /><h2 id="editorial-agenda-title">Minha agenda de hoje</h2></div><Link to="/planejar/agenda">Ver agenda <ArrowRightIcon size={16} /></Link></div>
+          {eventsLoading ? <p className="editorial-muted">Carregando sua agenda...</p> : todayEvents.length ? <div className="editorial-agenda-list">{todayEvents.map((event) => <Link to="/planejar/agenda" key={event.id} className="editorial-agenda-item"><span className="editorial-agenda-time">{event.is_all_day ? "Dia" : shortTime(event.start_at)}<small>{event.is_all_day ? "todo" : shortTime(event.end_at)}</small></span><i aria-hidden="true" /><span className="editorial-agenda-copy"><strong>{event.title}</strong><small>{event.location || event.category || "Compromisso"}</small></span></Link>)}</div> : <div className="editorial-empty"><ClockIcon size={22} /><p>Agenda livre por enquanto.</p><Link to="/planejar/agenda">Criar evento <ArrowRightIcon size={15} /></Link></div>}
+          <Link to="/planejar/agenda" className="editorial-text-link">Ver dia completo <ArrowRightIcon size={16} /></Link>
         </section>
         <section className="editorial-priorities" aria-labelledby="editorial-priorities-title">
-          <div className="editorial-section-title"><div><CheckSquareIcon size={22} /><h2 id="editorial-priorities-title">Minhas prioridades de hoje</h2></div><Link to="/tarefas">Ver todas <ArrowRightIcon size={16} /></Link></div>
-          {tasksLoading ? <p className="editorial-muted">Carregando suas tarefas...</p> : priorities.length ? <ol className="editorial-priority-list">{priorities.slice(0, 3).map((task, index) => <li key={task.id}><span className="editorial-rank">{index + 1}</span><button type="button" className="editorial-priority-copy" onClick={() => { setCurrentItem({ type: "tarefa", id: task.id, label: task.title }); navigate("/tarefas"); }}><strong>{task.title}</strong><small>{task.description || (task.isOverdue ? "Atrasada — merece sua atenção." : task.due_date ? `Prazo: ${new Date(`${task.due_date}T12:00:00`).toLocaleDateString("pt-BR")}` : "Um passo de cada vez.")}</small><span>{task.tags?.[0] || (task.isOverdue ? "Atrasada" : task.priority === "sem_prioridade" ? "Tarefa" : task.priority)}</span></button><button type="button" disabled={updateStatus.isPending || task.isBlocked} onClick={() => updateStatus.mutate({ taskId: task.id, status: "concluido" })} aria-label={`Concluir ${task.title}`} title={task.isBlocked ? "Conclua as dependências primeiro" : "Concluir tarefa"} className="editorial-task-check"><CheckIcon size={15} /></button></li>)}</ol> : <div className="editorial-empty"><CheckSquareIcon size={22} /><p>Tudo concluído por agora.</p><Link to="/tarefas">Planejar uma tarefa <ArrowRightIcon size={15} /></Link></div>}
-          <Link to="/tarefas" state={{ focusCapture: true }} className="editorial-text-link"><PlusIcon size={16} /> Adicionar tarefa</Link>
+          <div className="editorial-section-title"><div><CheckSquareIcon size={22} /><h2 id="editorial-priorities-title">Minhas prioridades de hoje</h2></div><Link to="/planejar/tarefas">Ver todas <ArrowRightIcon size={16} /></Link></div>
+          {tasksLoading ? <p className="editorial-muted">Carregando suas tarefas...</p> : priorities.length ? <ol className="editorial-priority-list">{priorities.slice(0, 3).map((task, index) => <li key={task.id}><span className="editorial-rank">{index + 1}</span><button type="button" className="editorial-priority-copy" onClick={() => { setCurrentItem({ type: "tarefa", id: task.id, label: task.title }); navigate("/planejar/tarefas"); }}><strong>{task.title}</strong><small>{task.description || (task.isOverdue ? "Atrasada — merece sua atenção." : task.due_date ? `Prazo: ${new Date(`${task.due_date}T12:00:00`).toLocaleDateString("pt-BR")}` : "Um passo de cada vez.")}</small><span>{task.tags?.[0] || (task.isOverdue ? "Atrasada" : task.priority === "sem_prioridade" ? "Tarefa" : task.priority)}</span></button><button type="button" disabled={updateStatus.isPending || task.isBlocked} onClick={() => updateStatus.mutate({ taskId: task.id, status: "concluido" })} aria-label={`Concluir ${task.title}`} title={task.isBlocked ? "Conclua as dependências primeiro" : "Concluir tarefa"} className="editorial-task-check"><CheckIcon size={15} /></button></li>)}</ol> : <div className="editorial-empty"><CheckSquareIcon size={22} /><p>Tudo concluído por agora.</p><Link to="/planejar/tarefas">Planejar uma tarefa <ArrowRightIcon size={15} /></Link></div>}
+          <Link to="/planejar/tarefas" state={{ focusCapture: true }} className="editorial-text-link"><PlusIcon size={16} /> Adicionar tarefa</Link>
         </section>
       </div>
     </div>
 
     <aside className="editorial-today-aside" aria-label="Contexto do dia">
       <div className="editorial-aside-block"><div className="editorial-aside-title"><span aria-hidden="true" /><h2>Em foco hoje</h2></div><blockquote>{focus ? `“${focus.title}” é o próximo passo que merece sua atenção.` : "Escolha um passo para movimentar seu dia."}</blockquote><h3>Próximos passos</h3><div className="editorial-next-steps">{nextStepItems.map((item) => <Link key={`${item.source}-${item.id}`} to={sourcePath[item.source] ?? "/"}><span aria-hidden="true" />{item.displayTitle}</Link>)}{summary.items.length === 0 && <p className="editorial-muted">Nada pendente por enquanto.</p>}</div></div>
-      <div className="editorial-aside-block editorial-interest"><h3>Talvez te interesse</h3><Link to="/segundo-cerebro"><NotebookIcon size={22} /><span>Suas notas e ideias<small>Continue de onde parou</small></span></Link><Link to="/biblioteca"><BooksIcon size={22} /><span>Na sua biblioteca<small>Retome sua próxima leitura</small></span></Link><Link to="/financas"><WalletIcon size={22} /><span>Seu panorama financeiro<small>Acompanhe o mês</small></span></Link></div>
+      <div className="editorial-aside-block editorial-interest"><h3>Talvez te interesse</h3><Link to="/conhecimento/notas"><NotebookIcon size={22} /><span>Suas notas e ideias<small>Continue de onde parou</small></span></Link><Link to="/conhecimento/biblioteca"><BooksIcon size={22} /><span>Na sua biblioteca<small>Retome sua próxima leitura</small></span></Link><Link to="/vida/financas"><WalletIcon size={22} /><span>Seu panorama financeiro<small>Acompanhe o mês</small></span></Link></div>
     </aside>
 
     <div className="editorial-banner"><img src="/brand/editorial-mountains.png" alt="" /><div><small>LEMBRE-SE</small><p>Grandes resultados nascem de dias bem direcionados.</p></div><span>PLANEJAR<br />EXECUTAR<br />EVOLUIR</span></div>
@@ -164,11 +164,11 @@ export function HojeEditorialPage() {
             </div>
           </div>
         </div>
-        <div className="editorial-overview-card"><div className="editorial-overview-heading"><span>FINANÇAS</span><Link to="/financas">Abrir <ArrowRightIcon size={15} /></Link></div><p>Saldo realizado</p><strong className="editorial-balance">{financeLoading ? "—" : money.format(balances.saldoAtual)}</strong><small>Projeção prevista · {financeLoading ? "—" : money.format(balances.saldoProjetado)}</small></div>
+        <div className="editorial-overview-card"><div className="editorial-overview-heading"><span>FINANÇAS</span><Link to="/vida/financas">Abrir <ArrowRightIcon size={15} /></Link></div><p>Saldo realizado</p><strong className="editorial-balance">{financeLoading ? "—" : money.format(balances.saldoAtual)}</strong><small>Projeção prevista · {financeLoading ? "—" : money.format(balances.saldoProjetado)}</small></div>
         <div className="editorial-overview-card editorial-library-card">
           <div className="editorial-overview-heading"><span>{firstLibraryItem?.status === "em_andamento" ? "CONTINUE DE ONDE PAROU" : "SUA BIBLIOTECA"}</span></div>
           {firstLibraryItem ? (
-            <Link to="/biblioteca" className="editorial-library-feature">
+            <Link to="/conhecimento/biblioteca" className="editorial-library-feature">
               {firstLibraryItem.cover_url ? <img src={firstLibraryItem.cover_url} alt={`Capa de ${firstLibraryItem.title}`} /> : <span className="editorial-library-cover-placeholder" aria-hidden="true"><BooksIcon size={30} /></span>}
               <span className="editorial-library-copy">
                 <span className="editorial-library-meta"><span>{LIBRARY_ITEM_TYPE_LABELS[firstLibraryItem.item_type]}</span><span>{LIBRARY_STATUS_LABELS[firstLibraryItem.status]}</span></span>
@@ -178,11 +178,11 @@ export function HojeEditorialPage() {
               </span>
             </Link>
           ) : (
-            <div className="editorial-library-empty"><span className="editorial-library-cover-placeholder" aria-hidden="true"><BooksIcon size={30} /></span><div><strong>Seu próximo favorito começa aqui.</strong><p>Guarde livros, filmes, cursos e tudo o que quiser acompanhar.</p><Link to="/biblioteca">Explorar biblioteca <ArrowRightIcon size={15} /></Link></div></div>
+            <div className="editorial-library-empty"><span className="editorial-library-cover-placeholder" aria-hidden="true"><BooksIcon size={30} /></span><div><strong>Seu próximo favorito começa aqui.</strong><p>Guarde livros, filmes, cursos e tudo o que quiser acompanhar.</p><Link to="/conhecimento/biblioteca">Explorar biblioteca <ArrowRightIcon size={15} /></Link></div></div>
           )}
         </div>
       </div>
-      <div className="editorial-lower-actions"><div><h3>Hábitos em movimento</h3>{habits.filter((habit) => habit.status === "ativo").slice(0, 3).map((habit) => <HabitCheck key={habit.id} habit={habit} />)}{!habits.some((habit) => habit.status === "ativo") && <p className="editorial-muted">Seus hábitos aparecerão aqui.</p>}<Link to="/metas-habitos" className="editorial-text-link">Ver hábitos <ArrowRightIcon size={16} /></Link></div><div><h3>Nota do dia</h3><p>Registre o que importa agora para reencontrar depois no Segundo Cérebro.</p><button type="button" disabled={ensureDailyNote.isPending} onClick={openDailyNote} className="editorial-quiet">{ensureDailyNote.isPending ? "Abrindo..." : "Abrir minha nota"}<ArrowRightIcon size={16} /></button></div></div>
+      <div className="editorial-lower-actions"><div><h3>Hábitos em movimento</h3>{habits.filter((habit) => habit.status === "ativo").slice(0, 3).map((habit) => <HabitCheck key={habit.id} habit={habit} />)}{!habits.some((habit) => habit.status === "ativo") && <p className="editorial-muted">Seus hábitos aparecerão aqui.</p>}<Link to="/planejar/metas" className="editorial-text-link">Ver hábitos <ArrowRightIcon size={16} /></Link></div><div><h3>Nota do dia</h3><p>Registre o que importa agora para reencontrar depois no Segundo Cérebro.</p><button type="button" disabled={ensureDailyNote.isPending} onClick={openDailyNote} className="editorial-quiet">{ensureDailyNote.isPending ? "Abrindo..." : "Abrir minha nota"}<ArrowRightIcon size={16} /></button></div></div>
     </section>
   </div>;
 }

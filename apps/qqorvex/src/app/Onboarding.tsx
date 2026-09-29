@@ -29,9 +29,9 @@ const STEPS = ["Boas-vindas", "Preferências", "Seu perfil", "Planos"] as const;
 
 const FOCUS_OPTIONS: { value: FocusArea; label: string; description: string; path: string }[] = [
   { value: "routine", label: "Ter clareza do meu dia", description: "Começar pela visão Hoje", path: "/" },
-  { value: "organization", label: "Organizar tarefas e compromissos", description: "Abrir tarefas e agenda", path: "/tarefas" },
-  { value: "study", label: "Aprender e guardar ideias", description: "Começar pelos Estudos", path: "/estudos" },
-  { value: "personal", label: "Cuidar da vida pessoal", description: "Abrir Vida Pessoal", path: "/vida-pessoal" },
+  { value: "organization", label: "Organizar tarefas e compromissos", description: "Abrir tarefas e agenda", path: "/planejar/tarefas" },
+  { value: "study", label: "Aprender e guardar ideias", description: "Começar pelos Estudos", path: "/conhecimento/estudos" },
+  { value: "personal", label: "Cuidar da vida pessoal", description: "Abrir Vida Pessoal", path: "/vida/pessoal" },
 ];
 
 const PLAN_PRICE = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
