@@ -67,17 +67,17 @@ export function BlockEditor({ client, pageId, userId }: { client: SupabaseClient
   }
 
   return (
-    <div className="flex flex-col gap-[10px] text-[15px] leading-[1.75] text-text-secondary">
-      <div aria-live="polite" className="flex min-h-5 items-center justify-end text-[11px] text-text-muted">
-        {updateContent.isPending ? "Salvando alterações…" : updateContent.isError ? <span className="text-error">Não foi possível salvar. Saia do bloco novamente para tentar.</span> : updateContent.isSuccess ? "Alterações salvas" : "As alterações são salvas ao sair de cada bloco"}
+    <div className="flex flex-col gap-[10px] text-[15px] leading-[1.75] text-fg-2">
+      <div aria-live="polite" className="flex min-h-5 items-center justify-end text-[11px] text-fg-3">
+        {updateContent.isPending ? "Salvando alterações…" : updateContent.isError ? <span className="text-danger">Não foi possível salvar. Saia do bloco novamente para tentar.</span> : updateContent.isSuccess ? "Alterações salvas" : "As alterações são salvas ao sair de cada bloco"}
       </div>
-      {createBlock.isError && <span role="alert" className="text-xs text-error">Não foi possível inserir o bloco. Tente novamente.</span>}
-      {createBlockAfter.isError && <span role="alert" className="text-xs text-error">Não foi possível criar o próximo bloco. Seu texto atual foi mantido.</span>}
+      {createBlock.isError && <span role="alert" className="text-xs text-danger">Não foi possível inserir o bloco. Tente novamente.</span>}
+      {createBlockAfter.isError && <span role="alert" className="text-xs text-danger">Não foi possível criar o próximo bloco. Seu texto atual foi mantido.</span>}
       {blocks.length === 0 ? (
-        <div className="qv-well flex flex-col gap-3 p-5 sm:p-6">
+        <div className="min-w-0 rounded-lg border border-line-soft bg-canvas/40 flex flex-col gap-3 p-5 sm:p-6">
           <div className="flex flex-col gap-1">
-            <strong className="text-sm font-semibold text-text-primary">Sua página está pronta para ganhar forma</strong>
-            <span className="text-sm text-text-muted">Comece por uma ideia, organize próximos passos ou destaque um conceito.</span>
+            <strong className="text-sm font-semibold text-fg">Sua página está pronta para ganhar forma</strong>
+            <span className="text-sm text-fg-3">Comece por uma ideia, organize próximos passos ou destaque um conceito.</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="primary" onClick={() => handleAddFirstBlock("texto")} disabled={createBlock.isPending}>Começar a escrever</Button>

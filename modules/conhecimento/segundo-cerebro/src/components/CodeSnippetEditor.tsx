@@ -73,8 +73,8 @@ export function CodeSnippetEditor({
   }
 
   return (
-    <div className="group/block flex min-w-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-border bg-[#0b1016] shadow-[0_12px_28px_rgb(0_0_0_/_0.16)]">
-      <div className="flex min-h-[42px] items-center gap-2 border-b border-border bg-[#111821] px-3">
+    <div className="group/block relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-line bg-[#0b1016] shadow-[0_12px_28px_rgb(0_0_0_/_0.16)]">
+      <div className="flex min-h-[42px] items-center gap-2 border-b border-line bg-[#111821] px-3">
         <span className="mr-1 flex items-center gap-1.5" aria-hidden="true"><span className="h-2.5 w-2.5 rounded-full bg-[#db7777]" /><span className="h-2.5 w-2.5 rounded-full bg-[#d9b274]" /><span className="h-2.5 w-2.5 rounded-full bg-[#6dc8a0]" /></span>
         <select
           value={language}
@@ -84,18 +84,18 @@ export function CodeSnippetEditor({
             onCommit(next);
           }}
           aria-label="Linguagem do snippet"
-          className="h-7 rounded-[8px] border border-border bg-transparent px-2 font-mono text-[11px] text-text-secondary outline-none transition-colors focus:border-vex-cyan"
+          className="h-7 rounded-[8px] border border-line bg-transparent px-2 font-mono text-[11px] text-fg-2 outline-none transition-colors focus:border-gold-line"
         >
           {LANGUAGES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
         </select>
-        <span className="qv-eyebrow ml-1 text-text-muted">snippet</span>
+        <span className="text-[11px] font-medium uppercase tracking-wider text-fg-4 ml-1 text-fg-3">snippet</span>
         <span className="flex-1" />
-        <span className="hidden font-mono text-[10px] text-text-muted sm:inline">{lines.length} {lines.length === 1 ? "linha" : "linhas"}</span>
-        <button type="button" onClick={copyCode} className="qv-btn qv-btn-quiet qv-btn-xs font-mono text-[11px]" aria-label="Copiar código">{copied ? "Copiado" : "Copiar"}</button>
+        <span className="hidden font-mono text-[10px] text-fg-3 sm:inline">{lines.length} {lines.length === 1 ? "linha" : "linhas"}</span>
+        <button type="button" onClick={copyCode} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 text-fg-2 hover:bg-hover hover:text-fg h-7 px-2.5 text-xs font-mono text-[11px]" aria-label="Copiar código">{copied ? "Copiado" : "Copiar"}</button>
         {controls}
       </div>
       <div className="grid min-h-[168px] grid-cols-[44px_minmax(0,1fr)] overflow-hidden">
-        <div className="select-none overflow-hidden border-r border-border bg-[#0e141c] py-4 text-right font-mono text-[12px] leading-[1.7] text-[#526172]" aria-hidden="true">
+        <div className="select-none overflow-hidden border-r border-line bg-[#0e141c] py-4 text-right font-mono text-[12px] leading-[1.7] text-[#526172]" aria-hidden="true">
           <div style={{ transform: `translateY(-${scroll.top}px)` }}>{lines.map((_, index) => <div key={index} className="pr-3">{index + 1}</div>)}</div>
         </div>
         <div
@@ -124,7 +124,7 @@ export function CodeSnippetEditor({
             rows={Math.max(7, Math.min(18, lines.length + 1))}
             aria-label="Código do snippet"
             spellCheck={false}
-            className="relative z-[1] block min-h-[168px] min-w-full resize-y overflow-hidden whitespace-pre bg-transparent px-4 py-4 font-mono text-[13px] leading-[1.7] text-transparent caret-vex-cyan-bright outline-none selection:bg-vex-cyan/25"
+            className="relative z-[1] block min-h-[168px] min-w-full resize-y overflow-hidden whitespace-pre bg-transparent px-4 py-4 font-mono text-[13px] leading-[1.7] text-transparent caret-gold outline-none selection:bg-gold/25"
           />
         </div>
       </div>

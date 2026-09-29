@@ -28,7 +28,7 @@ export function NewPageForm({ onCreate, isCreating = false }: { onCreate: (input
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Capturar uma ideia..."
         aria-label="Título da nova página"
-        className="qv-field min-w-[180px] flex-1 bg-surface-2"
+        className="q-input min-w-[180px] flex-1 bg-surface"
         maxLength={160}
       />
       <Select label="Formato" value={pageType} onChange={(event) => setPageType(event.target.value)} wrapperClassName="w-[140px]">
@@ -37,7 +37,7 @@ export function NewPageForm({ onCreate, isCreating = false }: { onCreate: (input
         <option value="mapa_mental">Mapa mental</option>
       </Select>
       <Button type="submit" variant="primary" disabled={!title.trim() || isCreating}>{isCreating ? "Criando…" : "Criar página"}</Button>
-      {error && <span role="alert" className="basis-full text-xs text-error">{error}</span>}
+      {error && <span role="alert" className="basis-full text-xs text-danger">{error}</span>}
     </form>
   );
 }

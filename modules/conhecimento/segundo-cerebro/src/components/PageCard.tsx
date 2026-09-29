@@ -26,44 +26,44 @@ export function PageCard({ page, linkTitles = [], isArchived = false, onToggleFa
 
   return (
     <>
-      <article className="qv-card group flex min-h-[174px] flex-col gap-3 p-5 transition-[border-color,background,transform] duration-200 hover:-translate-y-1 hover:border-text-muted hover:bg-vex-raised">
+      <article className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 group flex min-h-[174px] flex-col gap-3 p-5 transition-[border-color,background,transform] duration-200 hover:-translate-y-1 hover:border-line-strong hover:bg-raised">
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--qv-chip-cyan)] font-display text-base text-vex-cyan-bright">{page.page_type === "mapa_mental" ? "⌁" : page.page_type === "projeto" ? "◈" : "✦"}</span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--q-gold-soft)] font-display text-base text-gold-fg">{page.page_type === "mapa_mental" ? "⌁" : page.page_type === "projeto" ? "◈" : "✦"}</span>
           <div className="min-w-0 flex-1">
-            <Link to={`/conhecimento/notas/${page.id}`} className="block truncate pt-1 text-[15px] font-semibold text-text-primary hover:text-vex-cyan-bright focus-visible:outline-vex-cyan-bright" title={page.title}>{page.title}</Link>
-            <span className="font-mono text-[11px] text-text-muted">Editado {formatShortDate(page.updated_at)}</span>
+            <Link to={`/conhecimento/notas/${page.id}`} className="block truncate pt-1 text-[15px] font-semibold text-fg hover:text-gold-fg focus-visible:outline-gold" title={page.title}>{page.title}</Link>
+            <span className="font-mono text-[11px] text-fg-3">Editado {formatShortDate(page.updated_at)}</span>
           </div>
-          {onToggleFavorite && !isArchived && <button type="button" aria-label={page.is_favorite ? `Remover ${page.title} das favoritas` : `Adicionar ${page.title} às favoritas`} aria-pressed={page.is_favorite} title={page.is_favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} onClick={onToggleFavorite} className={`qv-icon-btn h-7 w-7 shrink-0 text-sm ${page.is_favorite ? "!text-vex-gold" : "text-text-muted"}`}>★</button>}
+          {onToggleFavorite && !isArchived && <button type="button" aria-label={page.is_favorite ? `Remover ${page.title} das favoritas` : `Adicionar ${page.title} às favoritas`} aria-pressed={page.is_favorite} title={page.is_favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} onClick={onToggleFavorite} className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 h-7 w-7 shrink-0 text-sm ${page.is_favorite ? "!text-gold-fg" : "text-fg-3"}`}>★</button>}
           <button
             type="button"
             aria-label={`Excluir "${page.title}"`}
             title="Excluir página"
             onClick={() => setConfirmOpen(true)}
-            className="qv-icon-btn h-6 w-6 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 hover:!border-error hover:!text-error"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg disabled:opacity-40 h-6 w-6 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 hover:!border-danger hover:!text-danger"
           >
             ✕
           </button>
         </div>
-        <Link to={`/conhecimento/notas/${page.id}`} aria-label={`Abrir página ${page.title}`} className="flex flex-1 flex-col gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-vex-cyan-bright">
-        <span className="qv-pill qv-pill-outline self-start text-[10px] uppercase tracking-[.08em]">{pageTypeLabel(page.page_type)}</span>
+        <Link to={`/conhecimento/notas/${page.id}`} aria-label={`Abrir página ${page.title}`} className="flex flex-1 flex-col gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-gold">
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-line text-fg-2 self-start text-[10px] uppercase tracking-[.08em]">{pageTypeLabel(page.page_type)}</span>
         {linkTitles.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {linkTitles.map((title, index) => (
               <span
                 key={`${title}-${index}`}
-                className="rounded-full bg-chip-cyan px-[9px] py-[3px] text-[11px] text-vex-cyan-bright"
+                className="rounded-full bg-gold-soft px-[9px] py-[3px] text-[11px] text-gold-fg"
               >
                 {title}
               </span>
             ))}
           </div>
         )}
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3 text-[11px] text-text-muted">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3 text-[11px] text-fg-3">
           <span>{linkTitles.length > 0 ? `${linkTitles.length} ${linkTitles.length === 1 ? "conexão" : "conexões"}` : "sem conexões ainda"}</span>
-          {!isArchived && <span className="text-vex-cyan opacity-0 transition-opacity group-hover:opacity-100">Abrir →</span>}
+          {!isArchived && <span className="text-gold-fg opacity-0 transition-opacity group-hover:opacity-100">Abrir →</span>}
         </div>
         </Link>
-        {onArchive && <div className="flex justify-end border-t border-border pt-2"><button type="button" onClick={onArchive} className="qv-btn qv-btn-quiet qv-btn-xs">{isArchived ? "Restaurar" : "Arquivar"}</button></div>}
+        {onArchive && <div className="flex justify-end border-t border-line pt-2"><button type="button" onClick={onArchive} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 text-fg-2 hover:bg-hover hover:text-fg h-7 px-2.5 text-xs">{isArchived ? "Restaurar" : "Arquivar"}</button></div>}
       </article>
       <ConfirmDialog
         isOpen={confirmOpen}

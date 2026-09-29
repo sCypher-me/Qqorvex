@@ -429,3 +429,27 @@ export async function listPropertiesForPages(client: Client, pageIds: string[]):
   if (error) throw error;
   return data;
 }
+
+const EXCERPT_BLOCK_TYPES = ["texto", "lista", "citacao", "callout", "checklist"] as const;
+
+/**
+ * Primeiro trecho de texto de cada página (para a lista mostrar mais que o título). Uma consulta
+ * só, ordenada pela posição do bloco; o primeiro bloco com texto de cada página vence.
+ */
+export async function listPageExcerpts(client: Client): Promise<Record<string, string>> {
+  const { data, error } = await client
+    .from("blocks")
+    .select("page_id, content, order_index")
+    .in("block_type", [...EXCERPT_BLOCK_TYPES])
+    .order("order_index", { ascending: true })
+    .limit(4000);
+  if (error) throw error;
+  const excerpts: Record<string, string> = {};
+  for (const row of data) {
+    if (excerpts[row.page_id]) continue;
+    const content = row.content as { text?: unknown } | null;
+    const text = typeof content?.text === "string" ? content.text.replace(/\s+/g, " ").trim() : "";
+    if (text) excerpts[row.page_id] = text.length > 180 ? `${text.slice(0, 177)}…` : text;
+  }
+  return excerpts;
+}

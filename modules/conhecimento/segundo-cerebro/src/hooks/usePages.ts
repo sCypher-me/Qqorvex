@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { archivePage, createPage, deletePage, getOrCreateDailyNote, listAllPageLinks, listAllPageTags, listArchivedPages, listPages, updatePageFavorite, updatePageTitle } from "../repository";
+import { archivePage, createPage, deletePage, getOrCreateDailyNote, listAllPageLinks, listAllPageTags, listArchivedPages, listPageExcerpts, listPages, updatePageFavorite, updatePageTitle } from "../repository";
 import type { NewPageInput } from "../types";
 
 const PAGES_KEY = ["sc-pages"] as const;
@@ -90,4 +90,10 @@ export function useAllPageLinks(client: SupabaseClient<Database>) {
 export function useAllPageTags(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: ALL_PAGE_TAGS_KEY, queryFn: () => listAllPageTags(client) });
   return { tags: query.data ?? [], isLoading: query.isLoading };
+}
+
+/** Trecho inicial de cada página (lista de Notas). */
+export function usePageExcerpts(client: SupabaseClient<Database>) {
+  const query = useQuery({ queryKey: ["sc-page-excerpts"], queryFn: () => listPageExcerpts(client), staleTime: 30_000 });
+  return { excerpts: query.data ?? {}, isLoading: query.isLoading };
 }

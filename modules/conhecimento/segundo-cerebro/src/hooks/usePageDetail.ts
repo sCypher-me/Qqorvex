@@ -41,7 +41,7 @@ export function useCreateBlock(client: SupabaseClient<Database>, pageId: string)
   return useMutation({
     mutationFn: ({ blockType, content, orderIndex }: { blockType: BlockType; content: Record<string, unknown>; orderIndex: number }) =>
       createBlock(client, pageId, blockType, content, orderIndex),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }), queryClient.invalidateQueries({ queryKey: ["sc-page-excerpts"] })]),
   });
 }
 
@@ -50,7 +50,7 @@ export function useCreateBlockAfter(client: SupabaseClient<Database>, pageId: st
   return useMutation({
     mutationFn: ({ afterBlockId, blockType, content }: { afterBlockId: string; blockType: BlockType; content: Record<string, unknown> }) =>
       createBlockAfter(client, pageId, afterBlockId, blockType, content),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }), queryClient.invalidateQueries({ queryKey: ["sc-page-excerpts"] })]),
   });
 }
 
@@ -58,7 +58,7 @@ export function useDeleteBlock(client: SupabaseClient<Database>, pageId: string)
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (blockId: string) => deleteBlock(client, blockId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }), queryClient.invalidateQueries({ queryKey: ["sc-page-excerpts"] })]),
   });
 }
 
@@ -67,7 +67,7 @@ export function useUpdateBlockContent(client: SupabaseClient<Database>, pageId: 
   return useMutation({
     mutationFn: ({ blockId, content }: { blockId: string; content: Record<string, unknown> }) =>
       updateBlockContent(client, blockId, content),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }), queryClient.invalidateQueries({ queryKey: ["sc-page-excerpts"] })]),
   });
 }
 
@@ -76,7 +76,7 @@ export function useUpdateBlockType(client: SupabaseClient<Database>, pageId: str
   return useMutation({
     mutationFn: ({ blockId, blockType, content }: { blockId: string; blockType: BlockType; content: Record<string, unknown> }) =>
       updateBlockType(client, blockId, blockType, content),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }), queryClient.invalidateQueries({ queryKey: ["sc-page-excerpts"] })]),
   });
 }
 
@@ -84,7 +84,7 @@ export function useMoveBlock(client: SupabaseClient<Database>, pageId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ blockId, direction }: { blockId: string; direction: "up" | "down" }) => moveBlock(client, pageId, blockId, direction),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }),
+    onSuccess: () => Promise.all([queryClient.invalidateQueries({ queryKey: blocksKey(pageId) }), queryClient.invalidateQueries({ queryKey: ["sc-page-excerpts"] })]),
   });
 }
 

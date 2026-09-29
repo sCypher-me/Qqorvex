@@ -206,13 +206,36 @@ const pages = [
   { title: "Receitas favoritas", page_type: "nota" },
   { title: "Framework de decisões", page_type: "nota", is_favorite: true },
   { title: "Leituras de 2026", page_type: "nota" },
+  { title: "Lançamento do app — plano", page_type: "projeto" },
+  { title: "Diário de hoje", page_type: "nota_do_dia" },
 ].map((p, i) => ({ ...base, id: id("p0000000"), is_archived: false, is_favorite: false, updated_at: at(-i, 15), ...p }));
 
 const blocks = [
   { page_id: pages[0].id, block_type: "titulo1", content: { text: "Ideias para o produto" }, order_index: 0 },
   { page_id: pages[0].id, block_type: "texto", content: { text: "Explorar um modo de planejamento semanal guiado pela Vex." }, order_index: 1 },
   { page_id: pages[0].id, block_type: "checklist", content: { text: "Validar com 5 usuários", checked: false }, order_index: 2 },
+  { page_id: pages[0].id, block_type: "lista", content: { text: "Resumo semanal automático toda sexta" }, order_index: 3 },
+  { page_id: pages[1].id, block_type: "texto", content: { text: "Participantes: Ana, Carol, Pedro. Escopo fechado para a fase 1, entrega em 6 semanas." }, order_index: 0 },
+  { page_id: pages[2].id, block_type: "texto", content: { text: "Bolo de cenoura da vó, risoto de cogumelos e o molho de tomate rápido." }, order_index: 0 },
+  { page_id: pages[3].id, block_type: "callout", content: { text: "Decisões reversíveis: decida rápido. Irreversíveis: escreva os prós e contras antes." }, order_index: 0 },
+  { page_id: pages[5].id, block_type: "texto", content: { text: "Marcos: beta fechado em outubro, loja em novembro, campanha em dezembro." }, order_index: 0 },
+  { page_id: pages[6].id, block_type: "texto", content: { text: "Dia produtivo. Terminei a proposta e fui à academia." }, order_index: 0 },
 ].map((b) => ({ id: id("q0000000"), created_at: now, updated_at: now, ...b }));
+
+const pageLinks = [
+  [pages[0].id, pages[3].id],
+  [pages[0].id, pages[5].id],
+  [pages[1].id, pages[5].id],
+  [pages[4].id, pages[3].id],
+].map(([source_page_id, target_page_id]) => ({ id: id("l0000000"), source_page_id, target_page_id, created_at: now }));
+
+const pageTags = [
+  [pages[0].id, "produto"],
+  [pages[0].id, "vex"],
+  [pages[1].id, "trabalho"],
+  [pages[3].id, "decisões"],
+  [pages[5].id, "produto"],
+].map(([page_id, tag]) => ({ id: id("g0000000"), page_id, tag, created_at: now }));
 
 const library = [
   { title: "Hábitos Atômicos", subtitle: "James Clear", item_type: "book", status: "em_andamento", progress_current: 142, progress_total: 320, progress_unit: "páginas", rating: null, year: 2018 },
@@ -271,6 +294,8 @@ export const fixtures = {
   errors_doubts: errorsDoubts,
   pages,
   blocks,
+  page_links: pageLinks,
+  page_tags: pageTags,
   library_items: library,
   folders,
   documents,
