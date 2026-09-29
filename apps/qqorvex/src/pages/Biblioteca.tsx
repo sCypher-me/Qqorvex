@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArchiveIcon, ArrowCounterClockwiseIcon, ArrowSquareOutIcon, BooksIcon, GraduationCapIcon, ListIcon, MagnifyingGlassIcon, PlusIcon, SparkleIcon, SquaresFourIcon, StarIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArchiveIcon, ArrowCounterClockwiseIcon, ArrowSquareOutIcon, BooksIcon, GraduationCapIcon, ListIcon, MagnifyingGlassIcon, PencilSimpleIcon, PlusIcon, SparkleIcon, SquaresFourIcon, StarIcon, TrashIcon } from "@phosphor-icons/react";
 import {
+  EditItemForm,
   ItemProgressForm,
   ItemReviewForm,
   LIBRARY_ITEM_TYPE_LABELS,
@@ -16,10 +17,12 @@ import {
   useArchivedLibraryItems,
   useCreateLibraryItemWithCreators,
   useDeleteLibraryItem,
+  useItemCreators,
   useLibraryItems,
   useToggleFavorite,
   useUpdateItemReview,
   useUpdateItemStatus,
+  useUpdateLibraryItem,
   useUpdateProgress,
   type LibraryItem,
   type LibraryItemStatus,
@@ -105,6 +108,7 @@ export function BibliotecaPage() {
   const [view, setView] = useState<"grade" | "lista">(readViewPreference);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<LibraryItem | null>(null);
+  const [editing, setEditing] = useState<LibraryItem | null>(null);
 
   const { items, isLoading, error } = useLibraryItems(supabase);
   const { items: archived, isLoading: archivedLoading } = useArchivedLibraryItems(supabase, tab === "arquivados" || Boolean(params.get("item")));
@@ -116,6 +120,8 @@ export function BibliotecaPage() {
   const toggleFavorite = useToggleFavorite(supabase);
   const archiveItem = useArchiveLibraryItem(supabase);
   const deleteItem = useDeleteLibraryItem(supabase);
+  const updateItem = useUpdateLibraryItem(supabase, userId ?? "");
+  const { creators: editingCreators, isLoading: creatorsLoading } = useItemCreators(supabase, editing?.id ?? "", editing !== null);
 
   const selectedId = params.get("item");
   const selected = selectedId ? [...items, ...archived].find((item) => item.id === selectedId) ?? null : null;
@@ -308,9 +314,14 @@ export function BibliotecaPage() {
         width={520}
         actions={
           selected && (
-            <IconButton label={selected.is_favorite ? "Remover dos favoritos" : "Favoritar"} active={selected.is_favorite} onClick={() => toggleFavorite.mutate({ itemId: selected.id, isFavorite: !selected.is_favorite })} className={selected.is_favorite ? "text-gold-fg" : undefined}>
-              <StarIcon weight={selected.is_favorite ? "fill" : "regular"} />
-            </IconButton>
+            <>
+              <IconButton label="Editar item" onClick={() => setEditing(selected)}>
+                <PencilSimpleIcon />
+              </IconButton>
+              <IconButton label={selected.is_favorite ? "Remover dos favoritos" : "Favoritar"} active={selected.is_favorite} onClick={() => toggleFavorite.mutate({ itemId: selected.id, isFavorite: !selected.is_favorite })} className={selected.is_favorite ? "text-gold-fg" : undefined}>
+                <StarIcon weight={selected.is_favorite ? "fill" : "regular"} />
+              </IconButton>
+            </>
           )
         }
         footer={
@@ -439,6 +450,24 @@ export function BibliotecaPage() {
           </div>
         )}
       </Sheet>
+
+      <Modal isOpen={editing !== null} onClose={() => setEditing(null)} title="Editar item" size="md" icon={<PencilSimpleIcon />}>
+        {editing && (creatorsLoading ? (
+          <Skeleton className="block h-64 w-full" />
+        ) : (
+          <EditItemForm
+            key={editing.id}
+            item={editing}
+            creators={editingCreators.map((creator) => creator.name)}
+            onCancel={() => setEditing(null)}
+            onSubmit={async ({ input, cover, creators }) => {
+              await updateItem.mutateAsync({ itemId: editing.id, input, cover, creators });
+              setEditing(null);
+              toast({ title: "Item atualizado", description: input.title, tone: "success" });
+            }}
+          />
+        ))}
+      </Modal>
 
       <ConfirmDialog
         isOpen={deleting !== null}

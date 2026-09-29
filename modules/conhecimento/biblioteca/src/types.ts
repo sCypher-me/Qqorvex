@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert } from "@qqorvex/database";
+import type { Tables, TablesInsert, TablesUpdate } from "@qqorvex/database";
 
 /**
  * Biblioteca & Conteúdo é fonte de verdade de itens, status/progresso de consumo, avaliações,
@@ -39,6 +39,28 @@ export function toLibraryItemInsert(userId: string, input: NewLibraryItemInput):
     description: input.description ?? null,
     year: input.year ?? null,
     cover_url: input.coverUrl ?? null,
+    origin_url: input.originUrl ?? null,
+    tags: input.tags ?? [],
+  };
+}
+
+/** Dados do item editáveis pelo formulário. A capa tem um fluxo próprio (`LibraryCoverChange`). */
+export type LibraryItemEditInput = Omit<NewLibraryItemInput, "coverUrl">;
+
+/**
+ * Troca de capa na edição: nova imagem do dispositivo, uma URL, ou `{ url: null }` para remover.
+ * Ausente = manter a capa atual.
+ */
+export type LibraryCoverChange = { file: File } | { url: string | null };
+
+/** Opcional em branco vira `null`, para que editar consiga limpar o campo. Nunca inclui capa. */
+export function toLibraryItemUpdate(input: LibraryItemEditInput): TablesUpdate<"library_items"> {
+  return {
+    title: input.title,
+    item_type: input.itemType ?? "other",
+    subtitle: input.subtitle ?? null,
+    description: input.description ?? null,
+    year: input.year ?? null,
     origin_url: input.originUrl ?? null,
     tags: input.tags ?? [],
   };
