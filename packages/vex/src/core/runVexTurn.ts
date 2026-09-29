@@ -1,5 +1,5 @@
 import { checkQuerySafety } from "../safety";
-import type { ChatMessage, ToolDefinition, VexProvider, VexTurnResult } from "../types";
+import type { ChatMessage, ToolDefinition, VexActionPreview, VexProvider, VexStep, VexTurnResult } from "../types";
 
 const MAX_TOOL_ARGUMENTS_CHARS = 16_000;
 
@@ -59,92 +59,155 @@ export function validateToolArguments(tool: ToolDefinition, args: unknown): stri
   return null;
 }
 
-/**
- * Um "turno" da Vex: mensagem do usuário → (Safety) → provider → se houver tool_call, decide
- * entre executar direto (ferramentas de consulta) ou pedir confirmação (ferramentas que
- * persistem dados) → resposta final. Nunca executa uma ferramenta que exige confirmação sem
- * uma chamada explícita a `confirmVexToolCall` depois.
- */
-export async function runVexTurn(params: {
+/** Quantas consultas (ferramentas sem confirmação) a Vex pode encadear antes de responder. */
+export const MAX_VEX_READ_STEPS = 3;
+
+type TurnParams = {
   provider: VexProvider;
   messages: ChatMessage[];
   tools: ToolDefinition[];
-}): Promise<VexTurnResult> {
-  const { provider, messages, tools } = params;
+  /** Chamado a cada consulta concluída, para a interface mostrar o progresso ("Consultando Agenda…"). */
+  onStep?: (step: VexStep) => void;
+};
 
-  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+/**
+ * Um "turno" da Vex: mensagem do usuário → (Safety) → provider → ferramentas → resposta final.
+ * Consultas (somente leitura) executam direto e podem ser encadeadas — "planeje meu dia" pode
+ * olhar tarefas e agenda antes de responder. Uma ferramenta que persiste dados interrompe o
+ * turno e devolve `confirmation_required`; ela só roda depois de `confirmVexToolCall`.
+ */
+export async function runVexTurn(params: TurnParams): Promise<VexTurnResult> {
+  const lastUserMessage = [...params.messages].reverse().find((m) => m.role === "user");
   if (lastUserMessage) {
     const safety = checkQuerySafety(lastUserMessage.content);
     if (safety.blocked) return { kind: "blocked", reason: safety.reason! };
   }
+  return continueTurn(params, []);
+}
 
-  const response = await provider.chat({ messages, tools });
+/**
+ * Chamado pela UI depois que o usuário confirma uma ação que exigia confirmação. Depois de
+ * executar, a conversa segue: a Vex pode responder, consultar algo ou propor a próxima ação
+ * (ex.: criar a segunda de três tarefas pedidas).
+ */
+export async function confirmVexToolCall(params: TurnParams & { tool: ToolDefinition; args: Record<string, unknown> }): Promise<VexTurnResult> {
+  const validationError = validateToolArguments(params.tool, params.args);
+  if (validationError) return { kind: "message", content: `Não consegui executar essa ação: ${validationError}.`, steps: [] };
+  const { message, step } = await executeTool(params.tool, params.args);
+  params.onStep?.(step);
+  if (!step.ok) return { kind: "message", content: message.content, steps: [step] };
+  const result = await continueTurn({ ...params, messages: [...params.messages, message] }, [step]);
+  // Se o modelo não comentar o resultado, o resumo da ferramenta é a resposta.
+  if (result.kind === "message" && !result.content.trim()) return { ...result, content: message.content };
+  return result;
+}
 
-  if (response.kind === "message") {
-    return { kind: "message", content: response.content };
+async function continueTurn(params: TurnParams, initialSteps: VexStep[]): Promise<VexTurnResult> {
+  const { provider, tools, onStep } = params;
+  let messages = params.messages;
+  const steps = [...initialSteps];
+  const seen = new Set<string>();
+  let lastSummary: string | null = null;
+
+  for (let round = 0; round <= MAX_VEX_READ_STEPS; round += 1) {
+    // Na última rodada a Vex precisa responder com o que já tem: sem ferramentas disponíveis.
+    const offerTools = round < MAX_VEX_READ_STEPS;
+    const response = await provider.chat({ messages, tools: offerTools ? tools : [] });
+
+    if (response.kind === "message") {
+      const content = response.content.trim() || lastSummary || "";
+      return { kind: "message", content, steps };
+    }
+
+    if (!response.toolCall || typeof response.toolCall.name !== "string" || !isRecord(response.toolCall.arguments)) {
+      return { kind: "message", content: lastSummary ?? "Não consegui interpretar a ação sugerida pela Vex.", steps };
+    }
+
+    const tool = tools.find((t) => t.name === response.toolCall.name);
+    if (!tool) {
+      return { kind: "message", content: lastSummary ?? `A Vex tentou usar uma ferramenta desconhecida: ${response.toolCall.name}.`, steps };
+    }
+
+    const args = response.toolCall.arguments;
+    const validationError = validateToolArguments(tool, args);
+    if (validationError) {
+      return { kind: "message", content: `Não consegui executar essa ação: ${validationError}.`, steps };
+    }
+
+    if (tool.requiresConfirmation) {
+      return {
+        kind: "confirmation_required",
+        toolCall: response.toolCall,
+        tool,
+        preview: describeToolCall(tool, args),
+        action: previewToolCall(tool, args),
+        steps,
+      };
+    }
+
+    const key = `${tool.name}:${JSON.stringify(args)}`;
+    if (seen.has(key)) {
+      // Pediu a mesma consulta de novo: força a resposta na próxima rodada.
+      const final = await provider.chat({ messages, tools: [] });
+      const content = final.kind === "message" && final.content.trim() ? final.content : lastSummary ?? "";
+      return { kind: "message", content, steps };
+    }
+    seen.add(key);
+
+    const { message, step } = await executeTool(tool, args);
+    steps.push(step);
+    onStep?.(step);
+    lastSummary = message.content;
+    messages = [...messages, message];
   }
 
-  if (!response.toolCall || typeof response.toolCall.name !== "string" || !isRecord(response.toolCall.arguments)) {
-    return { kind: "message", content: "Não consegui interpretar a ação sugerida pela Vex." };
-  }
+  return { kind: "message", content: lastSummary ?? "", steps };
+}
 
-  const tool = tools.find((t) => t.name === response.toolCall.name);
-  if (!tool) {
-    return { kind: "message", content: `A Vex tentou usar uma ferramenta desconhecida: ${response.toolCall.name}.` };
-  }
-
-  const validationError = validateToolArguments(tool, response.toolCall.arguments);
-  if (validationError) {
-    return { kind: "message", content: `Não consegui executar essa ação: ${validationError}.` };
-  }
-
-  if (tool.requiresConfirmation) {
+async function executeTool(tool: ToolDefinition, args: Record<string, unknown>): Promise<{ message: ChatMessage; step: VexStep }> {
+  const label = tool.label ?? tool.name;
+  try {
+    const result = await tool.execute(args);
+    return { message: { role: "tool", toolName: tool.name, content: result.summary }, step: { tool: tool.name, label, ok: true } };
+  } catch (error) {
+    const detail = error instanceof Error && error.message ? ` (${error.message.slice(0, 160)})` : "";
     return {
-      kind: "confirmation_required",
-      toolCall: response.toolCall,
-      tool,
-      preview: describeToolCall(tool, response.toolCall.arguments),
+      message: { role: "tool", toolName: tool.name, content: `Não foi possível concluir "${label}" agora${detail}. Nada foi alterado além do que já estava salvo.` },
+      step: { tool: tool.name, label, ok: false },
     };
   }
-
-  return executeAndSummarize({ provider, messages, tools, tool, args: response.toolCall.arguments });
 }
 
-/** Chamado pela UI depois que o usuário confirma uma ação que exigia confirmação. */
-export async function confirmVexToolCall(params: {
-  provider: VexProvider;
-  messages: ChatMessage[];
-  tools: ToolDefinition[];
-  tool: ToolDefinition;
-  args: Record<string, unknown>;
-}): Promise<VexTurnResult> {
-  const validationError = validateToolArguments(params.tool, params.args);
-  if (validationError) return { kind: "message", content: `Não consegui executar essa ação: ${validationError}.` };
-  return executeAndSummarize(params);
+function humanizeKey(key: string): string {
+  const spaced = key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
-async function executeAndSummarize(params: {
-  provider: VexProvider;
-  messages: ChatMessage[];
-  tools: ToolDefinition[];
-  tool: ToolDefinition;
-  args: Record<string, unknown>;
-}): Promise<VexTurnResult> {
-  const { provider, messages, tools, tool, args } = params;
-  const validationError = validateToolArguments(tool, args);
-  if (validationError) return { kind: "message", content: `Não consegui executar essa ação: ${validationError}.` };
-  const result = await tool.execute(args);
+function formatArgValue(value: unknown): string {
+  if (typeof value === "boolean") return value ? "Sim" : "Não";
+  if (Array.isArray(value)) return value.map(String).join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
 
-  const toolMessage: ChatMessage = { role: "tool", toolName: tool.name, content: result.summary };
-  const followUp = await provider.chat({ messages: [...messages, toolMessage], tools });
-
-  if (followUp.kind === "message") return { kind: "message", content: followUp.content };
-  return { kind: "message", content: result.summary };
+export function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): VexActionPreview {
+  if (tool.preview) {
+    try {
+      return tool.preview(args);
+    } catch {
+      /* cai no genérico */
+    }
+  }
+  return {
+    title: tool.description.split(/[.(—]/)[0]!.trim() || tool.name,
+    fields: Object.entries(args)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([key, value]) => ({ label: humanizeKey(key), value: formatArgValue(value) })),
+  };
 }
 
 function describeToolCall(tool: ToolDefinition, args: Record<string, unknown>): string {
-  const argsText = Object.entries(args)
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join(", ");
-  return `${tool.description} (${argsText || "sem parâmetros"})`;
+  const action = previewToolCall(tool, args);
+  const fields = action.fields.map((field) => `${field.label}: ${field.value}`).join(", ");
+  return fields ? `${action.title} (${fields})` : action.title;
 }

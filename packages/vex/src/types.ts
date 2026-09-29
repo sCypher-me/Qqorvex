@@ -20,9 +20,25 @@ export interface ToolResult {
   data?: unknown;
 }
 
+/** Como uma ação que exige confirmação aparece para a pessoa: um título e os campos em português. */
+export interface VexActionPreview {
+  title: string;
+  fields: Array<{ label: string; value: string }>;
+  note?: string;
+}
+
+/** Uma consulta que a Vex fez durante o turno (mostrada como "Consultou Agenda"). */
+export interface VexStep {
+  tool: string;
+  label: string;
+  ok: boolean;
+}
+
 export interface ToolDefinition {
   name: string;
   description: string;
+  /** Rótulo curto do que a ferramenta consulta/faz, para a interface ("Agenda", "Tarefas"). */
+  label?: string;
   /** JSON-schema-like description dos argumentos, só para o provider decidir como chamar. */
   parameters: Record<string, unknown>;
   /**
@@ -31,6 +47,8 @@ export interface ToolDefinition {
    * confirmação explícita do usuário antes de rodar.
    */
   requiresConfirmation: boolean;
+  /** Descrição legível da ação para o cartão de confirmação. Sem ela, os argumentos aparecem crus. */
+  preview?: (args: Record<string, unknown>) => VexActionPreview;
   execute: (args: Record<string, unknown>) => Promise<ToolResult>;
 }
 
@@ -49,6 +67,6 @@ export interface VexProvider {
 }
 
 export type VexTurnResult =
-  | { kind: "message"; content: string }
-  | { kind: "confirmation_required"; toolCall: ToolCall; tool: ToolDefinition; preview: string }
+  | { kind: "message"; content: string; steps: VexStep[] }
+  | { kind: "confirmation_required"; toolCall: ToolCall; tool: ToolDefinition; preview: string; action: VexActionPreview; steps: VexStep[] }
   | { kind: "blocked"; reason: string };

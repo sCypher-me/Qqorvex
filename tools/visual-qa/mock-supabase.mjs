@@ -227,7 +227,43 @@ export async function installSupabaseMock(page, { log = false } = {}) {
     if (path.startsWith("/functions/v1/")) {
       const fn = path.split("/").pop();
       if (fn === "vex-chat") {
-        return json({ kind: "message", content: "Claro! Olhei sua agenda: você tem 5 compromissos hoje e 2 tarefas de alta prioridade. Quer que eu monte blocos de foco entre as reuniões?" });
+        const payload = request.postDataJSON?.() ?? {};
+        const messages = payload.messages ?? [];
+        const tools = new Set((payload.tools ?? []).map((tool) => tool.name));
+        const last = messages.at(-1) ?? {};
+        const text = String(last.content ?? "").toLowerCase();
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        if (last.role === "tool" && last.toolName === "get_day_overview") {
+          return json({
+            kind: "message",
+            content: [
+              "### Seu dia, em blocos",
+              "",
+              "Você tem **3 compromissos** e **2 tarefas** com prazo hoje. Uma sugestão:",
+              "",
+              "1. **8h30–10h · Foco profundo**",
+              "   - Finalizar a proposta do cliente (prioridade alta)",
+              "   - Revisar o contrato",
+              "2. **10h · Daily do time** (30 min)",
+              "3. **14h–15h · Dentista** — saia às 13h40",
+              "4. **16h · Blocos curtos**",
+              "   - Pagar a fatura do cartão (vence amanhã)",
+              "   - Registrar o treino",
+              "",
+              "> Deixei a noite livre: você já tem 5 dias seguidos de leitura, vale manter.",
+              "",
+              "Quer que eu crie esses blocos na agenda?",
+            ].join("\n"),
+          });
+        }
+        if (last.role === "tool") return json({ kind: "message", content: "Pronto! Criei a tarefa **Revisar contrato** para amanhã, com prioridade alta. Quer um lembrete às 9h?" });
+        if (/dia/.test(text) && tools.has("get_day_overview")) return json({ kind: "tool_call", toolCall: { name: "get_day_overview", arguments: {} } });
+        if (/tarefa/.test(text) && tools.has("create_task")) {
+          const tomorrow = new Date(Date.now() + 86_400_000);
+          const due = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+          return json({ kind: "tool_call", toolCall: { name: "create_task", arguments: { title: "Revisar contrato", dueDate: due, priority: "alta" } } });
+        }
+        return json({ kind: "message", content: "Claro! Olhei sua agenda: você tem **5 compromissos** hoje e **2 tarefas** de alta prioridade. Quer que eu monte blocos de foco entre as reuniões?" });
       }
       return json({ error: "indisponível no QA" }, 400);
     }

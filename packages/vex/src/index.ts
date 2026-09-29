@@ -21,4 +21,5 @@ export * from "./tools/webTools";
 export * from "./tools/vidaPessoalTools";
 export * from "./tools/gamificacaoTools";
 export * from "./tools/perfilTools";
+export * from "./tools/hojeTools";
 export * from "./tools/createVexTools";

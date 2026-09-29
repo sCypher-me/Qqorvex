@@ -256,6 +256,7 @@ html[data-theme="light"][data-skin="vip"] { --q-gold-fg: #6a3fb0; --q-focus: #6a
   --animate-slide-in-up: q-slide-in-up 260ms var(--q-ease) both;
   --animate-shimmer: q-shimmer 1.6s ease-in-out infinite;
   --animate-pulse-soft: q-pulse 2.2s ease-in-out infinite;
+  --animate-typing: q-typing 1.1s ease-in-out infinite;
   --animate-spin-slow: spin 1.2s linear infinite;
 
   @keyframes q-fade-in {
@@ -285,6 +286,10 @@ html[data-theme="light"][data-skin="vip"] { --q-gold-fg: #6a3fb0; --q-focus: #6a
   @keyframes q-pulse {
     0%, 100% { opacity: 0.55; }
     50% { opacity: 1; }
+  }
+  @keyframes q-typing {
+    0%, 70%, 100% { opacity: 0.3; transform: translateY(0); }
+    35% { opacity: 1; transform: translateY(-2px); }
   }
 }
 

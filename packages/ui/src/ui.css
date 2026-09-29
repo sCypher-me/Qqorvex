@@ -70,6 +70,7 @@
 
   .q-prose { color: var(--q-fg); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
   .q-prose > * + * { margin-top: 0.7em; }
+  .q-prose > :first-child { margin-top: 0; }
   .q-prose h1, .q-prose h2, .q-prose h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; margin-top: 1.1em; }
   .q-prose h1 { font-size: 1.45em; }
   .q-prose h2 { font-size: 1.25em; }

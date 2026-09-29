@@ -32,13 +32,14 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 20;
 
 const ALLOWED_TOOL_NAMES = new Set([
-  "list_events_today", "create_event_today", "delete_event_by_title",
+  "get_day_overview",
+  "list_events_today", "list_events", "create_event", "create_event_today", "delete_event_by_title",
   "add_library_item", "update_library_item_status_by_title", "list_library_items",
   "list_documents", "create_text_document", "toggle_important_by_name",
   "delete_notebook_by_name", "list_due_flashcards", "list_notebooks", "create_notebook",
   "create_summary_by_notebook_name", "generate_quiz_by_notebook_name",
-  "get_financial_summary", "create_transaction", "create_recurring_transaction",
-  "create_goal", "update_goal_status_by_title", "log_habit_by_name", "list_goals",
+  "get_financial_summary", "get_month_spending", "list_upcoming_bills", "create_transaction", "create_recurring_transaction",
+  "create_goal", "update_goal_status_by_title", "log_habit_by_name", "list_goals", "list_habits_today",
   "create_page", "create_page_with_content", "archive_page_by_title", "list_pages",
   "list_tasks", "create_task", "complete_task_by_title", "update_task_by_id",
   "get_personal_overview", "list_personal_checkins", "create_personal_plan",
@@ -121,7 +122,7 @@ function isValidTools(value: unknown): value is IncomingTool[] {
     const serializedParameters = candidate.parameters !== null && typeof candidate.parameters === "object" && !Array.isArray(candidate.parameters)
       ? JSON.stringify(candidate.parameters)
       : null;
-    return typeof candidate.name === "string" && ALLOWED_TOOL_NAMES.has(candidate.name) && candidate.name.length <= 120
+    return typeof candidate.name === "string" && candidate.name.length <= 120
       && typeof candidate.description === "string" && candidate.description.length <= MAX_TOOL_DESCRIPTION_CHARS
       && candidate.parameters !== null && typeof candidate.parameters === "object"
       && !Array.isArray(candidate.parameters) && typeof serializedParameters === "string" && serializedParameters.length <= MAX_TOOL_SCHEMA_CHARS;
@@ -178,10 +179,13 @@ Deno.serve(async (req) => {
   } catch {
     return jsonResponse({ error: "Corpo inválido." }, 400);
   }
-  const { messages, tools } = body;
-  if (!isValidMessages(messages) || !isValidTools(tools)) {
+  const { messages } = body;
+  if (!isValidMessages(messages) || !isValidTools(body.tools)) {
     return jsonResponse({ error: "messages é obrigatório." }, 400);
   }
+  // Ferramentas fora da lista conhecida são descartadas (não recusam a conversa): um app mais
+  // novo que esta função continua funcionando, só sem as capacidades que ela ainda não conhece.
+  const tools = body.tools?.filter((tool) => ALLOWED_TOOL_NAMES.has(tool.name));
 
   const { data: secretRows, error: secretsError } = await supabase
     .from("app_secrets")

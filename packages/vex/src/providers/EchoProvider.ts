@@ -25,6 +25,11 @@ export class EchoProvider implements VexProvider {
     const toolNames = new Set(tools.map((t) => t.name));
     const has = (name: string) => toolNames.has(name);
 
+    // Dia
+    if (/(organiz|planej|resum)\w* (o )?meu dia|o que tenho (pra|para) hoje|como est[áa] meu dia/i.test(text) && has("get_day_overview")) {
+      return { kind: "tool_call", toolCall: { name: "get_day_overview", arguments: {} } };
+    }
+
     // Tarefas
     const createTaskMatch = text.match(/^(?:criar|adicionar|nova) tarefa[: ]+(.+)$/i);
     if (createTaskMatch && has("create_task")) {

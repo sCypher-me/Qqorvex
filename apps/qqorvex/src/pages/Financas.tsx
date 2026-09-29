@@ -227,13 +227,13 @@ export function FinancasPage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-line bg-surface p-4 sm:p-5">
+            <section className="@container rounded-xl border border-line bg-surface p-4 sm:p-5">
               <h2 className="text-[14px] font-semibold text-fg">Para onde foi o dinheiro</h2>
               <p className="mb-4 text-xs text-fg-3">Despesas de {formatMonthLong(month).toLowerCase()} por categoria</p>
               {byCategory.length === 0 ? (
                 <EmptyState size="sm" icon={<ChartPieSliceIcon />} title="Sem despesas no mês" description="Quando você registrar gastos, a divisão por categoria aparece aqui." />
               ) : (
-                <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+                <div className="flex flex-col items-center gap-5 @md:flex-row @md:items-start">
                   <DonutChart
                     label="Despesas por categoria"
                     size={148}
