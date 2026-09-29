@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@qqorvex/auth";
-import { Button, ChipTabs, EmptyState, SkeletonCards } from "@qqorvex/ui";
+import { Button, ChipTabs, EmptyState, Input, SkeletonCards } from "@qqorvex/ui";
 import {
   useCreateIdea,
   useCreatePlan,
@@ -13,6 +13,8 @@ import {
   useProjects,
   useUpdatePlanStatus,
   useUpdateProjectStatus,
+  useCheckinHistory,
+  usePomodoroSessions,
   AssetsPanel,
   DailyCheckinForm,
   IdeaCard,
@@ -27,6 +29,7 @@ import {
   UsefulContactsPanel,
   VehiclesPanel,
 } from "@qqorvex/module-vida-pessoal";
+import { completedPomodoroMinutesThisWeek, countCompletedPomodorosToday, localDateKey } from "@qqorvex/module-vida-pessoal";
 import { supabase } from "../app/supabase";
 
 type Bloco = "planejamento" | "bem-estar" | "pratica";
@@ -38,6 +41,24 @@ const BLOCO_OPTIONS: { value: Bloco; label: string }[] = [
   { value: "pratica", label: "Vida Prática" },
 ];
 
+const BLOCO_META: Record<Bloco, { eyebrow: string; title: string; description: string }> = {
+  planejamento: {
+    eyebrow: "Direção pessoal",
+    title: "Planeje sem perder o que importa",
+    description: "Transforme intenções em planos, projetos e ideias que continuam acessíveis quando a rotina apertar.",
+  },
+  "bem-estar": {
+    eyebrow: "Ritual de presença",
+    title: "Cuide do seu ritmo",
+    description: "Um check-in curto para perceber como você está e um foco protegido para fazer a próxima coisa com calma.",
+  },
+  pratica: {
+    eyebrow: "Vida em ordem",
+    title: "Resolva o que sustenta o seu dia",
+    description: "Contatos úteis, veículos, bens, compras e listas reunidos em um espaço prático e fácil de revisar.",
+  },
+};
+
 /**
  * Vida Pessoal — módulo recriado com o usuário em 11/09/2026 (o Xmind original dessa parte foi
  * perdido, ver docs/decisions/vida-pessoal-design.md). Uma rota só, com abas internas pros 3
@@ -48,6 +69,7 @@ export function VidaPessoalPage() {
   const userId = session!.user.id;
   const [bloco, setBloco] = useState<Bloco>("planejamento");
   const [formAberto, setFormAberto] = useState<Coluna | null>(null);
+  const [buscaPlanejamento, setBuscaPlanejamento] = useState("");
 
   const { plans, isLoading: plansLoading } = usePlans(supabase);
   const createPlan = useCreatePlan(supabase, userId);
@@ -64,31 +86,78 @@ export function VidaPessoalPage() {
   const deleteIdea = useDeleteIdea(supabase);
 
   const fecharForm = () => setFormAberto(null);
+  const blocoMeta = BLOCO_META[bloco];
+  const termoPlanejamento = buscaPlanejamento.trim().toLocaleLowerCase("pt-BR");
+  const filtrarPorBusca = <T extends { title: string; description?: string | null }>(items: T[]) =>
+    termoPlanejamento
+      ? items.filter((item) => `${item.title} ${item.description ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoPlanejamento))
+      : items;
+  const visiblePlans = filtrarPorBusca(plans);
+  const visibleProjects = filtrarPorBusca(projects);
+  const visibleIdeas = filtrarPorBusca(ideas);
 
   return (
-    <div className="flex flex-col gap-[18px]">
-      <ChipTabs options={BLOCO_OPTIONS} value={bloco} onChange={setBloco} />
+    <div className="qv-page editorial-module-page flex flex-col gap-6 pb-8">
+      <section className="qv-hero editorial-module-hero" aria-labelledby="personal-page-title">
+        <div className="relative flex flex-wrap items-end justify-between gap-5">
+          <div className="max-w-2xl">
+            <p className="qv-eyebrow text-vex-gold-bright">{blocoMeta.eyebrow}</p>
+            <h1 id="personal-page-title" className="mt-2 font-display text-3xl font-semibold tracking-[-0.03em] text-text-primary sm:text-4xl">Vida pessoal</h1>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-secondary">{blocoMeta.description}</p>
+          </div>
+          <div className="hidden rounded-full border border-border bg-surface-1/50 px-3 py-2 text-xs text-text-secondary sm:block">
+            <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-vex-cyan-bright" aria-hidden="true" />{blocoMeta.title}
+          </div>
+        </div>
+        <div className="relative mt-6 border-t border-border pt-4">
+          <ChipTabs options={BLOCO_OPTIONS} value={bloco} onChange={(next) => { setBloco(next); setFormAberto(null); }} />
+        </div>
+      </section>
 
       {bloco === "planejamento" && (
-        <div className="grid grid-cols-1 lg:grid-cols-[repeat(3,minmax(0,1fr))] gap-5 items-start">
+        <div className="flex flex-col gap-5">
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Resumo do planejamento">
+            {[
+              ["Planos", plans.length, "visões de futuro", "bg-vex-gold-bright"],
+              ["Projetos", projects.length, "frentes em movimento", "bg-vex-cyan-bright"],
+              ["Ideias", ideas.length, "possibilidades guardadas", "bg-[#9584ff]"],
+            ].map(([label, value, hint, color]) => (
+              <div key={label} className="qv-card min-w-0 p-4 sm:p-5">
+                <div className={`mb-4 h-1 w-8 rounded-full ${color}`} />
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-text-muted">{label}</p>
+                <p className="mt-1 font-display text-2xl font-semibold text-text-primary">{value}</p>
+                <p className="mt-1 text-xs text-text-muted">{hint}</p>
+              </div>
+            ))}
+          </section>
+          <div className="max-w-xl">
+            <Input
+              aria-label="Buscar em planos, projetos e ideias"
+              placeholder="Buscar planos, projetos e ideias..."
+              value={buscaPlanejamento}
+              onChange={(event) => setBuscaPlanejamento(event.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
           <PlanningColumn
             title="Planos"
-            count={plans.length}
+            count={visiblePlans.length}
+            totalCount={plans.length}
             isLoading={plansLoading}
-            emptyText="Nenhum plano ainda."
+            emptyText={termoPlanejamento ? "Nenhum plano corresponde à busca." : "Nenhum plano ainda."}
             formOpen={formAberto === "planos"}
             onOpenForm={() => setFormAberto("planos")}
             form={
               <NewPlanForm
-                onCreate={(input) => {
-                  createPlan.mutate(input);
+                onCreate={async (input) => {
+                  await createPlan.mutateAsync(input);
                   fecharForm();
                 }}
                 onCancel={fecharForm}
               />
             }
           >
-            {plans.map((plan) => (
+            {visiblePlans.map((plan) => (
               <PlanCard
                 key={plan.id}
                 client={supabase}
@@ -101,26 +170,28 @@ export function VidaPessoalPage() {
 
           <PlanningColumn
             title="Projetos"
-            count={projects.length}
+            count={visibleProjects.length}
+            totalCount={projects.length}
             isLoading={projectsLoading}
-            emptyText="Nenhum projeto ainda."
+            emptyText={termoPlanejamento ? "Nenhum projeto corresponde à busca." : "Nenhum projeto ainda."}
             formOpen={formAberto === "projetos"}
             onOpenForm={() => setFormAberto("projetos")}
             form={
               <NewProjectForm
-                onCreate={(title) => {
-                  createProject.mutate({ title });
+                onCreate={async (input) => {
+                  await createProject.mutateAsync(input);
                   fecharForm();
                 }}
                 onCancel={fecharForm}
               />
             }
           >
-            {projects.map((project) => (
+            {visibleProjects.map((project) => (
               <ProjectCard
                 key={project.id}
                 client={supabase}
                 project={project}
+                userId={userId}
                 onChangeStatus={(status) => updateProjectStatus.mutate({ projectId: project.id, status })}
                 onDelete={() => deleteProject.mutate(project.id)}
               />
@@ -129,9 +200,10 @@ export function VidaPessoalPage() {
 
           <PlanningColumn
             title="Ideias"
-            count={ideas.length}
+            count={visibleIdeas.length}
+            totalCount={ideas.length}
             isLoading={ideasLoading}
-            emptyText="Nenhuma ideia capturada ainda."
+            emptyText={termoPlanejamento ? "Nenhuma ideia corresponde à busca." : "Nenhuma ideia capturada ainda."}
             formOpen={formAberto === "ideias"}
             onOpenForm={() => setFormAberto("ideias")}
             form={
@@ -144,27 +216,37 @@ export function VidaPessoalPage() {
               />
             }
           >
-            {ideas.map((idea) => (
+            {visibleIdeas.map((idea) => (
               <IdeaCard key={idea.id} idea={idea} onDelete={() => deleteIdea.mutate(idea.id)} />
             ))}
           </PlanningColumn>
+          </div>
         </div>
       )}
 
       {bloco === "bem-estar" && (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-          <DailyCheckinForm client={supabase} userId={userId} />
-          <PomodoroTimer client={supabase} userId={userId} />
+        <div className="flex flex-col gap-5">
+          <WellbeingOverview client={supabase} userId={userId} />
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <DailyCheckinForm client={supabase} userId={userId} />
+            <PomodoroTimer client={supabase} userId={userId} />
+          </div>
         </div>
       )}
 
       {bloco === "pratica" && (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 items-start">
+        <div className="flex flex-col gap-5">
+          <section className="qv-card flex flex-wrap items-center justify-between gap-4 p-5" aria-label="Resumo da vida prática">
+            <div><p className="qv-eyebrow text-vex-cyan-bright">Painel prático</p><p className="mt-1 font-display text-xl font-semibold text-text-primary">Tudo que mantém a vida funcionando</p></div>
+            <p className="max-w-md text-sm leading-relaxed text-text-secondary">Use cada painel como uma pequena central: consulte, atualize e volte para a rotina.</p>
+          </section>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] items-start gap-4">
           <UsefulContactsPanel client={supabase} userId={userId} />
           <VehiclesPanel client={supabase} userId={userId} />
           <AssetsPanel client={supabase} userId={userId} />
           <ImportantPurchasesPanel client={supabase} userId={userId} />
           <ShoppingListPanel client={supabase} userId={userId} />
+          </div>
         </div>
       )}
     </div>
@@ -174,6 +256,7 @@ export function VidaPessoalPage() {
 function PlanningColumn({
   title,
   count,
+  totalCount,
   isLoading,
   emptyText,
   formOpen,
@@ -183,6 +266,7 @@ function PlanningColumn({
 }: {
   title: string;
   count: number;
+  totalCount: number;
   isLoading: boolean;
   emptyText: string;
   formOpen: boolean;
@@ -194,7 +278,7 @@ function PlanningColumn({
     <section className="flex flex-col gap-3 min-w-0">
       <div className="flex items-center gap-2.5">
         <h2 className="font-display text-[17px] font-semibold text-text-primary">{title}</h2>
-        {!isLoading && <span className="font-mono text-xs text-text-muted">{count}</span>}
+        {!isLoading && <span className="font-mono text-xs text-text-muted">{count}{count !== totalCount ? ` / ${totalCount}` : ""}</span>}
       </div>
 
       {isLoading ? (
@@ -212,6 +296,41 @@ function PlanningColumn({
           Adicionar
         </Button>
       )}
+    </section>
+  );
+}
+
+function WellbeingOverview({ client, userId }: { client: typeof supabase; userId: string }) {
+  const now = new Date();
+  const today = localDateKey(now);
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  const firstDay = localDateKey(sevenDaysAgo);
+  const { checkins, isLoading: checkinsLoading, error: checkinsError } = useCheckinHistory(client, userId);
+  const { sessions, isLoading: sessionsLoading, error: sessionsError } = usePomodoroSessions(client);
+  const checkinToday = checkins.some((checkin) => checkin.checkin_date === today);
+  const checkinDaysThisWeek = new Set(
+    checkins.filter((checkin) => checkin.checkin_date >= firstDay && checkin.checkin_date <= today).map((checkin) => checkin.checkin_date),
+  ).size;
+  const focusSessionsToday = countCompletedPomodorosToday(sessions, now);
+  const focusMinutesThisWeek = completedPomodoroMinutesThisWeek(sessions, now);
+
+  return (
+    <section className="grid gap-3 sm:grid-cols-2" aria-label="Resumo do bem-estar">
+      <div className="qv-card flex min-w-0 items-center gap-4 p-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-vex-cyan-dark bg-chip-cyan text-vex-cyan-bright" aria-hidden="true">◌</span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-text-primary">{checkinsLoading ? "Check-in" : checkinsError ? "Check-in indisponível" : checkinToday ? "Check-in feito hoje" : "Check-in ainda aberto"}</p>
+          <p className="mt-1 text-xs text-text-muted">{checkinsLoading ? "Carregando seu resumo…" : checkinsError ? "Tente novamente dentro do painel." : `${checkinDaysThisWeek} de 7 dias registrados nos últimos 7 dias`}</p>
+        </div>
+      </div>
+      <div className="qv-card flex min-w-0 items-center gap-4 p-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-vex-gold-muted bg-chip-gold text-vex-gold-bright" aria-hidden="true">◷</span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-text-primary">{sessionsLoading ? "Seu foco" : sessionsError ? "Foco indisponível" : `${focusSessionsToday} ${focusSessionsToday === 1 ? "sessão concluída" : "sessões concluídas"} hoje`}</p>
+          <p className="mt-1 text-xs text-text-muted">{sessionsLoading ? "Carregando seu resumo…" : sessionsError ? "Tente novamente dentro do painel." : `${focusMinutesThisWeek} min de foco nesta semana`}</p>
+        </div>
+      </div>
     </section>
   );
 }

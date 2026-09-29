@@ -1,7 +1,4 @@
-/**
- * Paleta oficial do Qqorvex — Design System v1.0 "Balanced Vex". Mesmos valores de `tokens.css`.
- * Usar estes tokens (via Tailwind classes ou aqui) em vez de cores literais nos módulos.
- */
+/** Primitive palette aliases. Semantic/component usage is defined in tokens.css. */
 export const colors = {
   background: "#090B0E",
   surface1: "#101318",
@@ -10,9 +7,10 @@ export const colors = {
   border: "#2A3039",
 
   textPrimary: "#F1F3F5",
-  textSecondary: "#A5ABB4",
-  textSecondaryWarm: "#A5ABB4",
-  textMuted: "#8A8F97",
+  textSecondary: "#D9DDE1",
+  textSecondaryWarm: "#D9DDE1",
+  textMuted: "#A5ABB4",
+  textDisabled: "#707780",
 
   brandGold: "#B88A54",
   goldBright: "#D2A66F",
@@ -22,11 +20,11 @@ export const colors = {
   cyanDark: "#246C7B",
 
   cyanMuted: "#246C7B",
-  warmMuted: "#8A8F97",
+  warmMuted: "#A5ABB4",
 
   success: "#32C48D",
   error: "#F05D6C",
-  critical: "#DF5F70",
+  critical: "#D94155",
   warning: "#E7A84B",
   info: "#72D8EB",
 } as const;
@@ -35,7 +33,7 @@ export const colors = {
 export const categoryColors = [
   "#43B9D2",
   "#6FAF91",
-  "#D2A66F",
+  "#9A7652",
   "#8A7FB5",
   "#5E86C8",
   "#C98C45",

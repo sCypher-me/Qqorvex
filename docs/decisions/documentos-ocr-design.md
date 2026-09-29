@@ -31,9 +31,11 @@ Cérebro.
   o botão vira "Ver texto extraído" (mostra/esconde um painel com "Copiar texto"); rodar de novo
   exigiria apagar o campo manualmente hoje — decisão consciente de manter simples na v1, mesmo
   padrão de "YAGNI" já aplicado a outras features desta sessão.
-- **Sem integração com busca.** Documentos ainda não tem uma caixa de busca por texto — plugar
-  `extracted_text` a um filtro é adiável até essa capacidade existir; o valor imediato é permitir
-  ler/copiar o texto de uma foto de recibo/nota sem abrir a imagem.
+- **Busca de conteúdo local.** A busca da biblioteca inclui `extracted_text` junto ao nome e tipo,
+  usando apenas os documentos já carregados para a conta autenticada. Não há índice global nem
+  envio do conteúdo OCR para outro serviço.
+- **Arquivo sem nova tabela.** O estado `documents.is_archived` separa documentos ativos dos
+  arquivados. Arquivar não apaga nem move o objeto privado; restaurar apenas reativa o registro.
 
 ## Arquivos
 
@@ -44,7 +46,8 @@ Cérebro.
 - `components/DocumentCard.tsx` — botão condicional "Extrair texto" / "Ver texto extraído" (com
   `%` de progresso durante a extração) e painel de texto com "Copiar texto".
 - `apps/qqorvex/src/pages/Documentos.tsx` — obtém a signed URL da imagem
-  (`getDownloadUrl`, já existente) e chama `useExtractText`.
+  (`getDownloadUrl`, já existente) e chama `useExtractText`; filtra e ordena resultados localmente,
+  pesquisa texto OCR e oferece a visão de arquivados.
 - Migration `documents_add_extracted_text` — `alter table documents add column extracted_text text;`.
 
 ## Testes

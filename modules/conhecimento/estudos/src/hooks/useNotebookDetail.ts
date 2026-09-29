@@ -6,7 +6,9 @@ import {
   createFlashcard,
   createQuizAttempt,
   createSummary,
+  createStudySession,
   createTopic,
+  updateSummary,
   listAssessments,
   listErrorsDoubts,
   listFlashcards,
@@ -14,11 +16,12 @@ import {
   listQuizQuestions,
   listQuizzes,
   listSummaries,
+  listStudySessions,
   listTopics,
   resolveErrorDoubt,
   reviewFlashcard,
 } from "../repository";
-import type { Flashcard, FlashcardReviewGrade, NewFlashcardInput } from "../types";
+import type { Flashcard, FlashcardReviewGrade, NewFlashcardInput, NewStudySessionInput } from "../types";
 
 const topicsKey = (notebookId: string) => ["topics", notebookId] as const;
 const summariesKey = (notebookId: string) => ["summaries", notebookId] as const;
@@ -28,6 +31,7 @@ const assessmentsKey = (notebookId: string) => ["assessments", notebookId] as co
 const quizzesKey = (notebookId: string) => ["quizzes", notebookId] as const;
 const quizQuestionsKey = (quizId: string) => ["quiz-questions", quizId] as const;
 const quizAttemptsKey = (quizId: string) => ["quiz-attempts", quizId] as const;
+const studySessionsKey = (notebookId: string) => ["study-sessions", notebookId] as const;
 
 export function useAssessments(client: SupabaseClient<Database>, notebookId: string) {
   const query = useQuery({ queryKey: assessmentsKey(notebookId), queryFn: () => listAssessments(client, notebookId) });
@@ -39,6 +43,19 @@ export function useCreateAssessment(client: SupabaseClient<Database>, notebookId
   return useMutation({
     mutationFn: (input: { name: string; assessmentDate?: string }) => createAssessment(client, notebookId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: assessmentsKey(notebookId) }),
+  });
+}
+
+export function useStudySessions(client: SupabaseClient<Database>, notebookId: string) {
+  const query = useQuery({ queryKey: studySessionsKey(notebookId), queryFn: () => listStudySessions(client, notebookId) });
+  return { studySessions: query.data ?? [], isLoading: query.isLoading };
+}
+
+export function useCreateStudySession(client: SupabaseClient<Database>, notebookId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewStudySessionInput) => createStudySession(client, notebookId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studySessionsKey(notebookId) }),
   });
 }
 
@@ -66,6 +83,15 @@ export function useCreateSummary(client: SupabaseClient<Database>, notebookId: s
   return useMutation({
     mutationFn: (input: { title: string; content: string; topicId?: string }) =>
       createSummary(client, notebookId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: summariesKey(notebookId) }),
+  });
+}
+
+export function useUpdateSummary(client: SupabaseClient<Database>, notebookId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ summaryId, input }: { summaryId: string; input: { title: string; content: string; topicId?: string | null } }) =>
+      updateSummary(client, summaryId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: summariesKey(notebookId) }),
   });
 }

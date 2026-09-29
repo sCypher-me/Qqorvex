@@ -22,7 +22,7 @@ export function GoogleCalendarSection({
   const { connection, isLoading } = useGoogleCalendarConnection(client);
   const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
   const connect = useConnectGoogleCalendar(client, userId, redirectUri, googleClientId ?? "");
-  const disconnect = useDisconnectGoogleCalendar(client, userId);
+  const disconnect = useDisconnectGoogleCalendar(client);
 
   // `google-oauth-callback` redireciona de volta pra cá com `?google=connected|error` — não dá
   // pra saber o resultado de outro jeito, já que o callback roda fora de uma sessão de usuário.
@@ -55,6 +55,7 @@ export function GoogleCalendarSection({
         <Button type="button" variant="secondary" size="sm" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
           Desconectar
         </Button>
+        {disconnect.error && <Notice tone="error" className="w-full">{disconnect.error instanceof Error ? disconnect.error.message : "Não foi possível revogar a conexão."}</Notice>}
       </div>
     );
   }

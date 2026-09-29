@@ -43,7 +43,7 @@ export function DashboardCards({ balances, accountCount }: { balances: Balances;
 
 function SummaryCard({ label, value, color, meta }: { label: string; value: string; color: string; meta: string }) {
   return (
-    <div className="qv-card p-[18px] flex flex-col gap-2 shadow-[0_1px_2px_rgba(0,0,0,.5),0_12px_30px_rgba(0,0,0,.28)]">
+    <div className="qv-card p-[18px] flex flex-col gap-2">
       <span className="qv-eyebrow font-normal">{label}</span>
       <span className="font-mono text-2xl font-semibold whitespace-nowrap tabular-nums" style={{ color }}>
         {value}

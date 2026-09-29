@@ -7,4 +7,5 @@ export * from "./components/QuickCapture";
 export * from "./components/KanbanBoard";
 export * from "./components/TaskCard";
 export * from "./components/TaskListView";
+export * from "./components/TaskDetailsDialog";
 export * from "./components/RecurringTasksPanel";

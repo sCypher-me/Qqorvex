@@ -8,12 +8,18 @@ export function useIdentities(client: SupabaseClient<Database>) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setIdentities(await listIdentities(client));
-    setIsLoading(false);
+    setIsLoading(true);
+    try {
+      setIdentities(await listIdentities(client));
+    } catch {
+      // Keep the last valid list when the Auth API fails unexpectedly.
+    } finally {
+      setIsLoading(false);
+    }
   }, [client]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const connect = useCallback((provider: OAuthProviderId) => linkIdentity(client, provider), [client]);

@@ -8,6 +8,7 @@ import {
   deletePlan,
   deleteProject,
   getCheckinForDate,
+  listCheckins,
   linkGoalToPlan,
   linkTaskToProject,
   listIdeas,
@@ -153,25 +154,35 @@ export function useDeleteIdea(client: SupabaseClient<Database>) {
   });
 }
 
-const checkinKey = (date: string) => ["daily-checkin", date] as const;
+const checkinKey = (userId: string, date: string) => ["daily-checkin", userId, date] as const;
+const CHECKIN_HISTORY_KEY = ["daily-checkins"] as const;
+const checkinHistoryKey = (userId: string, limit: number) => [...CHECKIN_HISTORY_KEY, userId, limit] as const;
 const POMODORO_SESSIONS_KEY = ["pomodoro-sessions"] as const;
 
-export function useTodayCheckin(client: SupabaseClient<Database>, date: string) {
-  const query = useQuery({ queryKey: checkinKey(date), queryFn: () => getCheckinForDate(client, date) });
-  return { checkin: query.data ?? null, isLoading: query.isLoading };
+export function useTodayCheckin(client: SupabaseClient<Database>, userId: string, date: string) {
+  const query = useQuery({ queryKey: checkinKey(userId, date), queryFn: () => getCheckinForDate(client, date), enabled: Boolean(userId) });
+  return { checkin: query.data ?? null, isLoading: query.isLoading, error: query.error, refetch: query.refetch };
+}
+
+export function useCheckinHistory(client: SupabaseClient<Database>, userId: string, limit = 30, enabled = true) {
+  const query = useQuery({ queryKey: checkinHistoryKey(userId, limit), queryFn: () => listCheckins(client, limit), enabled: enabled && Boolean(userId) });
+  return { checkins: query.data ?? [], isLoading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useUpsertCheckin(client: SupabaseClient<Database>, userId: string, date: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CheckinInput) => upsertCheckin(client, userId, date, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: checkinKey(date) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: checkinKey(userId, date) });
+      queryClient.invalidateQueries({ queryKey: checkinHistoryKey(userId, 30) });
+    },
   });
 }
 
 export function usePomodoroSessions(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: POMODORO_SESSIONS_KEY, queryFn: () => listPomodoroSessions(client) });
-  return { sessions: query.data ?? [], isLoading: query.isLoading };
+  return { sessions: query.data ?? [], isLoading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useLogPomodoroSession(client: SupabaseClient<Database>, userId: string) {

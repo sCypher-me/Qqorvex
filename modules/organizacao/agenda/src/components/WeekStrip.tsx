@@ -56,7 +56,7 @@ export function WeekStrip({
               aria-pressed={selected}
               className={`flex flex-col items-center gap-1.5 py-3 rounded-[14px] border cursor-pointer transition-colors ${
                 selected
-                  ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark text-vex-cyan-bright"
+                  ? "bg-chip-cyan border-vex-cyan-dark text-vex-cyan-bright"
                   : "bg-vex-graphite border-border text-text-secondary hover:border-text-muted"
               }`}
             >

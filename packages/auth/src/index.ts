@@ -8,6 +8,8 @@ export * from "./profile";
 export * from "./useProfile";
 export * from "./sessions";
 export * from "./useSessions";
+export * from "./securityHistory";
+export * from "./useSecurityLoginHistory";
 export * from "./pin";
 export * from "./usePin";
 export * from "./authErrors";

@@ -9,10 +9,27 @@ import type { ChatMessage, ToolDefinition, VexProvider, VexProviderResponse } fr
  */
 export class GeminiProvider implements VexProvider {
   readonly name = "gemini";
+  private readonly inFlight = new Map<string, Promise<VexProviderResponse>>();
 
   constructor(private readonly client: SupabaseClient<Database>) {}
 
   async chat({ messages, tools }: { messages: ChatMessage[]; tools: ToolDefinition[] }): Promise<VexProviderResponse> {
+    // Evita duas chamadas idênticas quando Enter, re-render ou reconexão disparam o mesmo turno.
+    // Não há cache de resposta concluída: uma resposta antiga nunca deve repetir uma ação.
+    const key = JSON.stringify({ messages, tools: tools.map(({ name, description, parameters }) => ({ name, description, parameters })) });
+    const existing = this.inFlight.get(key);
+    if (existing) return existing;
+
+    const request = this.request(messages, tools);
+    this.inFlight.set(key, request);
+    try {
+      return await request;
+    } finally {
+      this.inFlight.delete(key);
+    }
+  }
+
+  private async request(messages: ChatMessage[], tools: ToolDefinition[]): Promise<VexProviderResponse> {
     const { data, error } = await this.client.functions.invoke("vex-chat", {
       body: {
         messages: messages.map((m) => ({ role: m.role, content: m.content, toolName: m.toolName })),
@@ -34,9 +51,11 @@ export class GeminiProvider implements VexProvider {
       throw new Error(detailedMessage ?? error.message);
     }
 
-    if (data.kind === "tool_call") {
-      return { kind: "tool_call", toolCall: data.toolCall };
+    if (!data || typeof data !== "object") throw new Error("Resposta inválida do serviço de IA.");
+    const response = data as { kind?: unknown; content?: unknown; toolCall?: { name?: unknown; arguments?: unknown } };
+    if (response.kind === "tool_call" && response.toolCall && typeof response.toolCall.name === "string" && response.toolCall.arguments && typeof response.toolCall.arguments === "object") {
+      return { kind: "tool_call", toolCall: { name: response.toolCall.name, arguments: response.toolCall.arguments as Record<string, unknown> } };
     }
-    return { kind: "message", content: data.content ?? "" };
+    return { kind: "message", content: typeof response.content === "string" ? response.content : "" };
   }
 }

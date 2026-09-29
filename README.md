@@ -102,6 +102,8 @@ Sem o Ollama rodando, a Vex **não trava**: o `ResilientProvider` cai automatica
 
 Segredos de servidor — chave privada VAPID, segredo do cron, credenciais do Zoom, client secret do Google — **nunca** ficam no cliente: vivem na tabela `public.app_secrets`, que só a `service_role` das Edge Functions consegue ler.
 
+Para publicar a Vex com Gemini/Tavily e fazê-la funcionar para usuários online, siga o tutorial [Vex online — configuração e publicação](docs/vex-online-setup.md). As chaves do Gemini e da Tavily ficam somente no `app_secrets` do Supabase; nunca use `VITE_GEMINI_API_KEY` ou `VITE_TAVILY_API_KEY`.
+
 ### Scripts
 
 | Comando | O que faz |

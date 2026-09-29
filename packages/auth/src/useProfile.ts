@@ -5,15 +5,24 @@ import { getProfile, updateProfile, type Profile, type ProfileInput } from "./pr
 export function useProfile(client: SupabaseClient<Database>, userId: string) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
 
   const refresh = useCallback(async () => {
-    const result = await getProfile(client, userId);
-    setProfile(result);
-    setIsLoading(false);
+    setIsLoading(true);
+    try {
+      setError(null);
+      const result = await getProfile(client, userId);
+      setProfile(result);
+    } catch (caught) {
+      setProfile(null);
+      setError(caught);
+    } finally {
+      setIsLoading(false);
+    }
   }, [client, userId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const save = useCallback(
@@ -25,5 +34,5 @@ export function useProfile(client: SupabaseClient<Database>, userId: string) {
     [client, userId],
   );
 
-  return { profile, isLoading, refresh, save };
+  return { profile, isLoading, error, refresh, save };
 }

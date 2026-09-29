@@ -2,8 +2,10 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import type { HojeItem } from "@qqorvex/module-hoje";
 import { listGoals, listHabits } from "./repository";
 import type { Habit, HabitFrequencyConfig } from "./types";
+import { localDateKey, shiftDateKey } from "./service";
 
-const WEEKDAY_CODES = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+const WEEKDAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const LEGACY_WEEKDAY_CODES = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
 
 /**
  * "Hábitos previstos para hoje" só é bem definido para frequências diárias ou de dias
@@ -15,8 +17,9 @@ function isHabitDueToday(habit: Habit, today: Date): boolean {
   if (habit.frequency_type === "diaria") return true;
   if (habit.frequency_type === "dias_especificos") {
     const config = habit.frequency_config as HabitFrequencyConfig;
-    const todayCode = WEEKDAY_CODES[today.getDay()] ?? "dom";
-    return (config.days ?? []).includes(todayCode);
+    const todayCode = WEEKDAY_CODES[today.getDay()] ?? "sun";
+    const legacyTodayCode = LEGACY_WEEKDAY_CODES[today.getDay()] ?? "dom";
+    return (config.days ?? []).some((day) => day === todayCode || day === legacyTodayCode);
   }
   return false;
 }
@@ -29,10 +32,8 @@ function isHabitDueToday(habit: Habit, today: Date): boolean {
 export function createGoalsHabitsHojeProvider(client: SupabaseClient<Database>) {
   return async function goalsHabitsHojeProvider(): Promise<HojeItem[]> {
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    const soonThreshold = new Date(today);
-    soonThreshold.setDate(soonThreshold.getDate() + 7);
-    const soonStr = soonThreshold.toISOString().slice(0, 10);
+    const todayStr = localDateKey(today);
+    const soonStr = shiftDateKey(todayStr, 7);
 
     const [goals, habits] = await Promise.all([listGoals(client), listHabits(client)]);
 

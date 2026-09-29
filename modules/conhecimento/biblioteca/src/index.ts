@@ -6,3 +6,5 @@ export * from "./hoje-provider";
 export * from "./hooks/useLibrary";
 export * from "./components/NewItemForm";
 export * from "./components/GalleryGrid";
+export * from "./components/ItemProgressForm";
+export * from "./components/ItemReviewForm";

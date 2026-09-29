@@ -4,8 +4,8 @@ export type CardVariant = "default" | "vex" | "milestone" | "tile" | "well" | "c
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /**
-   * default = vidro grafite (card padrão) · vex = insight/presença da Vex (cyan) · milestone =
-   * marco/gamificação (ouro, canto cortado) · tile = card compacto sólido (kanban, badges) ·
+   * default = painel grafite fosco · vex = contexto abstrato de assistência · milestone =
+   * marco/meta em dourado discreto · tile = card compacto sólido (kanban, badges) ·
    * well = área rebaixada dentro de um card · column = coluna de kanban.
    */
   variant?: CardVariant;
@@ -23,8 +23,8 @@ const variantClasses: Record<CardVariant, string> = {
 };
 
 /**
- * Card do Design System v1.0. Nunca usa borda colorida à esquerda como destaque — ênfase vem da
- * variante (vex/milestone). `forwardRef` porque alguns usos (ex.: `TaskCard` com `@dnd-kit/core`)
+ * Card fosco do Design System. A ênfase é semântica e contida, nunca glow permanente.
+ * `forwardRef` porque alguns usos (ex.: `TaskCard` com `@dnd-kit/core`)
  * precisam do nó DOM real por baixo (`setNodeRef`), não só de props.
  */
 export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(

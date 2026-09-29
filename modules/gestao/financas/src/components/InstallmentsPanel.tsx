@@ -3,6 +3,8 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useCreateInstallmentPurchase, useInstallments } from "../hooks/useFinancas";
 import { formatBRL, parseBRLInput } from "./TransactionList";
+import { financeActionError } from "../financeErrors";
+import { formatLocalDate } from "../service";
 
 function formatIsoDate(iso: string): string {
   return iso.split("-").reverse().join("/");
@@ -15,23 +17,32 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [installmentCount, setInstallmentCount] = useState("2");
-  const [firstInstallmentDate, setFirstInstallmentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [firstInstallmentDate, setFirstInstallmentDate] = useState(() => formatLocalDate(new Date()));
+  const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
     const parsedTotal = parseBRLInput(totalAmount);
     const parsedCount = Number(installmentCount);
-    if (!trimmed || !(parsedTotal > 0) || !(parsedCount > 0)) return;
-    createInstallmentPurchase.mutate({
-      name: trimmed,
-      totalAmount: parsedTotal,
-      installmentCount: parsedCount,
-      firstInstallmentDate,
-    });
-    setName("");
-    setTotalAmount("");
-    setInstallmentCount("2");
+    if (!trimmed || !(parsedTotal > 0) || !Number.isInteger(parsedCount) || parsedCount < 2 || parsedCount > 120) {
+      setError("Informe o nome, o valor total e entre 2 e 120 parcelas.");
+      return;
+    }
+    setError("");
+    try {
+      await createInstallmentPurchase.mutateAsync({
+        name: trimmed,
+        totalAmount: parsedTotal,
+        installmentCount: parsedCount,
+        firstInstallmentDate,
+      });
+      setName("");
+      setTotalAmount("");
+      setInstallmentCount("2");
+    } catch (saveError) {
+      setError(financeActionError(saveError, "Não foi possível criar as parcelas. Seus dados continuam preenchidos."));
+    }
   }
 
   return (
@@ -66,6 +77,8 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da compra"
           aria-label="Nome da compra"
+          maxLength={120}
+          required
           className="qv-field flex-[2_1_160px] py-2"
         />
         <input
@@ -74,6 +87,7 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
           placeholder="Valor total R$"
           aria-label="Valor total"
           inputMode="decimal"
+          required
           className="qv-field flex-[0_1_140px] py-2 font-mono text-[13px]"
         />
         <input
@@ -82,7 +96,8 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
           placeholder="Nº parcelas"
           aria-label="Número de parcelas"
           type="number"
-          min="1"
+          min="2"
+          max="120"
           className="qv-field flex-[0_1_100px] py-2 font-mono text-[13px]"
         />
         <input
@@ -90,12 +105,14 @@ export function InstallmentsPanel({ client, userId }: { client: SupabaseClient<D
           value={firstInstallmentDate}
           onChange={(e) => setFirstInstallmentDate(e.target.value)}
           aria-label="Data da primeira parcela"
+          required
           className="qv-field flex-[0_1_160px] py-2 font-mono text-[13px]"
         />
         <Button type="submit" variant="primary" size="sm" disabled={createInstallmentPurchase.isPending}>
-          Parcelar
+          {createInstallmentPurchase.isPending ? "Criando…" : "Parcelar"}
         </Button>
       </form>
+      {error && <p role="alert" className="px-[18px] pb-3 text-xs text-error">{error}</p>}
     </div>
   );
 }

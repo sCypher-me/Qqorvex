@@ -1,126 +1,71 @@
 import { useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
 import { createPortal } from "react-dom";
-import type { SidebarSection } from "@qqorvex/ui";
+import { NavLink } from "react-router-dom";
+import { ChatTeardropTextIcon, CheckSquareIcon, HouseIcon, RowsIcon, XIcon } from "@phosphor-icons/react";
+import { NavIcon, iconForRoute, type SidebarSection } from "@qqorvex/ui";
 
-/** Os 4 destinos de uso diário — o resto mora atrás de "Mais". Vex entra aqui de propósito: é o item que mais pede acesso rápido em qualquer tela. */
-const PRIMARY_ITEMS = [
-  { label: "Hoje", to: "/" },
-  { label: "Tarefas", to: "/tarefas" },
-  { label: "Agenda", to: "/agenda" },
-];
-
-/**
- * Barra inferior fixa (só `<lg`, ver `ProtectedLayout.tsx`) — padrão de app nativo Android/iOS,
- * não de site responsivo, já que o Qqorvex agora também vira APK de verdade. "Mais" abre a mesma
- * lista completa de seções da Sidebar num painel deslizando de baixo pra cima.
- */
-export function MobileBottomNav({ onOpenVex, onOpenMore }: { onOpenVex: () => void; onOpenMore: () => void }) {
+export function MobileBottomNav({
+  onOpenVex,
+  onOpenMore,
+  vexActive,
+  moreOpen,
+}: {
+  onOpenVex: () => void;
+  onOpenMore: () => void;
+  vexActive: boolean;
+  moreOpen: boolean;
+}) {
   return (
-    <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-30 flex items-stretch border-t border-[rgba(50,57,68,.85)] bg-[linear-gradient(180deg,rgba(14,17,22,.94),rgba(9,11,14,.98))] backdrop-blur-[20px] pb-[env(safe-area-inset-bottom)]"
-      aria-label="Navegação principal"
-    >
-      {PRIMARY_ITEMS.map((item) => (
-        <NavLink key={item.to} to={item.to} end className="flex-1 min-w-0">
-          {({ isActive }) => (
-            <span
-              className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors duration-150 ${
-                isActive ? "text-vex-cyan-bright" : "text-text-secondary"
-              }`}
-            >
-              <span className={`w-5 h-[3px] rounded-full ${isActive ? "bg-vex-cyan-bright shadow-[0_0_10px_rgba(114,216,235,.6)]" : "bg-transparent"}`} />
-              <span className="truncate max-w-full px-1">{item.label}</span>
-            </span>
-          )}
-        </NavLink>
-      ))}
-      <button type="button" onClick={onOpenVex} className="flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-vex-cyan-bright cursor-pointer">
-        <span className="w-5 h-[3px] rounded-full bg-transparent" />
-        <span className="truncate max-w-full px-1">Vex</span>
-      </button>
-      <button type="button" onClick={onOpenMore} className="flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-text-secondary cursor-pointer">
-        <span className="w-5 h-[3px] rounded-full bg-transparent" />
-        <span className="truncate max-w-full px-1">Mais</span>
-      </button>
+    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] desktop:hidden" aria-label="Navegação principal">
+      <NavLink to="/" end className={({ isActive }) => `flex min-h-[68px] flex-col items-center justify-center gap-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary ${isActive ? "text-brand-primary" : "text-text-muted"}`}><HouseIcon size={22} aria-hidden="true" />Hoje</NavLink>
+      <NavLink to="/tarefas" className={({ isActive }) => `flex min-h-[68px] flex-col items-center justify-center gap-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary ${isActive ? "text-brand-primary" : "text-text-muted"}`}><CheckSquareIcon size={22} aria-hidden="true" />Tarefas</NavLink>
+      <button type="button" onClick={onOpenVex} aria-label={vexActive ? "Conversa com a Vex aberta" : "Falar com a Vex"} aria-pressed={vexActive} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary ${vexActive ? "text-brand-primary" : "text-text-muted"}`}><ChatTeardropTextIcon size={22} aria-hidden="true" />Vex</button>
+      <button type="button" onClick={onOpenMore} aria-label="Explorar todas as áreas" aria-expanded={moreOpen} aria-controls="mobile-nav-panel" className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary ${moreOpen ? "text-brand-primary" : "text-text-muted"}`}><RowsIcon size={22} aria-hidden="true" />Mais</button>
     </nav>
   );
 }
 
-/**
- * Painel "Mais" — a mesma lista de seções da Sidebar, deslizando de baixo pra cima. Fecha ao
- * navegar (cada link chama `onClose`) ou ao tocar no fundo escurecido.
- */
-const SHEET_FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function MoreSheet({ sections, isOpen, onClose }: { sections: SidebarSection[]; isOpen: boolean; onClose: () => void }) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
-
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    const root = document.getElementById("root");
+    const wasInert = root?.hasAttribute("inert") ?? false;
+    root?.setAttribute("inert", "");
     function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-        return;
-      }
+      if (event.key === "Escape") { onCloseRef.current(); return; }
       if (event.key !== "Tab" || !sheetRef.current) return;
-      const focusable = Array.from(sheetRef.current.querySelectorAll<HTMLElement>(SHEET_FOCUSABLE_SELECTOR));
+      const focusable = Array.from(sheetRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     }
-
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    sheetRef.current?.querySelector<HTMLElement>(SHEET_FOCUSABLE_SELECTOR)?.focus();
-
+    sheetRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
     document.addEventListener("keydown", handleKey);
     return () => {
       document.removeEventListener("keydown", handleKey);
+      if (!wasInert) root?.removeAttribute("inert");
       previouslyFocused.current?.focus();
+      previouslyFocused.current = null;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
-
   return createPortal(
-    <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end" role="dialog" aria-modal="true" aria-label="Mais opções">
-      <div className="qv-backdrop absolute inset-0" onClick={onClose} />
-      <div
-        ref={sheetRef}
-        className="relative bg-[linear-gradient(180deg,rgba(34,40,49,.98),rgba(19,23,28,.99))] border-t border-[rgba(58,66,78,.9)] rounded-t-[20px] max-h-[80vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+16px)] animate-overlay-in"
-      >
-        <div className="w-9 h-1 rounded-full bg-vex-border mx-auto mt-3 mb-1" />
-        <div className="flex flex-col gap-4 p-4">
-          {sections.map((section) => (
-            <div key={section.title} className="flex flex-col gap-[3px]">
-              <span className="text-[11px] font-semibold tracking-[0.1em] uppercase text-text-muted px-2 py-1.5">{section.title}</span>
-              {section.items.map((item) => (
-                <NavLink key={item.to} to={item.to} end={!item.matchChildren} onClick={onClose}>
-                  {({ isActive }) => (
-                    <span
-                      className={`flex items-center gap-[11px] w-full rounded-[11px] p-3 text-sm font-medium ${
-                        isActive
-                          ? "text-vex-cyan-bright bg-[linear-gradient(90deg,rgba(67,185,210,.16),rgba(67,185,210,.04))]"
-                          : "text-text-secondary"
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                  )}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </div>
+    <div className="fixed inset-0 z-40 flex flex-col justify-end desktop:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title">
+      <button type="button" className="absolute inset-0 border-0 bg-black/60" onClick={onClose} aria-label="Fechar menu" />
+      <div id="mobile-nav-panel" ref={sheetRef} className="relative max-h-[88dvh] overflow-y-auto rounded-t-[20px] border-t border-border bg-surface-2 px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-4">
+        <div className="sticky top-0 z-10 -mx-5 mb-2 flex items-center justify-between border-b border-border bg-surface-2 px-5 py-3"><div><p className="m-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">Navegação</p><h2 id="mobile-nav-title" className="m-0 mt-1 text-[20px] font-bold">Todas as áreas</h2></div><button type="button" onClick={onClose} aria-label="Fechar menu" className="grid h-10 w-10 place-items-center rounded-[10px] border border-border text-text-secondary transition-colors hover:bg-chip-neutral hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"><XIcon size={18} /></button></div>
+        {sections.map((section) => <div key={section.title} className="border-t border-border py-3"><h3 className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-text-muted">{section.title}</h3>{section.items.map((item) => <NavLink key={item.to} to={item.to} end={!item.matchChildren} onClick={onClose} className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-[10px] px-3 text-[14px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${isActive ? "bg-chip-cyan font-semibold text-brand-primary" : "text-text-secondary hover:bg-chip-neutral hover:text-text-primary"}`}><NavIcon kind={iconForRoute(item.to)} />{item.label}</NavLink>)}</div>)}
       </div>
     </div>,
     document.body,

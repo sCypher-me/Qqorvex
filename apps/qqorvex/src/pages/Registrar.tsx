@@ -9,6 +9,7 @@ import { PhoneField } from "../components/PhoneField";
 import { OAuthButtons } from "../components/OAuthButtons";
 import { VerifyEmailNotice } from "../components/VerifyEmailNotice";
 import { StatusIcon } from "../components/StatusIcon";
+import { TurnstileCaptcha } from "../components/TurnstileCaptcha";
 
 export function RegistrarPage() {
   const { session, isLoading, signUpWithPassword } = useAuth();
@@ -17,6 +18,8 @@ export function RegistrarPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmTouched, setConfirmTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +39,8 @@ export function RegistrarPage() {
   const trimmedName = fullName.trim();
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const phoneOk = phone.trim() === "" || normalizeBRPhone(phone) !== null;
-  const canSubmit = trimmedName.length > 0 && email.trim().length > 0 && isPasswordValid(password) && passwordsMatch && phoneOk;
+  const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? "";
+  const canSubmit = trimmedName.length > 0 && email.trim().length > 0 && isPasswordValid(password) && passwordsMatch && phoneOk && (!captchaSiteKey || Boolean(captchaToken));
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -58,14 +62,22 @@ export function RegistrarPage() {
       setError("Telefone inválido.");
       return;
     }
+    if (captchaSiteKey && !captchaToken) {
+      setError("Conclua a verificação de segurança para criar sua conta.");
+      return;
+    }
 
     setSubmitting(true);
     const result = await signUpWithPassword(email, password, {
       fullName: trimmedName,
       username: username.trim() || undefined,
       phone: normalizeBRPhone(phone) ?? undefined,
-    });
+    }, captchaToken ?? undefined);
     setSubmitting(false);
+    if (captchaSiteKey) {
+      setCaptchaToken(null);
+      setCaptchaResetSignal((value) => value + 1);
+    }
 
     if (result.error) {
       setError(result.error);
@@ -136,13 +148,21 @@ export function RegistrarPage() {
           </div>
         </div>
 
+        {captchaSiteKey && (
+          <TurnstileCaptcha
+            siteKey={captchaSiteKey}
+            resetSignal={captchaResetSignal}
+            onToken={setCaptchaToken}
+          />
+        )}
+
         {error && <Notice tone="error">{error}</Notice>}
 
         <Button
           type="submit"
           variant="primary"
           disabled={submitting || !canSubmit}
-          className="w-full py-3 text-[15px] shadow-[0_0_24px_rgba(67,185,210,.12)]"
+          className="w-full py-3 text-[15px]"
         >
           {submitting ? "Criando…" : "Criar conta"}
         </Button>

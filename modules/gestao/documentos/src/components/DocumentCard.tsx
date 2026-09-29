@@ -36,6 +36,8 @@ export function DocumentCard({
   onOpenVersions,
   onMoveToFolder,
   onChangeType,
+  onToggleArchive,
+  isArchived = false,
   onExtractText,
   isExtractingText,
   extractProgress,
@@ -53,6 +55,8 @@ export function DocumentCard({
   onOpenVersions: () => void;
   onMoveToFolder: (folderId: string | null) => void;
   onChangeType: (documentType: DocumentType) => void;
+  onToggleArchive?: () => void;
+  isArchived?: boolean;
   /** Presente só quando o mime type é imagem — PDF/outros formatos não oferecem OCR na v1. */
   onExtractText?: () => void;
   isExtractingText?: boolean;
@@ -93,7 +97,7 @@ export function DocumentCard({
     .join(" · ");
 
   return (
-    <div className={`qv-row flex flex-col ${isFocused ? "bg-[rgba(67,185,210,.05)]" : ""}`}>
+    <div className={`qv-row flex flex-col ${isFocused ? "bg-chip-cyan" : ""}`}>
       <div
         role="button"
         tabIndex={0}
@@ -105,7 +109,7 @@ export function DocumentCard({
             onFocus?.();
           }
         }}
-        className="flex items-center gap-[14px] px-[18px] py-[14px] cursor-pointer hover:bg-white/[.02] outline-none focus-visible:bg-white/[.03]"
+        className="flex items-center gap-[14px] px-[18px] py-[14px] cursor-pointer hover:bg-chip-neutral outline-none focus-visible:bg-chip-cyan"
       >
         <ExtThumb label={documentExtension(document)} active={isFocused} />
         <div className="flex-[1_1_140px] min-w-0 flex flex-col gap-[3px]">
@@ -173,6 +177,11 @@ export function DocumentCard({
               Versões
               {document.current_version > 1 && <span className="font-mono text-xs">v{document.current_version}</span>}
             </Button>
+            {onToggleArchive && (
+              <Button type="button" variant="quiet" size="sm" onClick={onToggleArchive}>
+                {isArchived ? "Restaurar do arquivo" : "Arquivar"}
+              </Button>
+            )}
             {canExtractText && (
               <Button
                 type="button"

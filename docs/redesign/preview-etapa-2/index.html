@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <title>Qqorvex · Preview Etapa 2</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="preview-bar" aria-label="Controles do protótipo">
+      <div class="preview-brand"><span class="route-node route-node--origin"></span><strong>Preview Etapa 2</strong></div>
+      <nav class="preview-tabs" aria-label="Telas do preview">
+        <button type="button" data-view="login" aria-pressed="true">Login</button>
+        <button type="button" data-view="today" aria-pressed="false">Hoje</button>
+        <button type="button" data-view="components" aria-pressed="false">Componentes</button>
+      </nav>
+    </div>
+
+    <main id="preview-root">
+      <section class="view view--login" data-screen="login" aria-labelledby="login-title">
+        <aside class="auth-story">
+          <div class="brand-lockup" aria-label="Qqorvex">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>QQORVEX</span>
+          </div>
+          <div class="auth-story__content">
+            <p class="eyebrow">Seu mapa operacional</p>
+            <h1>Encontre o próximo passo.<br /><em>Veja o caminho inteiro.</em></h1>
+            <p class="story-copy">Áreas diferentes da sua vida, conectadas por contexto. Você decide; a Vex ajuda a localizar, preparar e acompanhar.</p>
+            <ol class="story-route" aria-label="Como o Qqorvex organiza seu dia">
+              <li><span class="route-node route-node--origin"></span><div><strong>Localize</strong><small>o que pede atenção</small></div></li>
+              <li><span class="route-node route-node--decision"></span><div><strong>Decida</strong><small>com o contexto à vista</small></div></li>
+              <li><span class="route-node route-node--action"></span><div><strong>Acompanhe</strong><small>o resultado da ação</small></div></li>
+            </ol>
+          </div>
+          <div class="vex-note">
+            <img src="../../../Vex/VEX_AVATAR_TRANSPARENT_CIRCLE_128.png" alt="Vex" width="48" height="48" />
+            <div><span>Vex acompanha este contexto</span><small>Ações sempre pedem sua confirmação.</small></div>
+          </div>
+        </aside>
+
+        <div class="auth-task">
+          <div class="auth-mobile-strip">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <div><strong>QQORVEX</strong><small>Seu mapa operacional</small></div>
+          </div>
+          <div class="auth-card">
+            <div class="auth-card__heading">
+              <p class="breadcrumb"><span>Conta</span><b aria-hidden="true">/</b><strong>Entrar</strong></p>
+              <h2 id="login-title">Volte ao seu mapa</h2>
+              <p>Entre para continuar de onde parou.</p>
+            </div>
+            <form id="login-form" novalidate>
+              <div class="form-field">
+                <label for="email">E-mail</label>
+                <input id="email" name="email" type="email" autocomplete="email" placeholder="voce@exemplo.com" aria-describedby="email-hint" />
+                <small id="email-hint">O endereço usado na sua conta.</small>
+              </div>
+              <div class="form-field">
+                <div class="label-row"><label for="password">Senha</label><a href="#forgot">Esqueci minha senha</a></div>
+                <div class="password-control">
+                  <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" />
+                  <button id="password-toggle" class="icon-button" type="button" aria-label="Mostrar senha" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="trust-copy"><span class="route-node route-node--decision"></span><p><strong>Proteção adaptada à sua conta</strong><small>Verificação adicional aparece quando estiver ativada.</small></p></div>
+              <button class="button button--primary" type="submit"><span>Entrar no Qqorvex</span><span aria-hidden="true">→</span></button>
+              <div class="separator"><span>ou continue com</span></div>
+              <div class="alternate-actions">
+                <button class="button button--secondary" type="button">Passkey</button>
+                <button class="button button--secondary" type="button">Google</button>
+                <button class="button button--secondary" type="button">GitHub</button>
+              </div>
+              <p class="auth-footer">Primeira vez aqui? <a href="#create">Criar conta</a></p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="view view--today" data-screen="today" aria-labelledby="today-title" hidden>
+        <aside class="app-sidebar">
+          <div class="brand-lockup brand-lockup--small"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>QQORVEX</span></div>
+          <nav aria-label="Navegação principal">
+            <a href="#today" aria-current="page"><span class="nav-glyph">◉</span>Hoje</a>
+            <a href="#tasks"><span class="nav-glyph">□</span>Tarefas</a>
+            <a href="#agenda"><span class="nav-glyph">◇</span>Agenda</a>
+            <span class="nav-section">Áreas</span>
+            <a href="#studies"><span class="nav-glyph">◌</span>Estudos</a>
+            <a href="#brain"><span class="nav-glyph">⌁</span>Segundo cérebro</a>
+            <a href="#finance"><span class="nav-glyph">≈</span>Finanças</a>
+          </nav>
+          <button class="sidebar-profile" type="button"><span>JM</span><span><strong>Julio</strong><small>Perfil e segurança</small></span><b aria-hidden="true">•••</b></button>
+        </aside>
+
+        <div class="workspace">
+          <header class="app-header">
+            <button class="search-trigger" type="button" aria-label="Buscar páginas e comandos"><span>⌕</span><span>Páginas e comandos</span><kbd>Ctrl K</kbd></button>
+            <div class="header-actions">
+              <button class="icon-button" type="button" aria-label="Notificações"><span aria-hidden="true">○</span><i></i></button>
+              <button class="vex-trigger" type="button" aria-haspopup="dialog"><img src="../../../Vex/VEX_AVATAR_TRANSPARENT_CIRCLE_64.png" alt="" width="28" height="28" /><span>Falar com a Vex</span></button>
+            </div>
+          </header>
+
+          <div class="today-content">
+            <header class="page-heading">
+              <div><p class="eyebrow">Domingo · 21 de setembro</p><h1 id="today-title">Seu dia, em perspectiva.</h1><p>Três pontos pedem atenção. O restante pode esperar.</p></div>
+              <button class="button button--primary" id="capture-open" type="button"><span aria-hidden="true">＋</span>Capturar tarefa</button>
+            </header>
+
+            <section class="orientation-band" aria-labelledby="attention-title">
+              <div class="orientation-copy"><span class="route-node route-node--decision"></span><div><p class="eyebrow">Ponto de decisão</p><h2 id="attention-title">O que merece atenção agora</h2></div></div>
+              <div class="orientation-stats"><div><strong>3</strong><span>itens hoje</span></div><div><strong>1</strong><span>em atraso</span></div><div><strong>72%</strong><span>ritmo semanal</span></div></div>
+            </section>
+
+            <div class="today-grid">
+              <section class="day-route" aria-labelledby="route-title">
+                <div class="section-heading"><div><p class="eyebrow">Percurso do dia</p><h2 id="route-title">Próximos marcos</h2></div><button type="button" class="text-button">Ver agenda →</button></div>
+                <ol class="timeline">
+                  <li><div class="timeline-time"><strong>09:30</strong><small>feito</small></div><span class="route-node route-node--origin route-node--done"></span><div class="timeline-item"><span class="item-origin">Hábitos</span><h3>Revisão semanal</h3><p>O registro foi concluído há 42 minutos.</p></div><span class="status-label status-label--success">Concluído</span></li>
+                  <li class="timeline-current"><div class="timeline-time"><strong>14:00</strong><small>agora</small></div><span class="route-node route-node--decision"></span><div class="timeline-item"><span class="item-origin">Agenda</span><h3>Planejar apresentação do projeto</h3><p>Há duas notas relacionadas no Segundo cérebro.</p><button class="context-link" type="button">Abrir contexto conectado</button></div><span class="status-label status-label--warning">Atenção</span></li>
+                  <li><div class="timeline-time"><strong>18:30</strong><small>depois</small></div><span class="route-node route-node--action"></span><div class="timeline-item"><span class="item-origin">Tarefas</span><h3>Separar documentos da viagem</h3><p>Prazo hoje · estimativa de 20 min</p></div><span class="status-label">Planejado</span></li>
+                </ol>
+              </section>
+
+              <aside class="context-column">
+                <section class="context-card"><div class="section-heading"><div><p class="eyebrow">Continuidade</p><h2>Em andamento</h2></div><span class="status-label">2 áreas</span></div><a href="#study"><span class="route-node route-node--origin"></span><span><strong>Caderno de Produto</strong><small>3 notas novas · Estudos</small></span><b>→</b></a><a href="#goal"><span class="route-node route-node--action"></span><span><strong>Meta: reserva anual</strong><small>72% · Finanças</small></span><b>→</b></a></section>
+                <section class="notice notice--info"><span aria-hidden="true">i</span><div><strong>Resumo atualizado</strong><p>Dados de 6 áreas · há 2 minutos.</p></div><button type="button">Atualizar</button></section>
+              </aside>
+            </div>
+          </div>
+        </div>
+
+        <nav class="mobile-nav" aria-label="Navegação móvel">
+          <a href="#today" aria-current="page"><span>◉</span>Hoje</a><a href="#tasks"><span>□</span>Tarefas</a><button id="mobile-capture" type="button" aria-label="Capturar tarefa">＋</button><a href="#agenda"><span>◇</span>Agenda</a><a href="#more"><span>•••</span>Mais</a>
+        </nav>
+
+        <div class="dialog-layer" id="capture-dialog" hidden>
+          <button class="dialog-scrim" type="button" tabindex="-1" aria-label="Fechar captura"></button>
+          <section class="quick-capture" role="dialog" aria-modal="true" aria-labelledby="capture-title">
+            <div class="dialog-heading"><div><p class="eyebrow">Captura rápida</p><h2 id="capture-title">Tire da cabeça. Organize depois.</h2></div><button class="icon-button dialog-close" type="button" aria-label="Fechar">×</button></div>
+            <form id="capture-form"><div class="form-field"><label for="task-title">O que precisa ser feito?</label><input id="task-title" value="Revisar proposta da oficina" aria-describedby="task-hint task-error" /><small id="task-hint">A tarefa ficará na caixa de entrada.</small><small class="field-error" id="task-error" hidden>Não foi possível salvar. Seu texto continua aqui.</small></div><div class="dialog-actions"><button class="button button--secondary dialog-close" type="button">Cancelar</button><button class="button button--primary" id="capture-submit" type="submit">Salvar tarefa</button></div></form>
+          </section>
+        </div>
+
+        <div class="dialog-layer" id="vex-dialog" hidden>
+          <button class="dialog-scrim" type="button" tabindex="-1" aria-label="Fechar painel Vex"></button>
+          <section class="vex-panel" role="dialog" aria-modal="true" aria-labelledby="vex-title">
+            <header><div><img src="../../../Vex/VEX_AVATAR_TRANSPARENT_CIRCLE_64.png" alt="" width="36" height="36" /><div><p class="eyebrow">Vex · contexto atual</p><h2 id="vex-title">Preparar próximo passo</h2></div></div><button class="icon-button dialog-close" type="button" aria-label="Fechar">×</button></header>
+            <div class="vex-body"><div class="vex-context"><p><span class="route-node route-node--origin"></span><strong>Contexto recebido</strong></p><span>Hoje → Planejar apresentação do projeto</span><small>Agenda + 2 notas relacionadas</small></div><div class="vex-message"><p>Posso criar uma tarefa de preparação para amanhã e conectar as duas notas do projeto.</p></div><div class="tool-preview"><p class="eyebrow">Prévia da ferramenta</p><div><span class="route-node route-node--action"></span><span><strong>Criar 1 tarefa</strong><small>“Montar roteiro da apresentação” · amanhã, 09:00</small></span></div><dl><div><dt>Destino</dt><dd>Caixa de entrada</dd></div><div><dt>Efeito</dt><dd>Adiciona, não altera itens existentes</dd></div></dl></div><div class="vex-status" id="vex-status" aria-live="polite"></div></div>
+            <footer><button class="button button--secondary dialog-close" type="button">Agora não</button><button class="button button--primary" id="vex-confirm" type="button">Confirmar criação</button></footer>
+          </section>
+        </div>
+      </section>
+
+      <section class="view view--components" data-screen="components" aria-labelledby="components-title" hidden>
+        <header class="specimen-header"><p class="eyebrow">Sistema visual 1.0</p><h1 id="components-title">Cartografia Pessoal</h1><p>Uma faixa para julgar tipografia, cor, forma, estados e densidade antes da implementação.</p></header>
+        <div class="specimen-grid">
+          <section class="specimen specimen--type"><p class="eyebrow">Tipografia</p><h2>Orientação antes de densidade.</h2><h3>Um mapa operável da sua vida.</h3><p>Corpo legível para contexto, escolhas e consequências. O dado <code>14:30</code> usa mono apenas porque precisa alinhar.</p></section>
+          <section class="specimen"><p class="eyebrow">Paleta</p><div class="swatches"><div class="swatch swatch--paper"><span>Noite base</span><small>#0E1C26</small></div><div class="swatch swatch--ink"><span>Noite profunda</span><small>#08151D</small></div><div class="swatch swatch--brand"><span>Percurso</span><small>#F28C74</small></div><div class="swatch swatch--moss"><span>Concluído</span><small>#78C99A</small></div></div></section>
+          <section class="specimen"><p class="eyebrow">Controles</p><div class="component-row"><button class="button button--primary">Ação principal</button><button class="button button--secondary">Secundária</button><button class="button button--primary" disabled>Indisponível</button></div><div class="component-row"><span class="status-label status-label--success">Concluído</span><span class="status-label status-label--warning">Atenção</span><span class="status-label status-label--error">Falha</span></div></section>
+          <section class="specimen"><p class="eyebrow">Campo e feedback</p><div class="form-field"><label for="spec-input">Nome da tarefa</label><input id="spec-input" value="Preparar material" aria-describedby="spec-hint" /><small id="spec-hint">Você poderá organizar depois.</small></div><div class="notice notice--error"><span>!</span><div><strong>Não foi possível salvar</strong><p>O rascunho foi preservado. Tente novamente.</p></div><button>Tentar</button></div></section>
+          <section class="specimen"><p class="eyebrow">Traço de percurso</p><div class="route-legend"><div><span class="route-node route-node--origin"></span><span><strong>Origem</strong><small>informação e contexto</small></span></div><div><span class="route-node route-node--decision"></span><span><strong>Decisão</strong><small>ponto que pede escolha</small></span></div><div><span class="route-node route-node--action"></span><span><strong>Ação</strong><small>efeito preparado ou executado</small></span></div></div></section>
+          <section class="specimen"><p class="eyebrow">Carregamento</p><div class="skeleton-stack" aria-label="Carregando conteúdo"><span></span><span></span><span></span></div><p class="component-note">O skeleton conserva a geometria final e não aparece como conteúdo vazio.</p></section>
+        </div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

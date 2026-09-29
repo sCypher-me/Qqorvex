@@ -11,7 +11,9 @@ export function MfaPage() {
   const { client, session, isLoading, signOut } = useAuth();
   const { factors, isLoading: factorsLoading } = useMfaFactors(client);
   const navigate = useNavigate();
+  const [selectedFactorId, setSelectedFactorId] = useState("");
   const [pending, setPending] = useState<boolean | null>(null);
+  const [assuranceError, setAssuranceError] = useState(false);
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -19,15 +21,47 @@ export function MfaPage() {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!session) return;
-    getAssuranceLevel(client).then((level) => setPending(isMfaPending(level)));
+    if (!session) {
+      setPending(null);
+      setAssuranceError(false);
+      return;
+    }
+    let cancelled = false;
+    setPending(null);
+    setAssuranceError(false);
+    void getAssuranceLevel(client)
+      .then((level) => {
+        if (!cancelled) setPending(isMfaPending(level));
+      })
+      .catch(() => {
+        if (!cancelled) setAssuranceError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [client, session]);
 
   if (isLoading) return null;
   if (!session) return <Navigate to="/login" replace />;
+  if (assuranceError) {
+    return (
+      <AuthLayout>
+        <div className="flex flex-col gap-4">
+          <h1 className="font-display text-[28px] font-semibold m-0">Não foi possível validar o 2FA</h1>
+          <p className="text-[13px] text-text-secondary leading-[1.6] m-0">
+            Verifique sua conexão e recarregue a página para tentar novamente.
+          </p>
+          <Button type="button" variant="primary" onClick={() => window.location.reload()} className="w-full py-3 text-[15px]">
+            Tentar novamente
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+  }
   if (done || pending === false) return <Navigate to="/" replace />;
 
-  const verifiedFactor = factors.find((f) => f.status === "verified");
+  const verifiedFactors = factors.filter((factor) => factor.status === "verified");
+  const verifiedFactor = verifiedFactors.find((factor) => factor.id === selectedFactorId) ?? verifiedFactors[0];
   const code = digits.join("");
 
   function setDigit(index: number, value: string) {
@@ -94,6 +128,22 @@ export function MfaPage() {
           </div>
         ) : (
           <>
+            {verifiedFactors.length > 1 && (
+              <label className="flex flex-col gap-2 text-sm font-medium text-text-primary">
+                App autenticador
+                <select
+                  value={verifiedFactor?.id ?? ""}
+                  onChange={(event) => setSelectedFactorId(event.target.value)}
+                  className="qv-field w-full"
+                  aria-label="Escolher app autenticador"
+                >
+                  {verifiedFactors.map((factor, index) => (
+                    <option key={factor.id} value={factor.id}>{factor.friendlyName || `App autenticador ${index + 1}`}</option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal leading-relaxed text-text-muted">Se perdeu acesso ao principal, escolha seu app autenticador de reserva.</span>
+              </label>
+            )}
             <div className="grid grid-cols-6 gap-2.5" role="group" aria-label="Código de 6 dígitos">
               {digits.map((digit, index) => (
                 <input
@@ -120,7 +170,7 @@ export function MfaPage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={busy || code.length < CODE_LENGTH}
+                disabled={busy || code.length < CODE_LENGTH || !verifiedFactor}
                 className="w-full py-3 text-[15px]"
               >
                 {busy ? "Verificando..." : "Verificar"}

@@ -21,11 +21,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Botões do Design System v1.0 — classes `qv-btn-*` em `@qqorvex/design-system/tokens.css`.
- * primary = grafite com borda cyan escura · secondary = contorno · quiet = contorno com texto
- * secundário · vex = ação da Vex (cyan tintado) · premium = ouro (só marcos) · destructive =
- * contorno vermelho, sem brilho. `chip`/`chip-accent` são os nomes antigos das ações de card e
- * viram `quiet`/`vex` em tamanho pequeno.
+ * Botões do Design System. Primary é grafite com contorno ciano; ciano preenchido fica restrito
+ * à ação contextual da Vex. Gold sinaliza marcos/metas, nunca lucro por si só.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "qv-btn-primary",

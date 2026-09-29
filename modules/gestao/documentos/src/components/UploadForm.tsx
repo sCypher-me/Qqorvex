@@ -2,7 +2,7 @@ import { useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Button, Notice } from "@qqorvex/ui";
 import { DuplicateDocumentError } from "../repository";
 import { DOCUMENT_TYPE_LABELS } from "../service";
-import type { DocumentType } from "../types";
+import type { DocumentType, Folder } from "../types";
 
 /**
  * "Upload deve mostrar progresso e estado de falha/retry." Se o arquivo já existir (mesmo hash),
@@ -12,12 +12,18 @@ import type { DocumentType } from "../types";
 export function UploadForm({
   onUpload,
   isUploading,
+  folders = [],
+  folderId = "",
+  onFolderChange,
 }: {
-  onUpload: (file: File, documentType: DocumentType, options?: { force?: boolean }) => Promise<void>;
+  onUpload: (file: File, documentType: DocumentType, options?: { force?: boolean; folderId?: string }) => Promise<void>;
   isUploading: boolean;
+  folders?: Folder[];
+  folderId?: string;
+  onFolderChange?: (folderId: string) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const [duplicate, setDuplicate] = useState<{ file: File; documentType: DocumentType; message: string } | null>(null);
+  const [duplicate, setDuplicate] = useState<{ file: File; documentType: DocumentType; folderId: string; message: string } | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,12 +42,12 @@ export function UploadForm({
     setError(null);
     setDuplicate(null);
     try {
-      await onUpload(file, documentType);
+      await onUpload(file, documentType, { folderId: folderId || undefined });
       form.reset();
       setSelectedFileName(null);
     } catch (err) {
       if (err instanceof DuplicateDocumentError) {
-        setDuplicate({ file, documentType, message: err.message });
+        setDuplicate({ file, documentType, folderId, message: err.message });
         return;
       }
       setError(err instanceof Error ? err.message : "Falha no upload.");
@@ -51,7 +57,7 @@ export function UploadForm({
   async function handleUploadAnyway() {
     if (!duplicate) return;
     try {
-      await onUpload(duplicate.file, duplicate.documentType, { force: true });
+      await onUpload(duplicate.file, duplicate.documentType, { force: true, folderId: duplicate.folderId || undefined });
       setDuplicate(null);
       setSelectedFileName(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -79,7 +85,7 @@ export function UploadForm({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={`qv-dropzone flex items-center gap-4 flex-wrap p-5 transition-colors ${
-          isDragging ? "border-vex-cyan-dark bg-[rgba(67,185,210,.06)]" : ""
+          isDragging ? "border-vex-cyan-dark bg-chip-cyan" : ""
         }`}
       >
         <input
@@ -114,6 +120,18 @@ export function UploadForm({
             </option>
           ))}
         </select>
+        {folders.length > 0 && (
+          <select
+            value={folderId}
+            onChange={(event) => onFolderChange?.(event.target.value)}
+            disabled={isUploading}
+            aria-label="Salvar na pasta"
+            className="qv-field w-auto py-2.5 px-3 text-[13px] text-text-secondary"
+          >
+            <option value="">Sem pasta</option>
+            {folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+          </select>
+        )}
         <Button type="submit" variant="primary" className="px-[18px]" disabled={isUploading}>
           {isUploading ? "Enviando..." : "Enviar"}
         </Button>

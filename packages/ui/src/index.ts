@@ -1,5 +1,7 @@
 export * from "./haptics";
 export * from "./components/Button";
+export * from "./components/IconButton";
+export * from "./components/CrystalCore";
 export * from "./components/Card";
 export * from "./components/FormField";
 export * from "./components/Badge";
@@ -7,3 +9,4 @@ export * from "./components/Modal";
 export * from "./components/Sidebar";
 export * from "./components/Skeleton";
 export * from "./components/Primitives";
+export { ArrowRightIcon, CalendarBlankIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, ClockIcon, DotsSixVerticalIcon, PlusIcon, XIcon } from "@phosphor-icons/react";

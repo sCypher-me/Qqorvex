@@ -1,6 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import type { HojeItem } from "@qqorvex/module-hoje";
 import { listActiveTasks } from "./repository";
+import { localDateKey } from "./service";
 
 /**
  * "Hoje pode mostrar resumo compacto: tarefas para hoje, atrasadas relevantes, em andamento,
@@ -10,7 +11,7 @@ import { listActiveTasks } from "./repository";
 export function createTasksHojeProvider(client: SupabaseClient<Database>) {
   return async function tasksHojeProvider(): Promise<HojeItem[]> {
     const tasks = await listActiveTasks(client);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateKey();
 
     return tasks
       .filter((task) => task.status !== "concluido")

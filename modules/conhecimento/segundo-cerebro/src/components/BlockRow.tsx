@@ -8,6 +8,7 @@ import type { Task } from "@qqorvex/module-tarefas";
 import type { CalendarEvent } from "@qqorvex/module-agenda";
 import { BLOCK_TYPE_LABELS, defaultContentForBlockType, resolveEmbedUrl } from "../service";
 import { SlashMenu } from "./SlashMenu";
+import { CodeSnippetEditor } from "./CodeSnippetEditor";
 import { EDITABLE_BLOCK_TYPES } from "../types";
 import type {
   Block,
@@ -40,7 +41,7 @@ const TEXT_INPUT_CLASS_BY_TYPE: Partial<Record<EditableBlockType, string>> = {
   titulo2: "font-display text-lg leading-[1.4] font-semibold text-text-primary",
   titulo3: "font-display text-base leading-[1.5] font-semibold text-text-primary",
   citacao:
-    "text-[15px] leading-[1.75] text-text-primary border-l-2 border-vex-gold bg-[rgba(184,138,84,.07)] rounded-r-[12px] px-4 py-[14px]",
+    "text-[15px] leading-[1.75] text-text-primary border-l-2 border-vex-gold bg-surface-2 rounded-r-[12px] px-4 py-[14px]",
   callout: "text-[15px] leading-[1.75] text-text-primary bg-surface-2 border border-border rounded-[12px] px-4 py-3",
 };
 
@@ -218,16 +219,17 @@ export function BlockRow({
     const code = content as unknown as CodeBlockContent;
     return (
       <div className="group/block flex items-start gap-2">
-        <textarea
-          ref={(el) => registerInputRef(block.id, el)}
-          value={code.text}
-          onChange={(e) => setContent({ ...code, text: e.target.value })}
-          onBlur={() => onUpdateContent(block.id, content)}
-          rows={4}
-          aria-label="Código"
-          className="qv-field flex-1 font-mono text-[13px] leading-[1.6]"
+        <CodeSnippetEditor
+          value={code}
+          inputRef={(el) => registerInputRef(block.id, el)}
+          onChange={(next) => setContent(next as unknown as Record<string, unknown>)}
+          onCommit={(next) => {
+            const nextContent = (next ?? code) as unknown as Record<string, unknown>;
+            setContent(nextContent);
+            onUpdateContent(block.id, nextContent);
+          }}
+          controls={controls}
         />
-        {controls}
       </div>
     );
   }

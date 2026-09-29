@@ -7,6 +7,7 @@ const STATUS_TEXT: Record<string, { label: string; className: string; icon?: boo
   available: { label: "Nome disponível", className: "text-success", icon: true },
   taken: { label: "Esse nome de usuário já está em uso.", className: "text-error", icon: true },
   invalid: { label: "3–20 letras minúsculas, números ou _.", className: "text-text-muted" },
+  error: { label: "Não foi possível verificar agora. Tente novamente.", className: "text-warning" },
 };
 
 /** Opcional — se ficar em branco, o backend gera um "qqXXXXX" sozinho (`handle_new_user`). */

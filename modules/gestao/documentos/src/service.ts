@@ -1,4 +1,4 @@
-import type { DocumentType } from "./types";
+import type { Document, DocumentType } from "./types";
 
 /** Rótulos em pt-BR do enum `document_type` — única fonte pra UploadForm, filtro e DocumentCard não divergirem. */
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -13,6 +13,106 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   manual: "Manual",
   outro: "Outro",
 };
+
+export type DocumentQuickFilter = "all" | "important" | "vault" | "recent";
+export type DocumentSortOrder = "newest" | "oldest" | "name" | "largest";
+export type DocumentStorageQuota = {
+  usedBytes: number;
+  quotaBytes: number;
+  maxFileBytes: number;
+  isPlus: boolean;
+};
+
+export class DocumentStorageLimitError extends Error {
+  constructor(public readonly limitKind: "file" | "storage", public readonly limitBytes: number) {
+    const limitMb = Math.round(limitBytes / (1024 * 1024));
+    super(limitKind === "file"
+      ? `Este plano permite arquivos de até ${limitMb} MB.`
+      : `O armazenamento do plano está cheio (${limitMb} MB). Remova arquivos ou conheça o Qqorvex Plus.`);
+    this.name = "DocumentStorageLimitError";
+  }
+}
+
+export function assertDocumentFitsStorageQuota(fileBytes: number, quota: DocumentStorageQuota): void {
+  if (fileBytes > quota.maxFileBytes) throw new DocumentStorageLimitError("file", quota.maxFileBytes);
+  if (quota.usedBytes + fileBytes > quota.quotaBytes) throw new DocumentStorageLimitError("storage", quota.quotaBytes);
+}
+
+export function documentStorageLimitFromError(error: unknown): DocumentStorageLimitError | null {
+  if (!error || typeof error !== "object" || !("message" in error) || typeof error.message !== "string") return null;
+  const match = /^QQORVEX_DOCUMENT_(FILE|STORAGE)_LIMIT:(\d+)$/.exec(error.message);
+  if (!match) return null;
+  return new DocumentStorageLimitError(match[1] === "FILE" ? "file" : "storage", Number(match[2]));
+}
+
+export type DocumentListItem = Pick<
+  Document,
+  | "id"
+  | "file_name"
+  | "mime_type"
+  | "document_type"
+  | "folder_id"
+  | "is_important"
+  | "is_vault"
+  | "created_at"
+  | "size_bytes"
+  | "extracted_text"
+>;
+
+/** Busca local por nome, tipo e texto OCR, aplicando filtros rápidos sem round-trip ao servidor. */
+export function selectDocuments<T extends DocumentListItem>(
+  documents: T[],
+  options: {
+    query?: string;
+    folderId?: string | null;
+    type?: DocumentType | "";
+    quickFilter?: DocumentQuickFilter;
+    sort?: DocumentSortOrder;
+    now?: Date;
+  } = {},
+): T[] {
+  const query = options.query?.trim().toLocaleLowerCase("pt-BR") ?? "";
+  const now = options.now?.getTime() ?? Date.now();
+  const recentWindow = 7 * 24 * 60 * 60 * 1000;
+
+  const filtered = documents.filter((document) => {
+    if (options.folderId && document.folder_id !== options.folderId) return false;
+    if (options.type && document.document_type !== options.type) return false;
+    if (options.quickFilter === "important" && !document.is_important) return false;
+    if (options.quickFilter === "vault" && !document.is_vault) return false;
+    if (options.quickFilter === "recent") {
+      const age = now - new Date(document.created_at).getTime();
+      if (age < 0 || age >= recentWindow) return false;
+    }
+    if (query) {
+      const searchableText = [
+        document.file_name,
+        document.mime_type,
+        DOCUMENT_TYPE_LABELS[document.document_type],
+        document.extracted_text,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("pt-BR");
+      if (!searchableText.includes(query)) return false;
+    }
+    return true;
+  });
+
+  return filtered.sort((left, right) => {
+    switch (options.sort ?? "newest") {
+      case "oldest":
+        return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
+      case "name":
+        return left.file_name.localeCompare(right.file_name, "pt-BR", { sensitivity: "base" });
+      case "largest":
+        return (right.size_bytes ?? -1) - (left.size_bytes ?? -1);
+      case "newest":
+      default:
+        return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    }
+  });
+}
 
 /**
  * "O sistema pode calcular a data final a partir da data da compra + duração informada."

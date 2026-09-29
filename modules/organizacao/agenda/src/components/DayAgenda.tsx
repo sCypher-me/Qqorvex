@@ -80,7 +80,7 @@ export function DayAgenda({
           .map((event, index) => ({ event, index }))
           .filter(({ event }) => new Date(event.start_at).getHours() === hour);
         return (
-          <div key={hour} className="flex gap-4 items-stretch min-h-16 py-2.5 border-t border-[rgba(42,48,57,.55)]">
+          <div key={hour} className="flex gap-4 items-stretch min-h-16 py-2.5 border-t border-border">
             <span className="font-mono text-xs text-text-muted w-12 shrink-0 pt-1">
               {String(hour).padStart(2, "0")}:00
             </span>

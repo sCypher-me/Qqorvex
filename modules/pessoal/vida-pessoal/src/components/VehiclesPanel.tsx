@@ -95,9 +95,9 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
               onSubmit={(event: FormEvent) => {
                 event.preventDefault();
                 if (!label.trim() || !date) return;
-                addDate.mutate({ label: label.trim(), date });
-                setLabel("");
-                setDate("");
+                addDate.mutate({ label: label.trim(), date }, {
+                  onSuccess: () => { setLabel(""); setDate(""); },
+                });
               }}
               className="flex flex-col gap-2"
             >
@@ -117,9 +117,10 @@ function VehicleRow({ client, vehicle, onDelete }: { client: SupabaseClient<Data
                   className="py-2 text-[13px] font-mono"
                 />
               </div>
-              <Button type="submit" variant="quiet" size="xs" className="self-start">
-                Adicionar data
+              <Button type="submit" variant="quiet" size="xs" className="self-start" disabled={addDate.isPending}>
+                {addDate.isPending ? "Salvando…" : "Adicionar data"}
               </Button>
+              {addDate.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar a data; os campos continuam preenchidos.</p>}
             </form>
           </div>
 
@@ -139,7 +140,8 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const nickname = String(form.get("nickname") ?? "").trim();
     if (!nickname) return;
     createVehicle.mutate({
@@ -148,8 +150,7 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
       model: String(form.get("model") ?? "").trim() || undefined,
       plate: String(form.get("plate") ?? "").trim() || undefined,
       year: form.get("year") ? Number(form.get("year")) : undefined,
-    });
-    event.currentTarget.reset();
+    }, { onSuccess: () => formElement.reset() });
   }
 
   return (
@@ -181,8 +182,8 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
             <Input name="plate" placeholder="Placa" aria-label="Placa" className="py-2 text-[13px] font-mono" />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="sm">
-              Adicionar
+            <Button type="submit" variant="primary" size="sm" disabled={createVehicle.isPending}>
+              {createVehicle.isPending ? "Salvando…" : "Adicionar"}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
               Fechar
@@ -194,6 +195,7 @@ export function VehiclesPanel({ client, userId }: { client: SupabaseClient<Datab
           Adicionar
         </Button>
       )}
+      {createVehicle.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar o veículo; os campos continuam preenchidos.</p>}
     </section>
   );
 }

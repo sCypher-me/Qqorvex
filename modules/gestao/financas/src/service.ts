@@ -1,4 +1,4 @@
-import type { PaymentMethod, RecurrenceFrequency, Transaction, TransactionStatus } from "./types";
+import type { PaymentMethod, RecurrenceFrequency, RecurringTransaction, Transaction, TransactionStatus } from "./types";
 
 /** Rótulos em pt-BR do enum `payment_method` — fonte única pro formulário e pra listagem não divergirem. */
 export const PAYMENT_METHOD_LABELS: Record<Exclude<PaymentMethod, null>, string> = {
@@ -11,12 +11,46 @@ export const PAYMENT_METHOD_LABELS: Record<Exclude<PaymentMethod, null>, string>
   outra: "Outra",
 };
 
+/** Formata uma data civil no fuso local, sem deslocar o dia por conversão UTC. */
+export function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** Converte formatos comuns do campo monetário pt-BR, como "1.234,56" e "1234.56". */
+export function parseBRLInput(raw: string): number {
+  const cleaned = raw.replace(/[^\d,.-]/g, "");
+  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? Math.round((amount + Number.EPSILON) * 100) / 100 : Number.NaN;
+}
+
+function dateParts(isoDate: string): { year: number; month: number; day: number } {
+  const parts = isoDate.split("-");
+  const year = Number(parts[0] ?? NaN);
+  const month = Number(parts[1] ?? NaN);
+  const day = Number(parts[2] ?? NaN);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+    throw new Error("Data inválida.");
+  }
+  return { year, month, day };
+}
+
+/** Soma meses preservando o dia quando possível e limitando ao último dia do mês-alvo. */
+export function addMonthsToDate(date: string, months: number): string {
+  const { year, month, day } = dateParts(date);
+  const targetMonthIndex = year * 12 + (month - 1) + months;
+  const targetYear = Math.floor(targetMonthIndex / 12);
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  return formatLocalDate(new Date(targetYear, targetMonth, Math.min(day, lastDay)));
+}
+
 /**
  * "Se a data informada for posterior ao dia de criação, a movimentação recebe estado Futura."
  * Puro, sem SQL — o chamador decide se aplica isso ou usa um status explícito do usuário.
  */
 export function deriveInitialStatus(date: string, today: Date = new Date()): TransactionStatus {
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = formatLocalDate(today);
   return date > todayStr ? "futura" : "concluida";
 }
 
@@ -101,7 +135,7 @@ export function computeVehicleSpending(transactions: Transaction[], vehicleId: s
  * "A frequência determina automaticamente a próxima data." Ex.: Spotify anual com vencimento em
  * 09/10/2026 gera próxima cobrança em 09/10/2027.
  */
-export function computeNextOccurrenceDate(currentDate: string, frequency: RecurrenceFrequency): string {
+export function computeNextOccurrenceDate(currentDate: string, frequency: RecurrenceFrequency, anchorDate = currentDate): string {
   const monthsByFrequency: Record<RecurrenceFrequency, number> = {
     mensal: 1,
     bimestral: 2,
@@ -109,9 +143,11 @@ export function computeNextOccurrenceDate(currentDate: string, frequency: Recurr
     semestral: 6,
     anual: 12,
   };
-  const date = new Date(`${currentDate}T00:00:00`);
-  date.setMonth(date.getMonth() + monthsByFrequency[frequency]);
-  return date.toISOString().slice(0, 10);
+  const nextMonth = addMonthsToDate(currentDate, monthsByFrequency[frequency]);
+  const { day: anchorDay } = dateParts(anchorDate);
+  const { year, month } = dateParts(nextMonth);
+  const targetMonth = month - 1;
+  return formatLocalDate(new Date(year, targetMonth, Math.min(anchorDay, new Date(year, month, 0).getDate())));
 }
 
 /**
@@ -119,18 +155,112 @@ export function computeNextOccurrenceDate(currentDate: string, frequency: Recurr
  * absorve o resto de centavos para o total bater exatamente com `totalAmount`.
  */
 export function computeInstallmentAmounts(totalAmount: number, installmentCount: number): number[] {
-  const baseAmount = Math.floor((totalAmount / installmentCount) * 100) / 100;
+  if (!Number.isInteger(installmentCount) || installmentCount < 2 || installmentCount > 120) {
+    throw new Error("O parcelamento deve ter entre 2 e 120 parcelas.");
+  }
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    throw new Error("O valor total precisa ser maior que zero.");
+  }
+  const roundedTotal = Math.round((totalAmount + Number.EPSILON) * 100) / 100;
+  const baseAmount = Math.floor((roundedTotal / installmentCount) * 100) / 100;
   const amounts = new Array(installmentCount).fill(baseAmount);
-  const roundedTotal = baseAmount * installmentCount;
-  const remainder = Math.round((totalAmount - roundedTotal) * 100) / 100;
+  const baseTotal = baseAmount * installmentCount;
+  const remainder = Math.round((roundedTotal - baseTotal) * 100) / 100;
   amounts[amounts.length - 1] = Math.round((baseAmount + remainder) * 100) / 100;
   return amounts;
 }
 
-export function addMonthsToDate(date: string, months: number): string {
-  const d = new Date(`${date}T00:00:00`);
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
+export interface BudgetUsage {
+  realized: number;
+  committed: number;
+}
+
+export interface ProjectedRecurringOccurrence {
+  recurringId: string;
+  name: string;
+  amount: number;
+  date: string;
+  transaction_type: RecurringTransaction["transaction_type"];
+  category_id: string | null;
+}
+
+/** Projeta cobranças no intervalo solicitado sem gravar transações no banco. */
+export function projectRecurringOccurrences(
+  recurringTransactions: RecurringTransaction[],
+  fromDate: string,
+  toDate: string,
+): ProjectedRecurringOccurrence[] {
+  if (toDate < fromDate) return [];
+  const projected: ProjectedRecurringOccurrence[] = [];
+
+  for (const recurring of recurringTransactions) {
+    if (recurring.status !== "ativa") continue;
+    let date = recurring.next_occurrence_date;
+    let guard = 0;
+    while (date <= toDate && guard < 2400) {
+      if (date >= fromDate && (!recurring.end_date || date <= recurring.end_date)) {
+        projected.push({
+          recurringId: recurring.id,
+          name: recurring.name,
+          amount: recurring.amount,
+          date,
+          transaction_type: recurring.transaction_type,
+          category_id: recurring.category_id,
+        });
+      }
+      if (recurring.end_date && date >= recurring.end_date) break;
+      const nextDate = computeNextOccurrenceDate(date, recurring.frequency, recurring.start_date);
+      if (nextDate <= date) break;
+      date = nextDate;
+      guard += 1;
+    }
+  }
+
+  return projected.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Separa o que já aconteceu dos compromissos previstos no limite mensal da categoria. */
+export function computeBudgetUsage(
+  transactions: Transaction[],
+  categoryId: string,
+  yearMonth: string,
+  recurringTransactions: RecurringTransaction[] = [],
+): BudgetUsage {
+  let realized = 0;
+  let committed = 0;
+
+  for (const transaction of transactions) {
+    if (
+      transaction.transaction_type !== "saida" ||
+      transaction.category_id !== categoryId ||
+      !transaction.date.startsWith(yearMonth)
+    ) continue;
+
+    if (transaction.status === "concluida") realized += transaction.amount;
+    else if (transaction.status === "futura" || transaction.status === "pendente" || transaction.status === "vencida") {
+      committed += transaction.amount;
+    }
+  }
+
+  const year = Number(yearMonth.slice(0, 4));
+  const month = Number(yearMonth.slice(5, 7));
+  const monthStart = `${yearMonth}-01`;
+  const monthEnd = formatLocalDate(new Date(year, month, 0));
+  const representedOccurrences = new Set(
+    transactions
+      .filter((transaction) => transaction.recurring_transaction_id)
+      .map((transaction) => `${transaction.recurring_transaction_id}:${transaction.date}`),
+  );
+  for (const occurrence of projectRecurringOccurrences(recurringTransactions, monthStart, monthEnd)) {
+    if (
+      occurrence.transaction_type !== "saida" ||
+      occurrence.category_id !== categoryId ||
+      representedOccurrences.has(`${occurrence.recurringId}:${occurrence.date}`)
+    ) continue;
+    committed += occurrence.amount;
+  }
+
+  return { realized, committed };
 }
 
 /**

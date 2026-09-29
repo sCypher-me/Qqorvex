@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Badge, ConfirmDialog, type BadgeTone } from "@qqorvex/ui";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { useHabitLogs, useLogHabit } from "../hooks/useHabits";
-import { computeCurrentStreak } from "../service";
+import { computeCurrentStreak, getHabitWeeklyTarget, localDateKey, shiftDateKey } from "../service";
 import type { Habit, HabitFrequencyConfig, HabitLogState, HabitStatus } from "../types";
 
 const LOG_OPTIONS: { state: HabitLogState; label: string }[] = [
@@ -29,7 +29,15 @@ const STATUS_TONE: Record<HabitStatus, BadgeTone> = {
   arquivado: "outline",
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const DAY_LABEL: Record<string, string> = {
+  mon: "seg",
+  tue: "ter",
+  wed: "qua",
+  thu: "qui",
+  fri: "sex",
+  sat: "sáb",
+  sun: "dom",
+};
 
 function cadenceLabel(habit: Habit): string {
   const config = (habit.frequency_config ?? {}) as unknown as HabitFrequencyConfig;
@@ -39,7 +47,7 @@ function cadenceLabel(habit: Habit): string {
       label = "todos os dias";
       break;
     case "dias_especificos":
-      label = config.days?.length ? config.days.join(", ") : "dias específicos";
+      label = config.days?.length ? config.days.map((day) => DAY_LABEL[day] ?? day).join(", ") : "dias específicos";
       break;
     case "x_vezes_semana":
       label = config.timesPerWeek ? `${config.timesPerWeek}x por semana` : "algumas vezes por semana";
@@ -58,13 +66,12 @@ function cadenceLabel(habit: Habit): string {
 
 /** Últimos 7 dias (terminando hoje), na mesma referência UTC usada para registrar o dia. */
 function lastSevenDays(today: string): string[] {
-  const base = Date.parse(`${today}T12:00:00Z`);
-  return Array.from({ length: 7 }, (_, i) => new Date(base - (6 - i) * DAY_MS).toISOString().slice(0, 10));
+  return Array.from({ length: 7 }, (_, i) => shiftDateKey(today, i - 6));
 }
 
 const WEEK_CELL: Record<HabitLogState | "vazio", string> = {
-  concluido: "bg-[rgba(67,185,210,0.35)] border-vex-cyan-dark",
-  parcial: "bg-[rgba(67,185,210,0.14)] border-vex-cyan-dark",
+  concluido: "bg-vex-cyan border-vex-cyan-dark",
+  parcial: "bg-chip-cyan border-vex-cyan-dark",
   pulado: "bg-transparent border-border",
   vazio: "bg-transparent border-border",
 };
@@ -84,19 +91,24 @@ export function HabitCard({
   const { logs } = useHabitLogs(client, habit.id);
   const logHabit = useLogHabit(client, habit.id);
   const streak = computeCurrentStreak(logs, new Date());
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const todayLog = logs.find((log) => log.log_date === today);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const logsByDate = new Map(logs.map((log) => [log.log_date, log.state]));
+  const completedThisWeek = lastSevenDays(today).filter((date) => logsByDate.get(date) === "concluido").length;
+  const weeklyTarget = getHabitWeeklyTarget(habit);
 
   return (
     <div className="qv-row flex items-center gap-x-4 gap-y-2.5 px-[18px] py-[14px] flex-wrap">
       <div className="flex-1 min-w-[160px] flex flex-col gap-[3px]">
         <span className="text-sm font-medium text-text-primary">{habit.name}</span>
-        <span className="text-xs text-text-muted">{cadenceLabel(habit)}</span>
+        <span className="text-xs text-text-muted">
+          {cadenceLabel(habit)}{habit.category ? ` · ${habit.category}` : ""}
+        </span>
+        {habit.description && <span className="mt-1 max-w-xl text-xs leading-relaxed text-text-secondary">{habit.description}</span>}
       </div>
 
-      <div className="flex gap-1.5" aria-label="Últimos 7 dias">
+      <div className="flex gap-1.5" aria-label={`Últimos 7 dias: ${completedThisWeek} concluídos`}>
         {lastSevenDays(today).map((date) => {
           const state = logsByDate.get(date);
           const [, month, day] = date.split("-");
@@ -113,6 +125,13 @@ export function HabitCard({
       <span className="font-mono text-[13px] text-text-secondary w-[66px] text-right">
         {streak} {streak === 1 ? "dia" : "dias"}
       </span>
+      <span className="font-mono text-[11px] text-text-muted">
+        {habit.frequency_type === "mensal"
+          ? `${logs.filter((log) => log.state === "concluido" && log.log_date >= shiftDateKey(today, -29)).length} nos últimos 30 dias`
+          : weeklyTarget === null
+            ? `${completedThisWeek} na semana`
+            : `${completedThisWeek}/${weeklyTarget} na semana`}
+      </span>
 
       <Badge tone={STATUS_TONE[habit.status]}>{STATUS_LABEL[habit.status]}</Badge>
 
@@ -124,13 +143,14 @@ export function HabitCard({
             variant={todayLog?.state === option.state ? "vex" : "quiet"}
             size="xs"
             aria-pressed={todayLog?.state === option.state}
+            disabled={habit.status !== "ativo" || logHabit.isPending}
             onClick={() => logHabit.mutate({ logDate: today, state: option.state })}
           >
             {option.label}
           </Button>
         ))}
         <Button type="button" variant="ghost" size="xs" onClick={onPause}>
-          {habit.status === "ativo" ? "Pausar" : "Retomar"}
+          {habit.status === "ativo" ? "Pausar" : habit.status === "arquivado" ? "Reativar" : "Retomar"}
         </Button>
         <button
           type="button"

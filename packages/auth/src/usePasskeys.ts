@@ -7,13 +7,18 @@ export function usePasskeys(client: SupabaseClient<Database>) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const result = await listPasskeys(client);
-    setPasskeys(result);
-    setIsLoading(false);
+    setIsLoading(true);
+    try {
+      setPasskeys(await listPasskeys(client));
+    } catch {
+      // Keep the last valid list when WebAuthn/Auth is unavailable.
+    } finally {
+      setIsLoading(false);
+    }
   }, [client]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { passkeys, isLoading, refresh };

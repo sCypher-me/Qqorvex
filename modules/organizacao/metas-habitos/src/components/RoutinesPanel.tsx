@@ -13,6 +13,7 @@ import {
   useRoutines,
 } from "../hooks/useRoutines";
 import type { HabitLogState, Routine } from "../types";
+import { localDateKey } from "../service";
 
 const LOG_OPTIONS: { state: HabitLogState; label: string }[] = [
   { state: "concluido", label: "Concluído" },
@@ -22,7 +23,7 @@ const LOG_OPTIONS: { state: HabitLogState; label: string }[] = [
 
 /** "Rotina agrupa hábitos para check-off em conjunto" (ex.: "Manhã" = Meditar + Ler + Exercício). */
 export function RoutinesPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const { routines, isLoading } = useRoutines(client);
   const { relations } = useRoutineHabits(client);
   const { habits } = useHabits(client);

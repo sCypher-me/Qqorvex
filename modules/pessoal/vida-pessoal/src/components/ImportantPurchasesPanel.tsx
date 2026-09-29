@@ -21,15 +21,15 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const title = String(form.get("title") ?? "").trim();
     if (!title) return;
     createPurchase.mutate({
       title,
       estimatedPrice: form.get("estimatedPrice") ? Number(form.get("estimatedPrice")) : undefined,
       priority: (form.get("priority") as PurchasePriority) || "media",
-    });
-    event.currentTarget.reset();
+    }, { onSuccess: () => formElement.reset() });
   }
 
   return (
@@ -100,8 +100,8 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
             </Select>
           </div>
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="sm">
-              Adicionar
+            <Button type="submit" variant="primary" size="sm" disabled={createPurchase.isPending}>
+              {createPurchase.isPending ? "Salvando…" : "Adicionar"}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
               Fechar
@@ -113,6 +113,7 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
           Adicionar
         </Button>
       )}
+      {createPurchase.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar a compra; os campos continuam preenchidos.</p>}
 
       <ConfirmDialog
         isOpen={confirmPurchase !== null}

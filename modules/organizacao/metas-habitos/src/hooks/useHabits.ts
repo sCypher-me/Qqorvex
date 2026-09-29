@@ -46,6 +46,9 @@ export function useLogHabit(client: SupabaseClient<Database>, habitId: string) {
   return useMutation({
     mutationFn: ({ logDate, state }: { logDate: string; state: HabitLogState }) =>
       logHabit(client, habitId, logDate, state),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: habitLogsKey(habitId) }),
+    onSuccess: (_, { logDate }) => {
+      queryClient.invalidateQueries({ queryKey: habitLogsKey(habitId) });
+      queryClient.invalidateQueries({ queryKey: ["habit-logs-by-date", logDate] });
+    },
   });
 }

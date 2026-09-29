@@ -12,3 +12,4 @@ export * from "./components/GraphView";
 export * from "./components/BasesPanel";
 export * from "./components/CheckpointsPanel";
 export * from "./components/BlockEditor";
+export * from "./components/CodeSnippetEditor";

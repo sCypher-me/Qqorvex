@@ -10,11 +10,15 @@ export function WeekView({
   events,
   selectedDate,
   onSelectDate,
+  onEdit,
+  onMove,
 }: {
   weekAnchor: Date;
   events: CalendarEvent[];
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  onEdit?: (event: CalendarEvent) => void;
+  onMove?: (event: CalendarEvent, targetDate: Date) => Promise<void> | void;
 }) {
   const weekStart = startOfWeek(weekAnchor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -30,18 +34,22 @@ export function WeekView({
         const isToday = isSameDay(day, today);
 
         return (
-          <button
+          <div
             key={day.toISOString()}
-            type="button"
-            onClick={() => onSelectDate(day)}
-            aria-pressed={selected}
-            className={`flex flex-col gap-2.5 rounded-[14px] border p-2.5 text-left min-h-[180px] cursor-pointer transition-colors ${
+            onDragOver={onMove ? (event) => event.preventDefault() : undefined}
+            onDrop={onMove ? (dropEvent) => {
+              dropEvent.preventDefault();
+              const eventId = dropEvent.dataTransfer.getData("text/plain");
+              const draggedEvent = events.find((event) => event.id === eventId);
+              if (draggedEvent && !isSameDay(new Date(draggedEvent.start_at), day)) void onMove(draggedEvent, day);
+            } : undefined}
+            className={`flex min-h-[180px] flex-col gap-2.5 rounded-[14px] border p-2.5 text-left transition-colors ${
               selected
-                ? "bg-[rgba(67,185,210,.08)] border-vex-cyan-dark"
+                ? "bg-chip-cyan border-vex-cyan-dark"
                 : "bg-vex-graphite border-border hover:border-text-muted"
             }`}
           >
-            <div className="flex items-baseline gap-2 px-0.5">
+            <button type="button" onClick={() => onSelectDate(day)} aria-label={`${day.toLocaleDateString("pt-BR", { dateStyle: "full" })}${selected ? ", selecionado" : ""}`} className="flex items-baseline gap-2 px-0.5 text-left">
               <span
                 className={`text-[11px] tracking-[.1em] uppercase ${selected ? "text-vex-cyan-bright" : "text-text-muted"}`}
               >
@@ -54,20 +62,28 @@ export function WeekView({
               >
                 {day.getDate()}
               </span>
-            </div>
+            </button>
             <div className="flex flex-col gap-1.5">
               {dayEvents.slice(0, 3).map((event) => {
                 const style = categoryStyle(event.category);
                 return (
                   <div
                     key={event.id}
+                    draggable={Boolean(onMove)}
+                    onDragStart={onMove ? (dragEvent) => dragEvent.dataTransfer.setData("text/plain", event.id) : undefined}
                     className="rounded-lg px-2 py-1.5 flex flex-col gap-0.5 min-w-0"
                     style={{ background: style.bg, borderLeft: `3px solid ${style.accent}` }}
                   >
                     {!event.is_all_day && (
                       <span className="font-mono text-[11px] text-text-secondary">{formatTime(event.start_at)}</span>
                     )}
-                    <span className="text-xs font-medium text-text-primary truncate">{event.title}</span>
+                    {onEdit ? (
+                      <button type="button" className="truncate text-left text-xs font-medium text-text-primary hover:text-vex-cyan-bright" onClick={() => onEdit(event)}>
+                        {event.title}
+                      </button>
+                    ) : (
+                      <span className="text-xs font-medium text-text-primary truncate">{event.title}</span>
+                    )}
                   </div>
                 );
               })}
@@ -77,7 +93,7 @@ export function WeekView({
                 </span>
               )}
             </div>
-          </button>
+          </div>
         );
       })}
     </div>

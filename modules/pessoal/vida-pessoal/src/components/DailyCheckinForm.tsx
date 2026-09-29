@@ -1,9 +1,13 @@
 import { useState, type ReactNode } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, ProgressBar, SkeletonCards } from "@qqorvex/ui";
-import { useTodayCheckin, useUpsertCheckin } from "../hooks/useVidaPessoal";
+import { useCheckinHistory, useTodayCheckin, useUpsertCheckin } from "../hooks/useVidaPessoal";
+import { localDateKey } from "../service";
+import type { DailyCheckin } from "../types";
 
 const SCALE = [1, 2, 3, 4, 5];
+const SCALE_HINT = ["Muito baixo", "Baixo", "Regular", "Bom", "Muito bom"];
+const SCALE_EMOJI = ["😞", "🙁", "😐", "🙂", "😄"];
 
 function ScaleSelector({
   label,
@@ -26,18 +30,21 @@ function ScaleSelector({
               type="button"
               role="radio"
               aria-checked={selected}
+              aria-label={`${label}: ${scaleValue} de 5, ${SCALE_HINT[scaleValue - 1]}`}
+              title={SCALE_HINT[scaleValue - 1]}
               onClick={() => onChange(scaleValue)}
-              className={`flex-1 rounded-xl py-3.5 font-mono text-[15px] border cursor-pointer transition-colors ${
+              className={`flex-1 rounded-xl py-3.5 text-[24px] leading-none border cursor-pointer transition-colors ${
                 selected
-                  ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark text-vex-cyan-bright"
+                  ? "bg-chip-cyan border-vex-cyan-dark text-vex-cyan-bright"
                   : "bg-vex-obsidian border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
               }`}
             >
-              {scaleValue}
+              <span aria-hidden="true">{SCALE_EMOJI[scaleValue - 1]}</span>
             </button>
           );
         })}
       </div>
+      <div className="flex justify-between text-[10px] text-text-muted"><span>{SCALE_HINT[0]}</span><span>{SCALE_HINT[4]}</span></div>
     </div>
   );
 }
@@ -54,22 +61,114 @@ function ScaleSummary({ label, value }: { label: string; value: number }) {
   );
 }
 
-function CheckinCard({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
+function CheckinCard({ actions, children, showTitle = true }: { actions?: ReactNode; children: ReactNode; showTitle?: boolean }) {
   return (
     <div className="qv-card p-[22px] flex flex-col gap-[18px]">
-      <div className="flex items-center gap-3">
-        <h2 className="flex-1 font-display text-lg font-semibold text-text-primary">Check-in diário</h2>
+      {(showTitle || actions) && <div className="flex items-center gap-3">
+        {showTitle && <h2 className="flex-1 font-display text-lg font-semibold text-text-primary">Check-in diário</h2>}
         {actions}
-      </div>
+      </div>}
       {children}
     </div>
   );
 }
 
+function formatHistoryDate(isoDate: string): string {
+  return new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short" })
+    .format(new Date(`${isoDate}T00:00:00`))
+    .replace(".", "");
+}
+
+function HistoryMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-text-muted">
+        <span className="truncate">{label}</span>
+        <span className="font-mono text-text-secondary">{value}/5</span>
+      </div>
+      <ProgressBar value={(value / 5) * 100} height={4} />
+    </div>
+  );
+}
+
+function CheckinHistory({ checkins, today, isLoading, error, onRetry }: {
+  checkins: DailyCheckin[];
+  today: string;
+  isLoading: boolean;
+  error: unknown;
+  onRetry: () => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const previousCheckins = checkins.filter((checkin) => checkin.checkin_date !== today);
+  const visibleCheckins = showAll ? previousCheckins : previousCheckins.slice(0, 5);
+  const average = previousCheckins.length
+    ? ((previousCheckins.reduce((sum, checkin) => sum + checkin.mood + checkin.sleep_quality + checkin.energy, 0) / (previousCheckins.length * 3)).toFixed(1))
+    : null;
+
+  return (
+    <section className="qv-card gap-4 p-[22px]" aria-labelledby="checkin-history-title">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="qv-eyebrow text-vex-gold-bright">Olhe para trás</p>
+          <h2 id="checkin-history-title" className="mt-1 font-display text-lg font-semibold text-text-primary">Histórico de check-ins</h2>
+          <p className="mt-1 text-xs text-text-muted">Uma visão curta dos últimos dias para perceber padrões, não para se cobrar.</p>
+        </div>
+        {average && <span className="font-mono text-xs text-text-secondary">média de {previousCheckins.length} registros · {average}/5</span>}
+      </div>
+      {isLoading ? (
+        <SkeletonCards count={3} className="h-14 w-full rounded-xl" />
+      ) : error ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-error/30 bg-error/5 px-3.5 py-3" role="alert">
+          <p className="flex-1 text-sm text-text-secondary">Não foi possível carregar o histórico agora.</p>
+          <Button type="button" variant="quiet" size="sm" onClick={onRetry}>Tentar novamente</Button>
+        </div>
+      ) : visibleCheckins.length === 0 ? (
+        <div className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-secondary">Seus registros anteriores aparecerão aqui depois do próximo check-in.</div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {visibleCheckins.map((checkin) => (
+            <article key={checkin.id} className="rounded-xl border border-border bg-vex-obsidian/55 p-3.5">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="font-mono text-xs uppercase tracking-[.08em] text-vex-cyan-bright">{formatHistoryDate(checkin.checkin_date)}</span>
+                <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                {checkin.note && <span className="max-w-[45%] truncate text-xs text-text-muted" title={checkin.note}>nota registrada</span>}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <HistoryMetric label="Humor" value={checkin.mood} />
+                <HistoryMetric label="Sono" value={checkin.sleep_quality} />
+                <HistoryMetric label="Energia" value={checkin.energy} />
+              </div>
+              {checkin.note && <p className="mt-3 border-t border-border pt-3 text-xs leading-relaxed text-text-secondary">{checkin.note}</p>}
+            </article>
+          ))}
+        </div>
+      )}
+      {previousCheckins.length > 5 && (
+        <Button type="button" variant="quiet" size="sm" className="self-start" onClick={() => setShowAll((current) => !current)}>
+          {showAll ? "Mostrar menos" : `Ver todos os ${previousCheckins.length} registros`}
+        </Button>
+      )}
+    </section>
+  );
+}
+
 /** Um registro por dia (`unique(user_id, checkin_date)`) — reabrir hoje sempre edita o mesmo check-in. */
-export function DailyCheckinForm({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const { checkin, isLoading } = useTodayCheckin(client, today);
+export function DailyCheckinForm({
+  client,
+  userId,
+  includeHistory = true,
+  showTitle = true,
+  onSaved,
+}: {
+  client: SupabaseClient<Database>;
+  userId: string;
+  includeHistory?: boolean;
+  showTitle?: boolean;
+  onSaved?: () => void;
+}) {
+  const today = localDateKey(new Date());
+  const { checkin, isLoading, error: checkinError, refetch: retryCheckin } = useTodayCheckin(client, userId, today);
+  const { checkins, isLoading: historyLoading, error: historyError, refetch: retryHistory } = useCheckinHistory(client, userId, 30, includeHistory);
   const upsertCheckin = useUpsertCheckin(client, userId, today);
 
   const [mood, setMood] = useState(3);
@@ -78,17 +177,16 @@ export function DailyCheckinForm({ client, userId }: { client: SupabaseClient<Da
   const [note, setNote] = useState("");
   const [editing, setEditing] = useState(false);
 
+  let currentCheckin: ReactNode;
   if (isLoading) {
-    return (
-      <CheckinCard>
+    currentCheckin = (
+      <CheckinCard showTitle={showTitle}>
         <SkeletonCards count={3} className="h-16 w-full rounded-xl" />
       </CheckinCard>
     );
-  }
-
-  if (checkin && !editing) {
-    return (
-      <CheckinCard
+  } else if (checkin && !editing) {
+    currentCheckin = (
+      <CheckinCard showTitle={showTitle}
         actions={
           <Button
             type="button"
@@ -102,41 +200,65 @@ export function DailyCheckinForm({ client, userId }: { client: SupabaseClient<Da
               setEditing(true);
             }}
           >
-            Editar
+            Editar hoje
           </Button>
         }
       >
+        <div className="qv-well flex items-center gap-3 px-3.5 py-3">
+          <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
+          <span className="text-sm text-text-primary">Check-in de hoje registrado</span>
+          <span className="ml-auto font-mono text-xs text-text-muted">{today.split("-").reverse().join("/")}</span>
+        </div>
         <ScaleSummary label="Humor" value={checkin.mood} />
         <ScaleSummary label="Qualidade do sono" value={checkin.sleep_quality} />
         <ScaleSummary label="Energia" value={checkin.energy} />
         {checkin.note && <p className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-primary">{checkin.note}</p>}
       </CheckinCard>
     );
+  } else {
+    currentCheckin = (
+      <CheckinCard showTitle={showTitle}>
+        {checkinError && <div className="flex items-center gap-3 rounded-xl border border-error/30 bg-error/5 px-3.5 py-3" role="alert">
+          <p className="flex-1 text-sm text-text-secondary">Não foi possível confirmar se você já registrou o check-in de hoje.</p>
+          <Button type="button" variant="quiet" size="sm" onClick={() => void retryCheckin()}>Recarregar</Button>
+        </div>}
+        <div className="qv-well px-3.5 py-3 text-sm leading-relaxed text-text-secondary">Leva menos de um minuto. Use as notas para registrar contexto, não para criar mais uma tarefa.</div>
+        <ScaleSelector label="Como está seu humor hoje?" value={mood} onChange={setMood} />
+        <ScaleSelector label="Qualidade do sono" value={sleepQuality} onChange={setSleepQuality} />
+        <ScaleSelector label="Como está sua energia hoje?" value={energy} onChange={setEnergy} />
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value.slice(0, 500))}
+          maxLength={500}
+          placeholder="Uma linha sobre o dia (opcional, até 500 caracteres)"
+          aria-label="Nota do dia"
+          className="qv-field"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            className="self-start"
+            disabled={upsertCheckin.isPending}
+            onClick={async () => {
+              try {
+                await upsertCheckin.mutateAsync({ mood, sleepQuality, energy, note: note.trim() || undefined });
+                setEditing(false);
+                onSaved?.();
+              } catch {
+                // O aviso abaixo mantém o formulário aberto para permitir tentar novamente.
+              }
+            }}
+          >
+            {upsertCheckin.isPending ? "Salvando…" : checkin ? "Salvar alterações" : "Salvar check-in"}
+          </Button>
+          {editing && checkin && <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancelar edição</Button>}
+          <span className="ml-auto text-[11px] text-text-muted">{note.length}/500</span>
+        </div>
+        {upsertCheckin.isError && <p className="text-sm text-error" role="alert">Não foi possível salvar. Seus dados continuam aqui; tente novamente.</p>}
+      </CheckinCard>
+    );
   }
 
-  return (
-    <CheckinCard>
-      <ScaleSelector label="Como está seu humor hoje?" value={mood} onChange={setMood} />
-      <ScaleSelector label="Qualidade do sono" value={sleepQuality} onChange={setSleepQuality} />
-      <ScaleSelector label="Como está sua energia hoje?" value={energy} onChange={setEnergy} />
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Uma linha sobre o dia (opcional)"
-        aria-label="Nota do dia"
-        className="qv-field"
-      />
-      <Button
-        type="button"
-        variant="primary"
-        className="self-start"
-        onClick={() => {
-          upsertCheckin.mutate({ mood, sleepQuality, energy, note: note.trim() || undefined });
-          setEditing(false);
-        }}
-      >
-        Salvar check-in
-      </Button>
-    </CheckinCard>
-  );
+  return <div className="flex min-w-0 flex-col gap-4">{currentCheckin}{includeHistory && <CheckinHistory checkins={checkins} today={today} isLoading={historyLoading} error={historyError} onRetry={() => void retryHistory()} />}</div>;
 }

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import { useRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react";
 import { triggerHaptic } from "../haptics";
 
 /** Chip de filtro/aba em pílula — ativo fica cyan tintado. */
@@ -19,20 +19,39 @@ export interface ChipTabsProps<T extends string> {
 }
 
 export function ChipTabs<T extends string>({ options, value, onChange, className = "" }: ChipTabsProps<T>) {
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   return (
-    <div className={`flex items-center gap-2 flex-wrap ${className}`} role="tablist">
-      {options.map((option) => (
-        <Chip
-          key={option.value}
-          active={option.value === value}
-          role="tab"
-          aria-pressed={undefined}
-          aria-selected={option.value === value}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </Chip>
-      ))}
+    <div className={`flex items-center gap-2 flex-wrap ${className}`} role="tablist" aria-orientation="horizontal">
+      {options.map((option, index) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            ref={(element) => { tabRefs.current[index] = element; }}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
+            className="qv-chip"
+            onClick={() => onChange(option.value)}
+            onKeyDown={(event) => {
+              let nextIndex: number | null = null;
+              if (event.key === "ArrowRight") nextIndex = (index + 1) % options.length;
+              if (event.key === "ArrowLeft") nextIndex = (index - 1 + options.length) % options.length;
+              if (event.key === "Home") nextIndex = 0;
+              if (event.key === "End") nextIndex = options.length - 1;
+              if (nextIndex === null) return;
+              event.preventDefault();
+              const next = options[nextIndex];
+              if (next) onChange(next.value);
+              tabRefs.current[nextIndex]?.focus();
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -69,7 +88,6 @@ export function ProgressBar({ value, tone = "cyan", color, height = 6, className
         style={{
           width: `${pct}%`,
           background: color ?? progressTone[tone],
-          boxShadow: tone === "gold" ? "0 0 16px rgba(210,166,111,.4)" : undefined,
         }}
       />
     </div>
@@ -94,7 +112,7 @@ export function ProgressRing({ value, size = 96, thickness = 9, tone = "cyan", c
       style={{
         width: size,
         height: size,
-        background: `conic-gradient(${color} 0 ${pct}%, rgba(42,48,57,.9) ${pct}% 100%)`,
+        background: `conic-gradient(${color} 0 ${pct}%, var(--qv-surface-selected) ${pct}% 100%)`,
       }}
     >
       <div
@@ -157,7 +175,7 @@ export interface NoticeProps {
 }
 
 const noticeTone = {
-  error: "bg-[rgba(217,65,85,.10)] border-critical text-critical",
+  error: "bg-error-bg border-error-border text-error",
   warning: "bg-warning-bg border-warning-border text-warning",
   success: "bg-success-bg border-success-border text-success",
   info: "bg-info-bg border-info-border text-vex-cyan-bright",
@@ -165,7 +183,12 @@ const noticeTone = {
 
 export function Notice({ tone = "error", title, children, actions, className = "" }: NoticeProps) {
   return (
-    <div className={`border rounded-[14px] p-4 flex flex-col gap-2.5 ${noticeTone[tone]} ${className}`} role="status">
+    <div
+      className={`border rounded-[14px] p-4 flex flex-col gap-2.5 ${noticeTone[tone]} ${className}`}
+      role={tone === "error" ? "alert" : "status"}
+      aria-live={tone === "error" ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
       {title && <span className="text-sm font-semibold">{title}</span>}
       {children && <span className="text-[13px] leading-relaxed text-text-primary">{children}</span>}
       {actions && <div className="flex gap-2.5 flex-wrap">{actions}</div>}
@@ -193,11 +216,11 @@ export function Switch({ checked, onChange, disabled, label }: SwitchProps) {
         triggerHaptic("light");
         onChange(!checked);
       }}
-      className={`w-[46px] h-[26px] rounded-full border border-border flex items-center p-0.5 cursor-pointer transition-colors shrink-0 disabled:opacity-50 ${
-        checked ? "bg-[rgba(67,185,210,.35)] justify-end" : "bg-vex-raised justify-start"
+      className={`relative w-[48px] h-[28px] rounded-full border flex items-center p-0.5 cursor-pointer transition-[background-color,border-color] shrink-0 disabled:opacity-50 ${
+        checked ? "border-vex-cyan-dark bg-[var(--qv-chip-cyan)] justify-end" : "border-border bg-vex-raised justify-start"
       }`}
     >
-      <span className={`w-5 h-5 rounded-full block ${checked ? "bg-vex-cyan-bright" : "bg-text-muted"}`} />
+      <span className={`w-[22px] h-[22px] rounded-full block transition-colors ${checked ? "bg-vex-cyan-bright" : "bg-text-muted"}`} />
     </button>
   );
 }

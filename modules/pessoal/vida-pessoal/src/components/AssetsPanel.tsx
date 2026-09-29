@@ -19,7 +19,8 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
     createAsset.mutate({
@@ -28,9 +29,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
       location: String(form.get("location") ?? "").trim() || undefined,
       estimatedValue: form.get("estimatedValue") ? Number(form.get("estimatedValue")) : undefined,
       warrantyId: warrantyId || undefined,
-    });
-    event.currentTarget.reset();
-    setWarrantyId("");
+    }, { onSuccess: () => { formElement.reset(); setWarrantyId(""); } });
   }
 
   return (
@@ -102,8 +101,8 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
             </Select>
           )}
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="sm">
-              Adicionar
+            <Button type="submit" variant="primary" size="sm" disabled={createAsset.isPending}>
+              {createAsset.isPending ? "Salvando…" : "Adicionar"}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
               Fechar
@@ -115,6 +114,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
           Adicionar
         </Button>
       )}
+      {createAsset.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar o bem; os campos continuam preenchidos.</p>}
 
       <ConfirmDialog
         isOpen={confirmAsset !== null}

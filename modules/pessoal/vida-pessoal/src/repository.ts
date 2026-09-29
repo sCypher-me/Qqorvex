@@ -1,4 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
+import { recordCheckinDay } from "@qqorvex/module-gamificacao";
 import type {
   Asset,
   CheckinInput,
@@ -138,19 +139,31 @@ export async function getCheckinForDate(client: Client, date: string): Promise<D
   return data;
 }
 
+export async function listCheckins(client: Client, limit = 30): Promise<DailyCheckin[]> {
+  const { data, error } = await client
+    .from("daily_checkins")
+    .select("*")
+    .order("checkin_date", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data;
+}
+
 /** Upsert por (user_id, checkin_date) — refazer o check-in no mesmo dia atualiza, nunca duplica. */
 export async function upsertCheckin(client: Client, userId: string, date: string, input: CheckinInput): Promise<DailyCheckin> {
+  const existing = await getCheckinForDate(client, date);
   const { data, error } = await client
     .from("daily_checkins")
     .upsert(toCheckinUpsert(userId, date, input), { onConflict: "user_id,checkin_date" })
     .select("*")
     .single();
   if (error) throw error;
+  if (!existing) await recordCheckinDay(client, userId);
   return data;
 }
 
 export async function listPomodoroSessions(client: Client): Promise<PomodoroSession[]> {
-  const { data, error } = await client.from("pomodoro_sessions").select("*").order("started_at", { ascending: false });
+  const { data, error } = await client.from("pomodoro_sessions").select("*").order("started_at", { ascending: false }).limit(90);
   if (error) throw error;
   return data;
 }

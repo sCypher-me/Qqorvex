@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@qqorvex/ui";
 import { DAILY_NOTE_PAGE_TYPE } from "../service";
 import type { Page } from "../types";
@@ -21,56 +21,50 @@ function pageTypeLabel(pageType: string): string {
  * Card clicável da lista do Segundo Cérebro. `linkTitles` (opcional) são os títulos das páginas
  * para as quais esta página aponta (`page_links`), exibidos como pílulas cyan.
  */
-export function PageCard({ page, linkTitles = [], onDelete }: { page: Page; linkTitles?: string[]; onDelete: () => void }) {
+export function PageCard({ page, linkTitles = [], isArchived = false, onToggleFavorite, onArchive, onDelete }: { page: Page; linkTitles?: string[]; isArchived?: boolean; onToggleFavorite?: () => void; onArchive?: () => void; onDelete: () => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const navigate = useNavigate();
-  const open = () => navigate(`/segundo-cerebro/${page.id}`);
 
   return (
     <>
-      <div
-        role="link"
-        tabIndex={0}
-        onClick={open}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") open();
-        }}
-        className="qv-card group flex cursor-pointer flex-col gap-[10px] p-[18px] outline-none transition-colors hover:border-text-muted focus-visible:border-vex-cyan-bright"
-      >
-        <div className="flex items-center gap-[10px]">
-          <span className="flex-1 text-[15px] font-semibold text-text-primary">
-            {page.is_favorite && <span className="mr-1.5 text-text-secondary">★</span>}
-            {page.title}
-          </span>
-          <span className="font-mono text-[11px] text-text-muted">{formatShortDate(page.updated_at)}</span>
+      <article className="qv-card group flex min-h-[174px] flex-col gap-3 p-5 transition-[border-color,background,transform] duration-200 hover:-translate-y-1 hover:border-text-muted hover:bg-vex-raised">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--qv-chip-cyan)] font-display text-base text-vex-cyan-bright">{page.page_type === "mapa_mental" ? "⌁" : page.page_type === "projeto" ? "◈" : "✦"}</span>
+          <div className="min-w-0 flex-1">
+            <Link to={`/segundo-cerebro/${page.id}`} className="block truncate pt-1 text-[15px] font-semibold text-text-primary hover:text-vex-cyan-bright focus-visible:outline-vex-cyan-bright" title={page.title}>{page.title}</Link>
+            <span className="font-mono text-[11px] text-text-muted">Editado {formatShortDate(page.updated_at)}</span>
+          </div>
+          {onToggleFavorite && !isArchived && <button type="button" aria-label={page.is_favorite ? `Remover ${page.title} das favoritas` : `Adicionar ${page.title} às favoritas`} aria-pressed={page.is_favorite} title={page.is_favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} onClick={onToggleFavorite} className={`qv-icon-btn h-7 w-7 shrink-0 text-sm ${page.is_favorite ? "!text-vex-gold" : "text-text-muted"}`}>★</button>}
           <button
             type="button"
             aria-label={`Excluir "${page.title}"`}
             title="Excluir página"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmOpen(true);
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
+            onClick={() => setConfirmOpen(true)}
             className="qv-icon-btn h-6 w-6 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 hover:!border-error hover:!text-error"
           >
             ✕
           </button>
         </div>
-        <span className="text-[13px] leading-[1.5] text-text-secondary">{pageTypeLabel(page.page_type)}</span>
+        <Link to={`/segundo-cerebro/${page.id}`} aria-label={`Abrir página ${page.title}`} className="flex flex-1 flex-col gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-vex-cyan-bright">
+        <span className="qv-pill qv-pill-outline self-start text-[10px] uppercase tracking-[.08em]">{pageTypeLabel(page.page_type)}</span>
         {linkTitles.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {linkTitles.map((title, index) => (
               <span
                 key={`${title}-${index}`}
-                className="rounded-full bg-[rgba(67,185,210,.10)] px-[9px] py-[3px] text-[11px] text-vex-cyan-bright"
+                className="rounded-full bg-chip-cyan px-[9px] py-[3px] text-[11px] text-vex-cyan-bright"
               >
                 {title}
               </span>
             ))}
           </div>
         )}
-      </div>
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3 text-[11px] text-text-muted">
+          <span>{linkTitles.length > 0 ? `${linkTitles.length} ${linkTitles.length === 1 ? "conexão" : "conexões"}` : "sem conexões ainda"}</span>
+          {!isArchived && <span className="text-vex-cyan opacity-0 transition-opacity group-hover:opacity-100">Abrir →</span>}
+        </div>
+        </Link>
+        {onArchive && <div className="flex justify-end border-t border-border pt-2"><button type="button" onClick={onArchive} className="qv-btn qv-btn-quiet qv-btn-xs">{isArchived ? "Restaurar" : "Arquivar"}</button></div>}
+      </article>
       <ConfirmDialog
         isOpen={confirmOpen}
         title={`Excluir "${page.title}"?`}

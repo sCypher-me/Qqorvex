@@ -21,6 +21,7 @@ import type {
   RecurringTransaction,
   Transaction,
   TransactionType,
+  UpdateTransactionInput,
 } from "./types";
 import { toTransactionInsert } from "./types";
 
@@ -48,6 +49,27 @@ export async function createTransaction(client: Client, userId: string, input: N
 
 export async function updateTransactionStatus(client: Client, id: string, status: Transaction["status"]): Promise<Transaction> {
   const { data, error } = await client.from("transactions").update({ status }).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTransaction(
+  client: Client,
+  id: string,
+  input: UpdateTransactionInput,
+): Promise<Transaction> {
+  const { data, error } = await client
+    .from("transactions")
+    .update({
+      name: input.name.trim(),
+      amount: input.amount,
+      date: input.date,
+      category_id: input.categoryId ?? null,
+      status: input.status,
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
   if (error) throw error;
   return data;
 }
@@ -130,6 +152,9 @@ export async function createRecurringTransaction(
     frequency: RecurrenceFrequency;
     startDate: string;
     isSubscription?: boolean;
+    categoryId?: string;
+    accountId?: string;
+    cardId?: string;
   },
 ): Promise<RecurringTransaction> {
   const { data, error } = await client
@@ -139,6 +164,10 @@ export async function createRecurringTransaction(
       name: input.name,
       amount: input.amount,
       transaction_type: input.transactionType,
+      category_id: input.categoryId ?? null,
+      account_id: input.accountId ?? null,
+      card_id: input.cardId ?? null,
+      payment_method: input.cardId ? "credito" : null,
       frequency: input.frequency,
       start_date: input.startDate,
       next_occurrence_date: input.startDate,
@@ -171,6 +200,26 @@ export async function updateRecurringStatus(
  * uma movimentação.
  */
 export async function generateOccurrence(client: Client, userId: string, recurring: RecurringTransaction): Promise<Transaction> {
+  const nextDate = computeNextOccurrenceDate(recurring.next_occurrence_date, recurring.frequency, recurring.start_date);
+  const { data: existing, error: existingError } = await client
+    .from("transactions")
+    .select("*")
+    .eq("recurring_transaction_id", recurring.id)
+    .eq("date", recurring.next_occurrence_date)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  // Se a inserção já ocorreu, mas o avanço da recorrência falhou, a tentativa seguinte só avança
+  // a data e retorna a ocorrência existente em vez de criar uma cobrança duplicada.
+  if (existing) {
+    const { error: advanceError } = await client
+      .from("recurring_transactions")
+      .update({ next_occurrence_date: nextDate })
+      .eq("id", recurring.id);
+    if (advanceError) throw advanceError;
+    return existing;
+  }
+
   const { data: transaction, error: transactionError } = await client
     .from("transactions")
     .insert({
@@ -192,7 +241,7 @@ export async function generateOccurrence(client: Client, userId: string, recurri
 
   const { error: updateError } = await client
     .from("recurring_transactions")
-    .update({ next_occurrence_date: computeNextOccurrenceDate(recurring.next_occurrence_date, recurring.frequency) })
+    .update({ next_occurrence_date: nextDate })
     .eq("id", recurring.id);
   if (updateError) throw updateError;
 
@@ -215,12 +264,14 @@ export async function createInstallmentPurchase(
   userId: string,
   input: { name: string; totalAmount: number; installmentCount: number; firstInstallmentDate: string },
 ): Promise<{ installment: Installment; transactions: Transaction[] }> {
+  const totalAmount = Math.round((input.totalAmount + Number.EPSILON) * 100) / 100;
+  const amounts = computeInstallmentAmounts(totalAmount, input.installmentCount);
   const { data: installment, error: installmentError } = await client
     .from("installments")
     .insert({
       user_id: userId,
       name: input.name,
-      total_amount: input.totalAmount,
+      total_amount: totalAmount,
       installment_count: input.installmentCount,
       first_installment_date: input.firstInstallmentDate,
     })
@@ -228,7 +279,6 @@ export async function createInstallmentPurchase(
     .single();
   if (installmentError) throw installmentError;
 
-  const amounts = computeInstallmentAmounts(input.totalAmount, input.installmentCount);
   const rows = amounts.map((amount, index) => ({
     user_id: userId,
     name: `${input.name} (${index + 1}/${input.installmentCount})`,
@@ -241,7 +291,10 @@ export async function createInstallmentPurchase(
   }));
 
   const { data: transactions, error: transactionsError } = await client.from("transactions").insert(rows).select("*");
-  if (transactionsError) throw transactionsError;
+  if (transactionsError) {
+    await client.from("installments").delete().eq("id", installment.id);
+    throw transactionsError;
+  }
 
   return { installment, transactions };
 }
@@ -259,7 +312,10 @@ export async function createBudget(
 ): Promise<Budget> {
   const { data, error } = await client
     .from("budgets")
-    .insert({ user_id: userId, category_id: input.categoryId, year_month: input.yearMonth, limit_amount: input.limitAmount })
+    .upsert(
+      { user_id: userId, category_id: input.categoryId, year_month: input.yearMonth, limit_amount: input.limitAmount },
+      { onConflict: "user_id,category_id,year_month" },
+    )
     .select("*")
     .single();
   if (error) throw error;

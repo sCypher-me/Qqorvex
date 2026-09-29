@@ -25,7 +25,7 @@ export function SlashMenu({ query, onSelect }: { query: string; onSelect: (block
           aria-selected={false}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(type)}
-          className="flex items-center gap-[10px] rounded-[10px] px-3 py-[9px] text-left text-[13px] text-text-primary transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none"
+          className="flex items-center gap-[10px] rounded-[10px] px-3 py-[9px] text-left text-[13px] text-text-primary transition-colors hover:bg-chip-neutral focus-visible:bg-chip-cyan focus-visible:outline-none"
         >
           <span className="flex-1">{BLOCK_TYPE_LABELS[type]}</span>
         </button>

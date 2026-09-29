@@ -1,4 +1,4 @@
-import { addCalendarDays, isSameCalendarDay, startOfCalendarMonth, startOfCalendarWeek } from "../service";
+import { addCalendarDays, formatLocalDate, isSameCalendarDay, projectRecurringOccurrences, startOfCalendarMonth, startOfCalendarWeek } from "../service";
 import type { RecurringTransaction, Transaction } from "../types";
 
 const WEEKDAY_LABELS = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -30,7 +30,11 @@ export function FinancialCalendarView({
   const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => addCalendarDays(monthStart, i));
   const today = new Date();
-  const activeRecurring = recurringTransactions.filter((r) => r.status === "ativa");
+  const monthEnd = formatLocalDate(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0));
+  const projectedByDate = new Map<string, ReturnType<typeof projectRecurringOccurrences>>();
+  for (const occurrence of projectRecurringOccurrences(recurringTransactions, formatLocalDate(monthStart), monthEnd)) {
+    projectedByDate.set(occurrence.date, [...(projectedByDate.get(occurrence.date) ?? []), occurrence]);
+  }
 
   return (
     <div className="grid grid-cols-7 gap-1.5 w-full">
@@ -46,9 +50,7 @@ export function FinancialCalendarView({
         const dayTransactions = transactions.filter(
           (t) => t.status !== "cancelada" && isSameCalendarDay(new Date(`${t.date}T00:00:00`), day),
         );
-        const dayProjected = activeRecurring.filter((r) =>
-          isSameCalendarDay(new Date(`${r.next_occurrence_date}T00:00:00`), day),
-        );
+        const dayProjected = projectedByDate.get(formatLocalDate(day)) ?? [];
         const hasOut = dayTransactions.some((t) => t.transaction_type === "saida");
         const hasIn = dayTransactions.some((t) => t.transaction_type === "entrada");
         const hasTransfer = dayTransactions.some((t) => t.transaction_type === "transferencia");
@@ -59,14 +61,14 @@ export function FinancialCalendarView({
 
         return (
           <button
-            key={day.toISOString()}
+            key={formatLocalDate(day)}
             type="button"
             onClick={() => onSelectDate(day)}
             aria-pressed={selected}
             aria-label={`Dia ${day.getDate()}`}
             className={`aspect-square rounded-lg border flex flex-col items-center justify-center gap-[3px] font-mono text-[11px] cursor-pointer transition-colors ${
               selected
-                ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark text-vex-cyan-bright"
+                ? "bg-chip-cyan border-vex-cyan-dark text-vex-cyan-bright"
                 : `bg-vex-obsidian border-border hover:border-text-muted ${isToday ? "text-vex-cyan-bright" : "text-text-secondary"}`
             }`}
           >

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePlanLabel, computePlanPeriod, countCompletedPomodorosThisWeek, countCompletedPomodorosToday } from "./service";
+import { completedPomodoroMinutesThisWeek, computePlanLabel, computePlanPeriod, countCompletedPomodorosThisWeek, countCompletedPomodorosToday, localDateKey } from "./service";
 import type { PomodoroSession } from "./types";
 
 function session(overrides: Partial<PomodoroSession>): PomodoroSession {
@@ -29,12 +29,22 @@ describe("computePlanPeriod", () => {
     expect(computePlanPeriod("mensal", { month: "2026-12" })).toEqual({ periodStart: "2026-12-01", periodEnd: "2026-12-31" });
   });
 
+  it("mensal respeita fevereiro bissexto sem depender do fuso local", () => {
+    expect(computePlanPeriod("mensal", { month: "2028-02" })).toEqual({ periodStart: "2028-02-01", periodEnd: "2028-02-29" });
+  });
+
   it("anual cobre o ano inteiro", () => {
     expect(computePlanPeriod("anual", { year: 2026 })).toEqual({ periodStart: "2026-01-01", periodEnd: "2026-12-31" });
   });
 
   it("quinquenal cobre 5 anos (ano + 4)", () => {
     expect(computePlanPeriod("quinquenal", { year: 2026 })).toEqual({ periodStart: "2026-01-01", periodEnd: "2030-12-31" });
+  });
+});
+
+describe("localDateKey", () => {
+  it("monta a chave com a data local sem converter para UTC", () => {
+    expect(localDateKey(new Date(2026, 8, 15, 23, 55))).toBe("2026-09-15");
   });
 });
 
@@ -59,5 +69,16 @@ describe("countCompletedPomodorosThisWeek", () => {
       session({ status: "died", started_at: new Date(2026, 8, 15).toISOString() }),
     ];
     expect(countCompletedPomodorosThisWeek(sessions, reference)).toBe(1);
+  });
+
+  it("ignora sessões futuras e soma minutos apenas das sessões concluídas desta semana", () => {
+    const reference = new Date(2026, 8, 16, 12, 0);
+    const sessions = [
+      session({ status: "completed", duration_minutes: 30, started_at: new Date(2026, 8, 13, 9, 0).toISOString() }),
+      session({ status: "completed", duration_minutes: 60, started_at: new Date(2026, 8, 17, 9, 0).toISOString() }),
+      session({ status: "died", duration_minutes: 15, started_at: new Date(2026, 8, 15, 9, 0).toISOString() }),
+    ];
+    expect(countCompletedPomodorosThisWeek(sessions, reference)).toBe(1);
+    expect(completedPomodoroMinutesThisWeek(sessions, reference)).toBe(30);
   });
 });

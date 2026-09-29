@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ProgressRing } from "@qqorvex/ui";
+import { Button, ProgressRing, SkeletonCards } from "@qqorvex/ui";
 import { useLogPomodoroSession, usePomodoroSessions } from "../hooks/useVidaPessoal";
-import { countCompletedPomodorosThisWeek, countCompletedPomodorosToday } from "../service";
+import { completedPomodoroMinutesThisWeek, countCompletedPomodorosThisWeek, countCompletedPomodorosToday } from "../service";
+import type { NewPomodoroSessionInput } from "../types";
+import { FocusAudioPlayer } from "./FocusAudioPlayer";
 
 const DURATIONS_MINUTES = [15, 30, 60];
 
@@ -13,15 +15,24 @@ interface RunningSession {
 
 /**
  * Mecânica igual ao app Forest: a sessão só é gravada quando termina — completa (`completed`) ou
- * "morre" (`died`) se a pessoa cancelar ou sair da aba antes do tempo acabar. Nenhuma linha "em
- * andamento" existe no banco; o cronômetro roda em estado local até esse momento.
+ * "morre" (`died`) se a pessoa cancelar ou sair da aba antes do tempo acabar. A trilha local toca
+ * dentro do app e não cria uma sessão externa. Nenhuma linha "em andamento" existe no banco; o cronômetro
+ * roda em estado local até esse momento.
  */
 export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
-  const { sessions } = usePomodoroSessions(client);
+  const { sessions, isLoading: sessionsLoading, error: sessionsError, refetch: retrySessions } = usePomodoroSessions(client);
   const logSession = useLogPomodoroSession(client, userId);
   const [duration, setDuration] = useState(DURATIONS_MINUTES[0]!);
   const [session, setSession] = useState<RunningSession | null>(null);
+  const [failedSession, setFailedSession] = useState<NewPomodoroSessionInput | null>(null);
   const [now, setNow] = useState(() => new Date());
+
+  const saveSession = useCallback((input: NewPomodoroSessionInput) => {
+    logSession.mutate(input, {
+      onSuccess: () => setFailedSession(null),
+      onError: () => setFailedSession(input),
+    });
+  }, [logSession.mutate]);
 
   useEffect(() => {
     if (!session) return;
@@ -32,7 +43,7 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
   useEffect(() => {
     if (!session) return;
     if (now.getTime() >= session.endAt.getTime()) {
-      logSession.mutate({
+      saveSession({
         durationMinutes: duration,
         status: "completed",
         startedAt: session.startedAt.toISOString(),
@@ -40,13 +51,16 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
       });
       setSession(null);
     }
-  }, [now, session, duration, logSession]);
+  }, [now, session, duration, saveSession]);
 
   useEffect(() => {
     if (!session) return;
     function handleVisibilityChange() {
-      if (document.hidden && session) {
-        logSession.mutate({
+      if (!document.hidden) {
+        return;
+      }
+      if (session) {
+        saveSession({
           durationMinutes: duration,
           status: "died",
           startedAt: session.startedAt.toISOString(),
@@ -57,9 +71,10 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [session, duration, logSession]);
+  }, [session, duration, saveSession]);
 
   function handleStart() {
+    if (failedSession || logSession.isPending) return;
     const startedAt = new Date();
     const endAt = new Date(startedAt.getTime() + duration * 60_000);
     setNow(startedAt);
@@ -68,7 +83,7 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
 
   function handleCancel() {
     if (!session) return;
-    logSession.mutate({
+    saveSession({
       durationMinutes: duration,
       status: "died",
       startedAt: session.startedAt.toISOString(),
@@ -88,6 +103,13 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
   const today = new Date();
   const completedToday = countCompletedPomodorosToday(sessions, today);
   const completedThisWeek = countCompletedPomodorosThisWeek(sessions, today);
+  const focusedMinutesThisWeek = completedPomodoroMinutesThisWeek(sessions, today);
+  const recentSessions = sessions.slice(0, 5);
+
+  function formatSessionDate(startedAt: string): string {
+    return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+      .format(new Date(startedAt)).replace(".", "");
+  }
 
   return (
     <div className="qv-card p-[22px] flex flex-col items-center gap-[18px]">
@@ -125,7 +147,7 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
                   onClick={() => setDuration(d)}
                   className={`flex-1 rounded-xl py-2 font-mono text-[13px] border cursor-pointer transition-colors ${
                     selected
-                      ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark text-vex-cyan-bright"
+                      ? "bg-chip-cyan border-vex-cyan-dark text-vex-cyan-bright"
                       : "bg-vex-obsidian border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
                   }`}
                 >
@@ -134,8 +156,8 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
               );
             })}
           </div>
-          <Button type="button" variant="vex" className="w-full" onClick={handleStart}>
-            Começar
+          <Button type="button" variant="vex" className="w-full" onClick={handleStart} disabled={Boolean(failedSession) || logSession.isPending}>
+            {logSession.isPending ? "Salvando sessão anterior…" : failedSession ? "Salve a sessão anterior para continuar" : "Começar"}
           </Button>
         </div>
       )}
@@ -147,9 +169,47 @@ export function PomodoroTimer({ client, userId }: { client: SupabaseClient<Datab
         </div>
         <div className="qv-row-top flex items-baseline gap-2.5 py-2">
           <span className="flex-1 text-[13px] text-text-primary">Esta semana</span>
-          <span className="font-mono text-xs text-text-secondary">{completedThisWeek}</span>
+          <span className="font-mono text-xs text-text-secondary">{completedThisWeek} sessões · {focusedMinutesThisWeek} min</span>
         </div>
       </div>
+
+      {failedSession && (
+        <div className="w-full rounded-xl border border-error/30 bg-error/5 p-3" role="alert">
+          <p className="text-sm text-text-primary">A sessão terminou, mas não foi possível salvar o registro.</p>
+          <Button type="button" variant="quiet" size="sm" className="mt-2" disabled={logSession.isPending} onClick={() => saveSession(failedSession)}>
+            {logSession.isPending ? "Salvando…" : "Tentar salvar novamente"}
+          </Button>
+        </div>
+      )}
+      <section className="w-full border-t border-border pt-4" aria-labelledby="pomodoro-history-title">
+        <div className="mb-3 flex items-baseline gap-2">
+          <h3 id="pomodoro-history-title" className="flex-1 text-sm font-semibold text-text-primary">Sessões recentes</h3>
+          <span className="text-[11px] text-text-muted">concluídas e interrompidas</span>
+        </div>
+        {sessionsLoading ? (
+          <SkeletonCards count={2} className="h-8 w-full rounded-xl" />
+        ) : sessionsError ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-error/30 bg-error/5 p-3" role="alert">
+            <p className="flex-1 text-xs text-text-secondary">Não foi possível carregar as sessões salvas.</p>
+            <Button type="button" variant="quiet" size="sm" onClick={() => void retrySessions()}>Tentar novamente</Button>
+          </div>
+        ) : recentSessions.length === 0 ? (
+          <p className="qv-well px-3 py-2.5 text-xs leading-relaxed text-text-muted">Suas sessões aparecem aqui depois do primeiro foco.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {recentSessions.map((recent) => (
+              <li key={recent.id} className="qv-row-top flex items-center gap-2 py-2 text-xs">
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${recent.status === "completed" ? "bg-success" : "bg-text-muted"}`} aria-hidden="true" />
+                <span className="flex-1 text-text-secondary">{formatSessionDate(recent.started_at)}</span>
+                <span className="font-mono text-text-primary">{recent.duration_minutes} min</span>
+                <span className="text-text-muted">{recent.status === "completed" ? "Concluída" : "Interrompida"}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <FocusAudioPlayer />
     </div>
   );
 }

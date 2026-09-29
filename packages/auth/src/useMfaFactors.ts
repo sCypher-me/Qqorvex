@@ -7,13 +7,18 @@ export function useMfaFactors(client: SupabaseClient<Database>) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const result = await listMfaFactors(client);
-    setFactors(result);
-    setIsLoading(false);
+    setIsLoading(true);
+    try {
+      setFactors(await listMfaFactors(client));
+    } catch {
+      // Keep the last valid factor list when the Auth API fails unexpectedly.
+    } finally {
+      setIsLoading(false);
+    }
   }, [client]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { factors, isLoading, refresh };

@@ -27,6 +27,16 @@ export async function listPages(client: Client): Promise<Page[]> {
   return data;
 }
 
+export async function listArchivedPages(client: Client): Promise<Page[]> {
+  const { data, error } = await client
+    .from("pages")
+    .select("*")
+    .eq("is_archived", true)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 export async function getPage(client: Client, pageId: string): Promise<Page> {
   const { data, error } = await client.from("pages").select("*").eq("id", pageId).single();
   if (error) throw error;
@@ -48,17 +58,24 @@ export async function getOrCreateDailyNote(client: Client, userId: string, date:
   const { data: existing, error: existingError } = await client
     .from("pages")
     .select("*")
+    .eq("user_id", userId)
     .eq("page_type", DAILY_NOTE_PAGE_TYPE)
     .eq("title", title)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing) return existing;
+  if (existing) return existing.is_archived ? archivePage(client, existing.id, false) : existing;
 
   return createPage(client, userId, { title, pageType: DAILY_NOTE_PAGE_TYPE });
 }
 
 export async function updatePageTitle(client: Client, pageId: string, title: string): Promise<Page> {
   const { data, error } = await client.from("pages").update({ title }).eq("id", pageId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePageFavorite(client: Client, pageId: string, isFavorite: boolean): Promise<Page> {
+  const { data, error } = await client.from("pages").update({ is_favorite: isFavorite }).eq("id", pageId).select("*").single();
   if (error) throw error;
   return data;
 }
@@ -264,6 +281,12 @@ export async function listPageTags(client: Client, pageId: string): Promise<stri
   const { data, error } = await client.from("page_tags").select("tag").eq("page_id", pageId);
   if (error) throw error;
   return data.map((row) => row.tag);
+}
+
+export async function listAllPageTags(client: Client): Promise<Array<{ page_id: string; tag: string }>> {
+  const { data, error } = await client.from("page_tags").select("page_id, tag");
+  if (error) throw error;
+  return data;
 }
 
 export async function addPageTag(client: Client, pageId: string, tag: string): Promise<void> {

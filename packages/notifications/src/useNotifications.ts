@@ -16,32 +16,40 @@ export function useNotifications(client: SupabaseClient<Database>, userId: strin
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     if (!supported) {
       setIsLoading(false);
       return;
     }
-    const registration = await registerServiceWorker();
-    const existing = await getExistingSubscription(registration);
-    setIsSubscribed(!!existing);
-    setIsLoading(false);
+    try {
+      const registration = await registerServiceWorker();
+      const existing = await getExistingSubscription(registration);
+      setIsSubscribed(!!existing);
+    } catch (caught) {
+      setIsSubscribed(false);
+      setError(caught instanceof Error ? caught.message : "Não foi possível verificar as notificações.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [supported]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   async function enable() {
     setError(null);
-    if (!supported) {
-      setError("Este navegador não suporta notificações push.");
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      setError("Permissão de notificações negada.");
-      return;
-    }
     try {
+      if (!supported) {
+        setError("Este navegador não suporta notificações push.");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setError("Permissão de notificações negada.");
+        return;
+      }
       const registration = await registerServiceWorker();
       const subscription = await subscribeToPush(registration, vapidPublicKey);
       await savePushSubscription(client, userId, subscription);
@@ -53,9 +61,13 @@ export function useNotifications(client: SupabaseClient<Database>, userId: strin
 
   async function disable() {
     setError(null);
-    const registration = await registerServiceWorker();
-    await unsubscribeCurrentDevice(client, registration);
-    setIsSubscribed(false);
+    try {
+      const registration = await registerServiceWorker();
+      await unsubscribeCurrentDevice(client, registration);
+      setIsSubscribed(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível desativar as notificações.");
+    }
   }
 
   return { supported, isSubscribed, isLoading, error, enable, disable };

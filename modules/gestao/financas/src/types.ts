@@ -35,6 +35,14 @@ export interface NewTransactionInput {
   tags?: string[];
 }
 
+export interface UpdateTransactionInput {
+  name: string;
+  amount: number;
+  date: string;
+  categoryId?: string;
+  status: TransactionStatus;
+}
+
 export function toTransactionInsert(userId: string, input: NewTransactionInput): TablesInsert<"transactions"> {
   return {
     user_id: userId,

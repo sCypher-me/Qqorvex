@@ -76,6 +76,18 @@ export async function listMilestones(client: Client, goalId: string): Promise<Go
   return data;
 }
 
+export async function listGoalCheckins(client: Client, goalId: string): Promise<GoalCheckin[]> {
+  const { data, error } = await client
+    .from("goal_checkins")
+    .select("*")
+    .eq("goal_id", goalId)
+    .order("checkin_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data;
+}
+
 export async function createMilestone(client: Client, goalId: string, title: string): Promise<GoalMilestone> {
   const { data, error } = await client
     .from("goal_milestones")

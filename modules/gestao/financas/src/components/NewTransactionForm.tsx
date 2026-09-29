@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@qqorvex/ui";
-import { PAYMENT_METHOD_LABELS } from "../service";
-import type { Account, Card, Category, NewTransactionInput, TransactionType } from "../types";
-import { parseBRLInput } from "./TransactionList";
+import { financeActionError } from "../financeErrors";
+import { formatLocalDate, parseBRLInput, PAYMENT_METHOD_LABELS } from "../service";
+import type { Account, Card, Category, NewTransactionInput, TransactionStatus, TransactionType } from "../types";
 
 /** `credito` fica de fora do seletor — é representado escolhendo um Cartão, não aqui. */
 const SELECTABLE_PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_LABELS).filter(([value]) => value !== "credito");
@@ -25,47 +25,71 @@ export function NewTransactionForm({
   categories: Category[];
   cards: Card[];
   vehicles?: { id: string; nickname: string }[];
-  onCreate: (input: NewTransactionInput) => void;
+  onCreate: (input: NewTransactionInput) => Promise<unknown>;
 }) {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [transactionType, setTransactionType] = useState<TransactionType>("saida");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => formatLocalDate(new Date()));
   const [categoryId, setCategoryId] = useState("");
   const [accountId, setAccountId] = useState("");
   const [transferToAccountId, setTransferToAccountId] = useState("");
   const [cardId, setCardId] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [status, setStatus] = useState<"" | TransactionStatus>("");
   const [showMore, setShowMore] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const isTransfer = transactionType === "transferencia";
   // Escolher um Cartão já é "crédito" de forma inequívoca — não faz sentido perguntar de novo.
   const effectivePaymentMethod = cardId ? "credito" : paymentMethod || undefined;
   const relevantCategories = categories.filter((c) => c.kind === (transactionType === "entrada" ? "entrada" : "saida"));
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
     const parsedAmount = parseBRLInput(amount);
-    if (!trimmed || !(parsedAmount > 0)) return;
-    if (isTransfer && !transferToAccountId) return;
-    onCreate({
-      name: trimmed,
-      amount: parsedAmount,
-      transactionType,
-      date,
-      categoryId: isTransfer ? undefined : categoryId || undefined,
-      accountId: accountId || undefined,
-      transferToAccountId: isTransfer ? transferToAccountId : undefined,
-      cardId: isTransfer ? undefined : cardId || undefined,
-      vehicleId: isTransfer ? undefined : vehicleId || undefined,
-      paymentMethod: isTransfer ? undefined : (effectivePaymentMethod as NewTransactionInput["paymentMethod"]),
-    });
-    setName("");
-    setAmount("");
-    setCategoryId("");
-    setPaymentMethod("");
+    if (!trimmed || !(parsedAmount > 0) || !date) {
+      setError("Informe uma descrição, um valor maior que zero e uma data válida.");
+      return;
+    }
+    if (isTransfer && (!accountId || !transferToAccountId)) {
+      setError("Escolha as contas de origem e destino da transferência.");
+      return;
+    }
+    if (!isTransfer && relevantCategories.length > 0 && !categoryId) {
+      setError("Escolha uma categoria para este lançamento.");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await onCreate({
+        name: trimmed,
+        amount: parsedAmount,
+        transactionType,
+        date,
+        categoryId: isTransfer ? undefined : categoryId || undefined,
+        accountId: accountId || undefined,
+        transferToAccountId: isTransfer ? transferToAccountId : undefined,
+        cardId: isTransfer ? undefined : cardId || undefined,
+        vehicleId: isTransfer ? undefined : vehicleId || undefined,
+        paymentMethod: isTransfer ? undefined : (effectivePaymentMethod as NewTransactionInput["paymentMethod"]),
+        status: status || undefined,
+      });
+      setName("");
+      setAmount("");
+      setCategoryId("");
+      setPaymentMethod("");
+      setStatus("");
+    } catch (saveError) {
+      setError(financeActionError(saveError, "Não foi possível registrar a movimentação. Seus dados continuam preenchidos; tente novamente."));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const fieldBase = "qv-field px-3 text-[13px]";
@@ -77,8 +101,10 @@ export function NewTransactionForm({
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Descrição"
+          placeholder="Ex.: mercado, salário, conta de luz"
           aria-label="Descrição"
+          maxLength={120}
+          required
           className="qv-field flex-[2_1_180px]"
         />
         <input
@@ -87,6 +113,7 @@ export function NewTransactionForm({
           placeholder="R$ 0,00"
           aria-label="Valor"
           inputMode="decimal"
+          required
           className="qv-field flex-[0_1_130px] font-mono"
         />
         <select
@@ -107,6 +134,7 @@ export function NewTransactionForm({
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             aria-label="Categoria"
+            required={relevantCategories.length > 0}
             className={selectClass}
           >
             <option value="">Categoria</option>
@@ -142,8 +170,8 @@ export function NewTransactionForm({
               ))}
           </select>
         )}
-        <Button type="submit" variant="primary" className="px-5">
-          Lançar
+        <Button type="submit" variant="primary" className="px-5" disabled={isSubmitting}>
+          {isSubmitting ? "Salvando…" : "Lançar"}
         </Button>
       </div>
 
@@ -158,7 +186,7 @@ export function NewTransactionForm({
         </button>
         {!showMore && (
           <span className="font-mono text-xs text-text-muted">
-            {date === new Date().toISOString().slice(0, 10) ? "data: hoje" : `data: ${date.split("-").reverse().join("/")}`}
+            {date === formatLocalDate(new Date()) ? "data: hoje" : `data: ${date.split("-").reverse().join("/")}`}
           </span>
         )}
         {showMore && (
@@ -168,8 +196,21 @@ export function NewTransactionForm({
               value={date}
               onChange={(e) => setDate(e.target.value)}
               aria-label="Data"
+              required
               className="qv-field flex-[0_1_160px] py-2 font-mono text-[13px]"
             />
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "" | TransactionStatus)}
+              aria-label="Situação da movimentação"
+              className={`${fieldBase} flex-[0_1_170px] py-2`}
+            >
+              <option value="">Situação automática</option>
+              <option value="concluida">Concluída</option>
+              <option value="futura">Futura</option>
+              <option value="pendente">Pendente</option>
+              <option value="vencida">Vencida</option>
+            </select>
             {!isTransfer && cards.length > 0 && (
               <select value={cardId} onChange={(e) => setCardId(e.target.value)} aria-label="Cartão" className={`${selectClass} py-2`}>
                 <option value="">Cartão (opcional)</option>
@@ -213,6 +254,7 @@ export function NewTransactionForm({
           </>
         )}
       </div>
+      {error && <p role="alert" className="text-xs text-error">{error}</p>}
     </form>
   );
 }

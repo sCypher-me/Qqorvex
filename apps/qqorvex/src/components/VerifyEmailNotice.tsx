@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Notice } from "@qqorvex/ui";
 import { useAuth } from "@qqorvex/auth";
+import { TurnstileCaptcha } from "./TurnstileCaptcha";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -15,7 +16,10 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
   const { resendSignupConfirmation } = useAuth();
   const [cooldown, setCooldown] = useState(0);
   const [sending, setSending] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? "";
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -24,10 +28,18 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
   }, [cooldown]);
 
   async function handleResend() {
+    if (captchaSiteKey && !captchaToken) {
+      setFeedback({ tone: "error", text: "Conclua a verificação de segurança para reenviar." });
+      return;
+    }
     setSending(true);
     setFeedback(null);
-    const { error } = await resendSignupConfirmation(email);
+    const { error } = await resendSignupConfirmation(email, captchaToken ?? undefined);
     setSending(false);
+    if (captchaSiteKey) {
+      setCaptchaToken(null);
+      setCaptchaResetSignal((value) => value + 1);
+    }
     if (error) {
       setFeedback({ tone: "error", text: error });
       return;
@@ -42,9 +54,16 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
       <p className="text-[13px] text-text-secondary m-0">
         Enviamos um link de confirmação para <span className="text-text-primary font-medium">{maskEmail(email)}</span>.
       </p>
+      {captchaSiteKey && (
+        <TurnstileCaptcha
+          siteKey={captchaSiteKey}
+          resetSignal={captchaResetSignal}
+          onToken={setCaptchaToken}
+        />
+      )}
       {feedback && <Notice tone={feedback.tone}>{feedback.text}</Notice>}
       <div className="flex flex-col gap-2.5 w-full">
-        <Button type="button" variant="secondary" onClick={handleResend} disabled={cooldown > 0 || sending} className="w-full">
+        <Button type="button" variant="secondary" onClick={handleResend} disabled={cooldown > 0 || sending || (Boolean(captchaSiteKey) && !captchaToken)} className="w-full">
           {cooldown > 0 ? `Reenviar em ${cooldown}s` : sending ? "Enviando…" : "Reenviar e-mail"}
         </Button>
         <button

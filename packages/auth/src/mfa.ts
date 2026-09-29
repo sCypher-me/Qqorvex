@@ -66,10 +66,28 @@ export interface AssuranceLevel {
   next: string | null;
 }
 
+export const MFA_ASSURANCE_TIMEOUT_MS = 8_000;
+
 /** `next > current` significa que a sessão está em `aal1` mas precisa completar o 2FA pra `aal2`. */
-export async function getAssuranceLevel(client: SupabaseClient<Database>): Promise<AssuranceLevel> {
-  const { data } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
-  return { current: data?.currentLevel ?? null, next: data?.nextLevel ?? null };
+export async function getAssuranceLevel(
+  client: SupabaseClient<Database>,
+  timeoutMs = MFA_ASSURANCE_TIMEOUT_MS,
+): Promise<AssuranceLevel> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutFallback = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("A validação do 2FA demorou demais.")), timeoutMs);
+  });
+
+  try {
+    const { data, error } = await Promise.race([
+      client.auth.mfa.getAuthenticatorAssuranceLevel(),
+      timeoutFallback,
+    ]);
+    if (error) throw error;
+    return { current: data?.currentLevel ?? null, next: data?.nextLevel ?? null };
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 export function isMfaPending(level: AssuranceLevel): boolean {

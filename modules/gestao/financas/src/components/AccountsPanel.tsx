@@ -3,6 +3,7 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useAccounts, useCreateAccount, useTransactions } from "../hooks/useFinancas";
 import { computeAccountBalance } from "../service";
+import { financeActionError } from "../financeErrors";
 import type { Account } from "../types";
 import { formatBRL } from "./TransactionList";
 
@@ -19,13 +20,19 @@ export function AccountsPanel({ client, userId }: { client: SupabaseClient<Datab
   const createAccount = useCreateAccount(client, userId);
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState<Account["account_type"]>("outro");
+  const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    createAccount.mutate({ name: trimmed, accountType });
-    setName("");
+    setError("");
+    try {
+      await createAccount.mutateAsync({ name: trimmed, accountType });
+      setName("");
+    } catch (saveError) {
+      setError(financeActionError(saveError, "Não foi possível criar a conta. Seus dados continuam preenchidos."));
+    }
   }
 
   return (
@@ -62,6 +69,8 @@ export function AccountsPanel({ client, userId }: { client: SupabaseClient<Datab
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da conta"
           aria-label="Nome da conta"
+          maxLength={80}
+          required
           className="qv-field flex-[2_1_160px] py-2"
         />
         <select
@@ -80,6 +89,7 @@ export function AccountsPanel({ client, userId }: { client: SupabaseClient<Datab
           Adicionar
         </Button>
       </form>
+      {error && <p role="alert" className="px-[18px] pb-3 text-xs text-error">{error}</p>}
     </div>
   );
 }

@@ -10,6 +10,7 @@ export async function checkUsernameAvailable(client: SupabaseClient<Database>, c
   const normalized = candidate.trim().toLowerCase();
   if (!isUsernameFormatValid(normalized)) return false;
   const { data, error } = await client.rpc("is_username_available", { candidate: normalized });
-  if (error || data === null) return false;
+  if (error) throw error;
+  if (data === null) throw new Error("A disponibilidade do nome não pôde ser confirmada.");
   return data;
 }

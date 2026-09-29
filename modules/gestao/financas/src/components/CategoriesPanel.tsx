@@ -4,19 +4,26 @@ import { Button, CardHeader, EmptyState, Skeleton } from "@qqorvex/ui";
 import { useCategories, useCreateCategory } from "../hooks/useFinancas";
 import type { CategoryKind } from "../types";
 import { financeCategoryColor } from "./TransactionList";
+import { financeActionError } from "../financeErrors";
 
 export function CategoriesPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { categories, isLoading } = useCategories(client);
   const createCategory = useCreateCategory(client, userId);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<CategoryKind>("saida");
+  const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    createCategory.mutate({ name: trimmed, kind });
-    setName("");
+    setError("");
+    try {
+      await createCategory.mutateAsync({ name: trimmed, kind });
+      setName("");
+    } catch (saveError) {
+      setError(financeActionError(saveError, "Não foi possível criar a categoria. Seus dados continuam preenchidos."));
+    }
   }
 
   const groups: { kind: CategoryKind; label: string }[] = [
@@ -62,6 +69,8 @@ export function CategoriesPanel({ client, userId }: { client: SupabaseClient<Dat
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome da categoria"
           aria-label="Nome da categoria"
+          maxLength={60}
+          required
           className="qv-field flex-[2_1_160px] py-2"
         />
         <select
@@ -77,6 +86,7 @@ export function CategoriesPanel({ client, userId }: { client: SupabaseClient<Dat
           Adicionar
         </Button>
       </form>
+      {error && <p role="alert" className="px-[18px] pb-3 text-xs text-error">{error}</p>}
     </div>
   );
 }

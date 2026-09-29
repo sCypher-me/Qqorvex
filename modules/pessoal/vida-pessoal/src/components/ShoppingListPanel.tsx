@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, ConfirmDialog, EmptyState, Input, SkeletonList } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, Input, ProgressBar, SkeletonList } from "@qqorvex/ui";
 import { useCreateShoppingListItem, useDeleteShoppingListItem, useShoppingListItems, useToggleShoppingListItem } from "../hooks/useVidaPratica";
 
 /** Lista de mercado/dia a dia — item + quantidade em texto livre + marcar como comprado. */
@@ -12,14 +12,16 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
   const [formOpen, setFormOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmItem = items.find((i) => i.id === confirmDeleteId) ?? null;
+  const purchasedCount = items.filter((item) => item.is_purchased).length;
+  const pendingCount = items.length - purchasedCount;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
-    createItem.mutate({ name, quantity: String(form.get("quantity") ?? "").trim() || undefined });
-    event.currentTarget.reset();
+    createItem.mutate({ name, quantity: String(form.get("quantity") ?? "").trim() || undefined }, { onSuccess: () => formElement.reset() });
   }
 
   return (
@@ -34,6 +36,11 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
       ) : items.length === 0 ? (
         <EmptyState>Lista de compras vazia.</EmptyState>
       ) : (
+        <>
+        <div className="qv-well flex flex-col gap-2 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-2 text-xs"><span className="text-text-secondary">{purchasedCount} de {items.length} itens comprados</span><span className="font-mono text-text-muted">{pendingCount} pendentes</span></div>
+          <ProgressBar value={items.length ? (purchasedCount / items.length) * 100 : 0} height={4} />
+        </div>
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
             <li key={item.id} className="qv-row-top flex items-center gap-2.5 py-2">
@@ -61,6 +68,7 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
             </li>
           ))}
         </ul>
+        </>
       )}
 
       {formOpen ? (
@@ -70,8 +78,8 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
             <Input name="quantity" placeholder="Qtd. (ex.: 2kg)" aria-label="Quantidade" className="py-2 text-[13px] font-mono" />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="sm">
-              Adicionar
+            <Button type="submit" variant="primary" size="sm" disabled={createItem.isPending}>
+              {createItem.isPending ? "Salvando…" : "Adicionar"}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
               Fechar
@@ -83,6 +91,7 @@ export function ShoppingListPanel({ client, userId }: { client: SupabaseClient<D
           Adicionar
         </Button>
       )}
+      {createItem.isError && <p className="text-xs text-error" role="alert">Não foi possível adicionar o item; os campos continuam preenchidos.</p>}
 
       <ConfirmDialog
         isOpen={confirmItem !== null}

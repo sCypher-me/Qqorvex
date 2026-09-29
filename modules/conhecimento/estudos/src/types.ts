@@ -30,6 +30,8 @@ export interface NewNotebookInput {
   description?: string;
   institution?: string;
   instructor?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export function toNotebookInsert(userId: string, input: NewNotebookInput): TablesInsert<"notebooks"> {
@@ -42,7 +44,14 @@ export function toNotebookInsert(userId: string, input: NewNotebookInput): Table
     description: input.description ?? null,
     institution: input.institution ?? null,
     instructor: input.instructor ?? null,
+    start_date: input.startDate ?? null,
+    end_date: input.endDate ?? null,
   };
+}
+
+export interface NewStudySessionInput {
+  note?: string;
+  durationMinutes?: number;
 }
 
 export interface NewFlashcardInput {

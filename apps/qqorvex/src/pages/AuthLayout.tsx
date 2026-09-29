@@ -1,48 +1,34 @@
 import type { ReactNode } from "react";
 import { BRAND_ASSETS } from "../app/shell/navigation";
+import { ThemeToggle } from "../app/shell/ThemeToggle";
 
-/**
- * Layout de autenticação (Design System v1.0): painel da marca à esquerda (símbolo + wordmark,
- * slogan, Vex recortada com brilho cyan) e formulário à direita. Em telas estreitas vira uma coluna.
- */
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="relative grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      <section className="relative overflow-hidden hidden lg:flex flex-col justify-between p-12 border-r border-border bg-[linear-gradient(160deg,#101318_0%,#090B0E_70%)]">
-        <div className="absolute -right-[140px] top-[60px] w-[520px] h-[520px] pointer-events-none bg-[radial-gradient(circle,rgba(67,185,210,.10),transparent_68%)]" />
+    <main className="relative grid min-h-svh grid-cols-1 bg-surface-1 desktop:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <div className="absolute right-5 top-5 z-10"><ThemeToggle /></div>
+      <section className="relative hidden overflow-hidden border-r border-border/70 bg-background p-8 desktop:flex desktop:flex-col desktop:justify-between wide:p-12">
         <div className="relative z-[2] flex items-center gap-3">
-          <img src={BRAND_ASSETS.symbol} alt="" className="w-[26px] h-[26px] object-contain" />
+          <img src={BRAND_ASSETS.symbol} alt="" className="h-8 w-8 object-contain" />
           <img src={BRAND_ASSETS.wordmark} alt="Qqorvex" className="h-[22px] object-contain" />
         </div>
-        <div className="relative z-[2] flex flex-col gap-[18px] max-w-[420px] pr-3">
-          <h2 className="font-display text-[40px] font-semibold leading-[1.1] tracking-[-0.01em] m-0">Veja além dos números</h2>
-          <p className="text-[15px] leading-[1.6] text-text-secondary m-0">
-            Tarefas, agenda, estudos, biblioteca, finanças e vida pessoal em um só sistema. A Vex lê o contexto e responde
-            quando você chama.
+        <div className="relative z-[2] flex max-w-[620px] flex-col gap-6 pr-3">
+          <p className="qv-eyebrow m-0 text-brand-primary">Seu mapa pessoal</p>
+          <h2 className="m-0 font-display text-[clamp(3rem,4.2vw,5rem)] font-semibold leading-[1.02] tracking-[-0.04em]">
+            Um lugar para enxergar o que importa.
+          </h2>
+          <p className="m-0 max-w-[470px] text-[16px] leading-[1.7] text-text-secondary">
+            Tarefas, agenda, estudos, finanças e memória na mesma casa. Você mantém o controle; a Vex participa quando chamada.
           </p>
-          <div className="flex gap-2 flex-wrap pt-1">
-            {["Supabase Auth", "Passkey", "2FA TOTP"].map((label) => (
-              <span
-                key={label}
-                className="text-[11px] font-medium tracking-[0.06em] uppercase text-text-muted border border-border rounded-full px-[11px] py-[5px]"
-              >
-                {label}
-              </span>
-            ))}
+          <div className="qv-observatory-track mt-4 max-w-[430px] border-t border-border/70 pt-5" aria-label="Observar, organizar, continuar">
+            <span>Observar</span><span>Organizar</span><span>Continuar</span>
           </div>
         </div>
-        <img
-          src={BRAND_ASSETS.vexCutout}
-          alt="Vex"
-          className="absolute -right-[70px] bottom-0 h-[52%] max-w-[46%] object-contain object-[bottom_right] opacity-90 drop-shadow-[0_0_60px_rgba(67,185,210,.18)]"
-        />
-        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(90deg,#090B0E_30%,rgba(9,11,14,.72)_52%,transparent_78%)]" />
-        <span className="relative z-[2] font-mono text-xs text-text-muted">v1.0</span>
+        <span className="relative z-[2] border-t border-border/70 pt-5 text-xs text-text-muted">Observação · memória · continuidade</span>
       </section>
 
-      <section className="relative flex items-center justify-center p-12">
-        <div className="w-full max-w-[392px] flex flex-col gap-[22px] animate-page-in">
-          <div className="flex lg:hidden items-center gap-3">
+      <section className="relative flex min-w-0 items-center justify-center px-5 py-8 sm:px-8 desktop:px-12 desktop:py-16">
+        <div className="flex w-full max-w-[490px] flex-col gap-8 animate-page-in">
+          <div className="flex items-center gap-3 border-b border-border/70 pb-6 desktop:hidden">
             <img src={BRAND_ASSETS.symbol} alt="" className="w-[26px] h-[26px] object-contain" />
             <img src={BRAND_ASSETS.wordmark} alt="Qqorvex" className="h-[22px] object-contain" />
           </div>

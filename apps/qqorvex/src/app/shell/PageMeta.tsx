@@ -2,9 +2,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { matchPath, useLocation } from "react-router-dom";
 
 /**
- * Título/subtítulo exibidos no cabeçalho fixo do shell (o design não repete o título dentro da
- * página). Cada rota tem um padrão em `ROUTE_META`; páginas de detalhe (caderno, página do
- * Segundo Cérebro) sobrescrevem com `usePageMeta()` quando o nome real carrega.
+ * Metadados de rota usados no título do documento e por páginas de detalhe (caderno, página do
+ * Segundo Cérebro). A top bar do shell mantém uma hierarquia própria de saudação e data.
  */
 export interface PageMetaValue {
   title: string;
@@ -14,6 +13,7 @@ export interface PageMetaValue {
 const ROUTE_META: { path: string; meta: PageMetaValue }[] = [
   { path: "/", meta: { title: "Hoje", subtitle: "Tudo que pede sua atenção agora" } },
   { path: "/gamificacao", meta: { title: "Gamificação", subtitle: "Nível, XP e badges" } },
+  { path: "/manager", meta: { title: "Central do Dono", subtitle: "Controle privado do Qqorvex" } },
   { path: "/tarefas", meta: { title: "Tarefas", subtitle: "Kanban e listas" } },
   { path: "/agenda", meta: { title: "Agenda", subtitle: "Eventos, reuniões e recorrências" } },
   { path: "/metas-habitos", meta: { title: "Metas & Hábitos", subtitle: "Progresso recorrente" } },
@@ -25,8 +25,8 @@ const ROUTE_META: { path: string; meta: PageMetaValue }[] = [
   { path: "/documentos", meta: { title: "Documentos", subtitle: "Arquivos e vencimentos" } },
   { path: "/financas", meta: { title: "Finanças", subtitle: "Contas, gastos e orçamento" } },
   { path: "/vida-pessoal", meta: { title: "Vida Pessoal", subtitle: "Planejamento, bem-estar e vida prática" } },
-  { path: "/perfil", meta: { title: "Perfil", subtitle: "Sua conta, badges e preferências" } },
-  { path: "/seguranca", meta: { title: "Segurança", subtitle: "Sessões, 2FA, passkeys e integrações" } },
+  { path: "/perfil", meta: { title: "Perfil", subtitle: "Identidade, badges e preferências" } },
+  { path: "/assinatura", meta: { title: "Planos e assinatura", subtitle: "Free e Qqorvex Plus" } },
   { path: "/vex", meta: { title: "Vex", subtitle: "Conversa com contexto das suas telas" } },
 ];
 
@@ -56,8 +56,7 @@ export function PageMetaProvider({ children }: { children: ReactNode }) {
    * `<title>` do navegador nunca mudava entre rotas (React Router não recarrega a página, então
    * ficava travado no título fixo do `index.html`) — quebra o histórico/abas do navegador e, mais
    * importante, é como leitores de tela percebem que a "página" trocou numa SPA sem reload real.
-   * O texto já existe pronto em `ROUTE_META`/`usePageMeta()` (mesmo que aparece no cabeçalho), só
-   * faltava espelhar aqui.
+   * O texto já existe pronto em `ROUTE_META`/`usePageMeta()`; basta espelhar o título efetivo aqui.
    */
   useEffect(() => {
     document.title = `${effectiveTitle} · Qqorvex`;
@@ -66,7 +65,7 @@ export function PageMetaProvider({ children }: { children: ReactNode }) {
   return <PageMetaContext.Provider value={{ override, setOverride }}>{children}</PageMetaContext.Provider>;
 }
 
-/** Meta efetiva para o cabeçalho: override da página, senão o padrão da rota. */
+/** Meta efetiva da rota: override da página, senão o padrão definido em `ROUTE_META`. */
 export function useCurrentPageMeta(): PageMetaValue {
   const context = useContext(PageMetaContext);
   const location = useLocation();

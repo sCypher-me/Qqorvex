@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { Button, Badge, CardHeader, ConfirmDialog, EmptyState, SkeletonList, type BadgeTone } from "@qqorvex/ui";
+import { Button, Badge, CardHeader, ConfirmDialog, EmptyState, Notice, SkeletonList, type BadgeTone } from "@qqorvex/ui";
 import { useCreateRecurringEvent, useRecurringEvents, useUpdateRecurringEventStatus } from "../hooks/useRecurringEvents";
 import type { RecurringEventFrequency, RecurringEvent } from "../types";
 
@@ -28,13 +28,20 @@ function formatDate(isoDate: string): string {
   return new Date(year, month - 1, day).toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", "");
 }
 
+function localDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * A próxima ocorrência é gerada sozinha (cron em `send-notifications`, a cada 5 min) — sem botão
  * "Gerar agora" aqui de propósito, mesmo padrão de `RecurringTasksPanel`
  * (docs/decisions/eventos-recorrentes-design.md).
  */
 export function RecurringEventsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
-  const { recurringEvents, isLoading } = useRecurringEvents(client);
+  const { recurringEvents, isLoading, error, refetch } = useRecurringEvents(client);
   const createRecurring = useCreateRecurringEvent(client, userId);
   const updateStatus = useUpdateRecurringEventStatus(client);
 
@@ -43,23 +50,43 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [frequency, setFrequency] = useState<RecurringEventFrequency>("semanal");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => localDateInputValue(new Date()));
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const confirmRecurring = recurringEvents.find((r) => r.id === confirmCancelId) ?? null;
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
-    createRecurring.mutate({
-      title: trimmed,
-      isAllDay,
-      startTime: isAllDay ? undefined : `${startTime}:00`,
-      endTime: isAllDay ? undefined : `${endTime}:00`,
-      frequency,
-      startDate,
-    });
-    setTitle("");
+    if (!isAllDay && endTime <= startTime) {
+      setFeedback("O horário final precisa ser depois do horário inicial.");
+      return;
+    }
+    try {
+      await createRecurring.mutateAsync({
+        title: trimmed,
+        isAllDay,
+        startTime: isAllDay ? undefined : `${startTime}:00`,
+        endTime: isAllDay ? undefined : `${endTime}:00`,
+        frequency,
+        startDate,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo",
+      });
+      setTitle("");
+      setFeedback("Regra recorrente criada. A próxima ocorrência aparecerá na Agenda automaticamente.");
+    } catch {
+      setFeedback("Não foi possível criar a regra recorrente. Tente novamente.");
+    }
+  }
+
+  async function changeStatus(id: string, status: RecurringEvent["status"], successMessage: string) {
+    try {
+      await updateStatus.mutateAsync({ id, status });
+      setFeedback(successMessage);
+    } catch {
+      setFeedback("Não foi possível atualizar esta regra. Tente novamente.");
+    }
   }
 
   return (
@@ -73,8 +100,8 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
             aria-label="Título do evento recorrente"
             className="qv-field flex-1 basis-[240px]"
           />
-          <Button type="submit" variant="primary" className="px-5">
-            Criar
+          <Button type="submit" variant="primary" className="px-5" disabled={createRecurring.isPending}>
+            {createRecurring.isPending ? "Criando…" : "Criar regra"}
           </Button>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap text-[13px] text-text-secondary">
@@ -125,16 +152,23 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
         </div>
       </form>
 
+      {feedback && <Notice tone={feedback.startsWith("Não") || feedback.startsWith("O horário") ? "error" : "success"} title={feedback.startsWith("Não") || feedback.startsWith("O horário") ? "Verifique os dados" : "Tudo certo"}>{feedback}</Notice>}
+      {error && (
+        <Notice tone="error" title="Não foi possível carregar as recorrências" actions={<Button type="button" variant="secondary" size="sm" onClick={() => void refetch()}>Tentar novamente</Button>}>
+          A Agenda continua disponível, mas as regras recorrentes não puderam ser atualizadas.
+        </Notice>
+      )}
+
       <div className="qv-card">
         <CardHeader
           divider
-          title="Eventos recorrentes"
-          meta={isLoading ? undefined : `${recurringEvents.length} ${recurringEvents.length === 1 ? "receita" : "receitas"}`}
+          title="Regras recorrentes"
+          meta={isLoading ? undefined : `${recurringEvents.length} ${recurringEvents.length === 1 ? "regra" : "regras"}`}
         />
         {isLoading ? (
           <SkeletonList rows={3} className="px-5 py-3.5" />
         ) : recurringEvents.length === 0 ? (
-          <EmptyState className="px-5 py-4">Nenhum evento recorrente cadastrado.</EmptyState>
+          <EmptyState className="px-5 py-4">Nenhuma regra cadastrada. Crie uma para gerar eventos automaticamente.</EmptyState>
         ) : (
           <ul className="flex flex-col">
             {recurringEvents.map((recurring) => (
@@ -143,6 +177,7 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
                   <span className="text-sm font-medium text-text-primary truncate">{recurring.title}</span>
                   <span className="text-xs text-text-muted">
                     {FREQUENCY_LABEL[recurring.frequency]}
+                    {" · "}{recurring.time_zone || "America/Sao_Paulo"}
                     {!recurring.is_all_day && recurring.start_time ? (
                       <>
                         {" às "}
@@ -162,7 +197,8 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
                       type="button"
                       variant="quiet"
                       size="xs"
-                      onClick={() => updateStatus.mutate({ id: recurring.id, status: "pausada" })}
+                      onClick={() => void changeStatus(recurring.id, "pausada", "Regra pausada. Nenhuma nova ocorrência será criada até você retomá-la.")}
+                      disabled={updateStatus.isPending}
                     >
                       Pausar
                     </Button>
@@ -171,7 +207,8 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
                       type="button"
                       variant="quiet"
                       size="xs"
-                      onClick={() => updateStatus.mutate({ id: recurring.id, status: "ativa" })}
+                      onClick={() => void changeStatus(recurring.id, "ativa", "Regra retomada e pronta para gerar novas ocorrências.")}
+                      disabled={updateStatus.isPending}
                     >
                       Retomar
                     </Button>
@@ -194,7 +231,7 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
         description="A recorrência para de gerar novas ocorrências."
         confirmLabel="Cancelar recorrência"
         onConfirm={() => {
-          if (confirmRecurring) updateStatus.mutate({ id: confirmRecurring.id, status: "cancelada" });
+          if (confirmRecurring) void changeStatus(confirmRecurring.id, "cancelada", "Regra cancelada. Ela não criará novas ocorrências.");
           setConfirmCancelId(null);
         }}
         onCancel={() => setConfirmCancelId(null)}

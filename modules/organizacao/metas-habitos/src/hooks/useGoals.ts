@@ -7,6 +7,7 @@ import {
   deleteGoal,
   linkGoalHabit,
   listGoalHabitRelations,
+  listGoalCheckins,
   listGoals,
   listMilestones,
   toggleMilestone,
@@ -18,6 +19,7 @@ import type { Goal, NewGoalInput } from "../types";
 
 const GOALS_KEY = ["goals"] as const;
 const milestonesKey = (goalId: string) => ["goal-milestones", goalId] as const;
+const goalCheckinsKey = (goalId: string) => ["goal-checkins", goalId] as const;
 const GOAL_HABIT_RELATIONS_KEY = ["goal-habit-relations"] as const;
 
 export function useGoals(client: SupabaseClient<Database>) {
@@ -82,10 +84,17 @@ export function useToggleMilestone(client: SupabaseClient<Database>, goalId: str
 }
 
 export function useCreateCheckin(client: SupabaseClient<Database>, goalId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { note?: string; progressPercentSnapshot?: number }) =>
       createCheckin(client, goalId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: goalCheckinsKey(goalId) }),
   });
+}
+
+export function useGoalCheckins(client: SupabaseClient<Database>, goalId: string, enabled = true) {
+  const query = useQuery({ queryKey: goalCheckinsKey(goalId), queryFn: () => listGoalCheckins(client, goalId), enabled });
+  return { checkins: query.data ?? [], isLoading: query.isLoading, error: query.error };
 }
 
 /** "A relação meta↔hábito existe no banco mas a UI ainda não a expõe" — agora expõe. */

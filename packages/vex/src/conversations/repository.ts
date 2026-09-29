@@ -41,9 +41,10 @@ export async function listMessages(client: Client, conversationId: string): Prom
     .from("vex_messages")
     .select("*")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(128);
   if (error) throw error;
-  return data;
+  return [...data].reverse();
 }
 
 /** Toca `updated_at` da conversa junto, pra lista ordenada por "mais recente primeiro" refletir a última troca. */

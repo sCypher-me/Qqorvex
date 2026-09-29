@@ -9,12 +9,16 @@ export const fontFamilies = {
 } as const;
 
 export const typeScale = {
-  displayHero: { family: fontFamilies.display, weight: 700, size: "38px" },
-  pageTitle: { family: fontFamilies.display, weight: 600, size: "28px" },
-  cardTitle: { family: fontFamilies.display, weight: 600, size: "17px" },
+  displayHero: { family: fontFamilies.display, weight: 700, size: "40px" },
+  pageTitle: { family: fontFamilies.display, weight: 600, size: "32px" },
+  sectionTitle: { family: fontFamilies.display, weight: 600, size: "24px" },
+  cardTitle: { family: fontFamilies.display, weight: 600, size: "16px" },
   body: { family: fontFamilies.sans, weight: 400, size: "15px" },
   buttonLabel: { family: fontFamilies.sans, weight: 600, size: "15px" },
-  caption: { family: fontFamilies.sans, weight: 500, size: "12.5px" },
+  secondary: { family: fontFamilies.sans, weight: 400, size: "13px" },
+  label: { family: fontFamilies.sans, weight: 600, size: "12px" },
+  caption: { family: fontFamilies.sans, weight: 500, size: "11px" },
+  metric: { family: fontFamilies.mono, weight: 500, size: "30px" },
   technical: { family: fontFamilies.mono, weight: 500, size: "14px" },
 } as const;
 

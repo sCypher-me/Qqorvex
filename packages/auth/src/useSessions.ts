@@ -8,14 +8,20 @@ export function useSessions(client: SupabaseClient<Database>) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const [sessionsResult, currentId] = await Promise.all([listSessions(client), getCurrentSessionId(client)]);
-    setSessions(sessionsResult);
-    setCurrentSessionId(currentId);
-    setIsLoading(false);
+    setIsLoading(true);
+    try {
+      const [sessionsResult, currentId] = await Promise.all([listSessions(client), getCurrentSessionId(client)]);
+      setSessions(sessionsResult);
+      setCurrentSessionId(currentId);
+    } catch {
+      // Keep the last valid session list when the security RPC/API fails.
+    } finally {
+      setIsLoading(false);
+    }
   }, [client]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { sessions, currentSessionId, isLoading, refresh };

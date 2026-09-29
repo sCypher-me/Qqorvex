@@ -61,17 +61,30 @@ export function BlockEditor({ client, pageId, userId }: { client: SupabaseClient
     setPendingFocusId(previous.id);
   }
 
-  async function handleAddFirstBlock() {
-    const newBlock = await createBlock.mutateAsync({ blockType: "texto", content: { text: "" }, orderIndex: 0 });
+  async function handleAddFirstBlock(blockType: BlockType = "texto") {
+    const newBlock = await createBlock.mutateAsync({ blockType, content: defaultContentForBlockType(blockType), orderIndex: 0 });
     setPendingFocusId(newBlock.id);
   }
 
   return (
     <div className="flex flex-col gap-[10px] text-[15px] leading-[1.75] text-text-secondary">
+      <div aria-live="polite" className="flex min-h-5 items-center justify-end text-[11px] text-text-muted">
+        {updateContent.isPending ? "Salvando alterações…" : updateContent.isError ? <span className="text-error">Não foi possível salvar. Saia do bloco novamente para tentar.</span> : updateContent.isSuccess ? "Alterações salvas" : "As alterações são salvas ao sair de cada bloco"}
+      </div>
+      {createBlock.isError && <span role="alert" className="text-xs text-error">Não foi possível inserir o bloco. Tente novamente.</span>}
+      {createBlockAfter.isError && <span role="alert" className="text-xs text-error">Não foi possível criar o próximo bloco. Seu texto atual foi mantido.</span>}
       {blocks.length === 0 ? (
-        <Button type="button" variant="dashed" className="self-start" onClick={handleAddFirstBlock}>
-          Adicionar bloco
-        </Button>
+        <div className="qv-well flex flex-col gap-3 p-5 sm:p-6">
+          <div className="flex flex-col gap-1">
+            <strong className="text-sm font-semibold text-text-primary">Sua página está pronta para ganhar forma</strong>
+            <span className="text-sm text-text-muted">Comece por uma ideia, organize próximos passos ou destaque um conceito.</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="primary" onClick={() => handleAddFirstBlock("texto")} disabled={createBlock.isPending}>Começar a escrever</Button>
+            <Button type="button" variant="secondary" onClick={() => handleAddFirstBlock("checklist")} disabled={createBlock.isPending}>Criar checklist</Button>
+            <Button type="button" variant="secondary" onClick={() => handleAddFirstBlock("callout")} disabled={createBlock.isPending}>Destacar uma ideia</Button>
+          </div>
+        </div>
       ) : (
         blocks.map((block, index) => (
           <BlockRow

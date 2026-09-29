@@ -1,4 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
+import { useState } from "react";
 import { Badge, Button } from "@qqorvex/ui";
 import {
   useEnsureCurrentStatement,
@@ -9,6 +10,8 @@ import {
 import { computeStatementDueDate, computeStatementPeriod, computeStatementTotal, toReferenceMonth } from "../service";
 import type { Card } from "../types";
 import { formatBRL } from "./TransactionList";
+import { financeActionError } from "../financeErrors";
+import { formatLocalDate } from "../service";
 
 function formatIsoDate(iso: string): string {
   return iso.split("-").reverse().join("/");
@@ -34,15 +37,15 @@ export function CardStatementPanel({
 
   const now = new Date();
   const { periodStart, periodEnd } = computeStatementPeriod(closingDay, now);
-  const periodStartIso = periodStart.toISOString().slice(0, 10);
-  const periodEndIso = periodEnd.toISOString().slice(0, 10);
-  const dueDateIso = computeStatementDueDate(periodEnd, dueDay).toISOString().slice(0, 10);
+  const periodStartIso = formatLocalDate(periodStart);
+  const periodEndIso = formatLocalDate(periodEnd);
   const referenceMonth = toReferenceMonth(periodEnd);
 
   const ensureStatement = useEnsureCurrentStatement(client, userId);
   const markPaid = useMarkStatementPaid(client, card.id);
   const { statements } = useCardStatements(client, card.id);
   const { transactions } = useTransactionsForCardInPeriod(client, card.id, periodStartIso, periodEndIso, hasClosingConfig);
+  const [error, setError] = useState("");
 
   if (!hasClosingConfig) {
     return (
@@ -58,8 +61,13 @@ export function CardStatementPanel({
   const isPaid = currentStatement?.status === "paga";
 
   async function handleMarkPaid() {
-    const statement = currentStatement ?? (await ensureStatement.mutateAsync({ card, referenceDate: now }));
-    markPaid.mutate(statement.id);
+    setError("");
+    try {
+      const statement = currentStatement ?? (await ensureStatement.mutateAsync({ card, referenceDate: now }));
+      await markPaid.mutateAsync(statement.id);
+    } catch (paymentError) {
+      setError(financeActionError(paymentError, "Não foi possível atualizar a fatura. Tente novamente."));
+    }
   }
 
   return (
@@ -68,7 +76,7 @@ export function CardStatementPanel({
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
           <span className="text-[13px] font-semibold">Fatura atual</span>
           <span className="font-mono text-xs text-text-muted">
-            {formatIsoDate(periodStartIso)} a {formatIsoDate(periodEndIso)} · vence {formatIsoDate(dueDateIso)}
+            {formatIsoDate(periodStartIso)} a {formatIsoDate(periodEndIso)} · vence {formatIsoDate(formatLocalDate(computeStatementDueDate(periodEnd, dueDay)))}
           </span>
         </div>
         <span className="font-mono text-base font-semibold text-text-primary whitespace-nowrap">{formatBRL(total)}</span>
@@ -81,9 +89,11 @@ export function CardStatementPanel({
         className="self-start"
         onClick={handleMarkPaid}
         disabled={isPaid || !isClosed || ensureStatement.isPending || markPaid.isPending}
+        aria-busy={ensureStatement.isPending || markPaid.isPending}
       >
-        {isPaid ? "Fatura paga" : isClosed ? "Marcar fatura como paga" : "Fatura ainda aberta"}
+        {ensureStatement.isPending || markPaid.isPending ? "Salvando…" : isPaid ? "Fatura paga" : isClosed ? "Marcar fatura como paga" : "Fatura ainda aberta"}
       </Button>
+      {error && <p role="alert" className="text-xs text-error">{error}</p>}
 
       {statements.length > 0 && (
         <div className="qv-row-top pt-3 flex flex-col gap-2">

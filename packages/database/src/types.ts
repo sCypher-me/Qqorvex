@@ -56,6 +56,81 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_subscriptions: {
+        Row: {
+          billing_period: string
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          plan_key: string
+          play_product_id: string | null
+          play_purchase_token_hash: string | null
+          provider: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_period: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          plan_key?: string
+          play_product_id?: string | null
+          play_purchase_token_hash?: string | null
+          provider: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_period?: string
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          plan_key?: string
+          play_product_id?: string | null
+          play_purchase_token_hash?: string | null
+          provider?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      billing_usage_monthly: {
+        Row: {
+          month_start: string
+          updated_at: string
+          user_id: string
+          vex_ai_responses: number
+          vex_web_searches: number
+        }
+        Insert: {
+          month_start: string
+          updated_at?: string
+          user_id: string
+          vex_ai_responses?: number
+          vex_web_searches?: number
+        }
+        Update: {
+          month_start?: string
+          updated_at?: string
+          user_id?: string
+          vex_ai_responses?: number
+          vex_web_searches?: number
+        }
+        Relationships: []
+      }
       assessments: {
         Row: {
           assessment_date: string | null
@@ -755,6 +830,8 @@ export type Database = {
           is_all_day: boolean
           location: string | null
           meeting_link: string | null
+          recurrence_date: string | null
+          recurring_event_id: string | null
           start_at: string
           task_id: string | null
           title: string
@@ -775,6 +852,8 @@ export type Database = {
           is_all_day?: boolean
           location?: string | null
           meeting_link?: string | null
+          recurrence_date?: string | null
+          recurring_event_id?: string | null
           start_at: string
           task_id?: string | null
           title: string
@@ -795,6 +874,8 @@ export type Database = {
           is_all_day?: boolean
           location?: string | null
           meeting_link?: string | null
+          recurrence_date?: string | null
+          recurring_event_id?: string | null
           start_at?: string
           task_id?: string | null
           title?: string
@@ -814,6 +895,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_recurring_event_id_fkey"
+            columns: ["recurring_event_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_events"
             referencedColumns: ["id"]
           },
         ]
@@ -940,31 +1028,70 @@ export type Database = {
       }
       gamification_stats: {
         Row: {
+          checkin_days_completed: number
           habit_or_goal_checkins: number
           library_items_completed: number
           quizzes_completed: number
+          quizzes_90_plus: number
           tasks_completed: number
           updated_at: string
           user_id: string
           xp: number
         }
         Insert: {
+          checkin_days_completed?: number
           habit_or_goal_checkins?: number
           library_items_completed?: number
           quizzes_completed?: number
+          quizzes_90_plus?: number
           tasks_completed?: number
           updated_at?: string
           user_id: string
           xp?: number
         }
         Update: {
+          checkin_days_completed?: number
           habit_or_goal_checkins?: number
           library_items_completed?: number
           quizzes_completed?: number
+          quizzes_90_plus?: number
           tasks_completed?: number
           updated_at?: string
           user_id?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      user_daily_challenge_progress: {
+        Row: {
+          challenge_date: string
+          challenge_key: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          progress: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_date: string
+          challenge_key: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          progress?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_date?: string
+          challenge_key?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          progress?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1588,6 +1715,7 @@ export type Database = {
       library_items: {
         Row: {
           cover_url: string | null
+          cover_image_path: string | null
           created_at: string
           description: string | null
           id: string
@@ -1612,6 +1740,7 @@ export type Database = {
         }
         Insert: {
           cover_url?: string | null
+          cover_image_path?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1636,6 +1765,7 @@ export type Database = {
         }
         Update: {
           cover_url?: string | null
+          cover_image_path?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -2041,11 +2171,14 @@ export type Database = {
           display_name: string | null
           full_name: string | null
           id: string
+          is_beta_tester: boolean
           phone: string | null
           pin_failed_attempts: number
           pin_hash: string | null
           pin_locked_until: string | null
           role: string
+          selected_badge_keys: string[]
+          selected_title: string | null
           updated_at: string
           username: string | null
         }
@@ -2057,11 +2190,14 @@ export type Database = {
           display_name?: string | null
           full_name?: string | null
           id: string
+          is_beta_tester?: boolean
           phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
           role?: string
+          selected_badge_keys?: string[]
+          selected_title?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -2073,11 +2209,14 @@ export type Database = {
           display_name?: string | null
           full_name?: string | null
           id?: string
+          is_beta_tester?: boolean
           phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
           role?: string
+          selected_badge_keys?: string[]
+          selected_title?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -2290,6 +2429,7 @@ export type Database = {
           start_time: string | null
           status: Database["public"]["Enums"]["recurring_status"]
           title: string
+          time_zone: string
           user_id: string
         }
         Insert: {
@@ -2309,6 +2449,7 @@ export type Database = {
           start_time?: string | null
           status?: Database["public"]["Enums"]["recurring_status"]
           title: string
+          time_zone?: string
           user_id: string
         }
         Update: {
@@ -2328,6 +2469,7 @@ export type Database = {
           start_time?: string | null
           status?: Database["public"]["Enums"]["recurring_status"]
           title?: string
+          time_zone?: string
           user_id?: string
         }
         Relationships: []
@@ -2732,6 +2874,8 @@ export type Database = {
           is_cancelled: boolean
           parent_task_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
+          recurrence_date: string | null
+          recurring_task_id: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["task_status"]
           tags: string[]
@@ -2749,6 +2893,8 @@ export type Database = {
           is_cancelled?: boolean
           parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          recurrence_date?: string | null
+          recurring_task_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           tags?: string[]
@@ -2766,6 +2912,8 @@ export type Database = {
           is_cancelled?: boolean
           parent_task_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          recurrence_date?: string | null
+          recurring_task_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           tags?: string[]
@@ -2779,6 +2927,13 @@ export type Database = {
             columns: ["parent_task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_recurring_task_id_fkey"
+            columns: ["recurring_task_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -3187,6 +3342,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_billing_quota: {
+        Args: { p_feature: string; p_user_id: string }
+        Returns: Json
+      }
+      get_my_document_storage_quota: {
+        Args: never
+        Returns: {
+          used_bytes: number
+          quota_bytes: number
+          max_file_bytes: number
+          is_plus: boolean
+        }[]
+      }
       delete_account: { Args: { target_user_id: string }; Returns: undefined }
       generate_qq_username: { Args: never; Returns: string }
       get_system_overview: {
@@ -3201,6 +3369,7 @@ export type Database = {
         }[]
       }
       has_security_pin: { Args: never; Returns: boolean }
+      has_google_calendar_connection: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_username_available: { Args: { candidate: string }; Returns: boolean }
       list_all_accounts: {
@@ -3226,6 +3395,16 @@ export type Database = {
           user_agent: string
         }[]
       }
+      list_my_security_login_history: {
+        Args: never
+        Returns: {
+          action: string
+          id: string
+          ip_address: string | null
+          occurred_at: string
+          user_agent: string | null
+        }[]
+      }
       list_secret_keys: {
         Args: never
         Returns: {
@@ -3235,6 +3414,11 @@ export type Database = {
         }[]
       }
       redeem_code: { Args: { input_code: string }; Returns: string }
+      sync_my_gamification_badges: { Args: never; Returns: number }
+      release_billing_quota: {
+        Args: { p_feature: string; p_month_start: string; p_user_id: string }
+        Returns: undefined
+      }
       revoke_my_session: {
         Args: { target_session_id: string }
         Returns: undefined

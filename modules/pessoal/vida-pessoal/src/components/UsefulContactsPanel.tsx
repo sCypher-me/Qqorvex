@@ -14,15 +14,15 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
     createContact.mutate({
       name,
       category: String(form.get("category") ?? "").trim() || undefined,
       phone: String(form.get("phone") ?? "").trim() || undefined,
-    });
-    event.currentTarget.reset();
+    }, { onSuccess: () => formElement.reset() });
   }
 
   return (
@@ -44,7 +44,9 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
                 {contact.category && <span className="text-text-secondary">{contact.category} — </span>}
                 {contact.name}
               </span>
-              <span className="font-mono text-xs text-text-secondary">{contact.phone || "—"}</span>
+              {contact.phone ? (
+                <a href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`} className="font-mono text-xs text-vex-cyan-bright hover:underline">{contact.phone}</a>
+              ) : <span className="font-mono text-xs text-text-muted">sem telefone</span>}
               <button
                 type="button"
                 className="qv-icon-btn w-6 h-6 text-[11px] shrink-0"
@@ -65,8 +67,8 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
           <Input name="category" placeholder="Categoria (ex.: encanador)" aria-label="Categoria" className="py-2 text-[13px]" />
           <Input name="phone" placeholder="Telefone" aria-label="Telefone" className="py-2 text-[13px] font-mono" />
           <div className="flex gap-2">
-            <Button type="submit" variant="primary" size="sm">
-              Adicionar
+            <Button type="submit" variant="primary" size="sm" disabled={createContact.isPending}>
+              {createContact.isPending ? "Salvando…" : "Adicionar"}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
               Fechar
@@ -78,6 +80,7 @@ export function UsefulContactsPanel({ client, userId }: { client: SupabaseClient
           Adicionar
         </Button>
       )}
+      {createContact.isError && <p className="text-xs text-error" role="alert">Não foi possível salvar. Os campos foram mantidos para você tentar novamente.</p>}
 
       <ConfirmDialog
         isOpen={confirmContact !== null}

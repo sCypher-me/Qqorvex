@@ -1,22 +1,20 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, EmptyState, SkeletonCards } from "@qqorvex/ui";
-import { useBudgets, useCategories, useCreateBudget, useTransactions } from "../hooks/useFinancas";
-import { financeCategoryColor, parseBRLInput } from "./TransactionList";
+import { useBudgets, useCategories, useCreateBudget, useRecurringTransactions, useTransactions } from "../hooks/useFinancas";
+import { computeBudgetUsage, formatLocalDate, parseBRLInput } from "../service";
+import { financeActionError } from "../financeErrors";
+import { financeCategoryColor, formatBRL } from "./TransactionList";
 
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 function currentYearMonth(): string {
-  return new Date().toISOString().slice(0, 7);
+  return formatLocalDate(new Date()).slice(0, 7);
 }
 
 function formatYearMonth(yearMonth: string): string {
   const [year, month] = yearMonth.split("-");
   return `${MONTHS_SHORT[Number(month) - 1] ?? month} ${year}`;
-}
-
-function formatWhole(value: number): string {
-  return value.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 }
 
 /** Barra: verde abaixo de 80%, âmbar a partir de 80%, vermelho a partir de 100%. */
@@ -34,6 +32,7 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
   const { budgets, isLoading } = useBudgets(client);
   const { categories } = useCategories(client);
   const { transactions } = useTransactions(client);
+  const { recurringTransactions } = useRecurringTransactions(client);
   const createBudget = useCreateBudget(client, userId);
 
   const expenseCategories = categories.filter((c) => c.kind === "saida");
@@ -42,26 +41,28 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
   const [categoryId, setCategoryId] = useState("");
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
   const [limitAmount, setLimitAmount] = useState("");
+  const [error, setError] = useState("");
   const thisMonth = currentYearMonth();
 
-  function spentFor(budgetCategoryId: string, budgetYearMonth: string): number {
-    return transactions
-      .filter(
-        (t) =>
-          t.transaction_type === "saida" &&
-          t.status !== "cancelada" &&
-          t.category_id === budgetCategoryId &&
-          t.date.startsWith(budgetYearMonth),
-      )
-      .reduce((sum, t) => sum + t.amount, 0);
-  }
+  const selectedBudget = budgets.find((budget) => budget.category_id === categoryId && budget.year_month === yearMonth);
+  useEffect(() => {
+    setLimitAmount(selectedBudget ? String(selectedBudget.limit_amount).replace(".", ",") : "");
+  }, [selectedBudget?.id, selectedBudget?.limit_amount]);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const parsedLimit = parseBRLInput(limitAmount);
-    if (!categoryId || !(parsedLimit > 0)) return;
-    createBudget.mutate({ categoryId, yearMonth, limitAmount: parsedLimit });
-    setLimitAmount("");
+    if (!categoryId || !(parsedLimit > 0)) {
+      setError("Escolha uma categoria e informe um limite maior que zero.");
+      return;
+    }
+    setError("");
+    try {
+      await createBudget.mutateAsync({ categoryId, yearMonth, limitAmount: parsedLimit });
+      setLimitAmount("");
+    } catch (saveError) {
+      setError(financeActionError(saveError, "Não foi possível salvar o orçamento. Confira sua conexão e tente novamente."));
+    }
   }
 
   const sortedBudgets = [...budgets].sort((a, b) =>
@@ -81,8 +82,9 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
         <EmptyState>Nenhum orçamento cadastrado. Defina um limite por categoria abaixo.</EmptyState>
       ) : (
         sortedBudgets.map((budget) => {
-          const spent = spentFor(budget.category_id, budget.year_month);
-          const pct = budget.limit_amount > 0 ? (spent / budget.limit_amount) * 100 : 0;
+          const usage = computeBudgetUsage(transactions, budget.category_id, budget.year_month, recurringTransactions);
+          const pct = budget.limit_amount > 0 ? (usage.realized / budget.limit_amount) * 100 : 0;
+          const projectedPct = budget.limit_amount > 0 ? ((usage.realized + usage.committed) / budget.limit_amount) * 100 : 0;
           const color = budgetColor(pct);
           const category = categoryById.get(budget.category_id);
           return (
@@ -99,12 +101,18 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
                   )}
                 </span>
                 <span className="font-mono text-xs whitespace-nowrap" style={{ color }}>
-                  R$ {formatWhole(spent)} / {formatWhole(budget.limit_amount)}
+                  {formatBRL(usage.realized)} / {formatBRL(budget.limit_amount)}
                 </span>
               </div>
-              <div className="h-[5px] rounded-full bg-[rgba(42,48,57,.9)] overflow-hidden">
+              <div className="h-[5px] rounded-full bg-border overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: color }} />
               </div>
+              {usage.committed > 0 && (
+                <span className="text-[11px] text-text-muted">
+                  Total com compromissos previstos: {formatBRL(usage.realized + usage.committed)}
+                  {projectedPct >= 100 && <span className="text-warning"> · pode ultrapassar o limite</span>}
+                </span>
+              )}
             </div>
           );
         })
@@ -117,7 +125,12 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
         <form onSubmit={handleSubmit} className="qv-row-top pt-[14px] flex flex-wrap gap-2">
           <select
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(e) => {
+              const nextCategoryId = e.target.value;
+              setCategoryId(nextCategoryId);
+              const matching = budgets.find((budget) => budget.category_id === nextCategoryId && budget.year_month === yearMonth);
+              setLimitAmount(matching ? String(matching.limit_amount).replace(".", ",") : "");
+            }}
             aria-label="Categoria do orçamento"
             className="qv-field flex-[1_1_140px] py-2 px-3 text-[13px]"
           >
@@ -131,8 +144,13 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
           <input
             type="month"
             value={yearMonth}
-            onChange={(e) => setYearMonth(e.target.value)}
+            onChange={(e) => {
+              setYearMonth(e.target.value);
+              const matching = budgets.find((budget) => budget.category_id === categoryId && budget.year_month === e.target.value);
+              setLimitAmount(matching ? String(matching.limit_amount).replace(".", ",") : "");
+            }}
             aria-label="Mês"
+            required
             className="qv-field flex-[0_1_150px] py-2 px-3 font-mono text-[13px]"
           />
           <input
@@ -141,13 +159,15 @@ export function BudgetsPanel({ client, userId }: { client: SupabaseClient<Databa
             placeholder="Limite R$"
             aria-label="Limite"
             inputMode="decimal"
+            required
             className="qv-field flex-[0_1_110px] py-2 px-3 font-mono text-[13px]"
           />
           <Button type="submit" variant="primary" size="sm" disabled={createBudget.isPending}>
-            Definir
+            {createBudget.isPending ? "Salvando…" : selectedBudget ? "Atualizar limite" : "Definir limite"}
           </Button>
         </form>
       )}
+      {error && <p role="alert" className="text-xs text-error">{error}</p>}
     </div>
   );
 }

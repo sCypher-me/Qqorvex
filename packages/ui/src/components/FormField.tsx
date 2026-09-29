@@ -1,8 +1,8 @@
 import { useId, type InputHTMLAttributes, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 /**
- * Campo do Design System v1.0 — rótulo acima (12px, texto secundário), campo rebaixado com
- * brilho cyan no foco. `hint` aparece abaixo; `error` substitui o hint e marca o campo inválido.
+ * Campo do Design System — rótulo acima, campo rebaixado e foco nítido. `hint` aparece abaixo;
+ * `error` substitui o hint e marca o campo inválido. A descrição é associada ao controle por id.
  * Sem `label`, o campo é renderizado sozinho (use `aria-label`).
  */
 function FieldShell({
@@ -10,6 +10,7 @@ function FieldShell({
   htmlFor,
   hint,
   error,
+  descriptionId,
   className = "",
   children,
 }: {
@@ -17,6 +18,7 @@ function FieldShell({
   htmlFor: string;
   hint?: string;
   error?: string | null;
+  descriptionId?: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -30,9 +32,9 @@ function FieldShell({
       )}
       {children}
       {error ? (
-        <span className="text-xs text-error">{error}</span>
+        <span id={descriptionId} className="text-xs text-error">{error}</span>
       ) : (
-        hint && <span className="text-xs text-text-muted">{hint}</span>
+        hint && <span id={descriptionId} className="text-xs text-text-muted">{hint}</span>
       )}
     </div>
   );
@@ -55,17 +57,20 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, Field
 export function Input({ label, hint, error, wrapperClassName, id, className = "", trailingAdornment, ref, ...props }: InputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
+  const descriptionId = hint || error ? `${inputId}-description` : undefined;
+  const describedBy = [props["aria-describedby"], descriptionId].filter(Boolean).join(" ") || undefined;
   const input = (
     <input
+      {...props}
       ref={ref}
       id={inputId}
       aria-invalid={error ? true : undefined}
+      aria-describedby={describedBy}
       className={`qv-field ${trailingAdornment ? "pr-11" : ""} ${className}`}
-      {...props}
     />
   );
   return (
-    <FieldShell label={label} htmlFor={inputId} hint={hint} error={error} className={wrapperClassName}>
+    <FieldShell label={label} htmlFor={inputId} hint={hint} error={error} descriptionId={descriptionId} className={wrapperClassName}>
       {trailingAdornment ? (
         <div className="relative flex items-center">
           {input}
@@ -83,9 +88,11 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement>, Fi
 export function Select({ label, hint, error, wrapperClassName, id, className = "", ...props }: SelectProps) {
   const generatedId = useId();
   const selectId = id ?? generatedId;
+  const descriptionId = hint || error ? `${selectId}-description` : undefined;
+  const describedBy = [props["aria-describedby"], descriptionId].filter(Boolean).join(" ") || undefined;
   return (
-    <FieldShell label={label} htmlFor={selectId} hint={hint} error={error} className={wrapperClassName}>
-      <select id={selectId} aria-invalid={error ? true : undefined} className={`qv-field ${className}`} {...props} />
+    <FieldShell label={label} htmlFor={selectId} hint={hint} error={error} descriptionId={descriptionId} className={wrapperClassName}>
+      <select {...props} id={selectId} aria-invalid={error ? true : undefined} aria-describedby={describedBy} className={`qv-field ${className}`} />
     </FieldShell>
   );
 }
@@ -95,9 +102,11 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 export function Textarea({ label, hint, error, wrapperClassName, id, className = "", ...props }: TextareaProps) {
   const generatedId = useId();
   const textareaId = id ?? generatedId;
+  const descriptionId = hint || error ? `${textareaId}-description` : undefined;
+  const describedBy = [props["aria-describedby"], descriptionId].filter(Boolean).join(" ") || undefined;
   return (
-    <FieldShell label={label} htmlFor={textareaId} hint={hint} error={error} className={wrapperClassName}>
-      <textarea id={textareaId} aria-invalid={error ? true : undefined} className={`qv-field ${className}`} {...props} />
+    <FieldShell label={label} htmlFor={textareaId} hint={hint} error={error} descriptionId={descriptionId} className={wrapperClassName}>
+      <textarea {...props} id={textareaId} aria-invalid={error ? true : undefined} aria-describedby={describedBy} className={`qv-field ${className}`} />
     </FieldShell>
   );
 }

@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Button, Notice } from "@qqorvex/ui";
 import type { CalendarEvent, NewEventInput } from "../types";
 import { formatShortDate } from "./EventStyle";
+import { EventConflictError } from "../service";
+import { localDateTimeToIso } from "../dateUtils";
 
 const CATEGORY_LABEL: Record<string, string> = {
   compromisso: "Compromisso",
@@ -30,10 +32,12 @@ export function QuickEventForm({
   selectedDate,
   checkConflicts,
   onCreate,
+  isCreating = false,
 }: {
   selectedDate: Date;
   checkConflicts: (input: NewEventInput) => CalendarEvent[];
-  onCreate: (input: NewEventInput) => void;
+  onCreate: (input: NewEventInput, ignoreConflicts?: boolean) => Promise<void> | void;
+  isCreating?: boolean;
 }) {
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("09:00");
@@ -41,17 +45,31 @@ export function QuickEventForm({
   const [isAllDay, setIsAllDay] = useState(false);
   const [category, setCategory] = useState("compromisso");
   const [meetingLink, setMeetingLink] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const [reminderMinutes, setReminderMinutes] = useState("");
   const [conflicts, setConflicts] = useState<CalendarEvent[] | null>(null);
   const [pendingInput, setPendingInput] = useState<NewEventInput | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConflicts(null);
+    setPendingInput(null);
+  }, [selectedDate]);
+
+  function clearConflictState() {
+    setConflicts(null);
+    setPendingInput(null);
+  }
 
   function buildInput(): NewEventInput | null {
     const trimmed = title.trim();
     if (!trimmed) return null;
 
-    const dateStr = selectedDate.toISOString().slice(0, 10);
-    const startAt = isAllDay ? `${dateStr}T00:00:00` : `${dateStr}T${startTime}:00`;
-    const endAt = isAllDay ? `${dateStr}T23:59:59` : `${dateStr}T${endTime}:00`;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    const startAt = localDateTimeToIso(dateStr, isAllDay ? "00:00" : startTime);
+    const endAt = localDateTimeToIso(dateStr, isAllDay ? "23:59" : endTime, isAllDay ? 59 : 0);
 
     return {
       title: trimmed,
@@ -59,14 +77,42 @@ export function QuickEventForm({
       startAt,
       endAt,
       category,
+      description: description.trim() || undefined,
+      location: location.trim() || undefined,
       meetingLink: category === "reuniao" && meetingLink.trim() ? meetingLink.trim() : undefined,
       reminderMinutesBefore: reminderMinutes ? Number(reminderMinutes) : undefined,
     };
   }
 
+  function handleStartTimeChange(value: string) {
+    setStartTime(value);
+    clearConflictState();
+    setError(null);
+    if (endTime <= value) {
+      const [hours, minutes] = value.split(":").map(Number);
+      const adjustedMinutes = Math.min((hours ?? 0) * 60 + (minutes ?? 0) + 60, 23 * 60 + 59);
+      setEndTime(`${String(Math.floor(adjustedMinutes / 60)).padStart(2, "0")}:${String(adjustedMinutes % 60).padStart(2, "0")}`);
+    }
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const input = buildInput();
+    if (!title.trim()) {
+      setError("Dê um título ao evento para continuar.");
+      return;
+    }
+    if (!isAllDay && (!startTime || !endTime || endTime <= startTime)) {
+      setError("O horário final precisa ser depois do horário inicial.");
+      return;
+    }
+
+    let input: NewEventInput | null;
+    try {
+      input = buildInput();
+    } catch {
+      setError("Não foi possível interpretar a data e o horário. Revise os campos e tente novamente.");
+      return;
+    }
     if (!input) return;
 
     const foundConflicts = checkConflicts(input);
@@ -76,34 +122,52 @@ export function QuickEventForm({
       return;
     }
 
-    onCreate(input);
-    reset();
+    void submitInput(input);
+  }
+
+  async function submitInput(input: NewEventInput, ignoreConflicts = false) {
+    setError(null);
+    try {
+      await onCreate(input, ignoreConflicts);
+      reset();
+    } catch (createError) {
+      if (!ignoreConflicts && createError instanceof EventConflictError) {
+        setConflicts(createError.conflicts);
+        setPendingInput(input);
+        return;
+      }
+      setError(createError instanceof Error ? createError.message : "Não foi possível criar o evento.");
+    }
   }
 
   function confirmAnyway() {
     if (!pendingInput) return;
-    onCreate(pendingInput);
-    reset();
+    void submitInput(pendingInput, true);
   }
 
   function reset() {
     setTitle("");
     setMeetingLink("");
+    setDescription("");
+    setLocation("");
+    setShowDetails(false);
     setConflicts(null);
     setPendingInput(null);
+    setError(null);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="qv-card p-3.5 flex flex-col gap-2.5">
-      <div className="flex gap-2.5 flex-wrap">
+    <form onSubmit={handleSubmit} className="qv-card editorial-agenda-capture p-3.5 flex flex-col gap-2.5">
+      <div className="editorial-agenda-capture-main gap-2.5">
         <input
+          id="agenda-quick-event-title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); clearConflictState(); setError(null); }}
           placeholder="Novo evento — ex: Reunião com o time"
           aria-label="Título do evento"
-          className="qv-field flex-1 basis-[240px]"
+          className="qv-field editorial-agenda-capture-title flex-1 basis-[240px]"
         />
-        <div className="qv-well flex items-center gap-2 px-3.5 py-0 min-h-[44px] font-mono text-[13px] text-text-secondary">
+        <div className="qv-well editorial-agenda-capture-date flex items-center gap-2 px-3.5 py-0 min-h-[44px] font-mono text-[13px] text-text-secondary">
           <span className="whitespace-nowrap">{formatShortDate(selectedDate)}</span>
           {isAllDay ? (
             <span className="whitespace-nowrap">· dia inteiro</span>
@@ -113,7 +177,7 @@ export function QuickEventForm({
               <input
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
                 aria-label="Início"
                 className="bg-transparent border-0 outline-none font-mono text-[13px] text-text-primary w-[82px]"
               />
@@ -121,22 +185,22 @@ export function QuickEventForm({
               <input
                 type="time"
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                onChange={(e) => { setEndTime(e.target.value); clearConflictState(); setError(null); }}
                 aria-label="Fim"
                 className="bg-transparent border-0 outline-none font-mono text-[13px] text-text-primary w-[82px]"
               />
             </>
           )}
         </div>
-        <Button type="submit" variant="primary" className="px-5">
-          Criar
+        <Button type="submit" variant="primary" className="editorial-agenda-capture-submit px-5" disabled={isCreating}>
+          {isCreating ? "Criando…" : "Criar"}
         </Button>
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap text-[13px] text-text-secondary">
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => { setCategory(e.target.value); clearConflictState(); }}
           aria-label="Categoria"
           className="qv-field w-auto py-2 text-[13px]"
         >
@@ -148,7 +212,7 @@ export function QuickEventForm({
         </select>
         <select
           value={reminderMinutes}
-          onChange={(e) => setReminderMinutes(e.target.value)}
+          onChange={(e) => { setReminderMinutes(e.target.value); clearConflictState(); }}
           aria-label="Lembrete"
           className="qv-field w-auto py-2 text-[13px]"
         >
@@ -159,19 +223,35 @@ export function QuickEventForm({
           ))}
         </select>
         <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input type="checkbox" className="qv-check" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} />
+          <input type="checkbox" className="qv-check" checked={isAllDay} onChange={(e) => { setIsAllDay(e.target.checked); clearConflictState(); }} />
           Dia inteiro
         </label>
         {category === "reuniao" && (
           <input
             value={meetingLink}
-            onChange={(e) => setMeetingLink(e.target.value)}
+            onChange={(e) => { setMeetingLink(e.target.value); clearConflictState(); }}
             placeholder="Link da reunião (opcional)"
             aria-label="Link da reunião"
             className="qv-field flex-1 basis-[220px] py-2 text-[13px]"
           />
         )}
+        <button
+          type="button"
+          className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary"
+          aria-expanded={showDetails}
+          onClick={() => setShowDetails((value) => !value)}
+        >
+          {showDetails ? "Ocultar detalhes" : "Mais detalhes"}
+        </button>
       </div>
+
+      {showDetails && (
+        <div className="grid gap-2.5 border-t border-border/70 pt-2.5 sm:grid-cols-2">
+          <input value={location} onChange={(e) => { setLocation(e.target.value); clearConflictState(); }} placeholder="Local (opcional)" aria-label="Local" className="qv-field py-2 text-[13px]" />
+          {category !== "reuniao" && <input value={meetingLink} onChange={(e) => { setMeetingLink(e.target.value); clearConflictState(); }} placeholder="Link da reunião (opcional)" aria-label="Link da reunião" className="qv-field py-2 text-[13px]" />}
+          <textarea value={description} onChange={(e) => { setDescription(e.target.value); clearConflictState(); }} placeholder="Descrição (opcional)" aria-label="Descrição" className="qv-field min-h-16 resize-y py-2 text-[13px] sm:col-span-2" />
+        </div>
+      )}
 
       {conflicts && conflicts.length > 0 && (
         <Notice
@@ -191,6 +271,7 @@ export function QuickEventForm({
           Conflita com: {conflicts.map((c) => c.title).join(", ")}
         </Notice>
       )}
+      {error && <Notice tone="error" title="Não foi possível criar o evento">{error}</Notice>}
     </form>
   );
 }

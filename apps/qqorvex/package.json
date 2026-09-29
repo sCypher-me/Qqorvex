@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@qqorvex/auth": "workspace:*",
     "@qqorvex/database": "workspace:*",
     "@qqorvex/design-system": "workspace:*",
@@ -29,6 +30,9 @@
     "@qqorvex/ui": "workspace:*",
     "@qqorvex/vex": "workspace:*",
     "@tanstack/react-query": "^5.0.0",
+    "@tauri-apps/api": "2",
+    "@tauri-apps/plugin-deep-link": "2",
+    "@tauri-apps/plugin-opener": "2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0"

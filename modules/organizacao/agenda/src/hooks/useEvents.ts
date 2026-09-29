@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createEvent, createZoomMeeting, deleteEvent, listAllEvents, listEventsInRange } from "../repository";
+import { createEvent, createZoomMeeting, deleteEvent, listAllEvents, listEventsInRange, updateEvent } from "../repository";
 import type { NewEventInput } from "../types";
 
 const eventsKey = (rangeStartIso: string, rangeEndIso: string) => ["events", rangeStartIso, rangeEndIso] as const;
@@ -12,7 +12,7 @@ export function useEventsInRange(client: SupabaseClient<Database>, rangeStart: D
     queryKey: eventsKey(rangeStartIso, rangeEndIso),
     queryFn: () => listEventsInRange(client, rangeStartIso, rangeEndIso),
   });
-  return { events: query.data ?? [], isLoading: query.isLoading, error: query.error };
+  return { events: query.data ?? [], isLoading: query.isLoading, error: query.error, refetch: query.refetch };
 }
 
 export function useAllEvents(client: SupabaseClient<Database>) {
@@ -32,6 +32,14 @@ export function useDeleteEvent(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (eventId: string) => deleteEvent(client, eventId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["events"] }),
+  });
+}
+
+export function useUpdateEvent(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, input }: { eventId: string; input: NewEventInput }) => updateEvent(client, eventId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["events"] }),
   });
 }

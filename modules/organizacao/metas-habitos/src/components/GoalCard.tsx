@@ -4,6 +4,8 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import { useAccounts, useTransactions, computeAccountBalance } from "@qqorvex/module-financas";
 import {
   useCreateMilestone,
+  useCreateCheckin,
+  useGoalCheckins,
   useGoalHabitRelations,
   useLinkGoalHabit,
   useMilestones,
@@ -61,10 +63,13 @@ export function GoalCard({
 }) {
   const { milestones } = useMilestones(client, goal.id);
   const createMilestone = useCreateMilestone(client, goal.id);
+  const createCheckin = useCreateCheckin(client, goal.id);
   const toggleMilestone = useToggleMilestone(client, goal.id);
   const [milestoneTitle, setMilestoneTitle] = useState("");
+  const [checkinNote, setCheckinNote] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const { checkins } = useGoalCheckins(client, goal.id, detailsOpen);
 
   const { habits } = useHabits(client);
   const { relations } = useGoalHabitRelations(client);
@@ -129,9 +134,13 @@ export function GoalCard({
         <Badge tone={STATUS_TONE[goal.status]}>{STATUS_LABEL[goal.status]}</Badge>
       </div>
 
+      {goal.description && <p className="text-[13px] leading-relaxed text-text-secondary">{goal.description}</p>}
+
       {metaParts.length > 0 && (
         <span className="text-[13px] text-text-secondary leading-normal">{metaParts.join(" · ")}</span>
       )}
+
+      {goal.category && <Badge tone="neutral">{goal.category}</Badge>}
 
       {progressPercent !== null && (
         <div className="flex items-center gap-3">
@@ -164,6 +173,54 @@ export function GoalCard({
 
       {detailsOpen && (
         <div className="qv-row-top pt-3.5 flex flex-col gap-4">
+          {goal.motivation_note && (
+            <blockquote className="qv-well border-l-2 border-brand-primary px-3 py-2.5 text-[13px] italic leading-relaxed text-text-secondary">
+              {goal.motivation_note}
+            </blockquote>
+          )}
+
+          <section className="flex flex-col gap-2" aria-label="Atualizações da meta">
+            <span className="qv-eyebrow">Atualizações</span>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!checkinNote.trim()) return;
+                createCheckin.mutate(
+                  { note: checkinNote.trim(), progressPercentSnapshot: progressPercent ?? undefined },
+                  { onSuccess: () => setCheckinNote("") },
+                );
+              }}
+              className="flex flex-col gap-2 sm:flex-row"
+            >
+              <input
+                value={checkinNote}
+                onChange={(event) => setCheckinNote(event.target.value)}
+                placeholder="O que avançou desde a última atualização?"
+                aria-label="Nova atualização da meta"
+                maxLength={300}
+                className="qv-field min-w-0 flex-1 py-2 px-3 text-[13px]"
+              />
+              <Button type="submit" variant="secondary" size="sm" disabled={!checkinNote.trim() || createCheckin.isPending}>
+                {createCheckin.isPending ? "Salvando…" : "Registrar"}
+              </Button>
+            </form>
+            {checkins.length > 0 ? (
+              <ol className="flex flex-col">
+                {checkins.slice(0, 4).map((checkin) => (
+                  <li key={checkin.id} className="qv-row-top flex items-start justify-between gap-3 py-2 text-[12px]">
+                    <span className="min-w-0 leading-relaxed text-text-secondary">{checkin.note || "Atualização registrada"}</span>
+                    <span className="shrink-0 font-mono text-text-muted">
+                      {formatDate(checkin.checkin_date)}
+                      {checkin.progress_percent_snapshot !== null ? ` · ${Math.round(checkin.progress_percent_snapshot)}%` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-xs text-text-muted">Registre pequenos avanços para manter o contexto da sua jornada.</p>
+            )}
+          </section>
+
           <div className="flex flex-col gap-2">
             <span className="qv-eyebrow">Marcos</span>
             {milestones.map((milestone) => (

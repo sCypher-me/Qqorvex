@@ -22,6 +22,7 @@ import {
   listTransactionsForCardInPeriod,
   markStatementPaid,
   updateCardClosingConfig,
+  updateTransaction,
   updateRecurringStatus,
   updateTransactionStatus,
 } from "../repository";
@@ -34,6 +35,7 @@ import type {
   RecurringTransaction,
   Transaction,
   TransactionType,
+  UpdateTransactionInput,
 } from "../types";
 
 const TRANSACTIONS_KEY = ["transactions"] as const;
@@ -68,6 +70,14 @@ export function useUpdateTransactionStatus(client: SupabaseClient<Database>) {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: Transaction["status"] }) =>
       updateTransactionStatus(client, id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY }),
+  });
+}
+
+export function useUpdateTransaction(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateTransactionInput }) => updateTransaction(client, id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY }),
   });
 }
@@ -182,6 +192,9 @@ export function useCreateRecurringTransaction(client: SupabaseClient<Database>, 
       frequency: RecurrenceFrequency;
       startDate: string;
       isSubscription?: boolean;
+      categoryId?: string;
+      accountId?: string;
+      cardId?: string;
     }) => createRecurringTransaction(client, userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: RECURRING_KEY }),
   });

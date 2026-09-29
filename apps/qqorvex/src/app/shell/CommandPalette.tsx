@@ -28,7 +28,10 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const entries = useMemo<PaletteEntry[]>(
     () => [
@@ -51,8 +54,38 @@ export function CommandPalette({
     setQuery("");
     setActiveIndex(0);
     previouslyFocused.current = document.activeElement as HTMLElement | null;
+    const root = document.getElementById("root");
+    const wasInert = root?.hasAttribute("inert") ?? false;
+    root?.setAttribute("inert", "");
     requestAnimationFrame(() => inputRef.current?.focus());
-    return () => previouslyFocused.current?.focus();
+    function handleDialogKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleDialogKey);
+    return () => {
+      document.removeEventListener("keydown", handleDialogKey);
+      if (!wasInert) root?.removeAttribute("inert");
+      previouslyFocused.current?.focus();
+      previouslyFocused.current = null;
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -69,20 +102,21 @@ export function CommandPalette({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center px-6 pt-24 pb-6"
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[14vh] pb-6 sm:px-6"
       role="dialog"
       aria-modal="true"
       aria-label="Paleta de comandos"
     >
       <div className="qv-backdrop absolute inset-0" onClick={onClose} />
-      <div className="qv-dialog relative w-full max-w-[560px] overflow-hidden">
-        <div className="flex items-center gap-3 px-[18px] py-4 border-b border-border">
+      <div className="qv-dialog relative w-full max-w-[640px] overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/80 bg-surface-1/70 px-4 py-3.5 sm:px-5">
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-vex-cyan-dark/70 bg-chip-cyan text-vex-cyan-bright">⌕</span>
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onClose();
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
@@ -95,18 +129,18 @@ export function CommandPalette({
             }}
             placeholder="Buscar ou executar"
             aria-label="Buscar ou executar"
-            className="flex-1 bg-transparent border-none outline-none text-base text-text-primary focus-visible:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-text-primary outline-none placeholder:text-text-muted focus-visible:outline-none"
           />
           <button
             type="button"
             onClick={onClose}
-            className="border border-border rounded-lg text-text-muted font-mono text-[11px] px-[7px] py-[3px] cursor-pointer hover:text-text-primary"
+            className="rounded-[7px] border border-border bg-surface-2/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted transition-colors hover:border-text-muted hover:text-text-primary"
           >
             esc
           </button>
         </div>
-        <div className="p-2 max-h-[420px] overflow-y-auto">
-          {filtered.length === 0 && <p className="px-3 py-3 text-sm text-text-secondary">Nada encontrado para “{query}”.</p>}
+        <div className="max-h-[min(520px,62dvh)] overflow-y-auto p-2">
+          {filtered.length === 0 && <p className="px-3 py-4 text-sm leading-relaxed text-text-secondary">Nada encontrado para “{query}”. Tente buscar um módulo ou comando da Vex.</p>}
           {filtered.map((entry, index) => {
             const active = index === activeIndex;
             return (
@@ -115,11 +149,11 @@ export function CommandPalette({
                 type="button"
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => execute(entry)}
-                className={`w-full text-left flex items-center gap-3 px-3 py-[11px] rounded-[10px] cursor-pointer ${
-                  active ? "bg-[rgba(67,185,210,.10)]" : "bg-transparent"
+                className={`w-full text-left flex items-center gap-3 rounded-[11px] border-l-2 px-3 py-3 cursor-pointer transition-[background-color,border-color,color] ${
+                  active ? "border-vex-cyan bg-chip-cyan" : "border-transparent bg-transparent hover:bg-chip-neutral"
                 }`}
               >
-                <span className="qv-eyebrow w-24 shrink-0">{entry.group}</span>
+                <span className="qv-eyebrow w-20 shrink-0">{entry.group}</span>
                 <span className={`flex-1 text-sm ${active ? "text-vex-cyan-bright" : "text-text-primary"}`}>{entry.label}</span>
                 {active && <span className="font-mono text-[11px] text-text-muted">↵</span>}
               </button>

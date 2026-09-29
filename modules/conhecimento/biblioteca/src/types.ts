@@ -24,7 +24,11 @@ export interface NewLibraryItemInput {
   year?: number;
   coverUrl?: string;
   originUrl?: string;
+  tags?: string[];
 }
+
+export const LIBRARY_COVER_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export const LIBRARY_COVER_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 export function toLibraryItemInsert(userId: string, input: NewLibraryItemInput): TablesInsert<"library_items"> {
   return {
@@ -36,5 +40,6 @@ export function toLibraryItemInsert(userId: string, input: NewLibraryItemInput):
     year: input.year ?? null,
     cover_url: input.coverUrl ?? null,
     origin_url: input.originUrl ?? null,
+    tags: input.tags ?? [],
   };
 }

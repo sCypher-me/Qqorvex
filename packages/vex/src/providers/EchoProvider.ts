@@ -93,6 +93,33 @@ export class EchoProvider implements VexProvider {
     }
 
     // Biblioteca
+    const typedLibraryMatch = text.match(/^(?:adicionar|adiciona)(?: à| na)? biblioteca[: ]+(?:um |uma )?(livro|quadrinho|mang[aá]|filme|s[ée]rie|anime|podcast|v[ií]deo|artigo|curso|jogo)[: ]+(.+)$/i);
+    if (typedLibraryMatch && has("add_library_item")) {
+      const itemTypeByLabel: Record<string, string> = {
+        livro: "book",
+        quadrinho: "comic",
+        mangá: "manga",
+        manga: "manga",
+        filme: "movie",
+        série: "series",
+        serie: "series",
+        anime: "anime",
+        podcast: "podcast",
+        vídeo: "video",
+        video: "video",
+        artigo: "article",
+        curso: "course",
+        jogo: "game",
+      };
+      const label = typedLibraryMatch[1]!.toLocaleLowerCase("pt-BR");
+      return {
+        kind: "tool_call",
+        toolCall: {
+          name: "add_library_item",
+          arguments: { title: typedLibraryMatch[2]!.trim(), itemType: itemTypeByLabel[label] ?? "other" },
+        },
+      };
+    }
     const addLibraryMatch = text.match(/^(?:adicionar|adiciona)(?: à| na)? biblioteca[: ]+(.+)$/i);
     if (addLibraryMatch && has("add_library_item")) {
       return { kind: "tool_call", toolCall: { name: "add_library_item", arguments: { title: addLibraryMatch[1]!.trim() } } };
@@ -125,16 +152,33 @@ export class EchoProvider implements VexProvider {
       };
     }
 
+    // Vida Pessoal, Gamificação e Perfil
+    if (/^(resumo da vida pessoal|minha vida pessoal|como está minha vida pessoal)/i.test(text) && has("get_personal_overview")) {
+      return { kind: "tool_call", toolCall: { name: "get_personal_overview", arguments: {} } };
+    }
+    if (/^(meus check-ins|histórico de check-ins|historico de check-ins)/i.test(text) && has("list_personal_checkins")) {
+      return { kind: "tool_call", toolCall: { name: "list_personal_checkins", arguments: {} } };
+    }
+    if (/^(meu nível|minha gamificação|meu xp|meu nível e xp)/i.test(text) && has("get_gamification_summary")) {
+      return { kind: "tool_call", toolCall: { name: "get_gamification_summary", arguments: {} } };
+    }
+    if (/^(desafios de hoje|meus desafios)/i.test(text) && has("list_daily_challenges")) {
+      return { kind: "tool_call", toolCall: { name: "list_daily_challenges", arguments: {} } };
+    }
+    if (/^(meu perfil|dados do meu perfil)/i.test(text) && has("get_profile_summary")) {
+      return { kind: "tool_call", toolCall: { name: "get_profile_summary", arguments: {} } };
+    }
+
     return {
       kind: "message",
       content:
-        "Ainda não tenho um modelo de IA conectado — por enquanto entendo só comandos diretos, como " +
+        "Não consegui acessar o modelo online agora — por enquanto entendo só comandos diretos, como " +
         '"criar tarefa ...", "minhas tarefas", "concluir tarefa ...", "criar evento ... às HH:MM", ' +
         '"eventos de hoje", "criar meta ...", "minhas metas", "registrar hábito ...", "criar caderno ...", ' +
         '"meus cadernos", "flashcards para revisar", "criar página ...", "minhas páginas", ' +
-        '"adicionar biblioteca ...", "minha biblioteca", "meus documentos", "meu saldo" e ' +
-        '"criar saída ... R$ ...". ' +
-        "Configure um provider real (ex.: Ollama) para conversas livres.",
+        '"adicionar biblioteca ...", "minha biblioteca", "meus documentos", "meu saldo", ' +
+        '"resumo da vida pessoal", "meu nível", "desafios de hoje" e "meu perfil". ' +
+        "A conexão com o modelo será tentada novamente na próxima mensagem.",
     };
   }
 }

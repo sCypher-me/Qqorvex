@@ -7,7 +7,8 @@ import type { Tables } from "@qqorvex/database";
  * "parceiro" são concedidos só via código de resgate gerado aqui.
  */
 export type ProfileRole = "usuario" | "dono";
-export type AccountTier = "padrao" | "parceiro" | "lifetime";
+export type AccountTier = "padrao" | "parceiro" | "lifetime" | "vip";
+export type RedemptionCodeTier = "parceiro" | "lifetime" | "beta_tester";
 
 export type RedemptionCode = Tables<"redemption_codes">;
 
@@ -22,7 +23,8 @@ export interface ManagedAccount {
 }
 
 export interface NewRedemptionCodeInput {
-  tier: Exclude<AccountTier, "padrao">;
+  /** VIP é um status administrativo e não pode ser emitido por código público. */
+  tier: RedemptionCodeTier;
   note?: string;
 }
 

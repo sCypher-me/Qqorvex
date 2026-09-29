@@ -20,7 +20,7 @@ export function VersionHistoryPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="qv-row px-[18px] py-[14px] flex flex-col gap-3 bg-[rgba(67,185,210,.04)]">
+    <div className="qv-row px-[18px] py-[14px] flex flex-col gap-3 bg-chip-cyan">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
           <span className="text-sm font-semibold truncate">Versões de {document.file_name}</span>

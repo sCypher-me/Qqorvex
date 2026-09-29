@@ -1,7 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { createEvent as createAgendaEvent, listEventsByAssessment, type CalendarEvent } from "@qqorvex/module-agenda";
 import type { LibraryItem } from "@qqorvex/module-biblioteca";
-import { awardXp } from "@qqorvex/module-gamificacao";
+import { awardXp, recordHighAccuracyQuiz } from "@qqorvex/module-gamificacao";
 import { computeNextReview, type GeneratedQuizQuestion } from "./service";
 import type {
   Assessment,
@@ -43,6 +43,29 @@ export async function deleteNotebook(client: Client, notebookId: string): Promis
   if (error) throw error;
 }
 
+export async function updateNotebook(
+  client: Client,
+  notebookId: string,
+  input: Partial<NewNotebookInput> & { status?: Notebook["status"]; isFavorite?: boolean },
+): Promise<Notebook> {
+  const update = {
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.notebookType !== undefined ? { notebook_type: input.notebookType } : {}),
+    ...(input.area !== undefined ? { area: input.area || null } : {}),
+    ...(input.tags !== undefined ? { tags: input.tags } : {}),
+    ...(input.description !== undefined ? { description: input.description || null } : {}),
+    ...(input.institution !== undefined ? { institution: input.institution || null } : {}),
+    ...(input.instructor !== undefined ? { instructor: input.instructor || null } : {}),
+    ...(input.startDate !== undefined ? { start_date: input.startDate || null } : {}),
+    ...(input.endDate !== undefined ? { end_date: input.endDate || null } : {}),
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    ...(input.isFavorite !== undefined ? { is_favorite: input.isFavorite } : {}),
+  };
+  const { data, error } = await client.from("notebooks").update(update).eq("id", notebookId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function listTopics(client: Client, notebookId: string): Promise<Topic[]> {
   const { data, error } = await client
     .from("topics")
@@ -73,7 +96,7 @@ export async function listSummaries(client: Client, notebookId: string): Promise
     .from("summaries")
     .select("*")
     .eq("notebook_id", notebookId)
-    .order("created_at", { ascending: true });
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return data;
 }
@@ -91,6 +114,25 @@ export async function createSummary(
       content: input.content,
       topic_id: input.topicId ?? null,
     })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSummary(
+  client: Client,
+  summaryId: string,
+  input: { title: string; content: string; topicId?: string | null },
+): Promise<Summary> {
+  const { data, error } = await client
+    .from("summaries")
+    .update({
+      title: input.title,
+      content: input.content,
+      topic_id: input.topicId ?? null,
+    })
+    .eq("id", summaryId)
     .select("*")
     .single();
   if (error) throw error;
@@ -225,6 +267,16 @@ export async function createStudySession(
   return data;
 }
 
+export async function listStudySessions(client: Client, notebookId: string): Promise<StudySession[]> {
+  const { data, error } = await client
+    .from("study_sessions")
+    .select("*")
+    .eq("notebook_id", notebookId)
+    .order("occurred_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 export async function listQuizzes(client: Client, notebookId: string): Promise<Quiz[]> {
   const { data, error } = await client
     .from("quizzes")
@@ -302,6 +354,9 @@ export async function createQuizAttempt(
   if (error) throw error;
 
   await awardXp(client, userId, "quiz_completed");
+  if (answers.length > 0 && score / answers.length >= 0.9) {
+    await recordHighAccuracyQuiz(client, userId);
+  }
 
   return data;
 }

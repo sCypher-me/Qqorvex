@@ -9,8 +9,9 @@ import { Outlet, useLocation } from "react-router-dom";
  */
 export function PageTransition() {
   const location = useLocation();
+  const isVexPage = location.pathname === "/vex";
   return (
-    <div key={location.pathname} className="flex flex-col gap-[22px] animate-page-in">
+    <div key={location.pathname} className={`flex min-h-0 flex-col animate-page-in ${isVexPage ? "flex-1 gap-0" : "gap-[22px]"}`}>
       <Outlet />
     </div>
   );

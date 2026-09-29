@@ -29,14 +29,19 @@ const NEXT_STATUS: Record<LibraryItemStatus, LibraryItemStatus> = {
 };
 
 /** Gradientes escuros de capa do design — usados quando o item não tem imagem de capa. */
-const COVER_TINTS = ["#1E232B", "#2a2118", "#16222a", "#1b2430", "#2b1f2a", "#241d17", "#17252a", "#20262f"];
+const COVER_TINTS = [
+  "var(--qv-surface-card)",
+  "var(--qv-surface-panel)",
+  "var(--qv-surface-workspace)",
+  "var(--qv-surface-selected)",
+];
 
 function coverGradient(itemId: string): string {
   let hash = 0;
   for (let i = 0; i < itemId.length; i++) {
     hash = (hash * 31 + itemId.charCodeAt(i)) | 0;
   }
-  return `linear-gradient(150deg, ${COVER_TINTS[Math.abs(hash) % COVER_TINTS.length]}, #0f1216)`;
+  return `linear-gradient(150deg, ${COVER_TINTS[Math.abs(hash) % COVER_TINTS.length]}, var(--qv-surface-canvas))`;
 }
 
 /** "A única visualização do acervo é Galeria." Grade de cards, sem Lista/Tabela/Kanban paralelos. */
@@ -45,17 +50,21 @@ export function GalleryGrid({
   onAdvanceStatus,
   onToggleFavorite,
   onDelete,
+  onSelect,
+  emptyMessage = "Sua Biblioteca está vazia. Adicione um livro, filme, série ou jogo para começar.",
 }: {
   items: LibraryItem[];
   onAdvanceStatus: (itemId: string, status: LibraryItemStatus) => void;
   onToggleFavorite: (itemId: string, isFavorite: boolean) => void;
   onDelete: (itemId: string) => void;
+  onSelect?: (item: LibraryItem) => void;
+  emptyMessage?: string;
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmItem = items.find((item) => item.id === confirmDeleteId) ?? null;
 
   if (items.length === 0) {
-    return <EmptyState>Sua Biblioteca está vazia. Adicione um livro, filme, série ou jogo para começar.</EmptyState>;
+    return <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (
@@ -65,7 +74,7 @@ export function GalleryGrid({
         const typeLabel = LIBRARY_ITEM_TYPE_LABELS[item.item_type];
         const nextStatus = NEXT_STATUS[item.status];
         return (
-          <div
+          <article
             key={item.id}
             className="qv-card overflow-hidden flex flex-col transition-[transform,border-color] duration-150 hover:-translate-y-[3px] hover:border-text-muted"
           >
@@ -93,7 +102,7 @@ export function GalleryGrid({
                 aria-label={item.is_favorite ? `Desfavoritar ${item.title}` : `Favoritar ${item.title}`}
                 title={item.is_favorite ? "Desfavoritar" : "Favoritar"}
                 className={`absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-[13px] transition-colors ${
-                  item.is_favorite ? "text-vex-gold" : "text-[#3a4049] hover:text-text-muted"
+                  item.is_favorite ? "text-vex-gold" : "text-vex-border hover:text-text-muted"
                 }`}
               >
                 ★
@@ -105,7 +114,14 @@ export function GalleryGrid({
             </div>
 
             <div className="p-3 flex flex-col gap-1 flex-1">
-              <span className="text-sm font-semibold leading-[1.3] text-text-primary line-clamp-2">{item.title}</span>
+              <button
+                type="button"
+                onClick={() => onSelect?.(item)}
+                className="text-left text-sm font-semibold leading-[1.3] text-text-primary line-clamp-2 transition-colors hover:text-vex-cyan-bright focus-visible:outline-none focus-visible:text-vex-cyan-bright"
+                aria-label={`Ver detalhes de ${item.title}`}
+              >
+                {item.title}
+              </button>
               {item.subtitle && <span className="text-xs text-text-muted line-clamp-1">{item.subtitle}</span>}
               {progress !== null && (
                 <div className="flex items-center gap-2 mt-1.5">
@@ -117,6 +133,18 @@ export function GalleryGrid({
               )}
               <span className="flex-1" />
               <div className="flex items-center gap-1.5 mt-2">
+                {onSelect && (
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    size="xs"
+                    className="min-w-0"
+                    onClick={() => onSelect(item)}
+                    aria-label={`Abrir detalhes de ${item.title}`}
+                  >
+                    <span aria-hidden="true">↗</span>
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="quiet"
@@ -138,7 +166,7 @@ export function GalleryGrid({
                 </button>
               </div>
             </div>
-          </div>
+          </article>
         );
       })}
       <ConfirmDialog

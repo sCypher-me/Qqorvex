@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { checkUsernameAvailable, isUsernameFormatValid } from "./username";
 
-export type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+export type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
 
 /** Debounced (400ms) — evita 1 requisição por tecla digitada. Campo vazio (username opcional) fica "idle". */
 export function useUsernameAvailability(client: SupabaseClient<Database>, username: string): UsernameStatus {
@@ -21,8 +21,12 @@ export function useUsernameAvailability(client: SupabaseClient<Database>, userna
     setStatus("checking");
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const available = await checkUsernameAvailable(client, trimmed);
-      if (!cancelled) setStatus(available ? "available" : "taken");
+      try {
+        const available = await checkUsernameAvailable(client, trimmed);
+        if (!cancelled) setStatus(available ? "available" : "taken");
+      } catch {
+        if (!cancelled) setStatus("error");
+      }
     }, 400);
     return () => {
       cancelled = true;

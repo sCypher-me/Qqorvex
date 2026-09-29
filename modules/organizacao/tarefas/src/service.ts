@@ -2,13 +2,20 @@ import type { Task, TaskRecurrenceFrequency, TaskWithConditions } from "./types"
 
 type DependencyEdge = { task_id: string; depends_on_task_id: string };
 
+export function localDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * "Atrasada" e "Bloqueada" são condições calculadas, nunca colunas de estado do Kanban
  * (regra explícita do módulo). Recalcular sempre que tasks/edges mudarem.
  */
 export function deriveTaskConditions(tasks: Task[], edges: DependencyEdge[]): TaskWithConditions[] {
   const statusById = new Map(tasks.map((t) => [t.id, t.status]));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
 
   const blockedIds = new Set<string>();
   for (const edge of edges) {
@@ -63,10 +70,17 @@ export function wouldCreateCycle(
  * (diária/semanal/mensal, sem dias específicos da semana — corte consciente, ver
  * docs/decisions/tarefas-recorrentes-design.md).
  */
-export function computeNextTaskOccurrenceDate(currentDate: string, frequency: TaskRecurrenceFrequency): string {
-  const date = new Date(`${currentDate}T00:00:00`);
-  if (frequency === "diaria") date.setDate(date.getDate() + 1);
-  else if (frequency === "semanal") date.setDate(date.getDate() + 7);
-  else date.setMonth(date.getMonth() + 1);
+export function computeNextTaskOccurrenceDate(currentDate: string, frequency: TaskRecurrenceFrequency, anchorDate = currentDate): string {
+  const [year = 0, month = 1, day = 1] = currentDate.split("-").map(Number);
+  const [, , anchorDay = day] = anchorDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (frequency === "diaria") date.setUTCDate(date.getUTCDate() + 1);
+  else if (frequency === "semanal") date.setUTCDate(date.getUTCDate() + 7);
+  else {
+    const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+    const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+    target.setUTCDate(Math.min(anchorDay, lastDay));
+    return target.toISOString().slice(0, 10);
+  }
   return date.toISOString().slice(0, 10);
 }

@@ -1,6 +1,9 @@
 import { useState, type ReactElement } from "react";
 import { Button, Notice, triggerHaptic } from "@qqorvex/ui";
 import { useAuth, OAUTH_PROVIDERS, type OAuthProviderId } from "@qqorvex/auth";
+import { isTauri } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { OAUTH_MOBILE_CALLBACK_URL } from "../app/oauthDeepLink";
 
 function GoogleIcon() {
   return (
@@ -41,10 +44,31 @@ export function OAuthButtons() {
     triggerHaptic("light");
     setError(null);
     setPending(provider);
-    const { error } = await signInWithOAuth(provider);
-    // Em caso de sucesso o navegador já saiu da página (redirect) — só chega aqui se falhou antes de redirecionar.
-    setPending(null);
-    if (error) setError(error);
+    const mobileApp = isTauri() && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    try {
+      const { error, url } = await signInWithOAuth(
+        provider,
+        mobileApp
+          ? { redirectTo: OAUTH_MOBILE_CALLBACK_URL, skipBrowserRedirect: true }
+          : undefined,
+      );
+      if (error) {
+        setError(error);
+        return;
+      }
+      if (mobileApp) {
+        if (!url) {
+          setError("Não foi possível iniciar o acesso com este provedor.");
+          return;
+        }
+        await openUrl(url);
+      }
+      // Na Web, o Supabase redireciona a própria página. No app, abre o navegador do sistema.
+    } catch {
+      setError("Não foi possível abrir o provedor de acesso. Tente novamente.");
+    } finally {
+      setPending(null);
+    }
   }
 
   return (

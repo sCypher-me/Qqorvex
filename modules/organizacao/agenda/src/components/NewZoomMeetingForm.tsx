@@ -21,6 +21,10 @@ export function NewZoomMeetingForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!title.trim() || !startAt || !endAt) return;
+    if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
+      setError("O horário final precisa ser depois do horário inicial.");
+      return;
+    }
     setError(null);
     try {
       await onCreate({
@@ -40,6 +44,7 @@ export function NewZoomMeetingForm({
     <form onSubmit={handleSubmit} className="qv-card p-3.5 flex flex-col gap-2.5">
       <div className="flex gap-2.5 flex-wrap">
         <input
+          id="agenda-zoom-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Nova reunião no Zoom — título"

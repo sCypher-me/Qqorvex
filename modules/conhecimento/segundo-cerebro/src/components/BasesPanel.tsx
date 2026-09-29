@@ -94,7 +94,7 @@ export function BasesPanel({ client, userId }: { client: SupabaseClient<Database
               onKeyDown={(e) => {
                 if (e.key === "Enter") setSelectedBaseId(base.id);
               }}
-              className={`${TABLE_ROW_CLASS} ${columns} cursor-pointer outline-none transition-colors hover:bg-white/[0.025] focus-visible:bg-white/[0.035]`}
+              className={`${TABLE_ROW_CLASS} ${columns} cursor-pointer outline-none transition-colors hover:bg-chip-neutral focus-visible:bg-chip-cyan`}
             >
               <span className="truncate text-sm font-medium text-text-primary">{base.name}</span>
               <span className="truncate text-[13px] text-text-secondary">{base.description ?? "—"}</span>

@@ -46,10 +46,10 @@ export function MonthView({
                 key={day.toISOString()}
                 type="button"
                 onClick={() => onSelectDate(day)}
-                aria-pressed={selected}
+                aria-label={`${day.toLocaleDateString("pt-BR", { dateStyle: "full" })}${selected ? ", selecionado" : ""}${dayEvents.length ? `, ${dayEvents.length} ${dayEvents.length === 1 ? "evento" : "eventos"}` : ", sem eventos"}`}
                 className={`flex flex-col items-center justify-between gap-1.5 rounded-md border px-1 py-2 min-h-[64px] cursor-pointer transition-colors ${
                   selected
-                    ? "bg-[rgba(67,185,210,.12)] border-vex-cyan-dark"
+                    ? "bg-chip-cyan border-vex-cyan-dark"
                     : inMonth
                       ? "bg-vex-graphite border-border hover:border-text-muted"
                       : "bg-transparent border-transparent opacity-40 hover:border-border"

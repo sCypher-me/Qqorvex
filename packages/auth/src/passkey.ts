@@ -22,8 +22,10 @@ export async function registerPasskey(client: SupabaseClient<Database>): Promise
 }
 
 /** Login sem senha usando um passkey já cadastrado — credencial discoverable, não pede e-mail antes. */
-export async function signInWithPasskey(client: SupabaseClient<Database>): Promise<{ error: string | null }> {
-  const { error } = await client.auth.signInWithPasskey();
+export async function signInWithPasskey(client: SupabaseClient<Database>, captchaToken?: string): Promise<{ error: string | null }> {
+  const { error } = await client.auth.signInWithPasskey({
+    options: captchaToken ? { captchaToken } : undefined,
+  });
   return { error: error?.message ?? null };
 }
 

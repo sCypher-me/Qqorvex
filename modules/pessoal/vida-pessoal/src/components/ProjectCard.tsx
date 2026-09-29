@@ -22,15 +22,17 @@ const STATUS_TONE: Record<PlanStatus, BadgeTone> = {
 export function ProjectCard({
   client,
   project,
+  userId,
   onChangeStatus,
   onDelete,
 }: {
   client: SupabaseClient<Database>;
   project: Project;
+  userId: string;
   onChangeStatus: (status: PlanStatus) => void;
   onDelete: () => void;
 }) {
-  const { tasks } = useTasks(client);
+  const { tasks } = useTasks(client, userId);
   const { relations } = useProjectTaskRelations(client);
   const linkTask = useLinkTaskToProject(client);
   const unlinkTask = useUnlinkTaskFromProject(client);

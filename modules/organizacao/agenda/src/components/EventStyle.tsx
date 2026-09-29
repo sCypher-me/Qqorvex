@@ -14,24 +14,24 @@ interface CategoryStyle {
 }
 
 const CATEGORY_STYLE: Record<string, CategoryStyle> = {
-  compromisso: { label: "Compromisso", accent: "#43B9D2", bg: "rgba(67,185,210,.08)", tagBg: "rgba(67,185,210,.14)" },
-  reuniao: { label: "Reunião", accent: "#D2A66F", bg: "rgba(184,138,84,.09)", tagBg: "rgba(184,138,84,.16)" },
-  pessoal: { label: "Pessoal", accent: "#6FAF91", bg: "rgba(111,175,145,.08)", tagBg: "rgba(111,175,145,.14)" },
-  prazo: { label: "Prazo", accent: "#8A7FB5", bg: "rgba(138,127,181,.08)", tagBg: "rgba(138,127,181,.16)" },
+  compromisso: { label: "Compromisso", accent: "var(--color-brand-cyan)", bg: "color-mix(in srgb, var(--color-brand-cyan) 8%, transparent)", tagBg: "color-mix(in srgb, var(--color-brand-cyan) 14%, transparent)" },
+  reuniao: { label: "Reunião", accent: "var(--color-brand-gold)", bg: "color-mix(in srgb, var(--color-brand-gold) 9%, transparent)", tagBg: "color-mix(in srgb, var(--color-brand-gold) 16%, transparent)" },
+  pessoal: { label: "Pessoal", accent: "var(--color-category-green)", bg: "color-mix(in srgb, var(--color-category-green) 8%, transparent)", tagBg: "color-mix(in srgb, var(--color-category-green) 14%, transparent)" },
+  prazo: { label: "Prazo", accent: "var(--color-category-lavender)", bg: "color-mix(in srgb, var(--color-category-lavender) 8%, transparent)", tagBg: "color-mix(in srgb, var(--color-category-lavender) 16%, transparent)" },
 };
 
 const FALLBACK_STYLE: CategoryStyle = {
   label: "Evento",
-  accent: "#687A91",
-  bg: "rgba(104,122,145,.08)",
-  tagBg: "rgba(104,122,145,.16)",
+  accent: "var(--color-category-bluegray)",
+  bg: "color-mix(in srgb, var(--color-category-bluegray) 8%, transparent)",
+  tagBg: "color-mix(in srgb, var(--color-category-bluegray) 16%, transparent)",
 };
 
 export const CONFLICT_STYLE: CategoryStyle = {
   label: "Conflito",
-  accent: "#F05D6C",
-  bg: "rgba(240,93,108,.08)",
-  tagBg: "rgba(240,93,108,.14)",
+  accent: "var(--color-error)",
+  bg: "color-mix(in srgb, var(--color-error) 8%, transparent)",
+  tagBg: "color-mix(in srgb, var(--color-error) 14%, transparent)",
 };
 
 export function categoryStyle(category: string): CategoryStyle {
@@ -60,8 +60,8 @@ export function formatDayHeader(iso: string): string {
 }
 
 /** Chave local (AAAA-MM-DD) para agrupar por dia sem cair no dia UTC. */
-export function localDayKey(iso: string): string {
-  const d = new Date(iso);
+export function localDayKey(value: string | Date): string {
+  const d = typeof value === "string" ? new Date(value) : value;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -81,12 +81,14 @@ export function EventBlock({
   meta,
   showRange = true,
   actions,
+  onOpen,
 }: {
   event: CalendarEvent;
   style: CategoryStyle;
   meta?: ReactNode;
   showRange?: boolean;
   actions?: ReactNode;
+  onOpen?: () => void;
 }) {
   return (
     <div
@@ -94,7 +96,13 @@ export function EventBlock({
       style={{ background: style.bg, borderLeft: `3px solid ${style.accent}` }}
     >
       <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
-        <span className="text-sm font-semibold text-text-primary truncate">{event.title}</span>
+        {onOpen ? (
+          <button type="button" className="truncate text-left text-sm font-semibold text-text-primary hover:text-vex-cyan-bright" onClick={onOpen}>
+            {event.title}
+          </button>
+        ) : (
+          <span className="text-sm font-semibold text-text-primary truncate">{event.title}</span>
+        )}
         {meta && <span className="text-xs text-text-secondary truncate">{meta}</span>}
       </div>
       {showRange && <span className="font-mono text-xs text-text-secondary whitespace-nowrap">{formatRange(event)}</span>}
@@ -123,7 +131,7 @@ export function groupEventsByDay(sorted: CalendarEvent[]): [string, CalendarEven
 }
 
 /** Linha de evento dentro do card do dia: hora em mono, filete na cor da categoria, título, pílula. */
-export function EventListRow({ event, actions }: { event: CalendarEvent; actions?: ReactNode }) {
+export function EventListRow({ event, actions, onOpen }: { event: CalendarEvent; actions?: ReactNode; onOpen?: () => void }) {
   const style = categoryStyle(event.category);
   const meta = eventMeta(event);
   return (
@@ -133,7 +141,13 @@ export function EventListRow({ event, actions }: { event: CalendarEvent; actions
       </span>
       <span className="w-0.5 self-stretch rounded-sm shrink-0" style={{ background: style.accent }} aria-hidden />
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-        <span className="text-sm font-medium text-text-primary truncate">{event.title}</span>
+        {onOpen ? (
+          <button type="button" className="truncate text-left text-sm font-medium text-text-primary hover:text-vex-cyan-bright" onClick={onOpen}>
+            {event.title}
+          </button>
+        ) : (
+          <span className="text-sm font-medium text-text-primary truncate">{event.title}</span>
+        )}
         {meta && <span className="text-xs text-text-muted truncate">{meta}</span>}
       </div>
       <EventTag style={style} />

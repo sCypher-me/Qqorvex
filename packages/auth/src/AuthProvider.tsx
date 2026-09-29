@@ -9,6 +9,7 @@ import {
 import type { Session, SupabaseClient, Database } from "@qqorvex/database";
 import { signInWithOAuth, type OAuthProviderId } from "./oauth";
 import { mapAuthError } from "./authErrors";
+import { resolveInitialSession } from "./initialSession";
 
 export interface SignUpMetadata {
   fullName: string;
@@ -23,12 +24,12 @@ interface AuthContextValue {
   session: Session | null;
   /** true enquanto a sessão inicial ainda não foi resolvida (evita flash de tela de login). */
   isLoading: boolean;
-  signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpWithPassword: (email: string, password: string, metadata: SignUpMetadata) => Promise<{ error: string | null }>;
-  signInWithOAuth: (provider: OAuthProviderId) => Promise<{ error: string | null }>;
-  resetPasswordForEmail: (email: string) => Promise<{ error: string | null }>;
+  signInWithPassword: (email: string, password: string, captchaToken?: string) => Promise<{ error: string | null }>;
+  signUpWithPassword: (email: string, password: string, metadata: SignUpMetadata, captchaToken?: string) => Promise<{ error: string | null }>;
+  signInWithOAuth: (provider: OAuthProviderId, options?: { redirectTo?: string; skipBrowserRedirect?: boolean }) => Promise<{ error: string | null; url?: string }>;
+  resetPasswordForEmail: (email: string, captchaToken?: string) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
-  resendSignupConfirmation: (email: string) => Promise<{ error: string | null }>;
+  resendSignupConfirmation: (email: string, captchaToken?: string) => Promise<{ error: string | null }>;
   /** `scope: "others"` revoga as demais sessões sem derrubar a atual — usado depois de trocar a senha. */
   signOut: (options?: { scope?: "global" | "local" | "others" }) => Promise<void>;
 }
@@ -46,16 +47,25 @@ export function AuthProvider({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    client.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setIsLoading(false);
-    });
+    let mounted = true;
+
+    void resolveInitialSession(client)
+      .then((nextSession) => {
+        if (!mounted) return;
+        setSession(nextSession);
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
 
     const { data: subscription } = client.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+      if (mounted) setSession(nextSession);
     });
 
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.subscription.unsubscribe();
+    };
   }, [client]);
 
   const value = useMemo<AuthContextValue>(
@@ -63,31 +73,38 @@ export function AuthProvider({
       client,
       session,
       isLoading,
-      async signInWithPassword(email, password) {
-        const { error } = await client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      async signInWithPassword(email, password, captchaToken) {
+        const { error } = await client.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+          options: captchaToken ? { captchaToken } : undefined,
+        });
         return { error: error ? mapAuthError(error) : null };
       },
-      async signUpWithPassword(email, password, metadata) {
+      async signUpWithPassword(email, password, metadata, captchaToken) {
         const { error } = await client.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
           options: {
+            ...(captchaToken ? { captchaToken } : {}),
             data: {
               full_name: metadata.fullName.trim(),
               display_name: metadata.fullName.trim(),
               username: metadata.username?.trim().toLowerCase() || undefined,
               phone: metadata.phone || undefined,
+              qqorvex_onboarding_pending: true,
             },
           },
         });
         return { error: error ? mapAuthError(error) : null };
       },
-      async signInWithOAuth(provider) {
-        return signInWithOAuth(client, provider);
+      async signInWithOAuth(provider, options) {
+        return signInWithOAuth(client, provider, options);
       },
-      async resetPasswordForEmail(email) {
+      async resetPasswordForEmail(email, captchaToken) {
         const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
           redirectTo: `${window.location.origin}/redefinir-senha`,
+          ...(captchaToken ? { captchaToken } : {}),
         });
         // Nunca revela se o e-mail existe ou não (previne enumeração de contas) — o Supabase já
         // retorna sucesso nos dois casos; só erros de verdade (rate limit, etc.) chegam aqui.
@@ -97,8 +114,12 @@ export function AuthProvider({
         const { error } = await client.auth.updateUser({ password: newPassword });
         return { error: error ? mapAuthError(error) : null };
       },
-      async resendSignupConfirmation(email) {
-        const { error } = await client.auth.resend({ type: "signup", email: email.trim().toLowerCase() });
+      async resendSignupConfirmation(email, captchaToken) {
+        const { error } = await client.auth.resend({
+          type: "signup",
+          email: email.trim().toLowerCase(),
+          ...(captchaToken ? { options: { captchaToken } } : {}),
+        });
         return { error: error ? mapAuthError(error) : null };
       },
       async signOut(options) {

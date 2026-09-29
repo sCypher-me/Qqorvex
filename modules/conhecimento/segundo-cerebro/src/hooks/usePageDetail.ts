@@ -97,7 +97,10 @@ export function useAddPageTag(client: SupabaseClient<Database>, pageId: string) 
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tag: string) => addPageTag(client, pageId, tag),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: tagsKey(pageId) }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: tagsKey(pageId) }),
+      queryClient.invalidateQueries({ queryKey: ["sc-all-page-tags"] }),
+    ]),
   });
 }
 
@@ -105,7 +108,10 @@ export function useRemovePageTag(client: SupabaseClient<Database>, pageId: strin
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tag: string) => removePageTag(client, pageId, tag),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: tagsKey(pageId) }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: tagsKey(pageId) }),
+      queryClient.invalidateQueries({ queryKey: ["sc-all-page-tags"] }),
+    ]),
   });
 }
 

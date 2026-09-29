@@ -10,20 +10,33 @@ const PLAN_TYPE_LABELS: Record<PlanType, string> = {
 };
 
 /** A pessoa só escolhe um mês ou ano, nunca duas datas soltas — ver `computePlanPeriod`. */
-export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanInput) => void; onCancel?: () => void }) {
+export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanInput) => void | Promise<void>; onCancel?: () => void }) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(false);
   const [planType, setPlanType] = useState<PlanType>("anual");
   const currentYear = new Date().getFullYear();
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const localNow = new Date();
+  const [month, setMonth] = useState(`${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}`);
   const [year, setYear] = useState(currentYear);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
+    if (!trimmed || isSaving) return;
     const { periodStart, periodEnd } = computePlanPeriod(planType, { month, year });
-    onCreate({ title: trimmed, planType, periodStart, periodEnd });
-    setTitle("");
+    setIsSaving(true);
+    setError(false);
+    try {
+      await onCreate({ title: trimmed, description: description.trim() || undefined, planType, periodStart, periodEnd });
+      setTitle("");
+      setDescription("");
+    } catch {
+      setError(true);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -34,6 +47,14 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Ex.: Ser um designer"
         autoFocus
+      />
+      <textarea
+        value={description}
+        onChange={(event) => setDescription(event.target.value.slice(0, 1000))}
+        maxLength={1000}
+        aria-label="Descrição opcional do plano"
+        placeholder="O que essa visão significa para você? (opcional)"
+        className="qv-field min-h-20 resize-y"
       />
       <div className="grid grid-cols-2 gap-2.5">
         <Select label="Tipo" value={planType} onChange={(e) => setPlanType(e.target.value as PlanType)}>
@@ -56,8 +77,8 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
         )}
       </div>
       <div className="flex gap-2">
-        <Button type="submit" variant="primary" size="sm">
-          Criar plano
+        <Button type="submit" variant="primary" size="sm" disabled={!title.trim() || isSaving}>
+          {isSaving ? "Criando…" : "Criar plano"}
         </Button>
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
@@ -65,6 +86,7 @@ export function NewPlanForm({ onCreate, onCancel }: { onCreate: (input: NewPlanI
           </Button>
         )}
       </div>
+      {error && <p className="text-xs text-error" role="alert">Não foi possível criar o plano. Seus dados foram mantidos; tente novamente.</p>}
     </form>
   );
 }

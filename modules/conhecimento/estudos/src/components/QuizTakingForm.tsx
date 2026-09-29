@@ -55,7 +55,7 @@ export function QuizTakingForm({
                       : showFeedback && isChosen
                         ? "border-error-border bg-error-bg text-error"
                         : isChosen
-                          ? "border-vex-cyan-dark bg-[rgba(67,185,210,.08)] text-text-primary"
+                          ? "border-vex-cyan-dark bg-chip-cyan text-text-primary"
                           : "border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
                   }`}
                 >

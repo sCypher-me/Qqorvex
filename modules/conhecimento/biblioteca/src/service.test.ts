@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeProgressPercent, findDuplicateItem, normalizeTitle } from "./service";
-import type { LibraryItem } from "./types";
+import { toLibraryItemInsert, type LibraryItem } from "./types";
 
 function item(overrides: Partial<LibraryItem>): LibraryItem {
   return { progress_mode: "nenhum", progress_current: null, progress_total: null, ...overrides } as LibraryItem;
@@ -39,5 +39,16 @@ describe("findDuplicateItem", () => {
   it("mesmo título mas tipo diferente não é duplicata", () => {
     const items = [item({ title: "Duna", item_type: "book" })];
     expect(findDuplicateItem(items, "Duna", "movie")).toBeNull();
+  });
+});
+
+describe("toLibraryItemInsert", () => {
+  it("persists manually entered tags with the new item", () => {
+    expect(toLibraryItemInsert("user-1", { title: "Duna", itemType: "book", tags: ["ficção", "sci-fi"] })).toMatchObject({
+      user_id: "user-1",
+      title: "Duna",
+      item_type: "book",
+      tags: ["ficção", "sci-fi"],
+    });
   });
 });

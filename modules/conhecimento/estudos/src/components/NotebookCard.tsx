@@ -4,20 +4,20 @@ import { ConfirmDialog } from "@qqorvex/ui";
 import type { Notebook, NotebookStatus, NotebookType } from "../types";
 
 /**
- * Mesma lista de `categoryColors` de `@qqorvex/design-system` (o módulo não depende do pacote de
- * tokens) — a cor do caderno é derivada do id, então é estável entre sessões e telas.
+ * Cores de categoria consumidas pelo módulo a partir dos tokens globais — a cor do caderno é
+ * derivada do id, então é estável entre sessões e telas.
  */
 const CATEGORY_COLORS = [
-  "#43B9D2",
-  "#6FAF91",
-  "#D2A66F",
-  "#8A7FB5",
-  "#5E86C8",
-  "#C98C45",
-  "#C7786E",
-  "#A56D98",
-  "#4E9A9A",
-  "#687A91",
+  "var(--color-category-cyan)",
+  "var(--color-category-green)",
+  "var(--color-vex-gold-bright)",
+  "var(--color-category-lavender)",
+  "var(--color-category-blue)",
+  "var(--color-category-amber)",
+  "var(--color-category-coral)",
+  "var(--color-category-magenta)",
+  "var(--color-category-teal)",
+  "var(--color-category-bluegray)",
 ] as const;
 
 const NOTEBOOK_TYPE_LABEL: Record<NotebookType, string> = {
@@ -53,7 +53,7 @@ export function notebookInitials(name: string): string {
   return (source[0]![0]! + source[1]![0]!).toUpperCase();
 }
 
-export function NotebookCard({ notebook, onDelete }: { notebook: Notebook; onDelete: () => void }) {
+export function NotebookCard({ notebook, onDelete, onToggleFavorite }: { notebook: Notebook; onDelete: () => void; onToggleFavorite: () => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const color = notebookColor(notebook.id);
   const meta = [NOTEBOOK_TYPE_LABEL[notebook.notebook_type], NOTEBOOK_STATUS_LABEL[notebook.status], notebook.area]
@@ -61,29 +61,38 @@ export function NotebookCard({ notebook, onDelete }: { notebook: Notebook; onDel
     .join(" · ");
 
   return (
-    <div className="group relative transition-transform duration-150 hover:-translate-y-0.5">
+    <div className="group relative transition-transform duration-200 hover:-translate-y-1">
       <Link
         to={`/estudos/${notebook.id}`}
-        className="qv-card p-[18px] flex flex-col gap-3.5 text-left transition-colors duration-150 group-hover:border-text-muted"
+        className="qv-card p-5 min-h-[190px] flex flex-col gap-4 text-left transition-[border-color,background,box-shadow] duration-200 group-hover:border-text-muted group-hover:bg-vex-raised"
       >
-        <span
-          className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center font-mono text-[13px] font-semibold"
-          style={{ background: `${color}22`, color }}
-        >
-          {notebookInitials(notebook.name)}
-        </span>
-        <div className="flex flex-col gap-[5px] pr-8">
-          <span className="text-[15px] font-semibold text-text-primary">
-            {notebook.name}
-            {notebook.is_favorite && (
-              <span className="text-vex-gold ml-1.5 text-[13px]" aria-label="Favorito">
-                ★
-              </span>
-            )}
+        <div className="flex items-start justify-between gap-3">
+          <span className="w-10 h-10 rounded-[12px] flex items-center justify-center font-mono text-[13px] font-semibold" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
+            {notebookInitials(notebook.name)}
           </span>
-          <span className="text-xs text-text-muted">{meta}</span>
+        </div>
+        <div className="flex flex-col gap-2 pr-8 min-w-0">
+          <span className="text-[16px] font-semibold text-text-primary truncate" title={notebook.name}>
+            {notebook.name}{notebook.is_favorite && <span className="text-vex-gold ml-1.5 text-[13px]" aria-label="Favorito">★</span>}
+          </span>
+          <span className="text-xs text-text-muted truncate">{meta}</span>
+          {notebook.description && <span className="text-[13px] leading-relaxed text-text-secondary line-clamp-2">{notebook.description}</span>}
+        </div>
+        <div className="mt-auto flex items-center justify-between gap-3 text-[11px] text-text-muted font-mono">
+          <span>{notebook.start_date ? `desde ${notebook.start_date.split("-").reverse().join("/")}` : "pronto"}</span>
+          <span className="text-vex-cyan opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
         </div>
       </Link>
+      <button
+        type="button"
+        onClick={onToggleFavorite}
+        className={`qv-icon-btn absolute top-[14px] right-[52px] ${notebook.is_favorite ? "text-vex-gold-bright" : "text-text-muted"}`}
+        aria-label={notebook.is_favorite ? `Remover ${notebook.name} dos favoritos` : `Adicionar ${notebook.name} aos favoritos`}
+        aria-pressed={notebook.is_favorite}
+        title={notebook.is_favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+      >
+        {notebook.is_favorite ? "★" : "☆"}
+      </button>
       <button
         type="button"
         onClick={() => setConfirmOpen(true)}

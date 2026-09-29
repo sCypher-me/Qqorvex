@@ -3,6 +3,7 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, CardHeader, EmptyState, SkeletonList } from "@qqorvex/ui";
 import { useCards, useCreateCard } from "../hooks/useFinancas";
 import { CardStatementPanel } from "./CardStatementPanel";
+import { financeActionError } from "../financeErrors";
 
 export function CardsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { cards, isLoading } = useCards(client);
@@ -11,19 +12,27 @@ export function CardsPanel({ client, userId }: { client: SupabaseClient<Database
   const [closingDay, setClosingDay] = useState("");
   const [dueDay, setDueDay] = useState("");
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = nickname.trim();
     if (!trimmed) return;
-    createCard.mutate({
-      nickname: trimmed,
-      closingDay: closingDay ? Number(closingDay) : undefined,
-      dueDay: dueDay ? Number(dueDay) : undefined,
-    });
-    setNickname("");
-    setClosingDay("");
-    setDueDay("");
+    const parsedClosingDay = closingDay ? Number(closingDay) : undefined;
+    const parsedDueDay = dueDay ? Number(dueDay) : undefined;
+    if ((parsedClosingDay && !parsedDueDay) || (!parsedClosingDay && parsedDueDay)) {
+      setError("Informe os dias de fechamento e vencimento juntos, ou deixe os dois vazios.");
+      return;
+    }
+    setError("");
+    try {
+      await createCard.mutateAsync({ nickname: trimmed, closingDay: parsedClosingDay, dueDay: parsedDueDay });
+      setNickname("");
+      setClosingDay("");
+      setDueDay("");
+    } catch (saveError) {
+      setError(financeActionError(saveError, "Não foi possível cadastrar o cartão. Seus dados continuam preenchidos."));
+    }
   }
 
   return (
@@ -76,6 +85,8 @@ export function CardsPanel({ client, userId }: { client: SupabaseClient<Database
           onChange={(e) => setNickname(e.target.value)}
           placeholder="Apelido do cartão"
           aria-label="Apelido do cartão"
+          maxLength={60}
+          required
           className="qv-field flex-[2_1_160px] py-2"
         />
         <input
@@ -102,6 +113,7 @@ export function CardsPanel({ client, userId }: { client: SupabaseClient<Database
           Adicionar
         </Button>
       </form>
+      {error && <p role="alert" className="px-[18px] pb-3 text-xs text-error">{error}</p>}
     </div>
   );
 }

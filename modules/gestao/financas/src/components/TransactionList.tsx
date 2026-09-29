@@ -3,7 +3,10 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import { AttachDocumentPanel } from "@qqorvex/module-documentos";
 import { Badge, Button, ConfirmDialog, EmptyState, type BadgeTone } from "@qqorvex/ui";
 import { PAYMENT_METHOD_LABELS } from "../service";
-import type { Account, Card, Category, Transaction } from "../types";
+export { parseBRLInput } from "../service";
+import { financeActionError } from "../financeErrors";
+import type { Account, Card, Category, Transaction, UpdateTransactionInput } from "../types";
+import { EditTransactionForm } from "./EditTransactionForm";
 
 const STATUS_LABEL: Record<Transaction["status"], string> = {
   concluida: "Concluída",
@@ -60,17 +63,11 @@ export function formatDayMonth(isoDate: string): string {
   return `${day} ${MONTHS_SHORT[Number(month) - 1] ?? ""}`;
 }
 
-/** Converte "1.234,56" / "1234.56" / "312,44" em número. */
-export function parseBRLInput(raw: string): number {
-  const cleaned = raw.replace(/[^\d,.-]/g, "");
-  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
-  return Number(normalized);
-}
-
 export function TransactionList({
   client,
   transactions,
   onDelete,
+  onUpdate,
   categories = [],
   accounts = [],
   cards = [],
@@ -79,7 +76,8 @@ export function TransactionList({
 }: {
   client: SupabaseClient<Database>;
   transactions: Transaction[];
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<unknown>;
+  onUpdate?: (id: string, input: UpdateTransactionInput) => Promise<unknown>;
   /** Opcionais: usados só para nomear categoria/conta/cartão na linha. */
   categories?: Category[];
   accounts?: Account[];
@@ -100,9 +98,7 @@ export function TransactionList({
         </span>
       </div>
       {transactions.length === 0 ? (
-        <EmptyState className="px-[18px] py-4">
-          Nenhuma movimentação ainda. Use a barra de lançamento acima para registrar a primeira.
-        </EmptyState>
+        <EmptyState className="px-[18px] py-4">Nenhuma movimentação corresponde ao período ou aos filtros selecionados.</EmptyState>
       ) : (
         transactions.map((t) => (
           <TransactionRow
@@ -119,6 +115,8 @@ export function TransactionList({
             }
             transferToName={t.transfer_to_account_id ? accountById.get(t.transfer_to_account_id)?.name : undefined}
             onDelete={() => onDelete(t.id)}
+            categories={categories}
+            onUpdate={onUpdate ? (input) => onUpdate(t.id, input) : undefined}
           />
         ))
       )}
@@ -133,16 +131,23 @@ function TransactionRow({
   accountName,
   transferToName,
   onDelete,
+  categories,
+  onUpdate,
 }: {
   client: SupabaseClient<Database>;
   transaction: Transaction;
   categoryName?: string;
   accountName?: string;
   transferToName?: string;
-  onDelete: () => void;
+  onDelete: () => Promise<unknown>;
+  categories: Category[];
+  onUpdate?: (input: UpdateTransactionInput) => Promise<unknown>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const isTransfer = t.transaction_type === "transferencia";
   const isEntrada = t.transaction_type === "entrada";
   const sign = isTransfer ? "" : isEntrada ? "+" : "-";
@@ -158,6 +163,20 @@ function TransactionRow({
     .filter(Boolean)
     .join(" · ");
 
+  async function handleDelete() {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      await onDelete();
+      setConfirmOpen(false);
+    } catch (deleteFailure) {
+      setDeleteError(financeActionError(deleteFailure, "Não foi possível excluir a movimentação. Tente novamente."));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <div className={`qv-row ${expanded ? "bg-white/[.02]" : ""}`}>
       <button
@@ -165,7 +184,7 @@ function TransactionRow({
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         title={expanded ? "Ocultar detalhes" : "Comprovante e ações"}
-        className="w-full text-left flex items-center gap-[14px] px-[18px] py-[13px] cursor-pointer hover:bg-white/[.02]"
+        className="w-full text-left flex items-center gap-[14px] px-[18px] py-[13px] cursor-pointer hover:bg-chip-neutral"
       >
         <span
           className="w-2 h-2 rounded-full shrink-0"
@@ -186,7 +205,22 @@ function TransactionRow({
       </button>
       {expanded && (
         <div className="px-[18px] pb-4 flex flex-col gap-3">
+          {onUpdate && (
+            isEditing ? (
+              <EditTransactionForm
+                transaction={t}
+                categories={categories}
+                onSave={onUpdate}
+                onCancel={() => setIsEditing(false)}
+              />
+            ) : (
+              <Button type="button" variant="secondary" size="sm" className="self-start" onClick={() => setIsEditing(true)}>
+                Editar movimentação
+              </Button>
+            )
+          )}
           <AttachDocumentPanel client={client} relatedModule="financas" relatedEntityId={t.id} />
+          {deleteError && <p role="alert" className="text-xs text-error">{deleteError}</p>}
           <Button type="button" variant="destructive" size="sm" className="self-end" onClick={() => setConfirmOpen(true)}>
             Excluir transação
           </Button>
@@ -196,11 +230,8 @@ function TransactionRow({
         isOpen={confirmOpen}
         title={`Excluir "${t.name}"?`}
         description="Essa ação não pode ser desfeita. Saldos, orçamentos e o calendário financeiro são recalculados sem ela."
-        confirmLabel="Excluir transação"
-        onConfirm={() => {
-          setConfirmOpen(false);
-          onDelete();
-        }}
+        confirmLabel={isDeleting ? "Excluindo…" : "Excluir transação"}
+        onConfirm={() => void handleDelete()}
         onCancel={() => setConfirmOpen(false)}
       />
     </div>

@@ -4,6 +4,7 @@ import { Button, Input, Notice } from "@qqorvex/ui";
 import { useAuth, signInWithPasskey } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordField } from "../components/PasswordField";
+import { TurnstileCaptcha } from "../components/TurnstileCaptcha";
 import { OAuthButtons } from "../components/OAuthButtons";
 import { VerifyEmailNotice } from "../components/VerifyEmailNotice";
 
@@ -11,11 +12,14 @@ export function LoginPage() {
   const { client, session, isLoading, signInWithPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [passkeySubmitting, setPasskeySubmitting] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
+  const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? "";
 
   if (!isLoading && session) return <Navigate to="/" replace />;
 
@@ -29,18 +33,34 @@ export function LoginPage() {
 
   async function handlePasskeyLogin() {
     setError(null);
+    if (captchaSiteKey && !captchaToken) {
+      setError("Conclua a verificação de segurança para entrar.");
+      return;
+    }
     setPasskeySubmitting(true);
-    const { error: passkeyError } = await signInWithPasskey(client);
+    const { error: passkeyError } = await signInWithPasskey(client, captchaToken ?? undefined);
     setPasskeySubmitting(false);
+    if (captchaSiteKey) {
+      setCaptchaToken(null);
+      setCaptchaResetSignal((value) => value + 1);
+    }
     if (passkeyError) setError(passkeyError);
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    if (captchaSiteKey && !captchaToken) {
+      setError("Conclua a verificação de segurança para entrar.");
+      return;
+    }
     setSubmitting(true);
-    const result = await signInWithPassword(email, password);
+    const result = await signInWithPassword(email, password, captchaToken ?? undefined);
     setSubmitting(false);
+    if (captchaSiteKey) {
+      setCaptchaToken(null);
+      setCaptchaResetSignal((value) => value + 1);
+    }
 
     if (result.error) {
       if (result.error.toLowerCase().includes("confirme seu e-mail")) {
@@ -85,14 +105,22 @@ export function LoginPage() {
           </Link>
         </div>
 
+        {captchaSiteKey && (
+          <TurnstileCaptcha
+            siteKey={captchaSiteKey}
+            resetSignal={captchaResetSignal}
+            onToken={setCaptchaToken}
+          />
+        )}
+
         {error && <Notice tone="error">{error}</Notice>}
 
         <div className="flex flex-col gap-2.5">
           <Button
             type="submit"
             variant="primary"
-            disabled={submitting}
-            className="w-full py-3 text-[15px] shadow-[0_0_24px_rgba(67,185,210,.12)]"
+            disabled={submitting || (Boolean(captchaSiteKey) && !captchaToken)}
+            className="w-full py-3 text-[15px]"
           >
             {submitting ? "Entrando…" : "Entrar"}
           </Button>
@@ -100,7 +128,7 @@ export function LoginPage() {
             type="button"
             variant="secondary"
             onClick={handlePasskeyLogin}
-            disabled={passkeySubmitting}
+            disabled={passkeySubmitting || (Boolean(captchaSiteKey) && !captchaToken)}
             className="w-full py-3 text-[15px]"
           >
             Entrar com Passkey
