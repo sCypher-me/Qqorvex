@@ -7,6 +7,7 @@ import {
   DotsThreeIcon,
   LightningIcon,
   PauseIcon,
+  PencilSimpleIcon,
   PlayIcon,
   PlusIcon,
   RepeatIcon,
@@ -30,6 +31,7 @@ import {
   useRecurringTransactions,
   useTransactions,
   useUpdateRecurringStatus,
+  useUpdateRecurringTransaction,
 } from "../hooks/useFinancas";
 import { addMonthsToDate, computeBudgetUsage, formatLocalDate, parseBRLInput, projectRecurringOccurrences } from "../service";
 import { financeActionError } from "../financeErrors";
@@ -195,10 +197,29 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
   const { cards } = useCards(client);
   const create = useCreateRecurringTransaction(client, userId);
   const updateStatus = useUpdateRecurringStatus(client);
+  const updateRecurring = useUpdateRecurringTransaction(client);
   const generate = useGenerateOccurrence(client, userId);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [form, setForm] = useState({ name: "", amount: "", type: "saida" as "saida" | "entrada", frequency: "mensal" as RecurrenceFrequency, startDate: formatLocalDate(new Date()), isSubscription: false, categoryId: "", source: "" });
   const [error, setError] = useState<string | null>(null);
+  const today = formatLocalDate(new Date());
+
+  function startEditing(recurring: RecurringTransaction) {
+    setEditing(recurring);
+    setForm({
+      name: recurring.name,
+      amount: recurring.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      type: recurring.transaction_type === "entrada" ? "entrada" : "saida",
+      frequency: recurring.frequency,
+      startDate: recurring.next_occurrence_date,
+      isSubscription: recurring.is_subscription,
+      categoryId: recurring.category_id ?? "",
+      source: recurring.card_id ? `card:${recurring.card_id}` : recurring.account_id ? `account:${recurring.account_id}` : "",
+    });
+    setError(null);
+    setOpen(true);
+  }
   const categoryById = new Map(categories.map((category) => [category.id, category.name]));
   const active = recurringTransactions.filter((item) => item.status !== "cancelada");
   const monthlyCost = active.filter((item) => item.status === "ativa" && item.transaction_type === "saida").reduce((sum, item) => sum + item.amount / MONTHS_BY_FREQUENCY[item.frequency], 0);
@@ -209,6 +230,32 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
     const amount = parseBRLInput(form.amount);
     if (!form.name.trim() || !(amount > 0)) return setError("Informe nome e valor.");
     const [kind, id] = form.source.split(":");
+    if (editing) {
+      try {
+        await updateRecurring.mutateAsync({
+          current: editing,
+          input: {
+            name: form.name.trim(),
+            amount,
+            transactionType: form.type,
+            frequency: form.frequency,
+            nextOccurrenceDate: form.startDate,
+            isSubscription: form.isSubscription,
+            categoryId: form.categoryId || undefined,
+            accountId: kind === "account" ? id : undefined,
+            cardId: kind === "card" ? id : undefined,
+          },
+        });
+        setOpen(false);
+        setEditing(null);
+        toast({ title: "Recorrência atualizada", description: "Vale a partir da próxima cobrança.", tone: "success" });
+      } catch (caught) {
+        // Regras da edição (data no passado, série que avançou) chegam como Error com texto próprio;
+        // erros do banco chegam como objeto e passam pelo tradutor padrão.
+        setError(caught instanceof Error ? caught.message : financeActionError(caught, "Não foi possível salvar."));
+      }
+      return;
+    }
     try {
       await create.mutateAsync({
         name: form.name.trim(),
@@ -249,6 +296,7 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
           variant="secondary"
           leadingIcon={<PlusIcon size={14} />}
           onClick={() => {
+            setEditing(null);
             setForm({ name: "", amount: "", type: "saida", frequency: "mensal", startDate: formatLocalDate(new Date()), isSubscription: false, categoryId: "", source: "" });
             setError(null);
             setOpen(true);
@@ -283,6 +331,7 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
               <DropdownMenu
                 label={`Ações para ${item.name}`}
                 items={[
+                  { label: "Editar", icon: <PencilSimpleIcon />, onSelect: () => startEditing(item) },
                   ...(item.status === "ativa" ? [{ label: "Lançar próxima agora", icon: <LightningIcon />, onSelect: () => action(item, () => generate.mutateAsync(item), "Lançamento criado") }] : []),
                   item.status === "ativa"
                     ? { label: "Pausar", icon: <PauseIcon />, onSelect: () => action(item, () => updateStatus.mutateAsync({ id: item.id, status: "pausada" }), "Recorrência pausada") }
@@ -300,7 +349,15 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
           ))}
         </ul>
       )}
-      <Modal isOpen={open} onClose={() => setOpen(false)} title="Nova recorrência" size="md" icon={<RepeatIcon />} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button type="submit" form="recurring-form" loading={create.isPending}>Criar</Button></>}>
+      <Modal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={editing ? "Editar recorrência" : "Nova recorrência"}
+        description={editing ? "Vale a partir da próxima cobrança; lançamentos já criados não mudam." : undefined}
+        size="md"
+        icon={<RepeatIcon />}
+        footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button type="submit" form="recurring-form" loading={create.isPending || updateRecurring.isPending}>{editing ? "Salvar" : "Criar"}</Button></>}
+      >
         <form id="recurring-form" onSubmit={submit} className="flex flex-col gap-4">
           <Segmented label="Tipo" fullWidth value={form.type} onChange={(type) => setForm({ ...form, type, categoryId: "" })} options={[{ value: "saida", label: "Despesa" }, { value: "entrada", label: "Receita" }]} />
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
@@ -315,7 +372,14 @@ export function RecurringTransactionsPanel({ client, userId }: { client: Supabas
                 </option>
               ))}
             </Select>
-            <Input label="Primeira cobrança" type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} />
+            <Input
+              label={editing ? "Próxima cobrança" : "Primeira cobrança"}
+              type="date"
+              value={form.startDate}
+              min={editing && editing.next_occurrence_date >= today ? today : undefined}
+              max={editing?.end_date ?? undefined}
+              onChange={(event) => setForm({ ...form, startDate: event.target.value })}
+            />
             <Select label="Categoria" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}>
               <option value="">Sem categoria</option>
               {categories.filter((category) => category.kind === form.type).map((category) => (

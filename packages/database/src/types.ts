@@ -3368,6 +3368,17 @@ export type Database = {
           total_users: number
         }[]
       }
+      search_everything: {
+        Args: { query: string; per_kind?: number }
+        Returns: {
+          kind: string
+          id: string
+          title: string
+          snippet: string | null
+          parent_id: string | null
+          sort_date: string | null
+        }[]
+      }
       has_security_pin: { Args: never; Returns: boolean }
       has_google_calendar_connection: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
@@ -3432,6 +3443,11 @@ export type Database = {
         Returns: undefined
       }
       verify_security_pin: { Args: { candidate_pin: string }; Returns: boolean }
+      unlock_vault: { Args: { pin: string }; Returns: string | null }
+      lock_vault: { Args: never; Returns: undefined }
+      vault_unlocked_until: { Args: never; Returns: string | null }
+      count_my_vault_documents: { Args: never; Returns: number }
+      move_document_to_vault: { Args: { document_id: string }; Returns: boolean }
     }
     Enums: {
       account_type: "dinheiro" | "conta_bancaria" | "carteira_digital" | "outro"

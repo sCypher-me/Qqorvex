@@ -2,9 +2,9 @@ import { useState, type FormEvent } from "react";
 import { CaretDownIcon, SealCheckIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, Checkbox, ConfirmDialog, Input, Select, SkeletonList, cx } from "@qqorvex/ui";
-import { useCreateImportantPurchase, useDeleteImportantPurchase, useImportantPurchases, useToggleImportantPurchase } from "../hooks/useVidaPratica";
+import { useCreateImportantPurchase, useDeleteImportantPurchase, useImportantPurchases, useToggleImportantPurchase, useUpdateImportantPurchase } from "../hooks/useVidaPratica";
 import type { ImportantPurchase, PurchasePriority } from "../types";
-import { PanelEmpty, PanelRow, PanelShell, brl } from "./PanelShell";
+import { PanelEditingNote, PanelEmpty, PanelRow, PanelShell, brl } from "./PanelShell";
 
 const PRIORITY_LABELS: Record<PurchasePriority, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
 const PRIORITY_DOT: Record<PurchasePriority, string> = { alta: "bg-danger", media: "bg-warning", baixa: "bg-fg-4" };
@@ -15,8 +15,11 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
   const { purchases, isLoading } = useImportantPurchases(client);
   const createPurchase = useCreateImportantPurchase(client, userId);
   const togglePurchase = useToggleImportantPurchase(client);
+  const updatePurchase = useUpdateImportantPurchase(client);
   const deletePurchase = useDeleteImportantPurchase(client);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<ImportantPurchase | null>(null);
+  const saving = editing ? updatePurchase : createPurchase;
   const [showBought, setShowBought] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmPurchase = purchases.find((p) => p.id === confirmDeleteId) ?? null;
@@ -30,27 +33,30 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
     const form = new FormData(formElement);
     const title = String(form.get("title") ?? "").trim();
     if (!title) return;
-    createPurchase.mutate(
-      {
-        title,
-        estimatedPrice: form.get("estimatedPrice") ? Number(form.get("estimatedPrice")) : undefined,
-        priority: (form.get("priority") as PurchasePriority) || "media",
+    const input = {
+      title,
+      estimatedPrice: form.get("estimatedPrice") ? Number(form.get("estimatedPrice")) : undefined,
+      priority: (form.get("priority") as PurchasePriority) || "media",
+    };
+    if (editing) {
+      updatePurchase.mutate({ purchaseId: editing.id, input }, { onSuccess: () => setEditing(null) });
+      return;
+    }
+    createPurchase.mutate(input, {
+      onSuccess: () => {
+        formElement.reset();
+        setFormOpen(false);
       },
-      {
-        onSuccess: () => {
-          formElement.reset();
-          setFormOpen(false);
-        },
-      },
-    );
+    });
   }
 
   const form = (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <Input name="title" placeholder="O que você quer comprar?" aria-label="Item" fieldSize="sm" autoFocus />
+    <form key={editing?.id ?? "novo"} onSubmit={handleSubmit} className="flex flex-col gap-2">
+      {editing && <PanelEditingNote name={editing.title} onCancel={() => setEditing(null)} />}
+      <Input name="title" defaultValue={editing?.title} placeholder="O que você quer comprar?" aria-label="Item" fieldSize="sm" autoFocus />
       <div className="grid grid-cols-2 gap-2">
-        <Input name="estimatedPrice" type="number" min={0} step="0.01" placeholder="Preço estimado (R$)" aria-label="Preço estimado" fieldSize="sm" />
-        <Select name="priority" defaultValue="media" aria-label="Prioridade" fieldSize="sm">
+        <Input name="estimatedPrice" type="number" min={0} step="0.01" defaultValue={editing?.estimated_price ?? ""} placeholder="Preço estimado (R$)" aria-label="Preço estimado" fieldSize="sm" />
+        <Select name="priority" defaultValue={editing?.priority ?? "media"} aria-label="Prioridade" fieldSize="sm">
           {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               Prioridade {label.toLowerCase()}
@@ -58,15 +64,24 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
           ))}
         </Select>
       </div>
-      <Button type="submit" size="sm" className="self-start" loading={createPurchase.isPending}>
-        Salvar compra
+      <Button type="submit" size="sm" className="self-start" loading={saving.isPending}>
+        {editing ? "Salvar alterações" : "Salvar compra"}
       </Button>
-      {createPurchase.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar a compra; os campos continuam preenchidos.</p>}
+      {saving.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar a compra; os campos continuam preenchidos.</p>}
     </form>
   );
 
   const row = (purchase: ImportantPurchase) => (
-    <PanelRow key={purchase.id} onDelete={() => setConfirmDeleteId(purchase.id)} deleteLabel={`Excluir "${purchase.title}"`}>
+    <PanelRow
+      key={purchase.id}
+      onEdit={() => {
+        setFormOpen(false);
+        setEditing(purchase);
+      }}
+      editLabel={`Editar "${purchase.title}"`}
+      onDelete={() => setConfirmDeleteId(purchase.id)}
+      deleteLabel={`Excluir "${purchase.title}"`}
+    >
       <Checkbox
         round
         checked={purchase.is_purchased}
@@ -93,8 +108,8 @@ export function ImportantPurchasesPanel({ client, userId }: { client: SupabaseCl
       meta={isLoading ? undefined : pending.length || undefined}
       summary={pending.length && plannedTotal ? `${brl.format(plannedTotal)} previstos` : "Itens maiores que você quer comprar"}
       addLabel="Adicionar compra"
-      formOpen={formOpen}
-      onToggleForm={() => setFormOpen((value) => !value)}
+      formOpen={formOpen || editing !== null}
+      onToggleForm={() => (editing ? setEditing(null) : setFormOpen((value) => !value))}
       form={form}
     >
       {isLoading ? (

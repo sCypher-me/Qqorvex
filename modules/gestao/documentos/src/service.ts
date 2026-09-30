@@ -129,6 +129,22 @@ export function buildStoragePath(userId: string, documentId: string, fileName: s
   return `${userId}/${documentId}/${fileName}`;
 }
 
+/** Extensão "de verdade": 1 a 5 caracteres com pelo menos uma letra (".pdf" sim, ".2" de "v1.2" não). */
+const FILE_EXTENSION = /\.(?=[a-z0-9]{0,4}[a-z])[a-z0-9]{1,5}$/i;
+
+/**
+ * Nome novo ao renomear um documento. Sem extensão, herda a do nome atual (quem digita "Contrato
+ * do aluguel" não quer perder o ".pdf"). Barras viram "-" porque o nome entra no caminho das
+ * versões no Storage (`buildVersionStoragePath`). Vazio → `null` (não renomeia).
+ */
+export function normalizeDocumentRename(input: string, currentName: string): string | null {
+  const name = input.replace(/[/\\]/g, "-").replace(/\s+/g, " ").trim();
+  if (!name) return null;
+  const currentExtension = currentName.match(FILE_EXTENSION)?.[0];
+  if (!currentExtension || FILE_EXTENSION.test(name)) return name;
+  return `${name}${currentExtension}`;
+}
+
 /** Caminho de arquivamento de uma versão antiga, isolado do caminho "atual" para nunca colidir com ele. */
 export function buildVersionStoragePath(userId: string, documentId: string, versionNumber: number, fileName: string): string {
   return `${userId}/${documentId}/versions/${versionNumber}/${fileName}`;

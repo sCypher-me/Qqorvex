@@ -2,6 +2,7 @@ import type { SupabaseClient, Database } from "@qqorvex/database";
 import type { VexProvider, ToolDefinition } from "../types";
 import { createAgendaTools } from "./agendaTools";
 import { createBibliotecaTools } from "./bibliotecaTools";
+import { createBuscaTools } from "./buscaTools";
 import { createDocumentosTools } from "./documentosTools";
 import { createEstudosTools } from "./estudosTools";
 import { createFinancasTools } from "./financasTools";
@@ -33,6 +34,7 @@ export function createVexTools(
 ): ToolDefinition[] {
   const tools = [
     ...createHojeTools(client),
+    ...createBuscaTools(client),
     ...labeled("Tarefas", createTarefasTools(client, userId)),
     ...labeled("Agenda", createAgendaTools(client, userId)),
     ...labeled("Metas & Hábitos", createMetasHabitosTools(client, userId)),

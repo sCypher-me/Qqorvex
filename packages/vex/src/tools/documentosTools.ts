@@ -1,6 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { listDocuments, toggleImportant, uploadDocument } from "@qqorvex/module-documentos";
-import { verifySecurityPin } from "@qqorvex/auth";
+import { getVaultUnlockedUntil, listDocuments, lockVault, toggleImportant, unlockVault, uploadDocument } from "@qqorvex/module-documentos";
 import type { ToolDefinition } from "../types";
 
 /**
@@ -8,11 +7,11 @@ import type { ToolDefinition } from "../types";
  * `@qqorvex/module-documentos`. `userId` só é usado por `create_text_document` (Fase 6 —
  * "pesquisa + salvar depois"); as demais ferramentas deste módulo não precisavam dele.
  *
- * Fase 7 — Barreira do Cofre, evoluída pela Central de Segurança (docs/decisions/
- * central-seguranca-pin-design.md): `list_documents` continua sempre excluindo documentos com
- * `is_vault: true` — a Vex nunca lista o Cofre. Tocar um documento específico do Cofre já
- * conhecido pelo nome agora é possível, mas só com o PIN correto (verificado no servidor via
- * `verifySecurityPin`, nunca comparado aqui) — sem PIN, a ferramenta recusa e pede.
+ * Barreira do Cofre (no servidor desde a migration vault_server_lock): com o Cofre bloqueado a
+ * API nem devolve documentos do Cofre. `list_documents` ainda filtra `is_vault` por garantia — a
+ * Vex nunca lista o Cofre. Para tocar um documento do Cofre, a ferramenta recebe o PIN, desbloqueia
+ * só pelo tempo da ação (`unlockVault`, PIN conferido no servidor) e volta a bloquear se o Cofre
+ * estava fechado antes.
  */
 export function createDocumentosTools(client: SupabaseClient<Database>, userId: string): ToolDefinition[] {
   return [
@@ -68,21 +67,32 @@ export function createDocumentosTools(client: SupabaseClient<Database>, userId: 
         const query = String(args.name ?? "")
           .trim()
           .toLowerCase();
-        const documents = await listDocuments(client);
-        const match = documents.find((d) => d.file_name.toLowerCase().includes(query));
-        if (!match) return { summary: `Não encontrei nenhum documento parecido com "${args.name}".` };
+        const pin = args.pin ? String(args.pin).trim() : "";
 
-        if (match.is_vault) {
-          const pin = args.pin ? String(args.pin).trim() : "";
-          const isAuthorized = pin.length > 0 && (await verifySecurityPin(client, pin));
-          if (!isAuthorized) return { summary: "Esse documento está no Cofre. Qual é o PIN do Cofre?" };
+        // Com PIN: abre o Cofre só para esta ação; fecha de novo se ele estava fechado.
+        const wasUnlocked = pin ? (await getVaultUnlockedUntil(client)) !== null : true;
+        if (pin && !(await unlockVault(client, pin))) {
+          return { summary: "PIN do Cofre incorreto (ou bloqueado por alguns minutos após várias tentativas). Nada foi alterado." };
         }
 
-        const updated = await toggleImportant(client, match.id, Boolean(args.isImportant));
-        return {
-          summary: `Documento "${updated.file_name}" ${updated.is_important ? "marcado como importante" : "desmarcado"}.`,
-          data: updated,
-        };
+        try {
+          const documents = await listDocuments(client);
+          const match = documents.find((d) => d.file_name.toLowerCase().includes(query));
+          if (!match) {
+            return {
+              summary: pin
+                ? `Não encontrei nenhum documento parecido com "${args.name}", nem no Cofre.`
+                : `Não encontrei nenhum documento parecido com "${args.name}". Se ele estiver no Cofre, preciso do PIN do Cofre.`,
+            };
+          }
+          const updated = await toggleImportant(client, match.id, Boolean(args.isImportant));
+          return {
+            summary: `Documento "${updated.file_name}" ${updated.is_important ? "marcado como importante" : "desmarcado"}.`,
+            data: updated,
+          };
+        } finally {
+          if (!wasUnlocked) await lockVault(client).catch(() => undefined);
+        }
       },
     },
   ];

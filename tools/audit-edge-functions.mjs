@@ -23,6 +23,24 @@ requirePattern("vex-chat", vexChat, /MAX_TOOL_SCHEMA_CHARS/, "limite de schema r
 requirePattern("vex-chat", vexChat, /new AbortController\(\)/, "timeout do provedor");
 requirePattern("vex-chat", vexChat, /jsonResponse\(\{ error: "É necessário estar autenticado\." \}, 401\)/, "resposta para sessão inválida");
 
+// Toda ferramenta que o app oferece à Vex precisa estar na allow-list do servidor (senão é
+// descartada em silêncio), e a allow-list não deve ter nomes que nenhuma ferramenta usa.
+const allowListBlock = /ALLOWED_TOOL_NAMES = new Set\(\[([\s\S]*?)\]\)/.exec(vexChat)?.[1] ?? "";
+const allowedNames = new Set([...allowListBlock.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]));
+const { readdir } = await import("node:fs/promises");
+const toolsDir = new URL("packages/vex/src/tools/", root);
+const toolNames = new Set();
+for (const file of await readdir(toolsDir)) {
+  if (!file.endsWith("Tools.ts")) continue;
+  const text = await readFile(new URL(file, toolsDir), "utf8");
+  for (const match of text.matchAll(/^\s*name: "([a-z_]+)",$/gm)) toolNames.add(match[1]);
+}
+assert.ok(toolNames.size > 0, "vex: nenhuma ferramenta encontrada em packages/vex/src/tools");
+const missingOnServer = [...toolNames].filter((name) => !allowedNames.has(name));
+const unusedOnServer = [...allowedNames].filter((name) => !toolNames.has(name));
+assert.deepEqual(missingOnServer, [], `vex-chat: ferramentas fora da allow-list: ${missingOnServer.join(", ")}`);
+assert.deepEqual(unusedOnServer, [], `vex-chat: nomes na allow-list sem ferramenta: ${unusedOnServer.join(", ")}`);
+
 const vexWebSearch = await source("vex-web-search");
 requirePattern("vex-web-search", vexWebSearch, /supabase\.auth\.getUser\(token\)/, "autenticação do bearer token");
 requirePattern("vex-web-search", vexWebSearch, /MAX_REQUESTS_PER_WINDOW\s*=\s*10/, "limite por usuário");

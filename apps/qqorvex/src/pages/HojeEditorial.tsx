@@ -32,7 +32,7 @@ import {
   type TaskWithConditions,
 } from "@qqorvex/module-tarefas";
 import { addDays, eventCategory, startOfDay, useEventsInRange, type CalendarEvent } from "@qqorvex/module-agenda";
-import { computeCurrentStreak, getHabitWeeklyTarget, habitScheduleOn, useHabitLogsInRange, useHabits, useToggleHabitLog, type Habit } from "@qqorvex/module-metas-habitos";
+import { computeHabitStreak, formatHabitStreak, getHabitWeeklyTarget, habitScheduleOn, useHabitLogsInRange, useHabits, useToggleHabitLog, type Habit, type HabitStreak } from "@qqorvex/module-metas-habitos";
 import { useTransactions } from "@qqorvex/module-financas";
 import { useLibraryItems } from "@qqorvex/module-biblioteca";
 import { usePages } from "@qqorvex/module-segundo-cerebro";
@@ -163,7 +163,7 @@ export function HojeEditorialPage() {
       const doneTodayHabit = logs.some((log) => log.log_date === today && log.state === "concluido");
       const weekStart = addDaysToKey(today, -now.getDay());
       const weekCount = logs.filter((log) => log.log_date >= weekStart && log.state === "concluido").length;
-      return { habit, schedule, done: doneTodayHabit, streak: computeCurrentStreak(logs, now), weekCount, weekTarget: getHabitWeeklyTarget(habit) };
+      return { habit, schedule, done: doneTodayHabit, streak: computeHabitStreak(habit, logs, now), weekCount, weekTarget: getHabitWeeklyTarget(habit) };
     })
     .filter((row) => row.schedule !== null);
   const fixedHabits = habitRows.filter((row) => row.schedule === "fixo");
@@ -428,7 +428,7 @@ function TimelineItem({ event, now, isCurrent, isNext }: { event: CalendarEvent;
   );
 }
 
-function HabitRow({ habit, done, streak, weekly, onToggle }: { habit: Habit; done: boolean; streak: number; weekly?: string; onToggle: () => void }) {
+function HabitRow({ habit, done, streak, weekly, onToggle }: { habit: Habit; done: boolean; streak: HabitStreak; weekly?: string; onToggle: () => void }) {
   return (
     <li className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-hover sm:px-5">
       <CompleteToggle done={done} label={done ? `Desmarcar ${habit.name}` : `Marcar ${habit.name} como feito`} onToggle={onToggle} />
@@ -436,10 +436,10 @@ function HabitRow({ habit, done, streak, weekly, onToggle }: { habit: Habit; don
         <span className={cx("block truncate text-[13.5px]", done ? "text-fg-3" : "text-fg")}>{habit.name}</span>
         {(habit.preferred_time || weekly) && <span className="text-2xs text-fg-4">{[habit.preferred_time?.slice(0, 5), weekly].filter(Boolean).join(" · ")}</span>}
       </span>
-      {streak > 0 && (
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-gold-fg" title={`${streak} dias seguidos`}>
+      {streak.count > 0 && (
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-gold-fg" title={formatHabitStreak(streak)}>
           <FireIcon size={13} weight="fill" />
-          {streak}
+          {streak.count}
         </span>
       )}
     </li>

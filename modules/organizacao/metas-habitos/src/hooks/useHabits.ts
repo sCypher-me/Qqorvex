@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createHabit, deleteHabit, listHabitLogs, listHabits, logHabit, updateHabitStatus, listHabitLogsInRange, deleteHabitLog } from "../repository";
-import type { Habit, HabitLogState, NewHabitInput } from "../types";
+import { createHabit, deleteHabit, listHabitLogs, listHabits, logHabit, updateHabit, updateHabitStatus, listHabitLogsInRange, deleteHabitLog } from "../repository";
+import type { Habit, HabitEditInput, HabitLogState, NewHabitInput } from "../types";
 
 const HABITS_KEY = ["habits"] as const;
 const habitLogsKey = (habitId: string) => ["habit-logs", habitId] as const;
@@ -15,6 +15,14 @@ export function useCreateHabit(client: SupabaseClient<Database>, userId: string)
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewHabitInput) => createHabit(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HABITS_KEY }),
+  });
+}
+
+export function useUpdateHabit(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ habitId, input }: { habitId: string; input: HabitEditInput }) => updateHabit(client, habitId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HABITS_KEY }),
   });
 }

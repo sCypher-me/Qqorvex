@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button, Input } from "@qqorvex/ui";
 import { billingLimitMessage } from "@qqorvex/database";
-import type { NewGoalInput } from "../types";
+import type { Goal, NewGoalInput } from "../types";
 import { localDateKey } from "../service";
 
 const PROGRESS_OPTIONS = [
@@ -9,18 +9,25 @@ const PROGRESS_OPTIONS = [
   { value: "binario", label: "Concluir ou não", hint: "Acompanhe uma meta sem percentual." },
 ] as const;
 
+/**
+ * Cria uma meta ou, com `initial`, edita uma existente. Na edição, status e forma de progresso
+ * ficam de fora — têm fluxos próprios (menu da meta e "Progresso por saldo").
+ */
 export function NewGoalForm({
-  onCreate,
+  initial,
+  onSubmit,
   onCancel,
 }: {
-  onCreate: (goal: NewGoalInput) => Promise<void>;
+  initial?: Goal;
+  onSubmit: (goal: NewGoalInput) => Promise<void>;
   onCancel?: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [motivationNote, setMotivationNote] = useState("");
+  const isEditing = initial !== undefined;
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [dueDate, setDueDate] = useState(initial?.due_date ?? "");
+  const [motivationNote, setMotivationNote] = useState(initial?.motivation_note ?? "");
   const [status, setStatus] = useState<"ativa" | "planejada">("ativa");
   const [progressType, setProgressType] = useState<"marcos" | "binario">("marcos");
   const [isSaving, setIsSaving] = useState(false);
@@ -33,14 +40,13 @@ export function NewGoalForm({
     setIsSaving(true);
     setError(null);
     try {
-      await onCreate({
+      await onSubmit({
         title: trimmedTitle,
         description: description.trim() || undefined,
         category: category.trim() || undefined,
         dueDate: dueDate || undefined,
         motivationNote: motivationNote.trim() || undefined,
-        status,
-        progressType,
+        ...(isEditing ? {} : { status, progressType }),
       });
     } catch (cause) {
       setError(billingLimitMessage(cause) ?? (cause instanceof Error ? cause.message : "Não foi possível salvar a meta. Tente novamente."));
@@ -87,45 +93,49 @@ export function NewGoalForm({
             type="date"
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
-            min={localDateKey()}
+            min={isEditing ? undefined : localDateKey()}
             className="q-input py-2.5"
           />
         </label>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium text-fg">Como acompanhar</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {PROGRESS_OPTIONS.map((option) => (
-            <label key={option.value} className={`flex min-w-0 cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${progressType === option.value ? "border-gold-line bg-gold-soft" : "border-line-soft bg-canvas/40 hover:border-line"}`}>
-              <input
-                type="radio"
-                name="goal-progress-type"
-                value={option.value}
-                checked={progressType === option.value}
-                onChange={() => setProgressType(option.value)}
-                className="mt-1 accent-[var(--q-gold)]"
-              />
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-fg">{option.label}</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-fg-3">{option.hint}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {!isEditing && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium text-fg">Como acompanhar</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {PROGRESS_OPTIONS.map((option) => (
+              <label key={option.value} className={`flex min-w-0 cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${progressType === option.value ? "border-gold-line bg-gold-soft" : "border-line-soft bg-canvas/40 hover:border-line"}`}>
+                <input
+                  type="radio"
+                  name="goal-progress-type"
+                  value={option.value}
+                  checked={progressType === option.value}
+                  onChange={() => setProgressType(option.value)}
+                  className="mt-1 accent-[var(--q-gold)]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-fg">{option.label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-fg-3">{option.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
-      {progressType === "marcos" && (
+      {!isEditing && progressType === "marcos" && (
         <p className="-mt-2 text-xs leading-relaxed text-fg-3">Você poderá adicionar etapas logo depois de criar a meta.</p>
       )}
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
-        Situação inicial
-        <select value={status} onChange={(event) => setStatus(event.target.value as "ativa" | "planejada")} className="q-input py-2.5">
-          <option value="ativa">Começar agora</option>
-          <option value="planejada">Deixar planejada</option>
-        </select>
-      </label>
+      {!isEditing && (
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
+          Situação inicial
+          <select value={status} onChange={(event) => setStatus(event.target.value as "ativa" | "planejada")} className="q-input py-2.5">
+            <option value="ativa">Começar agora</option>
+            <option value="planejada">Deixar planejada</option>
+          </select>
+        </label>
+      )}
 
       <label className="flex flex-col gap-1.5 text-sm font-medium text-fg">
         Lembrete pessoal <span className="text-xs font-normal text-fg-3">opcional</span>
@@ -147,7 +157,7 @@ export function NewGoalForm({
           </Button>
         )}
         <Button type="submit" variant="primary" disabled={!title.trim() || isSaving}>
-          {isSaving ? "Salvando…" : "Criar meta"}
+          {isSaving ? "Salvando…" : isEditing ? "Salvar alterações" : "Criar meta"}
         </Button>
       </div>
     </form>

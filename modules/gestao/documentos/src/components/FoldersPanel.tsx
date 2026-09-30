@@ -1,7 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from "react";
+import { PencilSimpleIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Button, Chip, Skeleton } from "@qqorvex/ui";
-import { useCreateFolder, useDeleteFolder, useFolders } from "../hooks/useDocumentos";
+import { useCreateFolder, useDeleteFolder, useFolders, useRenameFolder } from "../hooks/useDocumentos";
 
 /**
  * "Pastas" como área dedicada — cria/lista/exclui e permite filtrar a listagem de Documentos por pasta.
@@ -22,9 +23,11 @@ export function FoldersPanel({
 }) {
   const { folders, isLoading } = useFolders(client);
   const createFolder = useCreateFolder(client, userId);
+  const renameFolder = useRenameFolder(client);
   const deleteFolder = useDeleteFolder(client);
   const [name, setName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null);
 
   function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -32,6 +35,15 @@ export function FoldersPanel({
     createFolder.mutate(name.trim());
     setName("");
     setIsCreating(false);
+  }
+
+  function handleRename(event: FormEvent) {
+    event.preventDefault();
+    if (!renaming) return;
+    const draft = renaming.draft.trim();
+    const current = folders.find((folder) => folder.id === renaming.id);
+    if (draft && current && draft !== current.name) renameFolder.mutate({ folderId: renaming.id, name: draft });
+    setRenaming(null);
   }
 
   return (
@@ -46,11 +58,40 @@ export function FoldersPanel({
         </span>
       ) : (
         folders.map((folder) =>
-          selectedFolderId === folder.id ? (
+          renaming?.id === folder.id ? (
+            <form key={folder.id} onSubmit={handleRename} className="inline-flex items-center gap-2">
+              <input
+                value={renaming.draft}
+                onChange={(event) => setRenaming({ id: folder.id, draft: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setRenaming(null);
+                }}
+                aria-label={`Novo nome da pasta ${folder.name}`}
+                maxLength={80}
+                autoFocus
+                className="q-input w-44 py-[7px] px-3 text-[13px]"
+              />
+              <Button type="submit" variant="primary" size="sm" disabled={!renaming.draft.trim()}>
+                Salvar
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setRenaming(null)}>
+                Cancelar
+              </Button>
+            </form>
+          ) : selectedFolderId === folder.id ? (
             <span key={folder.id} className="inline-flex items-center gap-1">
               <Chip active onClick={() => onSelectFolder(folder.id)}>
                 {folder.name}
               </Chip>
+              <button
+                type="button"
+                onClick={() => setRenaming({ id: folder.id, draft: folder.name })}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-hover hover:text-fg"
+                title="Renomear pasta"
+                aria-label={`Renomear pasta ${folder.name}`}
+              >
+                <PencilSimpleIcon size={15} />
+              </button>
               <button
                 type="button"
                 onClick={() => {

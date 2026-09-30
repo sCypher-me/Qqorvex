@@ -299,6 +299,13 @@ export async function listTrashedDocuments(client: Client): Promise<Document[]> 
   return active;
 }
 
+/** Muda só o nome exibido — o arquivo no Storage continua no mesmo caminho. */
+export async function renameDocument(client: Client, documentId: string, fileName: string): Promise<Document> {
+  const { data, error } = await client.from("documents").update({ file_name: fileName }).eq("id", documentId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateDocumentType(client: Client, documentId: string, documentType: Document["document_type"]): Promise<Document> {
   const { data, error } = await client
     .from("documents")
@@ -333,19 +340,52 @@ export async function toggleImportant(client: Client, documentId: string, isImpo
 }
 
 /**
- * Marca/desmarca um documento como Cofre. A barreira de verdade (mascarar na UI, exigir PIN pra
- * desbloquear) mora na página do app, não aqui — o módulo só expõe a troca do campo
- * (docs/decisions/central-seguranca-pin-design.md).
+ * Põe ou tira um documento do Cofre. A barreira mora no servidor (migration vault_server_lock):
+ * com o Cofre bloqueado a RLS esconde, e impede editar/baixar, tudo que é do Cofre.
+ * - Pôr no Cofre usa `move_document_to_vault`: um UPDATE comum falharia com o Cofre bloqueado,
+ *   porque a linha atualizada deixaria de ser visível a quem atualizou.
+ * - Tirar do Cofre é um UPDATE comum — só passa com o Cofre desbloqueado nesta sessão.
  */
-export async function toggleVault(client: Client, documentId: string, isVault: boolean): Promise<Document> {
-  const { data, error } = await client
-    .from("documents")
-    .update({ is_vault: isVault })
-    .eq("id", documentId)
-    .select("*")
-    .single();
+export async function toggleVault(client: Client, documentId: string, isVault: boolean): Promise<void> {
+  if (isVault) {
+    const { data: moved, error } = await client.rpc("move_document_to_vault", { document_id: documentId });
+    if (error) throw error;
+    if (!moved) throw new Error("Não foi possível pôr este documento no Cofre.");
+    return;
+  }
+  const { error } = await client.from("documents").update({ is_vault: false }).eq("id", documentId).select("id").single();
   if (error) throw error;
-  return data;
+}
+
+/**
+ * Desbloqueia o Cofre nesta sessão de login por 15 minutos (PIN conferido no servidor, com o
+ * mesmo bloqueio de 5 erros → 5 minutos). Devolve até quando vale, ou `null` se o PIN estiver
+ * errado ou bloqueado.
+ */
+export async function unlockVault(client: Client, pin: string): Promise<string | null> {
+  const { data, error } = await client.rpc("unlock_vault", { pin });
+  if (error) throw error;
+  return data ?? null;
+}
+
+/** "Bloquear agora": encerra o desbloqueio desta sessão. */
+export async function lockVault(client: Client): Promise<void> {
+  const { error } = await client.rpc("lock_vault");
+  if (error) throw error;
+}
+
+/** Até quando o Cofre está aberto nesta sessão (`null` = bloqueado). */
+export async function getVaultUnlockedUntil(client: Client): Promise<string | null> {
+  const { data, error } = await client.rpc("vault_unlocked_until");
+  if (error) throw error;
+  return data ?? null;
+}
+
+/** Quantos documentos há no Cofre — a lista em si fica escondida enquanto ele está bloqueado. */
+export async function countVaultDocuments(client: Client): Promise<number> {
+  const { data, error } = await client.rpc("count_my_vault_documents");
+  if (error) throw error;
+  return data ?? 0;
 }
 
 export async function listFolders(client: Client): Promise<Folder[]> {
@@ -356,6 +396,12 @@ export async function listFolders(client: Client): Promise<Folder[]> {
 
 export async function createFolder(client: Client, userId: string, name: string): Promise<Folder> {
   const { data, error } = await client.from("folders").insert({ user_id: userId, name }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renameFolder(client: Client, folderId: string, name: string): Promise<Folder> {
+  const { data, error } = await client.from("folders").update({ name }).eq("id", folderId).select("*").single();
   if (error) throw error;
   return data;
 }

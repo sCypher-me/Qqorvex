@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderSimplePlusIcon, LightbulbIcon, TrashIcon } from "@phosphor-icons/react";
+import { FolderSimplePlusIcon, LightbulbIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import { ConfirmDialog } from "@qqorvex/ui";
 import type { Idea } from "../types";
 import { KebabMenu } from "./PanelShell";
@@ -13,7 +13,7 @@ function formatCapturedAt(iso: string): string {
 }
 
 /** Ideia é captura rápida; quando amadurece, vira projeto (a ideia sai da caixa de entrada). */
-export function IdeaCard({ idea, onDelete, onPromote }: { idea: Idea; onDelete: () => void; onPromote?: () => void }) {
+export function IdeaCard({ idea, onEdit, onDelete, onPromote }: { idea: Idea; onEdit?: () => void; onDelete: () => void; onPromote?: () => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -27,6 +27,7 @@ export function IdeaCard({ idea, onDelete, onPromote }: { idea: Idea; onDelete: 
       <KebabMenu
         label={`Ações para ${idea.title}`}
         items={[
+          ...(onEdit ? [{ label: "Editar", icon: <PencilSimpleIcon />, onSelect: onEdit }] : []),
           ...(onPromote ? [{ label: "Transformar em projeto", icon: <FolderSimplePlusIcon />, onSelect: onPromote }, "separator" as const] : []),
           { label: "Excluir", icon: <TrashIcon />, danger: true, onSelect: () => setConfirmOpen(true) },
         ]}

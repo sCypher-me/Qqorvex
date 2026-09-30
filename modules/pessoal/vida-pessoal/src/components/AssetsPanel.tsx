@@ -3,17 +3,32 @@ import { PackageIcon, ShieldCheckIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { useWarranties } from "@qqorvex/module-documentos";
 import { Button, ConfirmDialog, Input, Select, SkeletonList } from "@qqorvex/ui";
-import { useAssets, useCreateAsset, useDeleteAsset } from "../hooks/useVidaPratica";
-import { PanelEmpty, PanelRow, PanelShell, brl } from "./PanelShell";
+import { useAssets, useCreateAsset, useDeleteAsset, useUpdateAsset } from "../hooks/useVidaPratica";
+import type { Asset } from "../types";
+import { PanelEditingNote, PanelEmpty, PanelRow, PanelShell, brl } from "./PanelShell";
 
 /** Inventário mais amplo que Garantias (útil pra seguro/mudança) — vínculo opcional com uma garantia já cadastrada. */
 export function AssetsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { assets, isLoading } = useAssets(client);
   const { warranties } = useWarranties(client);
   const createAsset = useCreateAsset(client, userId);
+  const updateAsset = useUpdateAsset(client);
   const deleteAsset = useDeleteAsset(client);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Asset | null>(null);
   const [warrantyId, setWarrantyId] = useState("");
+  const saving = editing ? updateAsset : createAsset;
+
+  function startEditing(asset: Asset) {
+    setFormOpen(false);
+    setWarrantyId(asset.warranty_id ?? "");
+    setEditing(asset);
+  }
+
+  function stopEditing() {
+    setEditing(null);
+    setWarrantyId("");
+  }
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmAsset = assets.find((a) => a.id === confirmDeleteId) ?? null;
   const totalValue = assets.reduce((sum, asset) => sum + (asset.estimated_value ?? 0), 0);
@@ -25,31 +40,34 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
     const form = new FormData(formElement);
     const name = String(form.get("name") ?? "").trim();
     if (!name) return;
-    createAsset.mutate(
-      {
-        name,
-        category: String(form.get("category") ?? "").trim() || undefined,
-        location: String(form.get("location") ?? "").trim() || undefined,
-        estimatedValue: form.get("estimatedValue") ? Number(form.get("estimatedValue")) : undefined,
-        warrantyId: warrantyId || undefined,
+    const input = {
+      name,
+      category: String(form.get("category") ?? "").trim() || undefined,
+      location: String(form.get("location") ?? "").trim() || undefined,
+      estimatedValue: form.get("estimatedValue") ? Number(form.get("estimatedValue")) : undefined,
+      warrantyId: warrantyId || undefined,
+    };
+    if (editing) {
+      updateAsset.mutate({ assetId: editing.id, input }, { onSuccess: stopEditing });
+      return;
+    }
+    createAsset.mutate(input, {
+      onSuccess: () => {
+        formElement.reset();
+        setWarrantyId("");
+        setFormOpen(false);
       },
-      {
-        onSuccess: () => {
-          formElement.reset();
-          setWarrantyId("");
-          setFormOpen(false);
-        },
-      },
-    );
+    });
   }
 
   const form = (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <Input name="name" placeholder="Item (ex.: notebook, geladeira)" aria-label="Item" fieldSize="sm" autoFocus />
+    <form key={editing?.id ?? "novo"} onSubmit={handleSubmit} className="flex flex-col gap-2">
+      {editing && <PanelEditingNote name={editing.name} onCancel={stopEditing} />}
+      <Input name="name" defaultValue={editing?.name} placeholder="Item (ex.: notebook, geladeira)" aria-label="Item" fieldSize="sm" autoFocus />
       <div className="grid grid-cols-2 gap-2">
-        <Input name="category" placeholder="Categoria" aria-label="Categoria" fieldSize="sm" />
-        <Input name="location" placeholder="Onde está" aria-label="Onde está" fieldSize="sm" />
-        <Input name="estimatedValue" type="number" min={0} step="0.01" placeholder="Valor estimado (R$)" aria-label="Valor estimado" fieldSize="sm" />
+        <Input name="category" defaultValue={editing?.category ?? ""} placeholder="Categoria" aria-label="Categoria" fieldSize="sm" />
+        <Input name="location" defaultValue={editing?.location ?? ""} placeholder="Onde está" aria-label="Onde está" fieldSize="sm" />
+        <Input name="estimatedValue" type="number" min={0} step="0.01" defaultValue={editing?.estimated_value ?? ""} placeholder="Valor estimado (R$)" aria-label="Valor estimado" fieldSize="sm" />
         {warranties.length > 0 && (
           <Select value={warrantyId} onChange={(event) => setWarrantyId(event.target.value)} aria-label="Garantia" fieldSize="sm">
             <option value="">Sem garantia</option>
@@ -61,10 +79,10 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
           </Select>
         )}
       </div>
-      <Button type="submit" size="sm" className="self-start" loading={createAsset.isPending}>
-        Salvar bem
+      <Button type="submit" size="sm" className="self-start" loading={saving.isPending}>
+        {editing ? "Salvar alterações" : "Salvar bem"}
       </Button>
-      {createAsset.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar o bem; os campos continuam preenchidos.</p>}
+      {saving.isError && <p className="text-xs text-danger" role="alert">Não foi possível salvar o bem; os campos continuam preenchidos.</p>}
     </form>
   );
 
@@ -75,8 +93,8 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
       meta={isLoading ? undefined : assets.length || undefined}
       summary={assets.length && totalValue ? `${brl.format(totalValue)} em valor estimado` : "Útil para seguro, mudança e declaração"}
       addLabel="Adicionar bem"
-      formOpen={formOpen}
-      onToggleForm={() => setFormOpen((value) => !value)}
+      formOpen={formOpen || editing !== null}
+      onToggleForm={() => (editing ? stopEditing() : setFormOpen((value) => !value))}
       form={form}
     >
       {isLoading ? (
@@ -89,7 +107,7 @@ export function AssetsPanel({ client, userId }: { client: SupabaseClient<Databas
             const details = [asset.category, asset.location].filter(Boolean).join(" · ");
             const warranty = asset.warranty_id ? warrantyName.get(asset.warranty_id) : null;
             return (
-              <PanelRow key={asset.id} onDelete={() => setConfirmDeleteId(asset.id)} deleteLabel={`Excluir "${asset.name}"`}>
+              <PanelRow key={asset.id} onEdit={() => startEditing(asset)} editLabel={`Editar "${asset.name}"`} onDelete={() => setConfirmDeleteId(asset.id)} deleteLabel={`Excluir "${asset.name}"`}>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5 truncate text-[13.5px] font-medium text-fg">
                     {asset.name}

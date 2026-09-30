@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { computeNextEventOccurrenceDate } from "./service";
+import { computeNextEventOccurrenceDate, toRecurringEventUpdate, type RecurringEventEditInput } from "./service";
 import { zonedDateTimeToIso } from "./dateUtils";
 import type { CalendarEvent, EventReminder, NewEventInput, RecurringEvent, RecurringEventFrequency } from "./types";
 import { toEventInsert, toEventUpdate } from "./types";
@@ -162,6 +162,23 @@ export async function listRecurringEvents(client: Client): Promise<RecurringEven
     .from("recurring_events")
     .select("*")
     .order("next_occurrence_date", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Grava a edição só se a série ainda estiver na data que a pessoa abriu — o cron pode tê-la
+ * avançado nesse meio-tempo, e gravar a data antiga duplicaria um evento.
+ */
+export async function updateRecurringEvent(client: Client, current: RecurringEvent, input: RecurringEventEditInput): Promise<RecurringEvent> {
+  const { data, error } = await client
+    .from("recurring_events")
+    .update(toRecurringEventUpdate(current, input))
+    .eq("id", current.id)
+    .eq("next_occurrence_date", current.next_occurrence_date)
+    .select("*")
+    .single();
+  if (error?.code === "PGRST116") throw new Error("Esta repetição avançou enquanto você editava. Abra de novo para ver a data atual.");
   if (error) throw error;
   return data;
 }

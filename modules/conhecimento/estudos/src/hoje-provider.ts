@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import type { HojeItem } from "@qqorvex/module-hoje";
+import { localDateKey, localDateKeyInDays, type HojeItem } from "@qqorvex/module-hoje";
 import { listDueFlashcards, listUpcomingAssessments } from "./repository";
 
 /**
@@ -9,11 +9,8 @@ import { listDueFlashcards, listUpcomingAssessments } from "./repository";
  */
 export function createEstudosHojeProvider(client: SupabaseClient<Database>) {
   return async function estudosHojeProvider(): Promise<HojeItem[]> {
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    const soon = new Date(today);
-    soon.setDate(soon.getDate() + 7);
-    const soonStr = soon.toISOString().slice(0, 10);
+    const todayStr = localDateKey();
+    const soonStr = localDateKeyInDays(7);
 
     const [dueFlashcards, upcomingAssessments] = await Promise.all([
       listDueFlashcards(client, todayStr),

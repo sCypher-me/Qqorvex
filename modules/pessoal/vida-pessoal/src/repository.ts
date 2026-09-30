@@ -20,20 +20,28 @@ import type {
   Project,
   ShoppingListItem,
   UsefulContact,
+  UsefulContactEditInput,
   Vehicle,
   VehicleImportantDate,
 } from "./types";
 import {
   toAssetInsert,
+  toAssetUpdate,
   toCheckinUpsert,
   toIdeaInsert,
+  toIdeaUpdate,
   toImportantPurchaseInsert,
+  toImportantPurchaseUpdate,
   toPlanInsert,
+  toPlanUpdate,
   toPomodoroSessionInsert,
   toProjectInsert,
+  toProjectUpdate,
   toShoppingListItemInsert,
   toUsefulContactInsert,
+  toUsefulContactUpdate,
   toVehicleInsert,
+  toVehicleUpdate,
 } from "./types";
 
 type Client = SupabaseClient<Database>;
@@ -46,6 +54,12 @@ export async function listPlans(client: Client): Promise<Plan[]> {
 
 export async function createPlan(client: Client, userId: string, input: NewPlanInput): Promise<Plan> {
   const { data, error } = await client.from("plans").insert(toPlanInsert(userId, input)).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePlan(client: Client, planId: string, input: NewPlanInput): Promise<Plan> {
+  const { data, error } = await client.from("plans").update(toPlanUpdate(input)).eq("id", planId).select("*").single();
   if (error) throw error;
   return data;
 }
@@ -89,6 +103,12 @@ export async function createProject(client: Client, userId: string, input: NewPr
   return data;
 }
 
+export async function updateProject(client: Client, projectId: string, input: NewProjectInput): Promise<Project> {
+  const { data, error } = await client.from("projects").update(toProjectUpdate(input)).eq("id", projectId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateProjectStatus(client: Client, projectId: string, status: Project["status"]): Promise<Project> {
   const { data, error } = await client.from("projects").update({ status }).eq("id", projectId).select("*").single();
   if (error) throw error;
@@ -124,6 +144,12 @@ export async function listIdeas(client: Client): Promise<Idea[]> {
 
 export async function createIdea(client: Client, userId: string, input: NewIdeaInput): Promise<Idea> {
   const { data, error } = await client.from("ideas").insert(toIdeaInsert(userId, input)).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateIdea(client: Client, ideaId: string, input: NewIdeaInput): Promise<Idea> {
+  const { data, error } = await client.from("ideas").update(toIdeaUpdate(input)).eq("id", ideaId).select("*").single();
   if (error) throw error;
   return data;
 }
@@ -194,6 +220,12 @@ export async function createUsefulContact(client: Client, userId: string, input:
   return data;
 }
 
+export async function updateUsefulContact(client: Client, contactId: string, input: UsefulContactEditInput): Promise<UsefulContact> {
+  const { data, error } = await client.from("useful_contacts").update(toUsefulContactUpdate(input)).eq("id", contactId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteUsefulContact(client: Client, contactId: string): Promise<void> {
   const { error } = await client.from("useful_contacts").delete().eq("id", contactId);
   if (error) throw error;
@@ -207,6 +239,12 @@ export async function listVehicles(client: Client): Promise<Vehicle[]> {
 
 export async function createVehicle(client: Client, userId: string, input: NewVehicleInput): Promise<Vehicle> {
   const { data, error } = await client.from("vehicles").insert(toVehicleInsert(userId, input)).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateVehicle(client: Client, vehicleId: string, input: NewVehicleInput): Promise<Vehicle> {
+  const { data, error } = await client.from("vehicles").update(toVehicleUpdate(input)).eq("id", vehicleId).select("*").single();
   if (error) throw error;
   return data;
 }
@@ -255,6 +293,12 @@ export async function createAsset(client: Client, userId: string, input: NewAsse
   return data;
 }
 
+export async function updateAsset(client: Client, assetId: string, input: NewAssetInput): Promise<Asset> {
+  const { data, error } = await client.from("assets").update(toAssetUpdate(input)).eq("id", assetId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteAsset(client: Client, assetId: string): Promise<void> {
   const { error } = await client.from("assets").delete().eq("id", assetId);
   if (error) throw error;
@@ -270,6 +314,17 @@ export async function createImportantPurchase(client: Client, userId: string, in
   const { data, error } = await client
     .from("important_purchases")
     .insert(toImportantPurchaseInsert(userId, input))
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateImportantPurchase(client: Client, purchaseId: string, input: NewImportantPurchaseInput): Promise<ImportantPurchase> {
+  const { data, error } = await client
+    .from("important_purchases")
+    .update(toImportantPurchaseUpdate(input))
+    .eq("id", purchaseId)
     .select("*")
     .single();
   if (error) throw error;

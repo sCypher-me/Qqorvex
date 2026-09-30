@@ -1,8 +1,13 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import {
+  countVaultDocuments,
   createFolder,
   createWarranty,
+  getVaultUnlockedUntil,
+  lockVault,
+  unlockVault,
   getDocumentStorageQuota,
   deleteDocument,
   deleteFolder,
@@ -13,6 +18,8 @@ import {
   listWarranties,
   moveDocumentToFolder,
   purgeDocument,
+  renameDocument,
+  renameFolder,
   restoreDocument,
   restoreDocumentVersion,
   setDocumentArchived,
@@ -32,6 +39,7 @@ const WARRANTIES_KEY = ["warranties"] as const;
 const TRASHED_DOCUMENTS_KEY = ["documents-trash"] as const;
 const DOCUMENT_VERSIONS_KEY = ["document-versions"] as const;
 const DOCUMENT_STORAGE_QUOTA_KEY = ["documents", "storage-quota"] as const;
+const VAULT_STATUS_KEY = ["documents", "vault-status"] as const;
 
 export function useDocumentStorageQuota(client: SupabaseClient<Database>) {
   const query = useQuery({
@@ -67,6 +75,14 @@ export function useUploadDocument(client: SupabaseClient<Database>, userId: stri
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
       queryClient.invalidateQueries({ queryKey: DOCUMENT_STORAGE_QUOTA_KEY });
     },
+  });
+}
+
+export function useRenameDocument(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ documentId, fileName }: { documentId: string; fileName: string }) => renameDocument(client, documentId, fileName),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
   });
 }
 
@@ -189,7 +205,54 @@ export function useToggleVault(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ documentId, isVault }: { documentId: string; isVault: boolean }) => toggleVault(client, documentId, isVault),
+    // Prefixo "documents": recarrega a lista, a cota e o estado do Cofre (contagem).
     onSuccess: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
+  });
+}
+
+/**
+ * Estado do Cofre nesta sessão: até quando está aberto (`null` = bloqueado) e quantos documentos
+ * ele tem. Fica sob o prefixo "documents" para recarregar junto com a lista.
+ */
+export function useVaultStatus(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: VAULT_STATUS_KEY,
+    queryFn: async () => {
+      const [unlockedUntil, count] = await Promise.all([getVaultUnlockedUntil(client), countVaultDocuments(client)]);
+      return { unlockedUntil, count };
+    },
+  });
+  const unlockedUntil = query.data?.unlockedUntil ?? null;
+
+  // Quando o prazo acaba, o servidor já esconde o Cofre; recarregar faz a tela acompanhar na hora.
+  useEffect(() => {
+    if (!unlockedUntil) return;
+    const remaining = new Date(unlockedUntil).getTime() - Date.now();
+    const timer = window.setTimeout(() => void queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }), Math.max(remaining, 0) + 500);
+    return () => window.clearTimeout(timer);
+  }, [unlockedUntil, queryClient]);
+
+  return { unlockedUntil, count: query.data?.count ?? 0, isLoading: query.isLoading, error: query.error };
+}
+
+/** Desbloqueia com o PIN; em caso de sucesso a lista recarrega já com os documentos do Cofre. */
+export function useUnlockVault(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pin: string) => unlockVault(client, pin),
+    onSuccess: (unlockedUntil) => {
+      if (unlockedUntil) void queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY });
+    },
+  });
+}
+
+/** "Bloquear agora" — e também usado quando o prazo de 15 minutos acaba. */
+export function useLockVault(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => lockVault(client),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_KEY }),
   });
 }
 
@@ -202,6 +265,14 @@ export function useCreateFolder(client: SupabaseClient<Database>, userId: string
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => createFolder(client, userId, name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FOLDERS_KEY }),
+  });
+}
+
+export function useRenameFolder(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ folderId, name }: { folderId: string; name: string }) => renameFolder(client, folderId, name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: FOLDERS_KEY }),
   });
 }

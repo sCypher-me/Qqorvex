@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CaretDownIcon, FireIcon, PlusIcon, TargetIcon, RepeatIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, FireIcon, PencilSimpleIcon, PlusIcon, TargetIcon, RepeatIcon } from "@phosphor-icons/react";
 import { billingLimitMessage } from "@qqorvex/database";
 import {
   GOAL_STATUS,
@@ -10,7 +10,9 @@ import {
   NewGoalForm,
   NewHabitForm,
   RoutinesPanel,
-  computeCurrentStreak,
+  computeHabitStreak,
+  formatHabitStreak,
+  habitStreakDays,
   habitScheduleOn,
   localDateKey,
   shiftDateKey,
@@ -22,14 +24,16 @@ import {
   useHabitLogsInRange,
   useHabits,
   useSetHabitLog,
+  useUpdateGoal,
   useUpdateGoalStatus,
+  useUpdateHabit,
   useUpdateHabitStatus,
   type Goal,
   type GoalStatus,
   type Habit,
   type HabitLog,
 } from "@qqorvex/module-metas-habitos";
-import { Badge, Button, ConfirmDialog, EmptyState, Modal, Notice, PageContainer, PageHeader, ProgressBar, ProgressRing, Segmented, Sheet, SkeletonList, Tabs, cx, useToast } from "@qqorvex/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, IconButton, Modal, Notice, PageContainer, PageHeader, ProgressBar, ProgressRing, Segmented, Sheet, SkeletonList, Tabs, cx, useToast } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
 import { supabase } from "../app/supabase";
 import { usePageMeta } from "../app/shell/PageMeta";
@@ -127,6 +131,8 @@ export function MetasHabitosPage() {
   const [goalFilter, setGoalFilter] = useState<"andamento" | "concluidas" | "todas">("andamento");
   const [openGoal, setOpenGoal] = useState<Goal | null>(null);
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showOthers, setShowOthers] = useState(false);
 
   const today = localDateKey();
@@ -139,6 +145,8 @@ export function MetasHabitosPage() {
   const updateHabitStatus = useUpdateHabitStatus(supabase);
   const deleteHabit = useDeleteHabit(supabase);
   const updateGoalStatus = useUpdateGoalStatus(supabase);
+  const updateGoal = useUpdateGoal(supabase);
+  const updateHabit = useUpdateHabit(supabase);
   const deleteGoal = useDeleteGoal(supabase);
 
   const logsByHabit = useMemo(() => {
@@ -154,8 +162,8 @@ export function MetasHabitosPage() {
   const doneToday = dueToday.filter((habit) => logsByHabit.get(habit.id)?.some((log) => log.log_date === today && log.state === "concluido")).length;
   const todayPercent = dueToday.length ? Math.round((doneToday / dueToday.length) * 100) : 0;
   const bestStreak = activeHabits
-    .map((habit) => ({ habit, streak: computeCurrentStreak(logsByHabit.get(habit.id) ?? [], todayDate) }))
-    .sort((a, b) => b.streak - a.streak)[0];
+    .map((habit) => ({ habit, streak: computeHabitStreak(habit, logsByHabit.get(habit.id) ?? [], todayDate) }))
+    .sort((a, b) => habitStreakDays(b.streak) - habitStreakDays(a.streak))[0];
   const activeGoals = goals.filter((goal) => goal.status === "ativa");
   const visibleGoals = goals.filter((goal) => (goalFilter === "andamento" ? goal.status === "ativa" || goal.status === "planejada" || goal.status === "pausada" : goalFilter === "concluidas" ? goal.status === "concluida" || goal.status === "cancelada" : true));
 
@@ -172,6 +180,7 @@ export function MetasHabitosPage() {
       busy={setLog.isPending}
       onSetLog={(state) => setHabitLog(habit, state)}
       onToggleStatus={() => updateHabitStatus.mutate({ habitId: habit.id, status: habit.status === "ativo" ? "pausado" : "ativo" })}
+      onEdit={() => setEditingHabit(habit)}
       onDelete={() => deleteHabit.mutate(habit.id, { onSuccess: () => toast({ title: "Hábito excluído", tone: "success" }) })}
     />
   );
@@ -256,10 +265,10 @@ export function MetasHabitosPage() {
               </ProgressRing>
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-fg">{dueToday.length === 0 ? "Dia livre" : doneToday === dueToday.length ? "Dia completo!" : `Faltam ${dueToday.length - doneToday}`}</p>
-                {bestStreak && bestStreak.streak > 0 ? (
+                {bestStreak && bestStreak.streak.count > 0 ? (
                   <p className="mt-1 flex items-center gap-1 text-xs text-fg-3">
                     <FireIcon size={13} weight="fill" className="text-[#e8804a]" />
-                    {bestStreak.habit.name}: {bestStreak.streak} {bestStreak.streak === 1 ? "dia" : "dias"} seguidos
+                    {bestStreak.habit.name}: {formatHabitStreak(bestStreak.streak)}
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-fg-3">Marque um hábito para começar uma sequência.</p>
@@ -345,6 +354,7 @@ export function MetasHabitosPage() {
                   goal={goal}
                   onOpen={() => setOpenGoal(goal)}
                   onChangeStatus={(status: GoalStatus) => updateGoalStatus.mutate({ goalId: goal.id, status }, { onSuccess: () => toast({ title: `Meta ${GOAL_STATUS[status].label.toLowerCase()}`, tone: "success" }) })}
+                  onEdit={() => setEditingGoal(goal)}
                   onDelete={() => setDeletingGoal(goal)}
                 />
               ))}
@@ -358,7 +368,7 @@ export function MetasHabitosPage() {
       <Modal isOpen={habitModal} onClose={() => setHabitModal(false)} title="Novo hábito" size="md" icon={<RepeatIcon />}>
         <NewHabitForm
           onCancel={() => setHabitModal(false)}
-          onCreate={async (habit) => {
+          onSubmit={async (habit) => {
             await createHabit.mutateAsync(habit);
             setHabitModal(false);
             toast({ title: "Hábito criado", description: habit.name, tone: "success" });
@@ -368,18 +378,53 @@ export function MetasHabitosPage() {
       <Modal isOpen={goalModal} onClose={() => setGoalModal(false)} title="Nova meta" size="md" icon={<TargetIcon />}>
         <NewGoalForm
           onCancel={() => setGoalModal(false)}
-          onCreate={async (goal) => {
+          onSubmit={async (goal) => {
             await createGoal.mutateAsync(goal);
             setGoalModal(false);
             toast({ title: "Meta criada", description: goal.title, tone: "success" });
           }}
         />
       </Modal>
+      <Modal isOpen={editingHabit !== null} onClose={() => setEditingHabit(null)} title="Editar hábito" size="md" icon={<RepeatIcon />}>
+        {editingHabit && (
+          <NewHabitForm
+            key={editingHabit.id}
+            initial={editingHabit}
+            onCancel={() => setEditingHabit(null)}
+            onSubmit={async (habit) => {
+              await updateHabit.mutateAsync({ habitId: editingHabit.id, input: habit });
+              setEditingHabit(null);
+              toast({ title: "Hábito atualizado", description: habit.name, tone: "success" });
+            }}
+          />
+        )}
+      </Modal>
+      <Modal isOpen={editingGoal !== null} onClose={() => setEditingGoal(null)} title="Editar meta" size="md" icon={<TargetIcon />}>
+        {editingGoal && (
+          <NewGoalForm
+            key={editingGoal.id}
+            initial={editingGoal}
+            onCancel={() => setEditingGoal(null)}
+            onSubmit={async (goal) => {
+              await updateGoal.mutateAsync({ goalId: editingGoal.id, input: goal });
+              setEditingGoal(null);
+              toast({ title: "Meta atualizada", description: goal.title, tone: "success" });
+            }}
+          />
+        )}
+      </Modal>
 
       {(() => {
         const current = openGoal ? goals.find((goal) => goal.id === openGoal.id) ?? openGoal : null;
         return (
-          <Sheet isOpen={current !== null} onClose={() => setOpenGoal(null)} title={current?.title} description={current ? <Badge tone={GOAL_STATUS[current.status].tone}>{GOAL_STATUS[current.status].label}</Badge> : undefined} width={500}>
+          <Sheet
+            isOpen={current !== null}
+            onClose={() => setOpenGoal(null)}
+            title={current?.title}
+            description={current ? <Badge tone={GOAL_STATUS[current.status].tone}>{GOAL_STATUS[current.status].label}</Badge> : undefined}
+            actions={current ? <IconButton label="Editar meta" onClick={() => setEditingGoal(current)}><PencilSimpleIcon /></IconButton> : undefined}
+            width={500}
+          >
             {current && <GoalDetails client={supabase} goal={current} />}
           </Sheet>
         );

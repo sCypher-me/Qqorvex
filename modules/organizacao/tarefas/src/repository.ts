@@ -1,6 +1,6 @@
 import type { SupabaseClient, Database, TablesUpdate } from "@qqorvex/database";
 import { awardXp } from "@qqorvex/module-gamificacao";
-import { computeNextTaskOccurrenceDate, localDateKey } from "./service";
+import { computeNextTaskOccurrenceDate, localDateKey, toRecurringTaskUpdate, type RecurringTaskEditInput } from "./service";
 import type { ChecklistItem, NewTaskInput, RecurringTask, Task, TaskRecurrenceFrequency, TaskStatus, TaskUpdateInput } from "./types";
 import { toTaskInsert } from "./types";
 
@@ -202,6 +202,24 @@ export async function updateRecurringTaskStatus(
   status: RecurringTask["status"],
 ): Promise<RecurringTask> {
   const { data, error } = await client.from("recurring_tasks").update({ status }).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Grava a edição só se a série ainda estiver na data que a pessoa abriu — o cron (ou a geração ao
+ * abrir Tarefas) pode tê-la avançado nesse meio-tempo, e aí gravar a data antiga duplicaria uma
+ * ocorrência.
+ */
+export async function updateRecurringTask(client: Client, current: RecurringTask, input: RecurringTaskEditInput): Promise<RecurringTask> {
+  const { data, error } = await client
+    .from("recurring_tasks")
+    .update(toRecurringTaskUpdate(current, input))
+    .eq("id", current.id)
+    .eq("next_occurrence_date", current.next_occurrence_date)
+    .select("*")
+    .single();
+  if (error?.code === "PGRST116") throw new Error("Esta repetição avançou enquanto você editava. Abra de novo para ver a data atual.");
   if (error) throw error;
   return data;
 }

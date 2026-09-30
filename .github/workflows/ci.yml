@@ -1,0 +1,50 @@
+# Verificação de todo PR e de todo push na main: as mesmas checagens rodadas localmente antes de
+# cada commit (testes, tipos, build do app e auditorias estáticas). Não usa segredos nem acessa o
+# Supabase — o build do Vite não precisa das variáveis VITE_* (elas só são lidas no navegador).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Testes, tipos e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versão do pnpm vem do campo "packageManager" do package.json (pnpm@9.15.9).
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Testes (Vitest)
+        run: pnpm test
+
+      - name: Tipos (todos os workspaces)
+        run: pnpm -r --if-present typecheck
+
+      - name: Build do app
+        run: pnpm --filter qqorvex build
+
+      - name: Auditoria das Edge Functions (inclui allow-list da Vex)
+        run: pnpm audit:edge
+
+      - name: Auditoria da configuração nativa (Tauri)
+        run: pnpm audit:native

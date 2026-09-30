@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Button, Input, Textarea } from "@qqorvex/ui";
-import type { NewProjectInput } from "../types";
+import type { NewProjectInput, Project } from "../types";
 
-/** Projeto agrupa tarefas já existentes; título é obrigatório e contexto é opcional. */
-export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewProjectInput) => void | Promise<void>; onCancel?: () => void }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+/** Projeto agrupa tarefas já existentes; título é obrigatório e contexto é opcional. Com `initial`, edita. */
+export function NewProjectForm({ initial, onSubmit, onCancel }: { initial?: Project; onSubmit: (input: NewProjectInput) => void | Promise<void>; onCancel?: () => void }) {
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -16,9 +16,11 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewPr
     setIsSaving(true);
     setError(false);
     try {
-      await onCreate({ title: trimmed, description: description.trim() || undefined });
-      setTitle("");
-      setDescription("");
+      await onSubmit({ title: trimmed, description: description.trim() || undefined });
+      if (!initial) {
+        setTitle("");
+        setDescription("");
+      }
     } catch {
       setError(true);
     } finally {
@@ -37,7 +39,7 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewPr
         placeholder="Contexto, resultado ou próximos passos (opcional)"
         rows={3}
       />
-      {error && <p className="text-xs text-danger" role="alert">Não foi possível criar o projeto. Seus dados foram mantidos; tente novamente.</p>}
+      {error && <p className="text-xs text-danger" role="alert">Não foi possível salvar o projeto. Seus dados foram mantidos; tente novamente.</p>}
       <div className="flex justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
@@ -45,7 +47,7 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: NewPr
           </Button>
         )}
         <Button type="submit" variant="primary" loading={isSaving} disabled={!title.trim()}>
-          Criar projeto
+          {initial ? "Salvar alterações" : "Criar projeto"}
         </Button>
       </div>
     </form>

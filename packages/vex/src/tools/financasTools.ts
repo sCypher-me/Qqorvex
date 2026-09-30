@@ -8,11 +8,12 @@ import {
   listTransactions,
   spendingByCategory,
   summarizeMonth,
+  updateTransaction,
   upcomingBills,
   type RecurrenceFrequency,
 } from "@qqorvex/module-financas";
 import type { ToolDefinition } from "../types";
-import { addDays, formatDateKey, formatMoney, isDateKey, localDateKey, matchByName } from "./shared";
+import { addDays, ambiguousSummary, formatDateKey, formatMoney, isDateKey, localDateKey, matchByName } from "./shared";
 
 function isYearMonth(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
@@ -92,6 +93,58 @@ export function createFinancasTools(client: SupabaseClient<Database>, userId: st
         const lines = bills.slice(0, 30).map((bill) => `- ${formatDateKey(bill.date, today)} (${bill.date}) · ${bill.type === "entrada" ? "receber" : "pagar"} ${formatMoney(bill.amount)} · ${bill.name}${bill.date < today ? " · VENCIDA" : ""}`);
         const toPay = bills.filter((bill) => bill.type === "saida").reduce((sum, bill) => sum + bill.amount, 0);
         return { summary: `Próximos ${days} dias — total a pagar ${formatMoney(toPay)}:\n${lines.join("\n")}`, data: bills };
+      },
+    },
+    {
+      name: "update_transaction_by_name",
+      label: "Finanças",
+      description:
+        "Corrige um lançamento existente (dos últimos 120 dias até os próximos 60), achado pelo nome: novo nome, novo valor e/ou nova data. Só informe o que a pessoa quer corrigir — categoria, conta, cartão e situação continuam iguais.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome atual (ou parte dele) do lançamento" },
+          newName: { type: "string", description: "Novo nome (opcional)" },
+          amount: { type: "number", description: "Novo valor em reais, sempre positivo (opcional)" },
+          date: { type: "string", description: "Nova data AAAA-MM-DD (opcional)" },
+        },
+        required: ["name"],
+      },
+      requiresConfirmation: true,
+      preview: (args) => ({
+        title: "Corrigir lançamento",
+        fields: [
+          { label: "Lançamento", value: String(args.name ?? "") },
+          ...(args.newName ? [{ label: "Novo nome", value: String(args.newName) }] : []),
+          ...(typeof args.amount === "number" ? [{ label: "Novo valor", value: formatMoney(args.amount) }] : []),
+          ...(isDateKey(args.date) ? [{ label: "Nova data", value: formatDateKey(args.date) }] : []),
+        ],
+      }),
+      async execute(args) {
+        const newName = String(args.newName ?? "").trim();
+        const amount = typeof args.amount === "number" ? args.amount : undefined;
+        if (amount !== undefined && !(amount > 0)) return { summary: "Não corrigi: o valor precisa ser maior que zero." };
+        if (args.date !== undefined && !isDateKey(args.date)) return { summary: "Não corrigi: a data precisa estar no formato AAAA-MM-DD." };
+        if (!newName && amount === undefined && !isDateKey(args.date)) return { summary: "Não corrigi: diga o que mudar (nome, valor ou data)." };
+
+        const today = localDateKey();
+        const transactions = await listTransactions(client, addDays(today, -120), addDays(today, 60));
+        const match = matchByName(transactions, String(args.name ?? ""), (transaction) => transaction.name);
+        if (match.kind === "none") return { summary: `Não encontrei nenhum lançamento parecido com "${args.name}".` };
+        if (match.kind === "many") {
+          return { summary: ambiguousSummary("um lançamento", match.items, (t) => `${t.name} (${formatMoney(t.amount)}, ${formatDateKey(t.date, today)})`) };
+        }
+
+        const current = match.item;
+        const updated = await updateTransaction(client, current.id, {
+          name: newName || current.name,
+          amount: amount ?? current.amount,
+          date: isDateKey(args.date) ? args.date : current.date,
+          // updateTransaction grava categoria ausente como "sem categoria": repassa a atual.
+          categoryId: current.category_id ?? undefined,
+          status: current.status,
+        });
+        return { summary: `Lançamento corrigido: "${updated.name}", ${formatMoney(updated.amount)} em ${formatDateKey(updated.date, today)}.`, data: updated };
       },
     },
     {

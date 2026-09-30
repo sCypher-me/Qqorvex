@@ -20,7 +20,10 @@ import {
   logPomodoroSession,
   unlinkGoalFromPlan,
   unlinkTaskFromProject,
+  updateIdea,
+  updatePlan,
   updatePlanStatus,
+  updateProject,
   updateProjectStatus,
   upsertCheckin,
 } from "../repository";
@@ -41,6 +44,14 @@ export function useCreatePlan(client: SupabaseClient<Database>, userId: string) 
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewPlanInput) => createPlan(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PLANS_KEY }),
+  });
+}
+
+export function useUpdatePlan(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, input }: { planId: string; input: NewPlanInput }) => updatePlan(client, planId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: PLANS_KEY }),
   });
 }
@@ -95,6 +106,14 @@ export function useCreateProject(client: SupabaseClient<Database>, userId: strin
   });
 }
 
+export function useUpdateProject(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: NewProjectInput }) => updateProject(client, projectId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_KEY }),
+  });
+}
+
 export function useUpdateProjectStatus(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -142,6 +161,14 @@ export function useCreateIdea(client: SupabaseClient<Database>, userId: string) 
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewIdeaInput) => createIdea(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: IDEAS_KEY }),
+  });
+}
+
+export function useUpdateIdea(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ideaId, input }: { ideaId: string; input: NewIdeaInput }) => updateIdea(client, ideaId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: IDEAS_KEY }),
   });
 }
