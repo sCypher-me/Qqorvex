@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LockIcon, StarIcon } from "@phosphor-icons/react";
+import { StarIcon } from "@phosphor-icons/react";
 import { Button, ConfirmDialog } from "@qqorvex/ui";
 import { DOCUMENT_TYPE_LABELS, TRASH_RETENTION_DAYS, isImageMimeType } from "../service";
 import type { Document, DocumentType, Folder } from "../types";
@@ -45,7 +45,6 @@ export function DocumentCard({
   extractProgress,
   isFocused,
   onFocus,
-  isMasked,
   due,
 }: {
   document: Document;
@@ -66,30 +65,11 @@ export function DocumentCard({
   extractProgress?: number;
   isFocused?: boolean;
   onFocus?: () => void;
-  /** `true` quando o documento está no Cofre e o Cofre ainda não foi desbloqueado nesta sessão de navegação. */
-  isMasked?: boolean;
   /** Vencimento derivado (ex.: garantia vinculada) — texto curto + cor de estado. */
   due?: { label: string; color: string };
 }) {
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-
-  if (isMasked) {
-    return (
-      <div className="border-b border-line-soft last:border-b-0 flex items-center gap-[14px] px-[18px] py-[14px]" aria-label="Documento no Cofre">
-        <ExtThumb label={documentExtension(document)} />
-        <div className="flex-[1_1_140px] min-w-0 flex flex-col gap-[3px]">
-          <span className="text-sm font-medium truncate blur-[5px] select-none" aria-hidden="true">
-            Documento protegido
-          </span>
-          <span className="truncate text-xs text-fg-3">Desbloqueie o Cofre para ver</span>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-warning">
-          <LockIcon size={11} weight="bold" /> Cofre
-        </span>
-      </div>
-    );
-  }
 
   const canExtractText = onExtractText && isImageMimeType(document.mime_type);
   const meta = [
