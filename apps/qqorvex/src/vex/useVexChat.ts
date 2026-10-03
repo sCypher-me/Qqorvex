@@ -7,6 +7,7 @@ import {
   OllamaProvider,
   ResilientProvider,
   VEX_SYSTEM_PROMPT,
+  actionRecord,
   buildVexContext,
   confirmVexToolCall,
   createVexTools,
@@ -71,8 +72,13 @@ export interface ProviderIssue {
 let sequence = 0;
 const uid = () => `m${Date.now().toString(36)}${(sequence += 1)}`;
 
+/** Histórico para o modelo. Ações (confirmadas, recusadas ou que falharam) entram como registro. */
 function toChat(history: DisplayMessage[]): ChatMessage[] {
-  return history.flatMap((message): ChatMessage[] => (message.role === "action" ? [] : [{ role: message.role, content: message.content }]));
+  return history.map((message): ChatMessage =>
+    message.role === "action"
+      ? { role: "assistant", content: actionRecord(message.status, message.action) }
+      : { role: message.role, content: message.content },
+  );
 }
 
 /**

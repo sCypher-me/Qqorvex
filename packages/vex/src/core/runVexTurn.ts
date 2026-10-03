@@ -96,18 +96,26 @@ export async function confirmVexToolCall(params: TurnParams & { tool: ToolDefini
   const { message, step } = await executeTool(params.tool, params.args);
   params.onStep?.(step);
   if (!step.ok) return { kind: "message", content: message.content, steps: [step] };
-  const result = await continueTurn({ ...params, messages: [...params.messages, message] }, [step]);
+  // O modelo precisa ver que foi ELE quem pediu a ação e que ela já aconteceu; sem isso, o resultado
+  // solto parece um pedido ainda pendente e ele propõe a mesma ação de novo.
+  const executed: ChatMessage = { role: "assistant", content: actionRecord("done", previewToolCall(params.tool, params.args)) };
+  const executedKey = `${params.tool.name}:${JSON.stringify(params.args)}`;
+  const result = await continueTurn({ ...params, messages: [...params.messages, executed, message] }, [step], { executedKey, summary: message.content });
   // Se o modelo não comentar o resultado, o resumo da ferramenta é a resposta.
   if (result.kind === "message" && !result.content.trim()) return { ...result, content: message.content };
   return result;
 }
 
-async function continueTurn(params: TurnParams, initialSteps: VexStep[]): Promise<VexTurnResult> {
+async function continueTurn(
+  params: TurnParams,
+  initialSteps: VexStep[],
+  justExecuted?: { executedKey: string; summary: string },
+): Promise<VexTurnResult> {
   const { provider, tools, onStep } = params;
   let messages = params.messages;
   const steps = [...initialSteps];
   const seen = new Set<string>();
-  let lastSummary: string | null = null;
+  let lastSummary: string | null = justExecuted?.summary ?? null;
 
   for (let round = 0; round <= MAX_VEX_READ_STEPS; round += 1) {
     // Na última rodada a Vex precisa responder com o que já tem: sem ferramentas disponíveis.
@@ -135,6 +143,10 @@ async function continueTurn(params: TurnParams, initialSteps: VexStep[]): Promis
     }
 
     if (tool.requiresConfirmation) {
+      // A mesma ação, com os mesmos dados, acabou de ser confirmada e executada: não pede de novo.
+      if (justExecuted && `${tool.name}:${JSON.stringify(args)}` === justExecuted.executedKey) {
+        return { kind: "message", content: lastSummary ?? "", steps };
+      }
       return {
         kind: "confirmation_required",
         toolCall: response.toolCall,
@@ -190,6 +202,55 @@ function formatArgValue(value: unknown): string {
   return String(value);
 }
 
+/** Rótulos dos parâmetros mais comuns no cartão de confirmação genérico (o resto é humanizado). */
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome",
+  title: "Título",
+  description: "Descrição",
+  content: "Conteúdo",
+  notebookName: "Caderno",
+  status: "Situação",
+  priority: "Prioridade",
+  date: "Data",
+  dueDate: "Prazo",
+  startDate: "Início",
+  endDate: "Fim",
+  time: "Horário",
+  startTime: "Início",
+  endTime: "Fim",
+  amount: "Valor",
+  category: "Categoria",
+  itemType: "Tipo",
+  isImportant: "Importante",
+  isPurchased: "Comprado",
+  quantity: "Quantidade",
+  sourceText: "Conteúdo-base",
+  location: "Local",
+  frequency: "Frequência",
+  displayName: "Nome de exibição",
+  username: "Usuário",
+  phone: "Telefone",
+  bio: "Bio",
+  mood: "Humor",
+  sleepQuality: "Sono",
+  energy: "Energia",
+  planType: "Tipo de plano",
+  periodStart: "Início",
+  periodEnd: "Fim",
+};
+
+/**
+ * Registro de uma ação no histórico que o modelo vê — confirmada, recusada ou que falhou. Sem ele,
+ * a conversa seguinte parece ter um pedido ainda não atendido e a Vex propõe a ação de novo.
+ */
+export function actionRecord(status: "done" | "cancelled" | "failed", action: VexActionPreview): string {
+  const fields = action.fields.map((field) => `${field.label}: ${field.value}`).join("; ");
+  const what = fields ? `${action.title} (${fields})` : action.title;
+  if (status === "done") return `[Ação concluída com a confirmação da pessoa: ${what}. Não repita esta ação.]`;
+  if (status === "cancelled") return `[A pessoa recusou a ação: ${what}. Não proponha de novo, a menos que ela peça.]`;
+  return `[A ação falhou e nada foi alterado: ${what}.]`;
+}
+
 function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): VexActionPreview {
   if (tool.preview) {
     try {
@@ -202,7 +263,7 @@ function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): V
     title: tool.description.split(/[.(—]/)[0]!.trim() || tool.name,
     fields: Object.entries(args)
       .filter(([, value]) => value !== undefined && value !== null && value !== "")
-      .map(([key, value]) => ({ label: humanizeKey(key), value: formatArgValue(value) })),
+      .map(([key, value]) => ({ label: FIELD_LABELS[key] ?? humanizeKey(key), value: formatArgValue(value) })),
   };
 }
 

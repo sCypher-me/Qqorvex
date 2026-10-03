@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_VEX_READ_STEPS, confirmVexToolCall, runVexTurn, validateToolArguments } from "./runVexTurn";
+import { MAX_VEX_READ_STEPS, actionRecord, confirmVexToolCall, runVexTurn, validateToolArguments } from "./runVexTurn";
 import type { ChatMessage, ToolDefinition, VexProvider, VexProviderResponse } from "../types";
 
 const tool: ToolDefinition = {
@@ -89,7 +89,7 @@ describe("runVexTurn", () => {
     expect(result.kind).toBe("confirmation_required");
     if (result.kind !== "confirmation_required") return;
     expect(result.action.title).toBe("Cria um evento");
-    expect(result.action.fields).toEqual([{ label: "Title", value: "Dentista" }, { label: "Time", value: "09:00" }]);
+    expect(result.action.fields).toEqual([{ label: "Título", value: "Dentista" }, { label: "Horário", value: "09:00" }]);
   });
 
   it("limita as rodadas e na última não oferece ferramentas", async () => {
@@ -130,10 +130,39 @@ describe("runVexTurn", () => {
     expect(result.kind === "message" && result.steps).toEqual([{ tool: "create_event", label: "create_event", ok: true }]);
   });
 
+  it("depois de confirmar, o modelo vê que a ação foi dele e já aconteceu", async () => {
+    const { provider, calls } = scriptedProvider([{ kind: "message", content: "Pronto." }]);
+    await confirmVexToolCall({ provider, messages: user, tools: [tool], tool, args: { title: "Estudar", time: "09:00" } });
+    const sent = calls[0]!.messages;
+    expect(sent.at(-2)).toMatchObject({ role: "assistant", content: expect.stringContaining("Ação concluída") });
+    expect(sent.at(-1)).toMatchObject({ role: "tool", content: "ok" });
+  });
+
+  it("se o modelo propõe a mesma ação de novo logo após confirmar, não pede outra confirmação", async () => {
+    const { provider } = scriptedProvider([{ kind: "tool_call", toolCall: { name: "create_event", arguments: { title: "Estudar", time: "09:00" } } }]);
+    const result = await confirmVexToolCall({ provider, messages: user, tools: [tool], tool, args: { title: "Estudar", time: "09:00" } });
+    expect(result).toMatchObject({ kind: "message", content: "ok" });
+  });
+
+  it("uma ação diferente depois da confirmada segue para confirmação normalmente", async () => {
+    const { provider } = scriptedProvider([{ kind: "tool_call", toolCall: { name: "create_event", arguments: { title: "Revisar", time: "18:00" } } }]);
+    const result = await confirmVexToolCall({ provider, messages: user, tools: [tool], tool, args: { title: "Estudar", time: "09:00" } });
+    expect(result.kind).toBe("confirmation_required");
+  });
+
   it("bloqueia conteúdo proibido antes de chamar o provedor", async () => {
     const { provider, calls } = scriptedProvider([]);
     const result = await runVexTurn({ provider, messages: [{ role: "user", content: "quero pornografia" }], tools: [] });
     expect(result.kind).toBe("blocked");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("actionRecord", () => {
+  const action = { title: "Cria um novo Caderno de Estudos", fields: [{ label: "Nome", value: "Biologia" }] };
+  it("descreve cada desfecho para o modelo não repetir nem insistir", () => {
+    expect(actionRecord("done", action)).toBe("[Ação concluída com a confirmação da pessoa: Cria um novo Caderno de Estudos (Nome: Biologia). Não repita esta ação.]");
+    expect(actionRecord("cancelled", action)).toContain("recusou");
+    expect(actionRecord("failed", action)).toContain("falhou");
   });
 });
