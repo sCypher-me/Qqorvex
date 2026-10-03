@@ -17,13 +17,11 @@ depois. Itens marcados com ✅ já foram verificados em 03/10/2026.
 
 ## Antes de liberar
 
-1. **Endereço público do app.** Publique o build (`pnpm --filter qqorvex build`, pasta
-   `apps/qqorvex/dist`) e, com o domínio definido:
-   - atualize `app_base_url` em Central do Dono → Integrações → "URL pública do Qqorvex" (hoje aponta para `http://localhost:5173`;
-     o retorno da conexão com o Google Agenda usa esse endereço);
-   - no Supabase, Authentication → URL Configuration: Site URL e Redirect URLs com o domínio novo
-     (login com GitHub/Google/Discord e links de e-mail);
-   - no Cloudflare Turnstile, inclua o domínio na chave do site (`VITE_TURNSTILE_SITE_KEY`).
+1. **Publicar no Cloudflare Pages.** Siga [`deploy-cloudflare.md`](deploy-cloudflare.md): projeto
+   `qqorvex-app` (app, https://qqorvex-app.pages.dev) e, depois, `qqorvex` (site com lista de espera).
+   Ao final, o endereço do app precisa estar no Supabase (Site URL e Redirect URLs), no
+   `app_base_url` (Central do Dono → Integrações; hoje aponta para `http://localhost:5173`) e nos
+   hostnames do Turnstile.
 2. **Proteção de senhas vazadas.** Supabase → Authentication → Password Security → ligar
    "Leaked password protection" (o único alerta de segurança pendente do Supabase).
 3. **Cobrança desligada no beta.** Deixe `VITE_BILLING_CHANNEL` sem valor: a página de assinatura mostra
