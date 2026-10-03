@@ -24,8 +24,9 @@ Deno.serve(async (req) => {
   const secrets = Object.fromEntries((appSecretRows ?? []).map((r) => [r.key, r.value]));
   const appBaseUrl = secrets.app_base_url ?? "http://localhost:5173";
 
+  // A conexão começa (e mostra o resultado) na Agenda — `GoogleCalendarSection` lê `?google=`.
   function redirectToApp(status: "connected" | "error") {
-    return Response.redirect(`${appBaseUrl}/seguranca?google=${status}`, 302);
+    return Response.redirect(`${appBaseUrl}/planejar/agenda?google=${status}`, 302);
   }
 
   if (oauthError || !code || !state) return redirectToApp("error");

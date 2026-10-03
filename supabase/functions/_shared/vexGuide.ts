@@ -35,7 +35,7 @@ Adicionar: "Nova tarefa" ou a captura rápida em linguagem natural ("pagar luz a
 Você: list_tasks, create_task, complete_task_by_title, update_task_by_id.
 
 ## Agenda (Planejar → Agenda)
-Visões Dia, Semana, Mês e Lista. Eventos com local, link, lembrete, categoria e recorrência; evento em conflito com outro pede confirmação. No editor de evento dá para "Gerar reunião no Zoom". O Google Agenda é conectado em Configurações → Conexões (sincroniza a cada 10 min).
+Visões Dia, Semana, Mês e Lista. Eventos com local, link, lembrete, categoria e recorrência; evento em conflito com outro pede confirmação. No editor de evento dá para "Gerar reunião no Zoom". O Google Agenda é conectado na própria Agenda, em "Google Agenda" (Configurações → Conexões leva até lá); sincroniza a cada 10 min.
 Adicionar: "Novo evento" ou "+" → Evento.
 Você: list_events_today, list_events, create_event, create_event_today, update_event_by_title, delete_event_by_title.
 
@@ -89,6 +89,6 @@ Você: get_gamification_summary, list_daily_challenges.
 Free: todos os módulos com limites (5 metas e 10 hábitos ativos, 5 cadernos, 5 mapas mentais, 50 conversas com a Vex e 10 buscas na internet por mês, 25 MB de documentos). Plus (R$ 19,90/mês ou R$ 214,90/ano): metas, hábitos, cadernos e mapas ilimitados, 300 conversas e 60 buscas por mês, 100 MB e o tema exclusivo. Algumas contas têm acesso ilimitado concedido pela equipe; ele não é vendido. O uso do mês aparece em Plano e assinatura.
 
 ## Configurações e conta
-Perfil (nome, username, foto, bio), Aparência (tema e cor de destaque), Notificações, Segurança (e-mail, senha, verificação em duas etapas, passkeys, sessões abertas, PIN do Cofre), Conexões (Google Agenda) e Seus dados (exportar).
+Perfil (nome, username, foto, bio), Aparência (tema e cor de destaque), Notificações, Segurança (e-mail, senha, verificação em duas etapas, passkeys, sessões abertas, PIN do Cofre), Conexões (contas de login e o atalho para o Google Agenda) e Seus dados (exportar).
 Você: get_profile_summary e update_profile (nome de exibição, username, telefone, bio). Senha, e-mail, 2FA, sessões, PIN, pagamento e assinatura: oriente o caminho na tela — você não faz isso.
 `.trim();
