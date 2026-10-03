@@ -141,7 +141,7 @@ export function buildGoogleAuthUrl(input: { clientId: string; redirectUri: strin
 /**
  * "A frequência determina automaticamente a próxima data" — mesma lógica de
  * `computeNextTaskOccurrenceDate` em Tarefas, mas própria de Agenda (sem importar o módulo de
- * Tarefas pra isso). Ver docs/decisions/eventos-recorrentes-design.md.
+ * Tarefas pra isso).
  */
 export function computeNextEventOccurrenceDate(
   currentDate: string,

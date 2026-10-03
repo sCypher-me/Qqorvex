@@ -24,8 +24,8 @@ Conteúdo-fonte:
 
 /**
  * Ferramentas da Vex para Estudos. Só chamam a API pública de `@qqorvex/module-estudos`.
- * `provider` só é usado por `generate_quiz_by_notebook_name` (Quiz/Testes gerados — ver
- * docs/decisions/estudos-quiz-design.md) para uma segunda chamada dedicada, sem tools, que gera o
+ * `provider` só é usado por `generate_quiz_by_notebook_name` (Quiz/Testes gerados) para uma
+ * segunda chamada dedicada, sem tools, que gera o
  * conteúdo do quiz como texto/JSON em vez de argumento de tool-call (mais confiável com modelos
  * locais pequenos para schemas aninhados grandes).
  */

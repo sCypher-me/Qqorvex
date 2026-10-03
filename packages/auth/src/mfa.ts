@@ -66,7 +66,7 @@ export interface AssuranceLevel {
   next: string | null;
 }
 
-export const MFA_ASSURANCE_TIMEOUT_MS = 8_000;
+const MFA_ASSURANCE_TIMEOUT_MS = 8_000;
 
 /** `next > current` significa que a sessão está em `aal1` mas precisa completar o 2FA pra `aal2`. */
 export async function getAssuranceLevel(

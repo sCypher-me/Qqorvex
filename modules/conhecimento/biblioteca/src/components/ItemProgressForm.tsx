@@ -6,7 +6,7 @@ import type { LibraryItem } from "../types";
 
 type ProgressInput = { current: number; total?: number; mode: "numerico" | "percentual"; unit?: string };
 
-export const DEFAULT_PROGRESS_UNITS: Partial<Record<LibraryItem["item_type"], string>> = {
+const DEFAULT_PROGRESS_UNITS: Partial<Record<LibraryItem["item_type"], string>> = {
   book: "páginas",
   comic: "páginas",
   manga: "capítulos",

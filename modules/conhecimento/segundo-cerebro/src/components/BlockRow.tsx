@@ -74,7 +74,7 @@ function isCaretAtStart(el: HTMLInputElement | HTMLTextAreaElement): boolean {
 /**
  * Um bloco = um componente, `key={block.id}` no pai preserva esta instância (e seu estado local
  * de digitação) entre reordenações — só remonta quando o bloco realmente muda de identidade.
- * Salva no blur/Enter/checkbox, nunca a cada tecla (docs/decisions/segundo-cerebro-editor-blocos-design.md).
+ * Salva no blur/Enter/checkbox, nunca a cada tecla.
  */
 export function BlockRow({
   block,
@@ -705,7 +705,6 @@ export function BlockRow({
  * do `AttachDocumentPanel`: quem é dono do arquivo é o Documento, o bloco só referencia).
  */
 function MediaBlockBody({
-  block,
   documents,
   client,
   userId,

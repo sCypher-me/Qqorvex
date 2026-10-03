@@ -14,11 +14,6 @@ export function formatBRLCompact(value: number): string {
   return brlCompact.format(value);
 }
 
-/** "+ R$ 920,00" / "− R$ 312,44" (sinal de menos tipográfico). */
-export function formatSignedBRL(value: number, sign: "+" | "-" | ""): string {
-  return sign === "" ? formatBRL(value) : `${sign === "+" ? "+" : "−"} ${formatBRL(value)}`;
-}
-
 /** "15 set" a partir de `YYYY-MM-DD`. */
 export function formatDayMonth(isoDate: string): string {
   const [, month, day] = isoDate.split("-");

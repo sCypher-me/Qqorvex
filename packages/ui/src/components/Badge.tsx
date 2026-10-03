@@ -64,22 +64,3 @@ export function Tag({ color, children, className, onRemove }: { color?: string; 
     </span>
   );
 }
-
-/** Indicador de status mínimo (bolinha + rótulo opcional). */
-export function StatusDot({ tone = "neutral", label, pulse = false }: { tone?: Exclude<BadgeTone, "outline">; label?: string; pulse?: boolean }) {
-  const color: Record<string, string> = {
-    neutral: "bg-fg-4",
-    gold: "bg-gold",
-    ai: "bg-ai",
-    success: "bg-success",
-    danger: "bg-danger",
-    warning: "bg-warning",
-    info: "bg-info",
-  };
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-fg-3">
-      <span aria-hidden="true" className={cx("h-2 w-2 rounded-full", color[tone], pulse && "animate-pulse-soft")} />
-      {label}
-    </span>
-  );
-}

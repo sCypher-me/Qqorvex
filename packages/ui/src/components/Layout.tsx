@@ -50,21 +50,6 @@ export function PageContainer({ children, className, width = "default" }: { chil
   );
 }
 
-/** Barra de ferramentas: filtros à esquerda, ações à direita. */
-export function Toolbar({ children, actions, className }: { children?: ReactNode; actions?: ReactNode; className?: string }) {
-  return (
-    <div className={cx("flex min-w-0 flex-wrap items-center gap-2", className)}>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{children}</div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
-    </div>
-  );
-}
-
-/** Lista com linhas separadas por hairline, dentro de um card. */
-export function List({ children, className }: { children: ReactNode; className?: string }) {
-  return <ul className={cx("flex flex-col divide-y divide-line-soft", className)}>{children}</ul>;
-}
-
 export interface ListRowProps {
   title: ReactNode;
   description?: ReactNode;
@@ -75,28 +60,4 @@ export interface ListRowProps {
   className?: string;
   /** Destaque sutil (item selecionado). */
   selected?: boolean;
-}
-
-export function ListRow({ title, description, leading, trailing, onClick, className, selected }: ListRowProps) {
-  const content = (
-    <>
-      {leading && <span className="flex shrink-0 items-center">{leading}</span>}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13.5px] font-medium text-fg">{title}</span>
-        {description && <span className="mt-0.5 block truncate text-xs text-fg-3">{description}</span>}
-      </span>
-      {trailing && <span className="flex shrink-0 items-center gap-2 text-xs text-fg-3">{trailing}</span>}
-    </>
-  );
-  return (
-    <li className={cx("min-w-0", className)}>
-      {onClick ? (
-        <button type="button" onClick={onClick} className={cx("flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-hover", selected && "bg-selected")}>
-          {content}
-        </button>
-      ) : (
-        <div className={cx("flex min-w-0 items-center gap-3 px-4 py-2.5", selected && "bg-selected")}>{content}</div>
-      )}
-    </li>
-  );
 }

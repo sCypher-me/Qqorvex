@@ -2,7 +2,7 @@ import type { Tables, TablesInsert, TablesUpdate } from "@qqorvex/database";
 
 /**
  * Vida Pessoal — escopo recriado com o usuário em 11/09/2026 (o Xmind original dessa parte foi
- * perdido; ver docs/decisions/vida-pessoal-design.md). Bloco 1 (Planejamento): Plano é uma visão
+ * perdido). Bloco 1 (Planejamento): Plano é uma visão
  * ampla e narrativa (ex.: "Ser um designer"); Meta (`@qqorvex/module-metas-habitos`) continua o
  * item específico e mensurável de sempre — um Plano agrupa várias Metas via `plan_goals`, sem
  * duplicar dado. Projeto é só um agrupador de Tarefas (`@qqorvex/module-tarefas`) via

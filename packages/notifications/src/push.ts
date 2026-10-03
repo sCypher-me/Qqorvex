@@ -12,7 +12,7 @@ export function isPushSupported(): boolean {
 }
 
 /** Converte a chave pública VAPID (base64url) para o formato que `pushManager.subscribe` exige. */
-export function urlBase64ToUint8Array(base64: string): Uint8Array {
+function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
   const normalized = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(normalized);

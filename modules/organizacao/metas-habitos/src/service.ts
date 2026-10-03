@@ -204,8 +204,8 @@ export function getHabitWeeklyTarget(habit: Habit): number | null {
 /**
  * "Derivado: progresso baseado em dado de outro módulo" — hoje só Finanças (saldo de Conta vs.
  * `progress_numeric_target`). Puro: quem chama já calculou o saldo atual via
- * `computeAccountBalance` de `@qqorvex/module-financas` (docs/decisions/
- * metas-progresso-derivado-design.md). Alvo zero/negativo não tem "percentual" sensato — 0%.
+ * `computeAccountBalance` de `@qqorvex/module-financas`. Alvo zero/negativo não tem "percentual"
+ * sensato — 0%.
  */
 export function computeDerivedProgress(currentBalance: number, targetAmount: number): number {
   if (targetAmount <= 0) return 0;

@@ -386,7 +386,7 @@ export async function listQuizAttempts(client: Client, quizId: string): Promise<
   return data;
 }
 
-/** Cada tentativa de quiz premia XP — inclusive repetir o mesmo quiz, é engajamento real (docs/decisions/gamification-core-design.md). */
+/** Cada tentativa de quiz premia XP — inclusive repetir o mesmo quiz, é engajamento real. */
 export async function createQuizAttempt(
   client: Client,
   userId: string,

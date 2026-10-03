@@ -84,7 +84,7 @@ function AchievementBadgeArt({ imageSrc, badgeKey, label, locked }: { imageSrc: 
 }
 
 /** Tile de conquista: a insígnia fica visível desde o início, mas bloqueada até o marco ser atingido. */
-export function BadgeTile({ badge, stats }: { badge: BadgeWithStatus; stats?: GamificationStats }) {
+function BadgeTile({ badge, stats }: { badge: BadgeWithStatus; stats?: GamificationStats }) {
   const got = badge.isUnlockedForUser;
   const current = stats && badge.counterField && badge.target ? Math.min(Number(stats[badge.counterField] ?? 0), badge.target) : 0;
   const percentage = got ? 100 : badge.progressHint ? 0 : badge.target ? Math.min(100, Math.round((current / badge.target) * 100)) : 0;

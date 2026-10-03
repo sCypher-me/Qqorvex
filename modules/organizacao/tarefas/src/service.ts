@@ -97,8 +97,7 @@ export function wouldCreateCycle(
 /**
  * "A frequência determina automaticamente a próxima data" — mesmo espírito de
  * `computeNextOccurrenceDate` em Finanças, mas com as frequências de Tarefas
- * (diária/semanal/mensal, sem dias específicos da semana — corte consciente, ver
- * docs/decisions/tarefas-recorrentes-design.md).
+ * (diária/semanal/mensal, sem dias específicos da semana — corte consciente).
  */
 export function computeNextTaskOccurrenceDate(currentDate: string, frequency: TaskRecurrenceFrequency, anchorDate = currentDate): string {
   const [year = 0, month = 1, day = 1] = currentDate.split("-").map(Number);

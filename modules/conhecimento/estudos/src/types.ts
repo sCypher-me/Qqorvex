@@ -3,7 +3,7 @@ import type { Tables, TablesInsert } from "@qqorvex/database";
 /**
  * Estudos é fonte de verdade dos Cadernos e objetos próprios de aprendizagem: Tópicos, Resumos,
  * Flashcards+Revisão Espaçada, Erros & Dúvidas, Avaliações, Sessões de Estudo e Quiz/Testes
- * (gerados pela Vex a partir dos Resumos — ver docs/decisions/estudos-quiz-design.md). Study
+ * (gerados pela Vex a partir dos Resumos). Study
  * Capability Packs por área ainda ficam para depois.
  */
 export type Notebook = Tables<"notebooks">;

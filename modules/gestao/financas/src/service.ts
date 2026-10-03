@@ -156,7 +156,7 @@ export function computeBalances(transactions: Transaction[]): Balances {
  * Saldo atual de uma Conta específica — só transações `concluida` (mesmo critério de "saldo
  * atual" de `computeBalances`). Ao contrário de `computeBalances`, transferências contam aqui:
  * saem da conta de origem (`account_id`) e entram na conta de destino (`transfer_to_account_id`).
- * Usado por Metas & Hábitos pra progresso "derivado" (docs/decisions/metas-progresso-derivado-design.md).
+ * Usado por Metas & Hábitos pra progresso "derivado".
  */
 export function computeAccountBalance(transactions: Transaction[], accountId: string): number {
   let balance = 0;
@@ -357,35 +357,4 @@ export function toReferenceMonth(closingDate: Date): string {
 /** Total da fatura é sempre calculado a partir das transações do cartão no período — nunca duplicado. */
 export function computeStatementTotal(transactions: Transaction[]): number {
   return transactions.reduce((sum, t) => sum + t.amount, 0);
-}
-
-/**
- * "Calendário Financeiro dedicado" — utilitários de grade de mês, próprios deste módulo (não
- * importados de `@qqorvex/module-agenda`: "módulos não acessam internals uns dos outros").
- */
-export function startOfCalendarMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-export function startOfCalendarWeek(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  result.setDate(result.getDate() - result.getDay());
-  return result;
-}
-
-export function addCalendarDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-export function addCalendarMonths(date: Date, months: number): Date {
-  const result = new Date(date);
-  result.setMonth(result.getMonth() + months);
-  return result;
-}
-
-export function isSameCalendarDay(a: Date, b: Date): boolean {
-  return a.toDateString() === b.toDateString();
 }

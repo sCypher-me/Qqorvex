@@ -93,7 +93,7 @@ async function awardBonusXp(client: Client, userId: string, bonusXp: number): Pr
 }
 
 /** Atualiza o desafio diário correspondente à ação e concede o bônus de dificuldade uma única vez. */
-export async function recordDailyChallengeAction(
+async function recordDailyChallengeAction(
   client: Client,
   userId: string,
   action: GamificationAction,
@@ -157,11 +157,9 @@ export async function awardXp(client: Client, userId: string, action: Gamificati
     };
     updated[counterField] = current[counterField] + 1;
 
-    const { data: newStats, error } = await client
+    const { error } = await client
       .from("gamification_stats")
-      .upsert(updated, { onConflict: "user_id" })
-      .select("*")
-      .single();
+      .upsert(updated, { onConflict: "user_id" });
     if (error) throw error;
 
     await unlockEligibleBadges(client);
@@ -176,7 +174,7 @@ export async function awardXp(client: Client, userId: string, action: Gamificati
 export async function recordCheckinDay(client: Client, userId: string): Promise<void> {
   try {
     const current = await getGamificationStats(client, userId);
-    const { data: newStats, error } = await client
+    const { error } = await client
       .from("gamification_stats")
       .upsert(
         {
@@ -205,7 +203,7 @@ export async function recordCheckinDay(client: Client, userId: string): Promise<
 export async function recordHighAccuracyQuiz(client: Client, userId: string): Promise<void> {
   try {
     const current = await getGamificationStats(client, userId);
-    const { data: newStats, error } = await client
+    const { error } = await client
       .from("gamification_stats")
       .upsert(
         {

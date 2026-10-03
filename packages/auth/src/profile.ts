@@ -20,7 +20,7 @@ export interface ProfileInput {
   selectedBadgeKeys?: string[];
 }
 
-export const PROFILE_AVATAR_BUCKET = "avatars";
+const PROFILE_AVATAR_BUCKET = "avatars";
 export const PROFILE_AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
 const PROFILE_COLUMNS =

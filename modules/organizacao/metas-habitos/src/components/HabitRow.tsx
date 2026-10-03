@@ -7,7 +7,7 @@ import type { Habit, HabitFrequencyConfig, HabitLog, HabitLogState } from "../ty
 const DAY_LABEL: Record<string, string> = { mon: "seg", tue: "ter", wed: "qua", thu: "qui", fri: "sex", sat: "sáb", sun: "dom", seg: "seg", ter: "ter", qua: "qua", qui: "qui", sex: "sex", sab: "sáb", dom: "dom" };
 const WEEKDAY_INITIAL = ["D", "S", "T", "Q", "Q", "S", "S"];
 
-export function cadenceLabel(habit: Habit): string {
+function cadenceLabel(habit: Habit): string {
   const config = (habit.frequency_config ?? {}) as unknown as HabitFrequencyConfig;
   let label: string;
   switch (habit.frequency_type) {

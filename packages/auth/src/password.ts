@@ -1,5 +1,5 @@
 export const MAX_PASSWORD_LENGTH = 128;
-export const MIN_PASSWORD_LENGTH = 8;
+const MIN_PASSWORD_LENGTH = 8;
 
 export interface PasswordRule {
   id: string;
@@ -8,7 +8,7 @@ export interface PasswordRule {
 }
 
 /** O hash de verdade (Argon2id/bcrypt) é feito pelo Supabase Auth — isto é só validação de força pra UX/feedback em tempo real. */
-export const PASSWORD_RULES: PasswordRule[] = [
+const PASSWORD_RULES: PasswordRule[] = [
   { id: "length", label: `${MIN_PASSWORD_LENGTH} ou mais caracteres`, test: (p) => p.length >= MIN_PASSWORD_LENGTH },
   { id: "upper", label: "Letra maiúscula", test: (p) => /[A-Z]/.test(p) },
   { id: "lower", label: "Letra minúscula", test: (p) => /[a-z]/.test(p) },

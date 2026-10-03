@@ -185,22 +185,12 @@ export async function deleteHabit(client: Client, habitId: string): Promise<void
   if (error) throw error;
 }
 
-export async function listHabitLogs(client: Client, habitId: string): Promise<HabitLog[]> {
-  const { data, error } = await client
-    .from("habit_logs")
-    .select("*")
-    .eq("habit_id", habitId)
-    .order("log_date", { ascending: false });
-  if (error) throw error;
-  return data;
-}
-
 /**
  * Upsert por (habit_id, log_date): registrar de novo no mesmo dia substitui o registro anterior
  * em vez de criar duplicata (a unique constraint do banco garante isso). Premia XP só na
  * transição pra "concluido" (nunca em "parcial"/"pulado", nunca de novo se já estava
  * "concluido" no mesmo dia) — mesma lógica de "confere o estado anterior antes de premiar" de
- * Tarefas/Biblioteca (docs/decisions/gamification-core-design.md).
+ * Tarefas/Biblioteca.
  */
 export async function logHabit(
   client: Client,

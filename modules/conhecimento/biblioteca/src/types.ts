@@ -3,7 +3,7 @@ import type { Tables, TablesInsert, TablesUpdate } from "@qqorvex/database";
 /**
  * Biblioteca & Conteúdo é fonte de verdade de itens, status/progresso de consumo, avaliações,
  * ciclos, coleções, histórico e relações internas entre conteúdos. Metadata Provider Layer
- * (Google Books + TMDB) implementado — ver docs/decisions/biblioteca-metadata-provider-design.md.
+ * (Google Books + TMDB) implementado.
  * v1 lean: sem conteúdo episódico estruturado, sem detecção de duplicados/mesclagem (a detecção
  * em si já existe, "mesclagem" que não) e sem Insights/Retrospectiva — "evolução futura" no
  * Xmind ou dependentes de mais infraestrutura.

@@ -15,7 +15,7 @@ export function documentExtension(document: Pick<Document, "file_name" | "mime_t
 }
 
 /** Tamanho em pt-BR: "480 KB", "1,2 MB". */
-export function formatFileSize(bytes: number | null): string | null {
+function formatFileSize(bytes: number | null): string | null {
   if (bytes === null || bytes === undefined) return null;
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;

@@ -3,5 +3,5 @@ packages:
   - "packages/*"
   - "modules/**"
 allowBuilds:
-  esbuild: set this to true or false
-  tesseract.js: set this to true or false
+  esbuild: true
+  tesseract.js: false

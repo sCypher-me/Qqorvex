@@ -44,7 +44,7 @@ export async function createTask(client: Client, userId: string, input: NewTaskI
 
 /**
  * Confere o status anterior antes de gravar pra premiar XP só na transição pra "concluido" —
- * desfazer e refazer a mesma conclusão não deve dobrar o XP (docs/decisions/gamification-core-design.md).
+ * desfazer e refazer a mesma conclusão não deve dobrar o XP.
  */
 export async function updateTaskStatus(client: Client, taskId: string, status: TaskStatus): Promise<Task> {
   const { data: before, error: beforeError } = await client.from("tasks").select("status, user_id").eq("id", taskId).single();
@@ -266,7 +266,7 @@ export async function materializeDueRecurringTasks(
  * independente (editar/completar/apagar depois não afeta a série) e avança
  * `next_occurrence_date` — a recorrência nunca é, em si, uma tarefa.
  */
-export async function generateTaskOccurrence(client: Client, userId: string, recurring: RecurringTask): Promise<Task> {
+async function generateTaskOccurrence(client: Client, userId: string, recurring: RecurringTask): Promise<Task> {
   const occurrenceDate = recurring.next_occurrence_date;
 
   const { data: existingTask, error: existingError } = await client

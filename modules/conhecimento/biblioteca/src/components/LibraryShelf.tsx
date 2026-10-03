@@ -31,12 +31,12 @@ const TYPE_ICON: Partial<Record<LibraryItemType, ComponentType<IconProps>>> = {
   game: GameControllerIcon,
 };
 
-export function libraryTypeIcon(type: LibraryItemType): ComponentType<IconProps> {
+function libraryTypeIcon(type: LibraryItemType): ComponentType<IconProps> {
   return TYPE_ICON[type] ?? BooksIcon;
 }
 
 /** "12 de 320 páginas" ou "45%"; null quando não há progresso registrado. */
-export function progressText(item: LibraryItem): string | null {
+function progressText(item: LibraryItem): string | null {
   const percent = computeProgressPercent(item);
   if (percent === null || item.progress_current === null) return null;
   if (item.progress_mode === "numerico" && item.progress_total) return `${item.progress_current} de ${item.progress_total}${item.progress_unit ? ` ${item.progress_unit}` : ""}`;
@@ -63,7 +63,7 @@ export function LibraryCover({ item, className, showTitle = true }: { item: Libr
   );
 }
 
-export function RatingStars({ value, size = 13 }: { value: number | null; size?: number }) {
+function RatingStars({ value, size = 13 }: { value: number | null; size?: number }) {
   if (!value) return null;
   return (
     <span className="inline-flex items-center gap-px" aria-label={`${value} de 5 estrelas`}>

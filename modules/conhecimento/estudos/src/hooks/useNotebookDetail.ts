@@ -44,7 +44,7 @@ const quizAttemptsKey = (quizId: string) => ["quiz-attempts", quizId] as const;
 const studySessionsKey = (notebookId: string) => ["study-sessions", notebookId] as const;
 
 /** Visões agregadas (lista de cadernos, Hoje, semana) que dependem do conteúdo dos cadernos. */
-export function invalidateEstudosAggregates(queryClient: QueryClient) {
+function invalidateEstudosAggregates(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["estudos-overview"] });
   void queryClient.invalidateQueries({ queryKey: ["estudos-stats"] });
   void queryClient.invalidateQueries({ queryKey: ["estudos-week"] });

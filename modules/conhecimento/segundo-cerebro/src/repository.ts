@@ -256,27 +256,6 @@ export async function moveBlock(client: Client, pageId: string, blockId: string,
   if (error2) throw error2;
 }
 
-export async function listPageProperties(client: Client, pageId: string): Promise<PageProperty[]> {
-  const { data, error } = await client.from("page_properties").select("*").eq("page_id", pageId);
-  if (error) throw error;
-  return data;
-}
-
-export async function setPageProperty(
-  client: Client,
-  pageId: string,
-  key: string,
-  value: unknown,
-): Promise<PageProperty> {
-  const { data, error } = await client
-    .from("page_properties")
-    .upsert({ page_id: pageId, key, value: value as unknown as Json }, { onConflict: "page_id,key" })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
-}
-
 export async function listPageTags(client: Client, pageId: string): Promise<string[]> {
   const { data, error } = await client.from("page_tags").select("tag").eq("page_id", pageId);
   if (error) throw error;
@@ -304,12 +283,6 @@ export async function createPageLink(client: Client, sourcePageId: string, targe
     .from("page_links")
     .insert({ source_page_id: sourcePageId, target_page_id: targetPageId });
   if (error) throw error;
-}
-
-export async function listOutgoingLinks(client: Client, pageId: string): Promise<PageLink[]> {
-  const { data, error } = await client.from("page_links").select("*").eq("source_page_id", pageId);
-  if (error) throw error;
-  return data;
 }
 
 /** Todos os links entre páginas do usuário — usado pelo Grafo de Conhecimento (visual). */

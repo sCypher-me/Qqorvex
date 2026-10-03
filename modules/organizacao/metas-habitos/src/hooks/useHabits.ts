@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createHabit, deleteHabit, listHabitLogs, listHabits, logHabit, updateHabit, updateHabitStatus, listHabitLogsInRange, deleteHabitLog } from "../repository";
+import { createHabit, deleteHabit, listHabits, logHabit, updateHabit, updateHabitStatus, listHabitLogsInRange, deleteHabitLog } from "../repository";
 import type { Habit, HabitEditInput, HabitLogState, NewHabitInput } from "../types";
 
 const HABITS_KEY = ["habits"] as const;
-const habitLogsKey = (habitId: string) => ["habit-logs", habitId] as const;
 
 export function useHabits(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: HABITS_KEY, queryFn: () => listHabits(client) });
@@ -41,20 +40,6 @@ export function useDeleteHabit(client: SupabaseClient<Database>) {
   return useMutation({
     mutationFn: (habitId: string) => deleteHabit(client, habitId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HABITS_KEY }),
-  });
-}
-
-export function useHabitLogs(client: SupabaseClient<Database>, habitId: string) {
-  const query = useQuery({ queryKey: habitLogsKey(habitId), queryFn: () => listHabitLogs(client, habitId) });
-  return { logs: query.data ?? [], isLoading: query.isLoading };
-}
-
-export function useLogHabit(client: SupabaseClient<Database>, habitId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ logDate, state }: { logDate: string; state: HabitLogState }) =>
-      logHabit(client, habitId, logDate, state),
-    onSuccess: () => invalidateHabitLogs(queryClient),
   });
 }
 

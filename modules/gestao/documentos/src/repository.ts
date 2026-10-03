@@ -46,7 +46,7 @@ export class DuplicateDocumentError extends Error {
   }
 }
 
-export async function findDuplicateDocuments(client: Client, contentHash: string): Promise<Document[]> {
+async function findDuplicateDocuments(client: Client, contentHash: string): Promise<Document[]> {
   const { data, error } = await client
     .from("documents")
     .select("*")
@@ -448,17 +448,6 @@ export async function addDocumentRelation(
   return data;
 }
 
-export async function listDocumentRelations(client: Client, documentId: string): Promise<DocumentRelation[]> {
-  const { data, error } = await client.from("document_relations").select("*").eq("document_id", documentId);
-  if (error) throw error;
-  return data;
-}
-
-export async function removeDocumentRelation(client: Client, relationId: string): Promise<void> {
-  const { error } = await client.from("document_relations").delete().eq("id", relationId);
-  if (error) throw error;
-}
-
 export async function removeDocumentRelationByEntity(
   client: Client,
   documentId: string,
@@ -496,21 +485,6 @@ export async function listRelatedDocuments(
     .from("documents")
     .select("*")
     .in("id", relations.map((r) => r.document_id));
-  if (error) throw error;
-  return data;
-}
-
-export async function addImportantDate(
-  client: Client,
-  documentId: string,
-  label: string,
-  date: string,
-): Promise<DocumentImportantDate> {
-  const { data, error } = await client
-    .from("document_important_dates")
-    .insert({ document_id: documentId, label, date })
-    .select("*")
-    .single();
   if (error) throw error;
   return data;
 }

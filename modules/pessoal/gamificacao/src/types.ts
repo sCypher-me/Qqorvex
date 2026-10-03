@@ -1,7 +1,7 @@
 import type { Tables } from "@qqorvex/database";
 
 /**
- * Gamification Core (docs/decisions/gamification-core-design.md) é a fonte única de Nível/XP/
+ * Gamification Core é a fonte única de Nível/XP/
  * Badges/Título — Perfil (`/perfil`) só referencia. Nível e Título nunca são guardados: são
  * sempre derivados de `xp` (mesmo padrão de "Metas — progresso derivado"), pra nunca divergir do
  * total real. `awardXp()` é chamado de dentro dos repositories de Tarefas, Metas & Hábitos,

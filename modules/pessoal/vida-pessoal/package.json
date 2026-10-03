@@ -15,7 +15,6 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@qqorvex/database": "workspace:*",
-    "@qqorvex/design-system": "workspace:*",
     "@qqorvex/module-documentos": "workspace:*",
     "@qqorvex/module-financas": "workspace:*",
     "@qqorvex/module-gamificacao": "workspace:*",

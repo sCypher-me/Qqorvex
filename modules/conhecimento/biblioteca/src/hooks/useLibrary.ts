@@ -26,14 +26,6 @@ export function useArchivedLibraryItems(client: SupabaseClient<Database>, enable
   return { items: query.data ?? [], isLoading: query.isLoading, error: query.error };
 }
 
-export function useCreateLibraryItem(client: SupabaseClient<Database>, userId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: NewLibraryItemInput) => createItem(client, userId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ITEMS_KEY }),
-  });
-}
-
 /**
  * Cria o item e, se vier de uma busca de metadados (Google Books/TMDB), os autores/diretores
  * junto — `library_item_creators` nunca tinha uso real antes do Metadata Provider Layer.

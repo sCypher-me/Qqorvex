@@ -8,7 +8,7 @@ import { LIBRARY_COVER_MAX_SIZE_BYTES, LIBRARY_COVER_MIME_TYPES, type LibraryIte
 /**
  * "Captura manual exige apenas Título e Tipo; demais campos são opcionais ou enriquecidos depois."
  * Enriquecimento agora é possível de verdade pra livro/filme/série via Metadata Provider Layer
- * (docs/decisions/biblioteca-metadata-provider-design.md) — "Buscar" preenche subtítulo/descrição/
+ * — "Buscar" preenche subtítulo/descrição/
  * ano/capa/autores automaticamente; os outros tipos podem receber detalhes manualmente. Detecção de
  * duplicados (mesmo título normalizado + tipo) pede confirmação explícita antes de criar mesmo
  * assim — mesmo padrão de conflito já usado em Documentos/Agenda.

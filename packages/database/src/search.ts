@@ -18,7 +18,7 @@ export interface SearchResult {
 }
 
 /** Termos com menos de 2 caracteres nem vão ao banco (a função também os recusa). */
-export const SEARCH_MIN_LENGTH = 2;
+const SEARCH_MIN_LENGTH = 2;
 
 /**
  * Busca global em títulos e conteúdo, sem acento (`search_everything`, SECURITY INVOKER: as RLS

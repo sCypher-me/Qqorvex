@@ -28,9 +28,9 @@ interface AccountValue {
 
 const AccountContext = createContext<AccountValue | null>(null);
 
-export const ACCOUNT_PROFILE_KEY = "account-profile";
-export const ACCOUNT_SUBSCRIPTION_KEY = "account-subscription";
-export const ACCOUNT_ACCESS_KEY = "account-access";
+const ACCOUNT_PROFILE_KEY = "account-profile";
+const ACCOUNT_SUBSCRIPTION_KEY = "account-subscription";
+const ACCOUNT_ACCESS_KEY = "account-access";
 
 export function AccountProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();

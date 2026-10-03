@@ -3,8 +3,8 @@
  * que `maxGapMs` entre dois toques recomeça a contagem, então ninguém chega lá navegando para o
  * Hoje de vez em quando.
  */
-export const SECRET_TAP_COUNT = 7;
-export const SECRET_TAP_MAX_GAP_MS = 700;
+const SECRET_TAP_COUNT = 7;
+const SECRET_TAP_MAX_GAP_MS = 700;
 
 export interface SecretTapState {
   count: number;

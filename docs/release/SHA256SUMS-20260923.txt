@@ -1,5 +1,0 @@
-64AA77EEE27E5086AA432B7944F91C4DFC31400A4B66F92162C129F95EFB4411  src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
-3141BEDA803C2EA3A77E4709C662C48710AF218E76A3E552FFBF8E39122EFF1E  src-tauri/gen/android/app/build/outputs/bundle/universalDebug/app-universal-debug.aab
-B15CFC1BC543CE8650FAA856AD5C566263667EA7DD05E8967692323837E3955E  src-tauri/target/release/app.exe
-9B1A1C00FF5C5ED1D5AF0536F953DBB85FB15022BE45C7D15C9990434EDF7AD6  src-tauri/target/release/bundle/msi/qqorvex_0.1.0_x64_en-US.msi
-313B25E671007A72FA3D40F68C66AAB28492995D62C03086B478EF2875C3E790  src-tauri/target/release/bundle/nsis/qqorvex_0.1.0_x64-setup.exe

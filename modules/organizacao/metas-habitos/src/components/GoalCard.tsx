@@ -45,7 +45,7 @@ function daysUntil(isoDate: string): number {
 }
 
 /** Progresso real da meta (marcos, saldo de uma conta ou percentual manual) — nunca inventado. */
-export function useGoalProgress(client: SupabaseClient<Database>, goal: Goal) {
+function useGoalProgress(client: SupabaseClient<Database>, goal: Goal) {
   const { milestones } = useMilestones(client, goal.id);
   const { accounts } = useAccounts(client);
   const { transactions } = useTransactions(client);

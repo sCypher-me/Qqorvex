@@ -23,7 +23,7 @@ export function formatXp(value: number): string {
 }
 
 /** Texto padrão de progresso — "X de Y XP para o próximo nível", sempre com os números reais do nível atual. */
-export function LevelProgressText({ progress }: { progress: LevelProgress }) {
+function LevelProgressText({ progress }: { progress: LevelProgress }) {
   const current = progress.xp - progress.xpForCurrentLevel;
   const span = progress.xpForNextLevel - progress.xpForCurrentLevel;
   return (

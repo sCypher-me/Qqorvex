@@ -18,7 +18,7 @@ interface PageMetaContextValue {
 
 const PageMetaContext = createContext<PageMetaContextValue | null>(null);
 
-export function getRouteMeta(pathname: string): PageMetaValue {
+function getRouteMeta(pathname: string): PageMetaValue {
   return { title: getRouteContext(pathname).title };
 }
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowRightIcon, CopyIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
-import { useAuth, useProfile, type Profile } from "@qqorvex/auth";
+import { useAuth, useProfile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
   useAllAccounts,

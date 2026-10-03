@@ -15,7 +15,6 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@qqorvex/database": "workspace:*",
-    "@qqorvex/design-system": "workspace:*",
     "@qqorvex/module-hoje": "workspace:*",
     "@qqorvex/ui": "workspace:*",
     "tesseract.js": "^7.0.0"

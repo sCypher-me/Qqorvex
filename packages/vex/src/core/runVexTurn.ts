@@ -190,7 +190,7 @@ function formatArgValue(value: unknown): string {
   return String(value);
 }
 
-export function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): VexActionPreview {
+function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): VexActionPreview {
   if (tool.preview) {
     try {
       return tool.preview(args);

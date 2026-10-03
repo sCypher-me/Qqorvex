@@ -19,14 +19,6 @@ export const LIBRARY_ITEM_TYPE_LABELS: Record<LibraryItemType, string> = {
   other: "Outro",
 };
 
-export const LIBRARY_STATUS_LABELS: Record<LibraryItem["status"], string> = {
-  quero_consumir: "Quero consumir",
-  em_andamento: "Em andamento",
-  concluido: "Concluído",
-  pausado: "Pausado",
-  abandonado: "Abandonado",
-};
-
 /** Tipos com busca automática de metadados (Google Books/TMDB) — os demais continuam manuais. */
 export const SEARCHABLE_ITEM_TYPES: LibraryItemType[] = ["book", "movie", "series", "anime"];
 

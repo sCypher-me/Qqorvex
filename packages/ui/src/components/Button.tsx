@@ -61,7 +61,7 @@ export interface ButtonStyleOptions {
   iconOnly?: boolean;
 }
 
-export function buttonClasses({ variant = "primary", size, fullWidth, iconOnly }: ButtonStyleOptions = {}): string {
+function buttonClasses({ variant = "primary", size, fullWidth, iconOnly }: ButtonStyleOptions = {}): string {
   const resolvedSize = size ?? "md";
   return cx(base, variants[variant], sizes[resolvedSize], iconOnly && iconOnlySizes[resolvedSize], fullWidth && "w-full");
 }

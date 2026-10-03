@@ -87,23 +87,3 @@ export interface SectionTitleProps {
   actions?: ReactNode;
   className?: string;
 }
-
-/** Título de seção dentro de uma página (acima de uma lista, grade ou grupo de cards). */
-export function SectionTitle({ children, meta, description, actions, className }: SectionTitleProps) {
-  return (
-    <div className={cx("flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1", className)}>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <h2 className="font-display text-[17px] font-semibold leading-snug tracking-[-0.01em] text-fg">{children}</h2>
-          {meta !== undefined && meta !== null && <span className="text-xs tabular-nums text-fg-3">{meta}</span>}
-        </div>
-        {description && <p className="mt-0.5 text-[13px] text-fg-3">{description}</p>}
-      </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-    </div>
-  );
-}
-
-export function Divider({ className, vertical = false }: { className?: string; vertical?: boolean }) {
-  return <div role="separator" aria-orientation={vertical ? "vertical" : "horizontal"} className={cx(vertical ? "w-px self-stretch bg-line" : "h-px w-full bg-line", className)} />;
-}

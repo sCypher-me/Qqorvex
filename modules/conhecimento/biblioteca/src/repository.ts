@@ -1,6 +1,6 @@
 import type { SupabaseClient, Database, TablesUpdate } from "@qqorvex/database";
 import { awardXp } from "@qqorvex/module-gamificacao";
-import { LIBRARY_COVER_MAX_SIZE_BYTES, LIBRARY_COVER_MIME_TYPES, type LibraryCollection, type LibraryCoverChange, type LibraryItem, type LibraryItemCreator, type LibraryItemEditInput, type LibraryItemStatus, type NewLibraryItemInput } from "./types";
+import { LIBRARY_COVER_MAX_SIZE_BYTES, LIBRARY_COVER_MIME_TYPES, type LibraryCoverChange, type LibraryItem, type LibraryItemCreator, type LibraryItemEditInput, type LibraryItemStatus, type NewLibraryItemInput } from "./types";
 import { toLibraryItemInsert, toLibraryItemUpdate } from "./types";
 
 type Client = SupabaseClient<Database>;
@@ -118,7 +118,7 @@ export async function updateItem(
   return (await withCoverUrls(client, [data]))[0]!;
 }
 
-/** Confere o status anterior antes de gravar pra premiar XP só na transição pra "concluido" (docs/decisions/gamification-core-design.md). */
+/** Confere o status anterior antes de gravar pra premiar XP só na transição pra "concluido". */
 export async function updateItemStatus(client: Client, itemId: string, status: LibraryItemStatus): Promise<LibraryItem> {
   const { data: before, error: beforeError } = await client.from("library_items").select("status, user_id").eq("id", itemId).single();
   if (beforeError) throw beforeError;
@@ -204,27 +204,6 @@ export async function deleteItem(client: Client, itemId: string): Promise<void> 
     const { error: storageError } = await client.storage.from(COVER_BUCKET).remove([item.cover_image_path]);
     if (storageError) console.warn("A capa não foi removida do armazenamento:", storageError);
   }
-}
-
-export async function listCollections(client: Client): Promise<LibraryCollection[]> {
-  const { data, error } = await client.from("library_collections").select("*").order("created_at", { ascending: true });
-  if (error) throw error;
-  return data;
-}
-
-export async function createCollection(client: Client, userId: string, name: string): Promise<LibraryCollection> {
-  const { data, error } = await client
-    .from("library_collections")
-    .insert({ user_id: userId, name })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function addItemToCollection(client: Client, collectionId: string, itemId: string): Promise<void> {
-  const { error } = await client.from("library_collection_items").insert({ collection_id: collectionId, item_id: itemId });
-  if (error) throw error;
 }
 
 /**

@@ -16,7 +16,7 @@ export type DailyChallengeDefinition = {
   rewardXp: number;
 };
 
-export const DAILY_CHALLENGE_XP: Record<DailyChallengeDifficulty, number> = {
+const DAILY_CHALLENGE_XP: Record<DailyChallengeDifficulty, number> = {
   Fácil: 10,
   Médio: 25,
   Difícil: 50,
@@ -189,7 +189,7 @@ export function shiftLocalDateKey(dateKey: string, offsetDays: number): string {
   return new Date(Date.UTC(year, month - 1, day + offsetDays)).toISOString().slice(0, 10);
 }
 
-export function millisecondsUntilNextMidnight(date = new Date()): number {
+function millisecondsUntilNextMidnight(date = new Date()): number {
   const nextMidnight = new Date(date);
   nextMidnight.setHours(24, 0, 0, 0);
   return Math.max(0, nextMidnight.getTime() - date.getTime());
