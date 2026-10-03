@@ -18,7 +18,8 @@ export type DocumentQuickFilter = "all" | "important" | "vault" | "recent";
 export type DocumentSortOrder = "newest" | "oldest" | "name" | "largest";
 export type DocumentStorageQuota = {
   usedBytes: number;
-  quotaBytes: number;
+  /** `null` = sem cota por conta (acesso Ilimitado); o tamanho por arquivo continua valendo. */
+  quotaBytes: number | null;
   maxFileBytes: number;
   isPlus: boolean;
 };
@@ -35,7 +36,7 @@ export class DocumentStorageLimitError extends Error {
 
 export function assertDocumentFitsStorageQuota(fileBytes: number, quota: DocumentStorageQuota): void {
   if (fileBytes > quota.maxFileBytes) throw new DocumentStorageLimitError("file", quota.maxFileBytes);
-  if (quota.usedBytes + fileBytes > quota.quotaBytes) throw new DocumentStorageLimitError("storage", quota.quotaBytes);
+  if (quota.quotaBytes !== null && quota.usedBytes + fileBytes > quota.quotaBytes) throw new DocumentStorageLimitError("storage", quota.quotaBytes);
 }
 
 export function documentStorageLimitFromError(error: unknown): DocumentStorageLimitError | null {

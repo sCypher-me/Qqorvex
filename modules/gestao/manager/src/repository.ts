@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import type { ManagedAccount, NewRedemptionCodeInput, RedemptionCode, SystemOverview } from "./types";
+import type { ManagedAccount, NewRedemptionCodeInput, PartnerCampaign, PartnerCampaignInput, RedeemResult, RedemptionCode, RedemptionCodeTier, SystemOverview } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -56,17 +56,60 @@ function generateCode(): string {
 export async function createRedemptionCode(client: Client, userId: string, input: NewRedemptionCodeInput): Promise<RedemptionCode> {
   const { data, error } = await client
     .from("redemption_codes")
-    .insert({ code: generateCode(), tier: input.tier, note: input.note ?? null, created_by: userId })
+    .insert({ code: generateCode(), tier: input.tier, note: input.note ?? null, created_by: userId, campaign_id: input.tier === "parceiro" ? (input.campaignId ?? null) : null })
     .select("*")
     .single();
   if (error) throw error;
   return data;
 }
 
-/** `redeem_code()` valida (existe, não usado) e já atualiza `account_tier` do próprio perfil, atômico. */
-export async function redeemCode(client: Client, code: string): Promise<string> {
-  const { data, error } = await client.rpc("redeem_code", { input_code: code.trim().toUpperCase() });
+const REDEEM_TIERS: readonly RedemptionCodeTier[] = ["parceiro", "lifetime", "beta_tester"];
+
+/** Valida a resposta de `redeem_code()` (jsonb). Formato inesperado vira erro genérico. */
+export function parseRedeemResult(raw: unknown): RedeemResult {
+  const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  if (value.ok === true && REDEEM_TIERS.includes(value.tier as RedemptionCodeTier)) {
+    return {
+      ok: true,
+      tier: value.tier as RedemptionCodeTier,
+      partnerUntil: typeof value.partner_until === "string" ? value.partner_until : null,
+      partnerCampaign: typeof value.partner_campaign === "string" ? value.partner_campaign : null,
+    };
+  }
+  return { ok: false, error: typeof value.error === "string" && value.error ? value.error : "Não foi possível ativar o código." };
+}
+
+/**
+ * `redeem_code()` valida o código, aplica o acesso e já concede a insígnia (Lifetime/Beta) numa
+ * transação só. Erros esperados (código inválido, muitas tentativas) voltam como `ok: false`.
+ */
+export async function redeemCode(client: Client, code: string): Promise<RedeemResult> {
+  const { data, error } = await client.rpc("redeem_code", { input_code: code });
   if (error) throw new Error(error.message.replace(/^.*?:\s*/, ""));
+  return parseRedeemResult(data);
+}
+
+/** Campanhas de Parceiro — RLS só deixa o Dono ler e escrever. */
+export async function listPartnerCampaigns(client: Client): Promise<PartnerCampaign[]> {
+  const { data, error } = await client.from("partner_campaigns").select("*").order("ends_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function createPartnerCampaign(client: Client, userId: string, input: PartnerCampaignInput): Promise<PartnerCampaign> {
+  const { data, error } = await client
+    .from("partner_campaigns")
+    .insert({ name: input.name.trim(), ends_at: input.endsAt, created_by: userId })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Estender ou encerrar (data no passado) vale para todos os parceiros da campanha na hora. */
+export async function updatePartnerCampaignEnd(client: Client, campaignId: string, endsAt: string): Promise<PartnerCampaign> {
+  const { data, error } = await client.from("partner_campaigns").update({ ends_at: endsAt }).eq("id", campaignId).select("*").single();
+  if (error) throw error;
   return data;
 }
 

@@ -6,6 +6,7 @@ import { NotificationsButton } from "./Notifications";
 import { getRouteContext } from "./navigation";
 import { QuickCreateMenu } from "./QuickCreate";
 import { UserMenu } from "./UserMenu";
+import { useSecretBrandTap } from "../secret/SecretRedeem";
 
 /**
  * Barra superior fina: trilha de navegação (desktop) ou marca + título (celular), e à direita
@@ -15,10 +16,11 @@ export function TopBar({ onOpenPalette, onToggleVex, vexOpen }: { onOpenPalette:
   const location = useLocation();
   const context = getRouteContext(location.pathname);
   const isVexPage = location.pathname === "/vex";
+  const onBrandTap = useSecretBrandTap();
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-line-soft bg-canvas/85 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-6 lg:px-8">
-      <Link to="/" className="flex items-center lg:hidden" aria-label="Ir para Hoje">
+      <Link to="/" onClick={onBrandTap} className="flex items-center lg:hidden" aria-label="Ir para Hoje">
         <BrandSymbol size={22} />
       </Link>
       <span className="min-w-0 flex-1 truncate font-display text-[16px] font-semibold text-fg lg:hidden">{context.area?.label ?? context.title}</span>

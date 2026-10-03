@@ -2162,6 +2162,33 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          ends_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ends_at: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ends_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_tier: string
@@ -2172,6 +2199,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_beta_tester: boolean
+          partner_campaign_id: string | null
           phone: string | null
           pin_failed_attempts: number
           pin_hash: string | null
@@ -2191,6 +2219,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_beta_tester?: boolean
+          partner_campaign_id?: string | null
           phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
@@ -2210,6 +2239,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_beta_tester?: boolean
+          partner_campaign_id?: string | null
           phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
@@ -2220,7 +2250,15 @@ export type Database = {
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_partner_campaign_id_fkey"
+            columns: ["partner_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "partner_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_tasks: {
         Row: {
@@ -2600,6 +2638,7 @@ export type Database = {
       }
       redemption_codes: {
         Row: {
+          campaign_id: string | null
           code: string
           created_at: string
           created_by: string
@@ -2610,6 +2649,7 @@ export type Database = {
           tier: string
         }
         Insert: {
+          campaign_id?: string | null
           code: string
           created_at?: string
           created_by: string
@@ -2620,6 +2660,7 @@ export type Database = {
           tier: string
         }
         Update: {
+          campaign_id?: string | null
           code?: string
           created_at?: string
           created_by?: string
@@ -2629,7 +2670,15 @@ export type Database = {
           redeemed_by?: string | null
           tier?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "redemption_codes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "partner_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routine_habits: {
         Row: {
@@ -3346,11 +3395,12 @@ export type Database = {
         Args: { p_feature: string; p_user_id: string }
         Returns: Json
       }
+      get_my_access: { Args: never; Returns: Json }
       get_my_document_storage_quota: {
         Args: never
         Returns: {
           used_bytes: number
-          quota_bytes: number
+          quota_bytes: number | null
           max_file_bytes: number
           is_plus: boolean
         }[]
@@ -3424,7 +3474,7 @@ export type Database = {
           updated_at: string
         }[]
       }
-      redeem_code: { Args: { input_code: string }; Returns: string }
+      redeem_code: { Args: { input_code: string }; Returns: Json }
       sync_my_gamification_badges: { Args: never; Returns: number }
       release_billing_quota: {
         Args: { p_feature: string; p_month_start: string; p_user_id: string }

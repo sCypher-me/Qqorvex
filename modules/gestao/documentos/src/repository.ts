@@ -14,7 +14,7 @@ async function assertStorageQuota(client: Client, fileBytes: number): Promise<vo
   if (!row) throw new Error("Não foi possível conferir o espaço disponível. Tente novamente antes de enviar.");
   assertDocumentFitsStorageQuota(fileBytes, {
     usedBytes: Number(row.used_bytes),
-    quotaBytes: Number(row.quota_bytes),
+    quotaBytes: row.quota_bytes === null ? null : Number(row.quota_bytes),
     maxFileBytes: Number(row.max_file_bytes),
     isPlus: row.is_plus,
   });
@@ -31,7 +31,7 @@ export async function getDocumentStorageQuota(client: Client) {
   if (!row) return null;
   return {
     usedBytes: Number(row.used_bytes),
-    quotaBytes: Number(row.quota_bytes),
+    quotaBytes: row.quota_bytes === null ? null : Number(row.quota_bytes),
     maxFileBytes: Number(row.max_file_bytes),
     isPlus: row.is_plus,
   };

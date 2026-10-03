@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfile, useAuth, type Profile } from "@qqorvex/auth";
-import { hasPlusEntitlement } from "../billing/entitlements";
+import { hasPlusEntitlement, parseAccountAccess, type AccountAccess } from "../billing/entitlements";
 import { supabase } from "./supabase";
 
 /**
@@ -15,7 +15,11 @@ interface AccountValue {
   displayName: string;
   firstName: string;
   isOwner: boolean;
+  /** Tudo que o Plus libera — também verdadeiro para quem é Ilimitado. */
   isPlus: boolean;
+  /** Lifetime, Parceiro com campanha ativa ou Dono: nenhuma cota. */
+  isUnlimited: boolean;
+  access: AccountAccess | null;
   /** Assinatura ainda carregando — não trate como "sem Plus" nesse intervalo. */
   planLoading: boolean;
   isLoading: boolean;
@@ -26,6 +30,7 @@ const AccountContext = createContext<AccountValue | null>(null);
 
 export const ACCOUNT_PROFILE_KEY = "account-profile";
 export const ACCOUNT_SUBSCRIPTION_KEY = "account-subscription";
+export const ACCOUNT_ACCESS_KEY = "account-access";
 
 export function AccountProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
@@ -53,10 +58,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     staleTime: 5 * 60_000,
   });
 
+  const accessQuery = useQuery({
+    queryKey: [ACCOUNT_ACCESS_KEY, userId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_access");
+      if (error) return null;
+      return parseAccountAccess(data);
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const profile = profileQuery.data ?? null;
   const metadataName = typeof session!.user.user_metadata?.full_name === "string" ? (session!.user.user_metadata.full_name as string) : "";
   const displayName = profile?.display_name || profile?.full_name || metadataName || profile?.username || email.split("@")[0] || "Você";
   const isOwner = profile?.role === "dono";
+  const access = accessQuery.data ?? null;
+  const isUnlimited = isOwner || access?.level === "unlimited";
 
   const value: AccountValue = {
     userId,
@@ -65,12 +82,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     displayName,
     firstName: displayName.trim().split(/\s+/)[0] ?? displayName,
     isOwner,
-    isPlus: hasPlusEntitlement(subscriptionQuery.data, Date.now(), isOwner),
-    planLoading: subscriptionQuery.isLoading || profileQuery.isLoading,
+    isPlus: isUnlimited || access?.level === "plus" || hasPlusEntitlement(subscriptionQuery.data, Date.now(), isOwner),
+    isUnlimited,
+    access,
+    planLoading: subscriptionQuery.isLoading || profileQuery.isLoading || accessQuery.isLoading,
     isLoading: profileQuery.isLoading,
     refresh: () => {
       void queryClient.invalidateQueries({ queryKey: [ACCOUNT_PROFILE_KEY, userId] });
       void queryClient.invalidateQueries({ queryKey: [ACCOUNT_SUBSCRIPTION_KEY, userId] });
+      void queryClient.invalidateQueries({ queryKey: [ACCOUNT_ACCESS_KEY, userId] });
     },
   };
 

@@ -5,13 +5,17 @@ import { useAuth, useProfile, type Profile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
   useAllAccounts,
+  useCreatePartnerCampaign,
   useCreateRedemptionCode,
   useDeleteAccount,
+  usePartnerCampaigns,
   useRedemptionCodes,
   useSecretKeys,
   useSetSecret,
   useSystemOverview,
+  useUpdatePartnerCampaignEnd,
   type AccountTier,
+  type PartnerCampaign,
 } from "@qqorvex/module-manager";
 import { supabase } from "../app/supabase";
 import { usePageMeta } from "../app/shell/PageMeta";
@@ -248,8 +252,13 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
 function CodesSection({ userId }: { userId: string }) {
   const { toast } = useToast();
   const { codes, isLoading, error } = useRedemptionCodes(supabase);
+  const { campaigns } = usePartnerCampaigns(supabase);
   const createCode = useCreateRedemptionCode(supabase, userId);
-  const [tier, setTier] = useState<"parceiro" | "lifetime" | "beta_tester">("parceiro");
+  const [tier, setTier] = useState<"parceiro" | "lifetime" | "beta_tester">("lifetime");
+  const activeCampaigns = campaigns.filter(isCampaignActive);
+  const [campaignId, setCampaignId] = useState("");
+  const selectedCampaignId = activeCampaigns.some((campaign) => campaign.id === campaignId) ? campaignId : (activeCampaigns[0]?.id ?? "");
+  const campaignName = (id: string | null) => campaigns.find((campaign) => campaign.id === id)?.name;
   const [note, setNote] = useState("");
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -260,7 +269,7 @@ function CodesSection({ userId }: { userId: string }) {
     setCreateError(null);
     setCopyMessage(null);
     try {
-      const created = await createCode.mutateAsync({ tier, note: note.trim() || undefined });
+      const created = await createCode.mutateAsync({ tier, note: note.trim() || undefined, campaignId: tier === "parceiro" ? selectedCampaignId : undefined });
       setLastGenerated(created.code);
       setNote("");
     } catch (caught) {
@@ -282,15 +291,28 @@ function CodesSection({ userId }: { userId: string }) {
 
   return (
     <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(300px,.7fr)_minmax(0,1.3fr)]">
-      <Panel title="Novo código de convite" description="Concede acesso Parceiro, Lifetime ou o selo de Beta Tester.">
+      <div className="flex min-w-0 flex-col gap-5">
+      <Panel title="Novo código de convite" description="Lifetime: ilimitado para sempre (não está à venda). Parceiro: ilimitado até o fim da campanha. A pessoa ativa tocando 7 vezes seguidas na estrela do Qqorvex.">
         <form onSubmit={handleCreate} className="flex min-w-0 flex-col gap-3">
           <Select label="Acesso concedido" value={tier} onChange={(event) => setTier(event.target.value as typeof tier)}>
-            <option value="parceiro">Parceiro</option>
             <option value="lifetime">Lifetime</option>
+            <option value="parceiro">Parceiro</option>
             <option value="beta_tester">Beta Tester</option>
           </Select>
+          {tier === "parceiro" &&
+            (activeCampaigns.length > 0 ? (
+              <Select label="Campanha" value={selectedCampaignId} onChange={(event) => setCampaignId(event.target.value)} hint="O acesso do parceiro acaba quando a campanha acaba.">
+                {activeCampaigns.map((campaign) => (
+                  <option key={campaign.id} value={campaign.id}>
+                    {campaign.name} · até {shortDate.format(new Date(campaign.ends_at))}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Notice compact tone="info">Crie uma campanha ativa abaixo antes de gerar códigos de Parceiro.</Notice>
+            ))}
           <Input label="Para quem (opcional)" placeholder="Ex.: convite para a Carol" value={note} onChange={(event) => setNote(event.target.value)} />
-          <Button type="submit" className="self-start" leadingIcon={<TicketIcon size={16} />} loading={createCode.isPending}>
+          <Button type="submit" className="self-start" leadingIcon={<TicketIcon size={16} />} loading={createCode.isPending} disabled={tier === "parceiro" && !selectedCampaignId}>
             Gerar código
           </Button>
         </form>
@@ -308,6 +330,8 @@ function CodesSection({ userId }: { userId: string }) {
           </div>
         )}
       </Panel>
+      <CampaignsPanel userId={userId} campaigns={campaigns} codes={codes} />
+      </div>
 
       <Panel title="Códigos emitidos" aside={!isLoading && !error && codes.length > 0 ? <span className="text-xs tabular-nums text-fg-3">{codes.length} · {pending} pendentes</span> : undefined}>
         {isLoading ? (
@@ -324,6 +348,7 @@ function CodesSection({ userId }: { userId: string }) {
                   <code className="block truncate font-mono text-[13.5px] font-semibold text-fg">{code.code}</code>
                   <p className="truncate text-xs text-fg-3">
                     Criado em {shortDate.format(new Date(code.created_at))}
+                    {code.campaign_id ? ` · ${campaignName(code.campaign_id) ?? "campanha"}` : ""}
                     {code.note ? ` · ${code.note}` : ""}
                   </p>
                 </div>
@@ -340,6 +365,115 @@ function CodesSection({ userId }: { userId: string }) {
         )}
       </Panel>
     </div>
+  );
+}
+
+function isCampaignActive(campaign: PartnerCampaign): boolean {
+  return Date.parse(campaign.ends_at) > Date.now();
+}
+
+/** Fim do dia escolhido no horário de Brasília (sem horário de verão desde 2019). */
+function endOfDaySaoPaulo(date: string): string {
+  return new Date(`${date}T23:59:59-03:00`).toISOString();
+}
+
+function dateInputValue(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+}
+
+/**
+ * Campanhas de Parceiro: cada código de Parceiro pertence a uma. Mudar a data (estender ou
+ * encerrar) vale na hora para todos os parceiros da campanha.
+ */
+function CampaignsPanel({ userId, campaigns, codes }: { userId: string; campaigns: PartnerCampaign[]; codes: { campaign_id: string | null; redeemed_by: string | null }[] }) {
+  const { toast } = useToast();
+  const createCampaign = useCreatePartnerCampaign(supabase, userId);
+  const updateEnd = useUpdatePartnerCampaignEnd(supabase);
+  const [name, setName] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [ending, setEnding] = useState<PartnerCampaign | null>(null);
+  const today = dateInputValue(new Date().toISOString());
+
+  function handleCreate(event: FormEvent) {
+    event.preventDefault();
+    if (!name.trim() || !endDate) return;
+    createCampaign.mutate(
+      { name, endsAt: endOfDaySaoPaulo(endDate) },
+      {
+        onSuccess: () => {
+          setName("");
+          setEndDate("");
+          toast({ title: "Campanha criada", tone: "success" });
+        },
+        onError: () => toast({ title: "Não foi possível criar a campanha", tone: "danger" }),
+      },
+    );
+  }
+
+  function changeEnd(campaign: PartnerCampaign, date: string) {
+    if (!date || date === dateInputValue(campaign.ends_at)) return;
+    updateEnd.mutate(
+      { campaignId: campaign.id, endsAt: endOfDaySaoPaulo(date) },
+      { onSuccess: () => toast({ title: `“${campaign.name}” vai até ${shortDate.format(new Date(endOfDaySaoPaulo(date)))}`, tone: "success" }) },
+    );
+  }
+
+  return (
+    <Panel title="Campanhas de Parceiro" description="O acesso Parceiro dura até o fim da campanha. Estender ou encerrar vale para todos de uma vez; quem sai volta ao plano que tinha, sem perder nada.">
+      <form onSubmit={handleCreate} className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end">
+        <Input label="Nome" placeholder="Ex.: Lançamento" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} />
+        <Input label="Termina em" type="date" min={today} value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+        <Button type="submit" variant="secondary" loading={createCampaign.isPending} disabled={!name.trim() || !endDate}>
+          Criar
+        </Button>
+      </form>
+      {campaigns.length > 0 && (
+        <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
+          {campaigns.map((campaign) => {
+            const active = isCampaignActive(campaign);
+            const partners = codes.filter((code) => code.campaign_id === campaign.id && code.redeemed_by).length;
+            return (
+              <li key={campaign.id} className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13.5px] font-medium text-fg">{campaign.name}</p>
+                  <p className="text-xs text-fg-3">
+                    {partners} {partners === 1 ? "parceiro" : "parceiros"} · {active ? "até" : "terminou em"} {shortDate.format(new Date(campaign.ends_at))}
+                  </p>
+                </div>
+                <Badge tone={active ? "success" : "neutral"}>{active ? "Ativa" : "Encerrada"}</Badge>
+                <Input
+                  aria-label={`Nova data de fim de ${campaign.name}`}
+                  type="date"
+                  fieldSize="sm"
+                  wrapperClassName="w-[150px]"
+                  min={today}
+                  defaultValue={dateInputValue(campaign.ends_at)}
+                  key={campaign.ends_at}
+                  onBlur={(event) => changeEnd(campaign, event.target.value)}
+                />
+                {active && (
+                  <Button size="sm" variant="ghost" onClick={() => setEnding(campaign)}>
+                    Encerrar agora
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <ConfirmDialog
+        isOpen={ending !== null}
+        title={ending ? `Encerrar “${ending.name}” agora?` : "Encerrar campanha"}
+        description="Todos os parceiros desta campanha perdem o acesso ilimitado na hora e voltam ao plano que tinham. Dá para reativar escolhendo uma nova data de fim."
+        confirmLabel="Encerrar campanha"
+        destructive
+        onCancel={() => setEnding(null)}
+        onConfirm={() => {
+          if (ending) updateEnd.mutate({ campaignId: ending.id, endsAt: new Date().toISOString() }, { onSuccess: () => toast({ title: "Campanha encerrada", tone: "success" }) });
+          setEnding(null);
+        }}
+      />
+    </Panel>
   );
 }
 

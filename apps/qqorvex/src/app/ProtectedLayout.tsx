@@ -12,6 +12,7 @@ import { useVipSkinGuard } from "./useVipSkinGuard";
 import { PageMetaProvider } from "./shell/PageMeta";
 import { Sidebar } from "./shell/Sidebar";
 import { TopBar } from "./shell/TopBar";
+import { SecretRedeemProvider } from "./secret/SecretRedeem";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MobileBottomNav } from "./shell/MobileNav";
 import { PageTransition } from "./shell/PageTransition";
@@ -78,7 +79,9 @@ export function ProtectedLayout() {
           <CurrentItemProvider>
             <PageMetaProvider>
               <QuickCreateProvider>
-                <Shell />
+                <SecretRedeemProvider>
+                  <Shell />
+                </SecretRedeemProvider>
               </QuickCreateProvider>
             </PageMetaProvider>
           </CurrentItemProvider>

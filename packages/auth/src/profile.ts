@@ -6,7 +6,7 @@ import type { SupabaseClient, Database, Tables, TablesUpdate } from "@qqorvex/da
  * signup por um trigger (`handle_new_user`); aqui só lemos/atualizamos, nunca inserimos/removemos.
  */
 /** Campos seguros para a aplicação. Os campos internos do PIN nunca são lidos pelo cliente. */
-export type Profile = Omit<Tables<"profiles">, "pin_hash" | "pin_failed_attempts" | "pin_locked_until" | "is_beta_tester">;
+export type Profile = Omit<Tables<"profiles">, "pin_hash" | "pin_failed_attempts" | "pin_locked_until" | "is_beta_tester" | "partner_campaign_id">;
 
 export interface ProfileInput {
   displayName?: string | null;

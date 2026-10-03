@@ -223,7 +223,7 @@ export function DocumentosPage() {
         description={
           isLoading
             ? "Carregando…"
-            : `${allDocuments.length} ${allDocuments.length === 1 ? "arquivo" : "arquivos"}${storageQuota ? ` · ${formatDocumentStorage(storageQuota.usedBytes)} de ${formatDocumentStorage(storageQuota.quotaBytes)} usados` : ""}`
+            : `${allDocuments.length} ${allDocuments.length === 1 ? "arquivo" : "arquivos"}${storageQuota ? ` · ${formatDocumentStorage(storageQuota.usedBytes)} ${storageQuota.quotaBytes === null ? "usados · sem limite" : `de ${formatDocumentStorage(storageQuota.quotaBytes)} usados`}` : ""}`
         }
         actions={
           <Button leadingIcon={<UploadSimpleIcon size={16} />} onClick={() => setIsUploadDialogOpen(true)}>
@@ -250,7 +250,7 @@ export function DocumentosPage() {
           if (!uploadDocument.isPending) setIsUploadDialogOpen(false);
         }}
         title="Adicionar arquivo"
-        description={storageQuota ? `Até ${formatDocumentStorage(storageQuota.maxFileBytes)} por arquivo · ${formatDocumentStorage(Math.max(0, storageQuota.quotaBytes - storageQuota.usedBytes))} livres` : "Arraste um arquivo ou escolha do dispositivo."}
+        description={storageQuota ? `Até ${formatDocumentStorage(storageQuota.maxFileBytes)} por arquivo · ${storageQuota.quotaBytes === null ? "espaço ilimitado" : `${formatDocumentStorage(Math.max(0, storageQuota.quotaBytes - storageQuota.usedBytes))} livres`}` : "Arraste um arquivo ou escolha do dispositivo."}
         size="lg"
         icon={<UploadSimpleIcon />}
       >
@@ -489,7 +489,7 @@ export function DocumentosPage() {
                 </div>
                 <ProgressBar value={storagePercent} height={5} tone={storagePercent > 90 ? "danger" : storagePercent > 75 ? "warning" : "gold"} label="Armazenamento usado" />
                 <p className="mt-2 text-xs text-fg-3">
-                  {formatDocumentStorage(storageQuota.usedBytes)} de {formatDocumentStorage(storageQuota.quotaBytes)} · privado e criptografado no envio
+                  {formatDocumentStorage(storageQuota.usedBytes)} de {formatDocumentStorage(storageQuota.quotaBytes ?? 0)} · privado e criptografado no envio
                 </p>
               </section>
             )}
