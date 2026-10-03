@@ -204,12 +204,6 @@ export async function createRecurringEvent(
     .insert({ ...values, time_zone: input.timeZone })
     .select("*")
     .single();
-  if (error && /time_zone/i.test(error.message) && (error.code === "42703" || error.code === "PGRST204")) {
-    // Graceful transition while the additive migration is awaiting deployment.
-    const legacyResult = await client.from("recurring_events").insert(values).select("*").single();
-    if (legacyResult.error) throw legacyResult.error;
-    return legacyResult.data;
-  }
   if (error) throw error;
   return data;
 }

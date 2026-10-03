@@ -1,5 +1,3 @@
--- Histórico de autenticação visível somente pelo titular, limitado a 90 dias.
--- A tabela de origem pertence ao Supabase Auth e não é exposta pela Data API.
 create or replace function public.list_my_security_login_history()
 returns table (
   id uuid,

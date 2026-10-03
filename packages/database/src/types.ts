@@ -3395,6 +3395,23 @@ export type Database = {
         Args: { p_feature: string; p_user_id: string }
         Returns: Json
       }
+      gamification_progress_daily_challenge: {
+        Args: {
+          p_challenge_date: string
+          p_challenge_key: string
+          p_reward_xp: number
+          p_target: number
+        }
+        Returns: boolean
+      }
+      gamification_record_action: {
+        Args: { p_action: string }
+        Returns: undefined
+      }
+      gamification_record_milestone: {
+        Args: { p_milestone: string }
+        Returns: undefined
+      }
       get_my_access: { Args: never; Returns: Json }
       get_my_document_storage_quota: {
         Args: never
