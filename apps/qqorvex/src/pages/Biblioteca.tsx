@@ -8,17 +8,19 @@ import {
   LIBRARY_ITEM_TYPE_LABELS,
   LibraryCard,
   LibraryCover,
+  LibraryFeaturedBanner,
+  LibraryShelves,
   LibraryRow,
   NewItemForm,
   STATUS_META,
-  computeProgressPercent,
-  progressText,
+  buildLibraryShelves,
   useArchiveLibraryItem,
   useArchivedLibraryItems,
   useCreateLibraryItemWithCreators,
   useDeleteLibraryItem,
   useItemCreators,
   useLibraryItems,
+  useLibraryQuickStep,
   useToggleFavorite,
   useUpdateItemReview,
   useUpdateItemStatus,
@@ -29,7 +31,7 @@ import {
   type LibraryItemType,
 } from "@qqorvex/module-biblioteca";
 import { relateLibraryItem, useNotebooks } from "@qqorvex/module-estudos";
-import { Button, ConfirmDialog, EmptyState, IconButton, Modal, Notice, PageContainer, PageHeader, ProgressBar, Segmented, Sheet, Skeleton, Tabs, useToast } from "@qqorvex/ui";
+import { Button, ConfirmDialog, EmptyState, IconButton, Modal, Notice, PageContainer, PageHeader, Segmented, Sheet, Skeleton, Tabs, useToast } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
 import { supabase } from "../app/supabase";
 import { usePageMeta } from "../app/shell/PageMeta";
@@ -62,36 +64,6 @@ function readViewPreference(): "grade" | "lista" {
   } catch {
     return "grade";
   }
-}
-
-/** Card da faixa "Continuar": capa, progresso e +1 (página, episódio, aula). */
-function ContinueCard({ item, onOpen, onStep, busy }: { item: LibraryItem; onOpen: () => void; onStep: () => void; busy: boolean }) {
-  const percent = computeProgressPercent(item);
-  const text = progressText(item);
-  const canStep = percent !== null && percent < 100;
-  return (
-    <div className="flex w-[280px] shrink-0 items-center gap-3 rounded-xl border border-line bg-surface p-3">
-      <button type="button" onClick={onOpen} className="w-12 shrink-0" aria-label={`Abrir ${item.title}`}>
-        <LibraryCover item={item} showTitle={false} className="w-full rounded-md" />
-      </button>
-      <div className="min-w-0 flex-1">
-        <button type="button" onClick={onOpen} className="block w-full truncate text-left text-[13.5px] font-medium text-fg hover:underline">
-          {item.title}
-        </button>
-        <p className="truncate text-xs text-fg-3">{text ?? "Sem progresso registrado"}</p>
-        {percent !== null && <ProgressBar value={percent} height={4} className="mt-2" label={`Progresso de ${item.title}`} />}
-      </div>
-      {canStep ? (
-        <IconButton label={`Avançar ${item.progress_unit ? `1 ${item.progress_unit.replace(/s$/, "")}` : "progresso"} em ${item.title}`} variant="secondary" onClick={onStep} disabled={busy}>
-          <PlusIcon weight="bold" />
-        </IconButton>
-      ) : (
-        <Button size="xs" variant="ghost" onClick={onOpen}>
-          Registrar
-        </Button>
-      )}
-    </div>
-  );
 }
 
 export function BibliotecaPage() {
@@ -166,26 +138,10 @@ export function BibliotecaPage() {
       });
   }, [search, sort, source, tab, type]);
 
-  const continuing = items.filter((item) => item.status === "em_andamento").sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-
-  function step(item: LibraryItem) {
-    const current = item.progress_current ?? 0;
-    if (item.progress_mode === "percentual") {
-      updateProgress.mutate({ itemId: item.id, progress: { mode: "percentual", current: Math.min(100, current + 5) } });
-      return;
-    }
-    const next = Math.min(item.progress_total ?? Infinity, current + 1);
-    updateProgress.mutate(
-      { itemId: item.id, progress: { mode: "numerico", current: next, total: item.progress_total ?? undefined, unit: item.progress_unit ?? undefined } },
-      {
-        onSuccess: () => {
-          if (item.progress_total && next >= item.progress_total) {
-            toast({ title: `Você terminou “${item.title}”?`, tone: "success", action: { label: "Marcar concluído", onClick: () => updateStatus.mutate({ itemId: item.id, status: "concluido" }) } });
-          }
-        },
-      },
-    );
-  }
+  // Sem busca e sem filtro, a Biblioteca abre em fileiras (estilo streaming); com eles, a grade/lista.
+  const isStreaming = tab === "todos" && !type && !search.trim();
+  const { featured, shelves } = useMemo(() => buildLibraryShelves(items), [items]);
+  const quickStep = useLibraryQuickStep(supabase);
 
   return (
     <PageContainer>
@@ -198,17 +154,6 @@ export function BibliotecaPage() {
           </Button>
         }
       />
-
-      {continuing.length > 0 && (
-        <section className="flex flex-col gap-2.5">
-          <h2 className="text-[13px] font-semibold text-fg-2">Continuar</h2>
-          <div className="q-scroll-x -mx-1 flex gap-3 px-1 pb-1">
-            {continuing.map((item) => (
-              <ContinueCard key={item.id} item={item} onOpen={() => openItem(item.id)} onStep={() => step(item)} busy={updateProgress.isPending} />
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="flex flex-col gap-4">
         <Tabs<StatusTab>
@@ -264,6 +209,19 @@ export function BibliotecaPage() {
             {Array.from({ length: 8 }, (_, index) => (
               <Skeleton key={index} className="aspect-[2/3] w-full rounded-lg" />
             ))}
+          </div>
+        ) : isStreaming && items.length > 0 ? (
+          <div className="flex flex-col gap-7 pt-1">
+            {featured && (
+              <LibraryFeaturedBanner
+                featured={featured}
+                onOpen={() => openItem(featured.item.id)}
+                onStep={() => quickStep.step(featured.item)}
+                onStart={() => quickStep.start(featured.item)}
+                busy={quickStep.isPending}
+              />
+            )}
+            <LibraryShelves shelves={shelves} onOpen={(item) => openItem(item.id)} onStep={quickStep.step} busy={quickStep.isPending} />
           </div>
         ) : visible.length === 0 ? (
           <EmptyState

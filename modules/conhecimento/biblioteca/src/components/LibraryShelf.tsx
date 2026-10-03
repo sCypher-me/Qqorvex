@@ -78,7 +78,7 @@ export function RatingStars({ value, size = 13 }: { value: number | null; size?:
 export function LibraryCard({ item, onOpen }: { item: LibraryItem; onOpen: () => void }) {
   const percent = computeProgressPercent(item);
   return (
-    <button type="button" onClick={onOpen} className="group flex min-w-0 flex-col gap-2 rounded-xl p-1.5 text-left transition-colors hover:bg-hover">
+    <button type="button" onClick={onOpen} className="group flex w-full min-w-0 flex-col gap-2 rounded-xl p-1.5 text-left transition-colors hover:bg-hover">
       <div className="relative">
         <LibraryCover item={item} className="w-full transition-transform duration-200 group-hover:-translate-y-0.5" />
         {item.is_favorite && (

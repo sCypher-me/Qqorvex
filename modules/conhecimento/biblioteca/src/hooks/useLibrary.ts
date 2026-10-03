@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
+import { useToast } from "@qqorvex/ui";
+import { nextProgressStep } from "../service";
 import { addItemCreator, archiveItem, createItem, deleteItem, listArchivedItems, listItemCreators, listItems, replaceItemCreators, toggleFavorite, updateItem, updateItemReview, updateItemStatus, updateProgress } from "../repository";
 import type { LibraryCoverChange, LibraryItem, LibraryItemEditInput, LibraryItemStatus, NewLibraryItemInput } from "../types";
 
@@ -109,6 +111,50 @@ export function useDeleteLibraryItem(client: SupabaseClient<Database>) {
       queryClient.invalidateQueries({ queryKey: ARCHIVED_ITEMS_KEY }),
     ]),
   });
+}
+
+/**
+ * O "+1" rápido (Biblioteca e Hoje): aplica `nextProgressStep`, avisa com "Desfazer" (volta ao
+ * progresso anterior) e, se o passo chegou ao fim, oferece "Marcar concluído". `start` tira um
+ * item da fila ("Começar").
+ */
+export function useLibraryQuickStep(client: SupabaseClient<Database>) {
+  const { toast } = useToast();
+  const updateProgressMutation = useUpdateProgress(client);
+  const updateStatusMutation = useUpdateItemStatus(client);
+
+  function step(item: LibraryItem) {
+    const next = nextProgressStep(item);
+    if (!next || item.progress_mode === null) return;
+    const previous = {
+      mode: item.progress_mode === "percentual" ? ("percentual" as const) : ("numerico" as const),
+      current: item.progress_current ?? 0,
+      total: item.progress_total ?? undefined,
+      unit: item.progress_unit ?? undefined,
+    };
+    updateProgressMutation.mutate(
+      { itemId: item.id, progress: next.progress },
+      {
+        onSuccess: () => {
+          if (next.finished) {
+            toast({ title: `Você terminou “${item.title}”?`, tone: "success", action: { label: "Marcar concluído", onClick: () => updateStatusMutation.mutate({ itemId: item.id, status: "concluido" }) } });
+            return;
+          }
+          toast({ title: `${next.label} em “${item.title}”`, action: { label: "Desfazer", onClick: () => updateProgressMutation.mutate({ itemId: item.id, progress: previous }) } });
+        },
+        onError: () => toast({ title: "Não foi possível registrar o progresso", tone: "danger" }),
+      },
+    );
+  }
+
+  function start(item: LibraryItem) {
+    updateStatusMutation.mutate(
+      { itemId: item.id, status: "em_andamento" },
+      { onSuccess: () => toast({ title: `Começou “${item.title}”`, tone: "success" }) },
+    );
+  }
+
+  return { step, start, isPending: updateProgressMutation.isPending || updateStatusMutation.isPending };
 }
 
 export function useItemCreators(client: SupabaseClient<Database>, itemId: string, enabled = true) {

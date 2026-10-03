@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRightIcon,
   ArrowSquareOutIcon,
-  BooksIcon,
   CalendarBlankIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -34,7 +33,7 @@ import {
 import { addDays, eventCategory, startOfDay, useEventsInRange, type CalendarEvent } from "@qqorvex/module-agenda";
 import { computeHabitStreak, formatHabitStreak, getHabitWeeklyTarget, habitScheduleOn, useHabitLogsInRange, useHabits, useToggleHabitLog, type Habit, type HabitStreak } from "@qqorvex/module-metas-habitos";
 import { useTransactions } from "@qqorvex/module-financas";
-import { useLibraryItems } from "@qqorvex/module-biblioteca";
+import { ContinueShelfCard, ShelfRow, buildLibraryShelves, useLibraryItems, useLibraryQuickStep } from "@qqorvex/module-biblioteca";
 import { usePages } from "@qqorvex/module-segundo-cerebro";
 import { BarChart, Button, ButtonLink, EmptyState, ExternalButtonLink, ProgressBar, Skeleton, cx, useToast } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
@@ -192,8 +191,14 @@ export function HojeEditorialPage() {
   /* ── Atenção (outros módulos) ── */
   const attention = summary.items.filter((item) => !["tarefas", "agenda", "metas-habitos"].includes(item.source) && item.id !== "financas-saldo").slice(0, 6);
 
-  /* ── Continuar ── */
-  const readingNow = libraryItems.find((item) => item.status === "em_andamento");
+  /* ── Continuar (mesma ordem da Biblioteca: o destaque primeiro, depois o resto em andamento) ── */
+  const { continuing, nextUp } = useMemo(() => {
+    const { featured, shelves } = buildLibraryShelves(libraryItems);
+    if (featured?.kind !== "continuar") return { continuing: [], nextUp: featured?.item };
+    return { continuing: [featured.item, ...(shelves.find((shelf) => shelf.key === "continuar")?.items ?? [])], nextUp: undefined };
+  }, [libraryItems]);
+  const quickStep = useLibraryQuickStep(supabase);
+  const openLibraryItem = (id: string) => navigate(`/conhecimento/biblioteca?item=${id}`);
   const lastPage = [...pages].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
 
   const summaryLine = tasksLoading || eventsLoading
@@ -261,6 +266,31 @@ export function HojeEditorialPage() {
           to="/vida/financas"
         />
       </div>
+
+      {(continuing.length > 0 || nextUp || lastPage) && (
+        <div className="flex min-w-0 flex-col gap-2">
+          {(continuing.length > 0 || nextUp) && (
+            <ShelfRow
+              title="Continue de onde parou"
+              meta={continuing.length > 1 ? `${continuing.length}` : undefined}
+              action={<ButtonLink to="/conhecimento/biblioteca" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Biblioteca</ButtonLink>}
+            >
+              {continuing.map((item) => (
+                <ContinueShelfCard key={item.id} item={item} onOpen={() => openLibraryItem(item.id)} onStep={() => quickStep.step(item)} busy={quickStep.isPending} />
+              ))}
+              {nextUp && <ContinueShelfCard item={nextUp} onOpen={() => openLibraryItem(nextUp.id)} onStep={() => undefined} onStart={() => quickStep.start(nextUp)} busy={quickStep.isPending} />}
+            </ShelfRow>
+          )}
+          {lastPage && (
+            <Link to={`/conhecimento/notas/${lastPage.id}`} className="flex w-fit max-w-full items-center gap-2 rounded-lg py-1 pr-2 text-[13px] text-fg-3 transition-colors hover:text-fg">
+              <NotebookIcon size={15} className="shrink-0" />
+              <span className="shrink-0">Última nota:</span>
+              <span className="truncate font-medium text-fg-2">{lastPage.title || "Sem título"}</span>
+              <ArrowRightIcon size={12} className="shrink-0" />
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
@@ -358,36 +388,6 @@ export function HojeEditorialPage() {
               <BarChart label="Tarefas concluídas por dia nos últimos 7 dias" data={weekChart} series={[{ key: "tarefas", label: "Tarefas concluídas" }]} height={150} highlightIndex={6} format={(value) => `${value}`} integer />
             </div>
           </Panel>
-
-          {(readingNow || lastPage) && (
-            <Panel title="Continue de onde parou">
-              <div className="flex flex-col gap-1 px-2 pb-2">
-                {lastPage && (
-                  <Link to={`/conhecimento/notas/${lastPage.id}`} className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-hover">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hover text-fg-3"><NotebookIcon size={18} /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium text-fg">{lastPage.title || "Sem título"}</span>
-                      <span className="text-2xs text-fg-4">Última nota editada</span>
-                    </span>
-                  </Link>
-                )}
-                {readingNow && (
-                  <Link to={`/conhecimento/biblioteca?item=${readingNow.id}`} className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-hover">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-hover text-fg-3">
-                      {readingNow.cover_url ? <img src={readingNow.cover_url} alt="" className="h-full w-full object-cover" /> : <BooksIcon size={18} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium text-fg">{readingNow.title}</span>
-                      <span className="text-2xs text-fg-4">
-                        {readingNow.progress_total ? `${readingNow.progress_current ?? 0} de ${readingNow.progress_total} ${readingNow.progress_unit ?? ""}` : "Em andamento"}
-                      </span>
-                    </span>
-                    {readingNow.progress_total ? <span className="w-14"><ProgressBar value={((readingNow.progress_current ?? 0) / readingNow.progress_total) * 100} height={4} /></span> : null}
-                  </Link>
-                )}
-              </div>
-            </Panel>
-          )}
         </div>
       </div>
     </div>
