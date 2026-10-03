@@ -60,6 +60,7 @@ em `packages/database/src/types.ts`. Toda tabela tem RLS; funções `SECURITY DE
 
 ## Documentação
 
+- [`docs/beta.md`](docs/beta.md) — checklist para liberar o beta e como acompanhar
 - [`docs/assinaturas.md`](docs/assinaturas.md) — planos Free/Plus/Ilimitado e configuração do Stripe
 - [`docs/vex-online-setup.md`](docs/vex-online-setup.md) — publicar a Vex (modelos, segredos, funções)
 - [`docs/vex-behavior.md`](docs/vex-behavior.md) — onde e como a Vex aparece na interface

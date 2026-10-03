@@ -64,6 +64,12 @@ Os arquivos publicados são:
 
 - supabase/functions/vex-chat/index.ts
 - supabase/functions/vex-web-search/index.ts
+- supabase/functions/_shared/billing.ts (cotas mensais) e supabase/functions/_shared/vexGuide.ts
+
+O `vexGuide.ts` é a instrução confiável da Vex: personalidade, regras e o mapa de todas as seções do
+app (o que tem em cada uma, como adicionar cada coisa e qual ferramenta usar). Sempre que uma tela,
+botão ou ferramenta mudar, atualize esse arquivo e publique `vex-chat` de novo. Ferramentas novas
+também precisam entrar em `ALLOWED_TOOL_NAMES` (o `pnpm audit:edge` acusa se faltar).
 
 ## 4. Configurar o frontend
 
