@@ -3,26 +3,34 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 import { getAssuranceLevel, isMfaPending } from "./mfa";
 
-/** Sessão existe mas o 2FA (se ativado) ainda não foi completado nesta sessão. */
+/**
+ * Sessão existe mas o 2FA (se ativado) ainda não foi completado nesta sessão.
+ *
+ * O Supabase reemite a sessão a cada refresh de token e sempre que a aba volta ao foco. Revalidar
+ * nesses casos acontece em segundo plano, mantendo o veredito anterior do mesmo usuário: a tela de
+ * "Validando sua sessão" só aparece quando ainda não há veredito para quem está logado (antes, toda
+ * troca de aba desmontava o app inteiro e descartava formulários abertos).
+ */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { client, session, isLoading } = useAuth();
-  const [mfaPending, setMfaPending] = useState<boolean | null>(null);
+  const [verdict, setVerdict] = useState<{ userId: string; mfaPending: boolean } | null>(null);
   const [mfaError, setMfaError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const userId = session?.user.id ?? null;
+  const mfaPending = verdict && verdict.userId === userId ? verdict.mfaPending : null;
 
   useEffect(() => {
     if (!session) {
-      setMfaPending(null);
+      setVerdict(null);
       setMfaError(false);
       return;
     }
 
     let cancelled = false;
-    setMfaPending(null);
     setMfaError(false);
     void getAssuranceLevel(client)
       .then((level) => {
-        if (!cancelled) setMfaPending(isMfaPending(level));
+        if (!cancelled) setVerdict({ userId: session.user.id, mfaPending: isMfaPending(level) });
       })
       .catch(() => {
         if (!cancelled) setMfaError(true);
@@ -35,7 +43,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (isLoading) return null;
   if (!session) return <Navigate to="/login" replace />;
-  if (mfaError) {
+  if (mfaError && mfaPending === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg px-6 text-center">
         <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 w-full max-w-md p-6">
