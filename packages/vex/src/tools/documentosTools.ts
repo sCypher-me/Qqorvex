@@ -1,6 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { getVaultUnlockedUntil, listDocuments, lockVault, toggleImportant, unlockVault, uploadDocument } from "@qqorvex/module-documentos";
+import { listDocuments, toggleImportant, uploadDocument } from "@qqorvex/module-documentos";
 import type { ToolDefinition } from "../types";
+import { ambiguousSummary, matchByName } from "./shared";
 
 /**
  * Ferramentas da Vex para Documentos & Arquivos. Só chamam a API pública de
@@ -52,47 +53,29 @@ export function createDocumentosTools(client: SupabaseClient<Database>, userId: 
     {
       name: "toggle_important_by_name",
       description:
-        "Marca ou desmarca um documento como importante, pelo nome do arquivo. Se o documento estiver no Cofre, precisa do PIN do Cofre (pergunte ao usuário se ele disser que é um documento do Cofre ou se esta ferramenta recusar por causa disso)",
+        "Marca ou desmarca um documento como importante, pelo nome do arquivo. Documentos do Cofre só aparecem enquanto o Cofre estiver aberto (a pessoa abre em Documentos com o PIN). Nunca peça nem aceite o PIN do Cofre na conversa.",
       parameters: {
         type: "object",
         properties: {
           name: { type: "string", description: "Nome (ou parte dele) do arquivo" },
           isImportant: { type: "boolean", description: "true para marcar como importante, false para desmarcar" },
-          pin: { type: "string", description: "PIN do Cofre — só necessário se o documento estiver no Cofre" },
         },
         required: ["name", "isImportant"],
       },
       requiresConfirmation: true,
       async execute(args) {
-        const query = String(args.name ?? "")
-          .trim()
-          .toLowerCase();
-        const pin = args.pin ? String(args.pin).trim() : "";
-
-        // Com PIN: abre o Cofre só para esta ação; fecha de novo se ele estava fechado.
-        const wasUnlocked = pin ? (await getVaultUnlockedUntil(client)) !== null : true;
-        if (pin && !(await unlockVault(client, pin))) {
-          return { summary: "PIN do Cofre incorreto (ou bloqueado por alguns minutos após várias tentativas). Nada foi alterado." };
-        }
-
-        try {
-          const documents = await listDocuments(client);
-          const match = documents.find((d) => d.file_name.toLowerCase().includes(query));
-          if (!match) {
-            return {
-              summary: pin
-                ? `Não encontrei nenhum documento parecido com "${args.name}", nem no Cofre.`
-                : `Não encontrei nenhum documento parecido com "${args.name}". Se ele estiver no Cofre, preciso do PIN do Cofre.`,
-            };
-          }
-          const updated = await toggleImportant(client, match.id, Boolean(args.isImportant));
+        const match = matchByName(await listDocuments(client), String(args.name ?? ""), (document) => document.file_name);
+        if (match.kind === "none") {
           return {
-            summary: `Documento "${updated.file_name}" ${updated.is_important ? "marcado como importante" : "desmarcado"}.`,
-            data: updated,
+            summary: `Não encontrei nenhum documento parecido com "${args.name}". Se ele estiver no Cofre, a pessoa precisa abrir o Cofre em Documentos (com o PIN, fora da conversa) e pedir de novo.`,
           };
-        } finally {
-          if (!wasUnlocked) await lockVault(client).catch(() => undefined);
         }
+        if (match.kind === "many") return { summary: ambiguousSummary("um documento", match.items, (document) => document.file_name) };
+        const updated = await toggleImportant(client, match.item.id, Boolean(args.isImportant));
+        return {
+          summary: `Documento "${updated.file_name}" ${updated.is_important ? "marcado como importante" : "desmarcado"}.`,
+          data: updated,
+        };
       },
     },
   ];

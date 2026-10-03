@@ -1,6 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { archivePage, createBlock, createPage, listPages } from "@qqorvex/module-segundo-cerebro";
 import type { ToolDefinition } from "../types";
+import { ambiguousSummary, matchByName } from "./shared";
 
 /** Ferramentas da Vex para o Segundo Cérebro. Só chamam a API pública de `@qqorvex/module-segundo-cerebro`. */
 export function createSegundoCerebroTools(client: SupabaseClient<Database>, userId: string): ToolDefinition[] {
@@ -65,13 +66,10 @@ export function createSegundoCerebroTools(client: SupabaseClient<Database>, user
       },
       requiresConfirmation: true,
       async execute(args) {
-        const query = String(args.title ?? "")
-          .trim()
-          .toLowerCase();
-        const pages = await listPages(client);
-        const match = pages.find((p) => p.title.toLowerCase().includes(query));
-        if (!match) return { summary: `Não encontrei nenhuma página parecida com "${args.title}".` };
-        const archived = await archivePage(client, match.id, true);
+        const match = matchByName(await listPages(client), String(args.title ?? ""), (page) => page.title);
+        if (match.kind === "none") return { summary: `Não encontrei nenhuma página parecida com "${args.title}".` };
+        if (match.kind === "many") return { summary: ambiguousSummary("uma página", match.items, (page) => page.title) };
+        const archived = await archivePage(client, match.item.id, true);
         return { summary: `Página arquivada: "${archived.title}".`, data: archived };
       },
     },

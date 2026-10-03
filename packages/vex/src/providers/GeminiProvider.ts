@@ -7,18 +7,9 @@ import type { ChatMessage, ToolDefinition, VexProvider, VexProviderResponse } fr
  * funcionava com Ollama local; este provider é o que permite ela responder de qualquer lugar,
  * não só no computador de quem está desenvolvendo.
  */
-/**
- * Ferramentas que a versão anterior da função `vex-chat` não conhece. Aquela versão recusava a
- * requisição inteira ao ver um nome desconhecido; se isso acontecer, o provider repete a chamada
- * sem elas e segue assim até recarregar. Pode sair daqui quando a função atual estiver publicada.
- */
-const TOOLS_NEWER_THAN_SERVER = new Set(["get_day_overview", "list_events", "create_event", "list_habits_today", "get_month_spending", "list_upcoming_bills"]);
-const LEGACY_REJECTION = "messages é obrigatório.";
-
 export class GeminiProvider implements VexProvider {
   readonly name = "gemini";
   private readonly inFlight = new Map<string, Promise<VexProviderResponse>>();
-  private legacyServer = false;
 
   constructor(private readonly client: SupabaseClient<Database>) {}
 
@@ -29,24 +20,12 @@ export class GeminiProvider implements VexProvider {
     const existing = this.inFlight.get(key);
     if (existing) return existing;
 
-    const request = this.requestCompatible(messages, tools);
+    const request = this.request(messages, tools);
     this.inFlight.set(key, request);
     try {
       return await request;
     } finally {
       this.inFlight.delete(key);
-    }
-  }
-
-  private async requestCompatible(messages: ChatMessage[], tools: ToolDefinition[]): Promise<VexProviderResponse> {
-    const legacyTools = tools.filter((tool) => !TOOLS_NEWER_THAN_SERVER.has(tool.name));
-    if (this.legacyServer) return this.request(messages, legacyTools);
-    try {
-      return await this.request(messages, tools);
-    } catch (error) {
-      if (!(error instanceof Error) || error.message !== LEGACY_REJECTION || legacyTools.length === tools.length) throw error;
-      this.legacyServer = true;
-      return this.request(messages, legacyTools);
     }
   }
 

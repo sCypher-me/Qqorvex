@@ -69,16 +69,29 @@ describe("parseGeneratedQuiz", () => {
     expect(parseGeneratedQuiz("{not json")).toBeNull();
   });
 
-  it("rejeita quando não tem exatamente 5 perguntas", () => {
+  it("aceita o JSON dentro de bloco ```json``` ou com texto em volta (formato comum do Gemini)", () => {
+    const body = JSON.stringify({ questions: fiveValid });
+    expect(parseGeneratedQuiz("```json\n" + body + "\n```")).toEqual(fiveValid);
+    expect(parseGeneratedQuiz("Aqui está o quiz:\n" + body + "\nBons estudos!")).toEqual(fiveValid);
+  });
+
+  it("com perguntas a mais, grava só as 5 primeiras válidas", () => {
+    expect(parseGeneratedQuiz(JSON.stringify(Array(7).fill(validQuestion)))).toEqual(fiveValid);
+  });
+
+  it("rejeita quando sobram menos de 5 perguntas válidas", () => {
     expect(parseGeneratedQuiz(JSON.stringify(fiveValid.slice(0, 4)))).toBeNull();
   });
 
-  it("rejeita pergunta com menos de 4 opções ou índice de resposta fora de faixa", () => {
+  it("descarta pergunta com menos de 4 opções ou índice fora de faixa (e rejeita se faltar pergunta)", () => {
     const badOptions = [...fiveValid.slice(0, 4), { ...validQuestion, options: ["1", "2"] }];
     expect(parseGeneratedQuiz(JSON.stringify(badOptions))).toBeNull();
 
     const badIndex = [...fiveValid.slice(0, 4), { ...validQuestion, correctOptionIndex: 9 }];
     expect(parseGeneratedQuiz(JSON.stringify(badIndex))).toBeNull();
+
+    const sixWithOneBad = [...fiveValid, { ...validQuestion, correctOptionIndex: 9 }];
+    expect(parseGeneratedQuiz(JSON.stringify(sixWithOneBad))).toEqual(fiveValid);
   });
 });
 
