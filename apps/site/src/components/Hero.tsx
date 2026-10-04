@@ -1,5 +1,6 @@
-import { ArrowRightIcon, CheckSquareIcon, ClockIcon, SparkleIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CheckSquareIcon, ClockIcon, DownloadSimpleIcon, SparkleIcon } from "@phosphor-icons/react";
 import { ProgressBar, buttonClasses } from "@qqorvex/ui";
+import { APK_URL } from "../config";
 
 /** Prévia estática da tela Hoje: mostra o produto sem depender de captura de tela. */
 function AppPreview() {
@@ -65,10 +66,11 @@ export function Hero() {
           <a href="#lista" className={buttonClasses({ size: "lg" })}>
             Entrar na lista de espera <ArrowRightIcon size={16} weight="bold" />
           </a>
-          <a href="#recursos" className={buttonClasses({ variant: "secondary", size: "lg" })}>
-            Ver recursos
+          <a href={APK_URL} className={buttonClasses({ variant: "secondary", size: "lg" })}>
+            Baixar APK para Android <DownloadSimpleIcon size={18} aria-hidden="true" />
           </a>
         </div>
+        <p className="mt-3 text-sm text-fg-3">Versão beta para Android 7 ou superior. O acesso ao app requer convite.</p>
       </div>
       <AppPreview />
     </section>

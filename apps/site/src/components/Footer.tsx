@@ -1,5 +1,5 @@
 import { BrandSymbol, Wordmark } from "@qqorvex/ui";
-import { APP_URL } from "../config";
+import { APK_URL, APP_URL } from "../config";
 
 export function Footer() {
   return (
@@ -10,6 +10,9 @@ export function Footer() {
           <Wordmark size={16} />
         </span>
         <nav aria-label="Rodapé" className="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto">
+          <a href={APK_URL} className="hover:text-fg">
+            Baixar APK para Android
+          </a>
           <a href="#recursos" className="hover:text-fg">
             Recursos
           </a>
