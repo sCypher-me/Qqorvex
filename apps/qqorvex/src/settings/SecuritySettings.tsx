@@ -326,8 +326,8 @@ export function SecuritySettings() {
         </ul>
       </section>
 
-      <div className="columns-1 gap-5 xl:columns-2">
-        <SettingsCard className="mb-5 break-inside-avoid" id="seguranca-email" title="E-mail de acesso" description="Usado para entrar e recuperar a conta." aside={<Badge tone={emailVerified ? "success" : "warning"}>{emailVerified ? "Verificado" : "Não verificado"}</Badge>}>
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        <SettingsCard id="seguranca-email" title="E-mail de acesso" description="Usado para entrar e recuperar a conta." aside={<Badge tone={emailVerified ? "success" : "warning"}>{emailVerified ? "Verificado" : "Não verificado"}</Badge>}>
           <p className="break-all text-[13.5px] font-medium text-fg">{session?.user.email ?? "—"}</p>
           <form onSubmit={(event) => void handleChangeEmail(event)} className="flex flex-col gap-2 sm:flex-row">
             <Input type="email" autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="Novo e-mail" aria-label="Novo e-mail" wrapperClassName="flex-1" />
@@ -338,7 +338,7 @@ export function SecuritySettings() {
           {emailError && <Notice compact>{emailError}</Notice>}
         </SettingsCard>
 
-        <SettingsCard className="mb-5 break-inside-avoid" title="Telefone de acesso" description={session?.user.phone ? `Número confirmado: ${session.user.phone}` : "Adicione um celular confirmado para usar nos recursos de acesso e recuperação."}>
+        <SettingsCard title="Telefone de acesso" description={session?.user.phone ? `Número confirmado: ${session.user.phone}` : "Adicione um celular confirmado para usar nos recursos de acesso e recuperação."}>
           <form onSubmit={(event) => void handleAuthPhone(event)} className="flex flex-col gap-3">
             <Input label="Celular com DDD" type="tel" autoComplete="tel" inputMode="tel" value={authPhone} onChange={(event) => setAuthPhone(event.target.value)} placeholder="(11) 99999-9999" required disabled={phoneRequested || phoneBusy} />
             {phoneRequested && <><Notice compact>Enviamos um código por SMS. Confirme para ativar o novo telefone de acesso.</Notice><Input label="Código recebido por SMS" autoComplete="one-time-code" inputMode="numeric" value={phoneToken} onChange={(event) => setPhoneToken(event.target.value.replace(/\D/g, ""))} required /></>}
@@ -350,7 +350,7 @@ export function SecuritySettings() {
           </form>
         </SettingsCard>
 
-        <SettingsCard className="mb-5 break-inside-avoid" title="Senha" description="Ao trocar, as outras sessões são encerradas por segurança.">
+        <SettingsCard title="Senha" description="Ao trocar, as outras sessões são encerradas por segurança.">
           <form onSubmit={(event) => void handleChangePassword(event)} className="flex flex-col gap-3">
             <PasswordField label="Nova senha" value={newPassword} onChange={setNewPassword} autoComplete="new-password" showChecklist />
             <PasswordField label="Confirmar nova senha" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
@@ -364,7 +364,6 @@ export function SecuritySettings() {
 
         <SettingsCard
           id="seguranca-2fa"
-          className="mb-5 break-inside-avoid"
           title="Verificação em duas etapas"
           description="Além da senha, um código de 6 dígitos do seu app autenticador."
           aside={factorsLoading ? undefined : <Badge tone={verifiedFactors.length ? "success" : "neutral"}>{verifiedFactors.length ? "Ativa" : "Inativa"}</Badge>}
@@ -419,7 +418,7 @@ export function SecuritySettings() {
 
         <SettingsCard
           id="seguranca-passkeys"
-          className="mb-5 break-inside-avoid"
+          className="xl:col-span-2"
           title="Passkeys"
           description="Entre sem senha com biometria, Windows Hello ou chave de segurança."
           aside={passkeysLoading ? undefined : <Badge tone={passkeys.length ? "success" : "neutral"}>{passkeys.length ? `${passkeys.length} ${passkeys.length === 1 ? "ativa" : "ativas"}` : "Nenhuma"}</Badge>}
