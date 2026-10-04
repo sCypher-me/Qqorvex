@@ -19,6 +19,33 @@ export type PaymentMethod = Transaction["payment_method"];
 export type Budget = Tables<"budgets">;
 export type CardStatement = Tables<"card_statements">;
 export type CardStatementStatus = CardStatement["status"];
+export type InvestmentPosition = Tables<"investment_positions">;
+export type InvestmentAssetType = "crypto" | "stock" | "fii";
+
+export interface InvestmentQuote {
+  positionId: string;
+  assetType: InvestmentAssetType;
+  symbol: string;
+  name: string;
+  currency: string;
+  price: number | null;
+  changePercent: number | null;
+  asOf: string | null;
+  error: string | null;
+}
+
+export interface InvestmentQuoteResponse {
+  quotes: InvestmentQuote[];
+  apiKeyConfigured: boolean;
+  requestedAt: string;
+}
+
+export interface SaveInvestmentPositionInput {
+  assetType: InvestmentAssetType;
+  symbol: string;
+  quantity: number;
+  averagePrice: number;
+}
 
 export interface NewTransactionInput {
   name: string;

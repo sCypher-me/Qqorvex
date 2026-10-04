@@ -6,9 +6,10 @@ import type { Tables, TablesInsert } from "@qqorvex/database";
  * (gerados pela Vex a partir dos Resumos). Study
  * Capability Packs por área ainda ficam para depois.
  */
-export type Notebook = Tables<"notebooks">;
+export type Notebook = Tables<"notebooks"> & { cover_image_url?: string | null };
 export type NotebookType = Notebook["notebook_type"];
 export type NotebookStatus = Notebook["status"];
+export type NotebookCoverTheme = NonNullable<Notebook["cover_theme"]>;
 export type Topic = Tables<"topics">;
 export type Summary = Tables<"summaries">;
 export type Flashcard = Tables<"flashcards">;
@@ -32,6 +33,10 @@ export interface NewNotebookInput {
   instructor?: string;
   startDate?: string;
   endDate?: string;
+  coverTheme?: NotebookCoverTheme;
+  coverStickers?: string[];
+  /** undefined mantém a imagem; null remove; File troca ou adiciona. */
+  coverImage?: File | null;
 }
 
 export function toNotebookInsert(userId: string, input: NewNotebookInput): TablesInsert<"notebooks"> {
@@ -46,6 +51,8 @@ export function toNotebookInsert(userId: string, input: NewNotebookInput): Table
     instructor: input.instructor ?? null,
     start_date: input.startDate ?? null,
     end_date: input.endDate ?? null,
+    cover_theme: input.coverTheme ?? "gold",
+    cover_stickers: input.coverStickers ?? [],
   };
 }
 

@@ -14,6 +14,8 @@ export async function listAllAccounts(client: Client): Promise<ManagedAccount[]>
     username: row.username,
     role: row.role as ManagedAccount["role"],
     accountTier: row.account_tier as ManagedAccount["accountTier"],
+    selectedTitle: row.selected_title,
+    isBanned: row.is_banned,
     createdAt: row.created_at,
   }));
 }
@@ -21,6 +23,16 @@ export async function listAllAccounts(client: Client): Promise<ManagedAccount[]>
 /** Nunca permite excluir a própria conta por aqui (a função no banco já recusa). */
 export async function deleteAccount(client: Client, targetUserId: string): Promise<void> {
   const { error } = await client.rpc("delete_account", { target_user_id: targetUserId });
+  if (error) throw error;
+}
+
+export async function setAccountTitle(client: Client, targetUserId: string, title: string): Promise<void> {
+  const { error } = await client.rpc("owner_set_account_title", { p_user_id: targetUserId, p_title: title });
+  if (error) throw error;
+}
+
+export async function setAccountBanned(client: Client, targetUserId: string, banned: boolean): Promise<void> {
+  const { error } = await client.rpc("owner_set_account_banned", { p_user_id: targetUserId, p_banned: banned });
   if (error) throw error;
 }
 
@@ -61,6 +73,12 @@ export async function createRedemptionCode(client: Client, userId: string, input
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function revokePendingRedemptionCode(client: Client, id: string): Promise<void> {
+  const { data, error } = await client.from("redemption_codes").delete().eq("id", id).is("redeemed_by", null).select("id").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Este código já foi resgatado ou não existe mais.");
 }
 
 const REDEEM_TIERS: readonly RedemptionCodeTier[] = ["parceiro", "lifetime", "beta_tester"];
@@ -122,7 +140,17 @@ export async function listWaitlist(client: Client): Promise<WaitlistSignup[]> {
 
 export async function setWaitlistInvited(client: Client, ids: string[], invited: boolean): Promise<void> {
   if (ids.length === 0) return;
-  const { error } = await client.from("waitlist_signups").update({ invited_at: invited ? new Date().toISOString() : null }).in("id", ids);
+  const { error } = await client.from("waitlist_signups").update({ invited_at: invited ? new Date().toISOString() : null, rejected_at: null }).in("id", ids);
+  if (error) throw error;
+}
+
+export async function setWaitlistRejected(client: Client, id: string, rejected: boolean): Promise<void> {
+  const { error } = await client.from("waitlist_signups").update({ invited_at: null, rejected_at: rejected ? new Date().toISOString() : null }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteWaitlistSignup(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("waitlist_signups").delete().eq("id", id);
   if (error) throw error;
 }
 
@@ -131,9 +159,9 @@ function csvCell(value: string): string {
 }
 
 /** CSV para planilhas (separador vírgula, cabeçalho em português, datas ISO). */
-export function waitlistToCsv(signups: Pick<WaitlistSignup, "email" | "source" | "created_at" | "invited_at">[]): string {
-  const rows = signups.map((signup) => [signup.email, signup.source, signup.created_at, signup.invited_at ?? ""].map(csvCell).join(","));
-  return ["email,origem,inscrito_em,convidado_em", ...rows].join("\n");
+export function waitlistToCsv(signups: (Pick<WaitlistSignup, "email" | "source" | "created_at" | "invited_at"> & { rejected_at?: string | null })[]): string {
+  const rows = signups.map((signup) => [signup.email, signup.source, signup.created_at, signup.invited_at ?? "", signup.rejected_at ?? ""].map(csvCell).join(","));
+  return ["email,origem,inscrito_em,convidado_em,recusado_em", ...rows].join("\n");
 }
 
 export interface SecretKeyStatus {

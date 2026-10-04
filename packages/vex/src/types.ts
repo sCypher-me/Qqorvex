@@ -7,6 +7,7 @@
  */
 
 export type ChatRole = "system" | "user" | "assistant" | "tool";
+export type { VexStyle } from "./vexStyle";
 
 export interface ChatMessage {
   role: ChatRole;
@@ -63,7 +64,7 @@ export type VexProviderResponse =
 
 export interface VexProvider {
   readonly name: string;
-  chat(input: { messages: ChatMessage[]; tools: ToolDefinition[] }): Promise<VexProviderResponse>;
+  chat(input: { messages: ChatMessage[]; tools: ToolDefinition[]; vexStyle?: import("./vexStyle").VexStyle }): Promise<VexProviderResponse>;
 }
 
 export type VexTurnResult =

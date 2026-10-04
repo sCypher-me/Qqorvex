@@ -1,5 +1,6 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import type { ChatMessage, ToolDefinition, VexProvider, VexProviderResponse } from "../types";
+import type { VexStyle } from "../vexStyle";
 
 /**
  * Cérebro hospedado de verdade da Vex — fala com a Edge Function `vex-chat`, nunca direto com a
@@ -13,14 +14,14 @@ export class GeminiProvider implements VexProvider {
 
   constructor(private readonly client: SupabaseClient<Database>) {}
 
-  async chat({ messages, tools }: { messages: ChatMessage[]; tools: ToolDefinition[] }): Promise<VexProviderResponse> {
+  async chat({ messages, tools, vexStyle }: { messages: ChatMessage[]; tools: ToolDefinition[]; vexStyle?: VexStyle }): Promise<VexProviderResponse> {
     // Evita duas chamadas idênticas quando Enter, re-render ou reconexão disparam o mesmo turno.
     // Não há cache de resposta concluída: uma resposta antiga nunca deve repetir uma ação.
-    const key = JSON.stringify({ messages, tools: tools.map(({ name, description, parameters }) => ({ name, description, parameters })) });
+    const key = JSON.stringify({ messages, vexStyle, tools: tools.map(({ name, description, parameters }) => ({ name, description, parameters })) });
     const existing = this.inFlight.get(key);
     if (existing) return existing;
 
-    const request = this.request(messages, tools);
+    const request = this.request(messages, tools, vexStyle);
     this.inFlight.set(key, request);
     try {
       return await request;
@@ -29,11 +30,12 @@ export class GeminiProvider implements VexProvider {
     }
   }
 
-  private async request(messages: ChatMessage[], tools: ToolDefinition[]): Promise<VexProviderResponse> {
+  private async request(messages: ChatMessage[], tools: ToolDefinition[], vexStyle?: VexStyle): Promise<VexProviderResponse> {
     const { data, error } = await this.client.functions.invoke("vex-chat", {
       body: {
         messages: messages.map((m) => ({ role: m.role, content: m.content, toolName: m.toolName })),
         tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+        vexStyle,
       },
     });
 

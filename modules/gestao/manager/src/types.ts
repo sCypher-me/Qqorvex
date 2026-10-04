@@ -22,6 +22,8 @@ export interface ManagedAccount {
   username: string | null;
   role: ProfileRole;
   accountTier: AccountTier;
+  selectedTitle: string | null;
+  isBanned: boolean;
   createdAt: string;
 }
 

@@ -26,11 +26,11 @@ export function useDeleteNotebook(client: SupabaseClient<Database>) {
   });
 }
 
-export function useUpdateNotebook(client: SupabaseClient<Database>) {
+export function useUpdateNotebook(client: SupabaseClient<Database>, userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ notebookId, input }: { notebookId: string; input: Parameters<typeof updateNotebook>[2] }) =>
-      updateNotebook(client, notebookId, input),
+      updateNotebook(client, notebookId, input, userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: NOTEBOOKS_KEY }),
   });
 }

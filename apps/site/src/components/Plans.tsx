@@ -15,7 +15,8 @@ const PLANS = [
     name: "Plus",
     price: "R$ 19,90",
     period: "/mês",
-    note: "ou R$ 214,90 por ano (cerca de 10% a menos).",
+    annualPrice: "R$ 214,90 por ano",
+    discount: "-10%",
     features: ["Metas, hábitos, cadernos e mapas ilimitados", "300 conversas com a Vex por mês", "60 buscas na web pela Vex", "100 MB para documentos", "Arquivos de até 50 MB"],
     highlight: true,
   },
@@ -38,7 +39,14 @@ export function Plans() {
                 <span className="font-display text-[34px] font-semibold tracking-[-0.02em] text-fg">{plan.price}</span>
                 <span className="text-fg-3">{plan.period}</span>
               </p>
-              <p className="mt-1 text-sm text-fg-3">{plan.note}</p>
+              {plan.name === "Plus" ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                  <span className="rounded-full border border-gold-line bg-gold-fg px-3 py-1 text-xs font-bold tracking-wide text-canvas shadow-sm">{plan.discount}</span>
+                  <span className="text-sm text-fg-3">{plan.annualPrice}</span>
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-fg-3">{plan.note}</p>
+              )}
               <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-[15px] text-fg-2">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex gap-2">

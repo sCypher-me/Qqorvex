@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckIcon, DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
+import { CheckIcon, DesktopIcon, MoonIcon, SparkleIcon, SunIcon } from "@phosphor-icons/react";
 import { useAuth } from "@qqorvex/auth";
 import { useGamificationStats } from "@qqorvex/module-gamificacao";
 import { Notice, cx } from "@qqorvex/ui";
@@ -7,6 +7,7 @@ import { useAccount } from "../app/account";
 import { LEVEL_THEMES, VIP_THEME, useTheme, type AppSkin, type ThemePreference } from "../app/ThemeContext";
 import { SkinPreview, ThemeRewardCard, type ThemeRewardDefinition } from "../components/ThemeRewardCard";
 import { SettingsCard, SettingsHeader } from "./shared";
+import { normalizeVexStyle, VEX_STYLE_OPTIONS, type VexStyle } from "@qqorvex/vex";
 
 const DEFAULT_SKIN: ThemeRewardDefinition = {
   id: "default",
@@ -51,6 +52,10 @@ export function AppearanceSettings() {
   const { preference, setPreference, skin, setSkin } = useTheme();
   const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState(false);
+  const [vexStyle, setVexStyle] = useState<VexStyle>(() => {
+    const saved = session!.user.user_metadata.qqorvex_preferences;
+    return normalizeVexStyle(saved && typeof saved === "object" ? (saved as Record<string, unknown>).vex_style : undefined);
+  });
   const level = progress?.level ?? 1;
   const selectedTheme = skin === VIP_THEME.id ? VIP_THEME : LEVEL_THEMES.find((theme) => theme.id === skin) ?? DEFAULT_SKIN;
   const previousUnlock = [...LEVEL_THEMES].reverse().find((theme) => theme.level <= level)?.level ?? 0;
@@ -75,6 +80,12 @@ export function AppearanceSettings() {
     if (mode === preference) return;
     setPreference(mode);
     void persist({ theme: mode });
+  }
+
+  function chooseVexStyle(style: VexStyle) {
+    if (style === vexStyle) return;
+    setVexStyle(style);
+    void persist({ vex_style: style });
   }
 
   function chooseSkin(next: AppSkin) {
@@ -115,6 +126,21 @@ export function AppearanceSettings() {
                     </span>
                   )}
                 </span>
+              </button>
+            );
+          })}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="Jeito da Vex" description="Escolha como ela escreve. Você pode mudar isso quando quiser.">
+        <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Estilo de conversa da Vex">
+          {VEX_STYLE_OPTIONS.map((option) => {
+            const selected = vexStyle === option.value;
+            return (
+              <button key={option.value} type="button" role="radio" aria-checked={selected} onClick={() => chooseVexStyle(option.value)} className={cx("flex min-h-24 items-start gap-3 rounded-xl border p-4 text-left transition-colors", selected ? "border-gold-line bg-gold-soft ring-1 ring-gold-line" : "border-line hover:border-line-strong hover:bg-hover")}>
+                <SparkleIcon size={18} className={selected ? "mt-0.5 shrink-0 text-gold-fg" : "mt-0.5 shrink-0 text-fg-3"} />
+                <span className="min-w-0 flex-1"><span className="block text-[13.5px] font-medium text-fg">{option.label}</span><span className="mt-1 block text-xs leading-relaxed text-fg-3">{option.description}</span></span>
+                {selected && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gold text-on-gold"><CheckIcon size={12} weight="bold" /></span>}
               </button>
             );
           })}

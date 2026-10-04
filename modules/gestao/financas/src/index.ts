@@ -9,5 +9,6 @@ export * from "./hooks/useFinancas";
 export * from "./components/TransactionForm";
 export * from "./components/TransactionTable";
 export * from "./components/ImportStatementDialog";
+export * from "./components/InvestmentsPanel";
 export * from "./components/StructurePanels";
 export * from "./components/PlanningPanels";

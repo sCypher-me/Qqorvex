@@ -8,6 +8,7 @@ export * from "./hooks/useEstudosOverview";
 export * from "./hooks/useEstudosIntegrations";
 export * from "./components/NewNotebookForm";
 export * from "./components/NotebookCard";
+export * from "./components/NotebookCover";
 export * from "./components/StudySummaryEditor";
 export * from "./components/ReviewSession";
 export * from "./components/FlashcardManager";

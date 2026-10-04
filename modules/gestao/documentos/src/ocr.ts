@@ -1,3 +1,5 @@
+/// <reference path="./tesseract.d.ts" />
+
 /**
  * Documentos — OCR. Tesseract.js roda 100% no
  * navegador (WebAssembly + dados de treinamento baixados sob demanda pela própria lib) — sem

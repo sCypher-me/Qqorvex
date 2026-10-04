@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   EchoProvider,
   GeminiProvider,
+  normalizeVexStyle,
   OllamaProvider,
   ResilientProvider,
   VEX_SYSTEM_PROMPT,
@@ -24,6 +25,7 @@ import {
   type VexTurnResult,
 } from "@qqorvex/vex";
 import { supabase } from "../app/supabase";
+import { useAuth } from "@qqorvex/auth";
 import { useAccount } from "../app/account";
 import { useCurrentPageMeta } from "../app/shell/PageMeta";
 import { useCurrentItem } from "./CurrentItemContext";
@@ -86,7 +88,10 @@ function toChat(history: DisplayMessage[]): ChatMessage[] {
  * confirmação, avisos e a conversa persistida. O painel lateral e a tela /vex usam o mesmo hook.
  */
 export function useVexChat() {
+  const { session } = useAuth();
   const { userId, firstName } = useAccount();
+  const preferences = session?.user.user_metadata.qqorvex_preferences;
+  const vexStyle = normalizeVexStyle(preferences && typeof preferences === "object" ? (preferences as Record<string, unknown>).vex_style : undefined);
   const queryClient = useQueryClient();
   const location = useLocation();
   const pageMeta = useCurrentPageMeta();
@@ -174,6 +179,7 @@ export function useVexChat() {
           provider,
           messages: contextFor(history),
           tools,
+          vexStyle,
           onStep: (step) => {
             if (turn === turnRef.current) setLiveStep(step.label);
           },
@@ -189,7 +195,7 @@ export function useVexChat() {
         }
       }
     },
-    [applyResult, contextFor, tools],
+    [applyResult, contextFor, tools, vexStyle],
   );
 
   const send = useCallback(
@@ -257,6 +263,7 @@ export function useVexChat() {
         provider,
         messages: contextFor(current.history),
         tools,
+        vexStyle,
         tool: current.tool,
         args: current.args,
         onStep: (step) => {
@@ -282,7 +289,7 @@ export function useVexChat() {
         setLiveStep(null);
       }
     }
-  }, [applyResult, contextFor, pending, queryClient, tools]);
+  }, [applyResult, contextFor, pending, queryClient, tools, vexStyle]);
 
   const cancel = useCallback(() => {
     if (!pending) return;

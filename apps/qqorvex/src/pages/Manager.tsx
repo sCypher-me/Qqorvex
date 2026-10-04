@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, TrophyIcon, UsersIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, ProhibitIcon, TicketIcon, TrashIcon, TrophyIcon, UsersIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
@@ -8,6 +8,11 @@ import {
   useCreatePartnerCampaign,
   useCreateRedemptionCode,
   useDeleteAccount,
+  useSetAccountBanned,
+  useSetAccountTitle,
+  useRevokePendingRedemptionCode,
+  useDeleteWaitlistSignup,
+  useSetWaitlistRejected,
   usePartnerCampaigns,
   useRedemptionCodes,
   useSecretKeys,
@@ -185,12 +190,17 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
   const { toast } = useToast();
   const { accounts, isLoading, error } = useAllAccounts(supabase);
   const deleteAccountMutation = useDeleteAccount(supabase);
+  const setAccountBanned = useSetAccountBanned(supabase);
+  const setAccountTitle = useSetAccountTitle(supabase);
   const [confirming, setConfirming] = useState<{ id: string; email: string } | null>(null);
+  const [banConfirm, setBanConfirm] = useState<{ id: string; email: string; banned: boolean } | null>(null);
   const [search, setSearch] = useState("");
   const [badgeTargetId, setBadgeTargetId] = useState<string | null>(null);
   const [badgeKey, setBadgeKey] = useState(MANUAL_BADGES[0]?.key ?? "");
   const [grantingBadge, setGrantingBadge] = useState(false);
   const [badgeGrantError, setBadgeGrantError] = useState<string | null>(null);
+  const [titleTargetId, setTitleTargetId] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
 
   async function grantBadge(accountId: string) {
     setGrantingBadge(true);
@@ -226,6 +236,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
     <Panel title="Contas" description="Todas as contas do Qqorvex." aside={<span className="text-xs tabular-nums text-fg-3">{normalizedSearch ? `${filteredAccounts.length} de ${accounts.length}` : `${accounts.length} no total`}</span>}>
       <Input placeholder="Buscar por nome, usuário ou e-mail" aria-label="Buscar uma conta" value={search} onChange={(event) => setSearch(event.target.value)} leadingIcon={<MagnifyingGlassIcon />} wrapperClassName="w-full sm:max-w-md" />
       {deleteAccountMutation.isError && <Notice title="Não foi possível excluir a conta">A operação falhou. A conta e os dados foram mantidos.</Notice>}
+      {setAccountBanned.isError && <Notice tone="error" title="Não foi possível alterar o acesso">A conta continua com o estado anterior.</Notice>}
       {accounts.length === 0 ? (
         <EmptyState>Nenhuma conta cadastrada.</EmptyState>
       ) : filteredAccounts.length === 0 ? (
@@ -250,21 +261,14 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
                   {account.role === "dono" && <Badge tone="gold">Dono</Badge>}
                   {account.id === currentUserId && <Badge tone="info">Você</Badge>}
                   <Badge tone={TIER_TONE[account.accountTier]}>{TIER_LABEL[account.accountTier]}</Badge>
+                  {account.isBanned && <Badge tone="danger">Banida</Badge>}
+                  {account.selectedTitle && <Badge tone="info">{account.selectedTitle}</Badge>}
                 </div>
                 {account.id !== currentUserId && (
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="text-danger"
-                    loading={deleteAccountMutation.isPending && deleteAccountMutation.variables === account.id}
-                    disabled={deleteAccountMutation.isPending}
-                    onClick={() => {
-                      deleteAccountMutation.reset();
-                      setConfirming({ id: account.id, email: account.email });
-                    }}
-                  >
-                    Excluir
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {account.role !== "dono" && <Button variant={account.isBanned ? "secondary" : "ghost"} size="xs" className={!account.isBanned ? "text-danger" : ""} loading={setAccountBanned.isPending && setAccountBanned.variables?.userId === account.id} disabled={setAccountBanned.isPending} onClick={() => setBanConfirm({ id: account.id, email: account.email, banned: !account.isBanned })}>{account.isBanned ? "Desbanir" : "Banir"}</Button>}
+                    <Button variant="ghost" size="xs" className="text-danger" loading={deleteAccountMutation.isPending && deleteAccountMutation.variables === account.id} disabled={deleteAccountMutation.isPending} onClick={() => { deleteAccountMutation.reset(); setConfirming({ id: account.id, email: account.email }); }}>Excluir</Button>
+                  </div>
                 )}
                 <Button
                   variant="ghost"
@@ -275,7 +279,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
                     setBadgeTargetId((current) => current === account.id ? null : account.id);
                   }}
                 >
-                  Badges
+                  Insígnias
                 </Button>
                 {badgeTargetId === account.id && (
                   <div className="flex w-full flex-wrap items-end gap-2 rounded-lg border border-gold-line/60 bg-gold-soft/30 p-3">
@@ -288,6 +292,13 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
                     {badgeGrantError && <p className="w-full text-xs text-danger" role="alert">{badgeGrantError}</p>}
                     <p className="w-full text-xs text-fg-3">Insígnias de nível e de tempo de assinatura são automáticas.</p>
                   </div>
+                )}
+                <Button variant="ghost" size="xs" onClick={() => { setTitleTargetId((current) => current === account.id ? null : account.id); setTitleDraft(account.selectedTitle ?? ""); }}>Título</Button>
+                {titleTargetId === account.id && (
+                  <form className="flex w-full flex-wrap items-end gap-2 rounded-lg border border-line bg-canvas/40 p-3" onSubmit={(event) => { event.preventDefault(); setAccountTitle.mutate({ userId: account.id, title: titleDraft.trim() }, { onSuccess: () => { setTitleTargetId(null); toast({ title: titleDraft.trim() ? "Título atualizado" : "Título removido", tone: "success" }); }, onError: () => toast({ title: "Não foi possível alterar o título", tone: "danger" }) }); }}>
+                    <Input label={`Título de ${name}`} value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} maxLength={40} placeholder="Ex.: Mente brilhante" wrapperClassName="min-w-[220px] flex-1" />
+                    <Button type="submit" size="sm" loading={setAccountTitle.isPending} disabled={setAccountTitle.isPending}>{titleDraft.trim() ? "Definir título" : "Remover título"}</Button>
+                  </form>
                 )}
               </li>
             );
@@ -305,6 +316,15 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
           setConfirming(null);
         }}
       />
+      <ConfirmDialog
+        isOpen={banConfirm !== null}
+        title={banConfirm?.banned ? "Banir esta conta?" : "Reativar esta conta?"}
+        description={banConfirm ? banConfirm.banned ? `${banConfirm.email} perderá acesso imediatamente e as sessões atuais serão encerradas.` : `${banConfirm.email} poderá entrar no Qqorvex novamente.` : ""}
+        confirmLabel={banConfirm?.banned ? "Banir conta" : "Desbanir conta"}
+        destructive={Boolean(banConfirm?.banned)}
+        onCancel={() => setBanConfirm(null)}
+        onConfirm={() => { if (banConfirm) setAccountBanned.mutate({ userId: banConfirm.id, banned: banConfirm.banned }, { onSuccess: () => toast({ title: banConfirm.banned ? "Conta banida" : "Conta reativada", description: banConfirm.email, tone: "success" }) }); setBanConfirm(null); }}
+      />
     </Panel>
   );
 }
@@ -314,6 +334,7 @@ function CodesSection({ userId }: { userId: string }) {
   const { codes, isLoading, error } = useRedemptionCodes(supabase);
   const { campaigns } = usePartnerCampaigns(supabase);
   const createCode = useCreateRedemptionCode(supabase, userId);
+  const revokeCode = useRevokePendingRedemptionCode(supabase);
   const [tier, setTier] = useState<"parceiro" | "lifetime" | "beta_tester">("lifetime");
   const activeCampaigns = campaigns.filter(isCampaignActive);
   const [campaignId, setCampaignId] = useState("");
@@ -323,6 +344,7 @@ function CodesSection({ userId }: { userId: string }) {
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [codeToRevoke, setCodeToRevoke] = useState<{ id: string; code: string } | null>(null);
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -415,15 +437,17 @@ function CodesSection({ userId }: { userId: string }) {
                 <Badge tone={code.tier === "lifetime" ? "gold" : "info"}>{code.tier === "beta_tester" ? "Beta Tester" : TIER_LABEL[code.tier as AccountTier]}</Badge>
                 <Badge tone={code.redeemed_by ? "success" : "neutral"}>{code.redeemed_by ? "Resgatado" : "Pendente"}</Badge>
                 {!code.redeemed_by && (
-                  <IconButton label="Copiar código" size="sm" onClick={() => void navigator.clipboard?.writeText(code.code).then(() => toast({ title: "Código copiado", tone: "success" }))}>
-                    <CopyIcon />
-                  </IconButton>
+                  <>
+                    <IconButton label="Copiar código" size="sm" onClick={() => void navigator.clipboard?.writeText(code.code).then(() => toast({ title: "Código copiado", tone: "success" }))}><CopyIcon /></IconButton>
+                    <IconButton label="Revogar código pendente" size="sm" disabled={revokeCode.isPending} onClick={() => setCodeToRevoke({ id: code.id, code: code.code })}><TrashIcon className="text-danger" /></IconButton>
+                  </>
                 )}
               </li>
             ))}
           </ul>
         )}
       </Panel>
+      <ConfirmDialog isOpen={codeToRevoke !== null} title="Revogar este código?" description={codeToRevoke ? `${codeToRevoke.code} deixará de funcionar. Códigos já resgatados não podem ser revogados.` : ""} confirmLabel="Revogar código" destructive onCancel={() => setCodeToRevoke(null)} onConfirm={() => { if (codeToRevoke) revokeCode.mutate(codeToRevoke.id, { onSuccess: () => toast({ title: "Código revogado", tone: "success" }), onError: (caught) => toast({ title: "Não foi possível revogar", description: caught.message, tone: "danger" }) }); setCodeToRevoke(null); }} />
     </div>
   );
 }
@@ -537,7 +561,7 @@ function CampaignsPanel({ userId, campaigns, codes }: { userId: string; campaign
   );
 }
 
-type WaitlistFilter = "pendentes" | "convidados" | "todos";
+type WaitlistFilter = "pendentes" | "convidados" | "recusados" | "todos";
 
 /**
  * Inscrições do formulário do site. O convite em si é um código (aba Códigos) enviado por você;
@@ -547,10 +571,14 @@ function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
   const { toast } = useToast();
   const { signups, isLoading, error } = useWaitlist(supabase);
   const setInvited = useSetWaitlistInvited(supabase);
+  const setRejected = useSetWaitlistRejected(supabase);
+  const deleteSignup = useDeleteWaitlistSignup(supabase);
   const [filter, setFilter] = useState<WaitlistFilter>("pendentes");
-  const pending = signups.filter((signup) => !signup.invited_at);
-  const invited = signups.length - pending.length;
-  const visible = filter === "pendentes" ? pending : filter === "convidados" ? signups.filter((signup) => signup.invited_at) : signups;
+  const [signupToDelete, setSignupToDelete] = useState<{ id: string; email: string } | null>(null);
+  const pending = signups.filter((signup) => !signup.invited_at && !signup.rejected_at);
+  const invited = signups.filter((signup) => signup.invited_at);
+  const rejected = signups.filter((signup) => signup.rejected_at);
+  const visible = filter === "pendentes" ? pending : filter === "convidados" ? invited : filter === "recusados" ? rejected : signups;
 
   async function copyPendingEmails() {
     try {
@@ -597,7 +625,7 @@ function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-3 text-xs text-fg-3">
-            <span className="tabular-nums">{signups.length} inscritos · {pending.length} pendentes · {invited} convidados</span>
+            <span className="tabular-nums">{signups.length} inscritos · {pending.length} pendentes · {invited.length} convidados · {rejected.length} recusados</span>
             <span className="flex-1" />
             <Tabs<WaitlistFilter>
               label="Filtro da lista"
@@ -606,12 +634,13 @@ function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
               options={[
                 { value: "pendentes", label: "Pendentes" },
                 { value: "convidados", label: "Convidados" },
+                { value: "recusados", label: "Recusados" },
                 { value: "todos", label: "Todos" },
               ]}
             />
           </div>
           {visible.length === 0 ? (
-            <EmptyState>{filter === "pendentes" ? "Todos já foram convidados." : "Ninguém convidado ainda."}</EmptyState>
+            <EmptyState>{filter === "pendentes" ? "Não há solicitações pendentes." : filter === "recusados" ? "Nenhuma solicitação recusada." : "Nenhuma solicitação nesta categoria."}</EmptyState>
           ) : (
             <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
               {visible.map((signup) => (
@@ -620,18 +649,14 @@ function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
                     <p className="truncate text-[13.5px] font-medium text-fg">{signup.email}</p>
                     <p className="text-xs text-fg-3">
                       Inscrito em {shortDate.format(new Date(signup.created_at))}
-                      {signup.invited_at ? ` · convidado em ${shortDate.format(new Date(signup.invited_at))}` : ""}
+                      {signup.invited_at ? ` · convidado em ${shortDate.format(new Date(signup.invited_at))}` : signup.rejected_at ? ` · recusado em ${shortDate.format(new Date(signup.rejected_at))}` : ""}
                     </p>
                   </div>
-                  {signup.invited_at ? <Badge tone="success">Convidado</Badge> : <Badge tone="neutral">Pendente</Badge>}
-                  <Button
-                    size="sm"
-                    variant={signup.invited_at ? "ghost" : "secondary"}
-                    disabled={setInvited.isPending}
-                    onClick={() => setInvited.mutate({ ids: [signup.id], invited: !signup.invited_at })}
-                  >
-                    {signup.invited_at ? "Desfazer" : "Marcar convidado"}
-                  </Button>
+                  {signup.invited_at ? <Badge tone="success">Convidado</Badge> : signup.rejected_at ? <Badge tone="danger">Recusado</Badge> : <Badge tone="neutral">Pendente</Badge>}
+                  {!signup.rejected_at && <Button size="sm" variant={signup.invited_at ? "ghost" : "secondary"} disabled={setInvited.isPending || setRejected.isPending} onClick={() => setInvited.mutate({ ids: [signup.id], invited: !signup.invited_at }, { onSuccess: () => toast({ title: signup.invited_at ? "Convite desfeito" : "Marcado como convidado", tone: "success" }) })}>{signup.invited_at ? "Desfazer" : "Marcar convidado"}</Button>}
+                  {!signup.rejected_at && <Button size="sm" variant="ghost" className="text-danger" disabled={setInvited.isPending || setRejected.isPending} onClick={() => setRejected.mutate({ id: signup.id, rejected: true }, { onSuccess: () => toast({ title: "Solicitação recusada", tone: "success" }), onError: () => toast({ title: "Não foi possível recusar a solicitação", tone: "danger" }) })}>Recusar</Button>}
+                  {signup.rejected_at && <Button size="sm" variant="ghost" disabled={setRejected.isPending} onClick={() => setRejected.mutate({ id: signup.id, rejected: false }, { onSuccess: () => toast({ title: "Solicitação reaberta", tone: "success" }) })}>Reabrir</Button>}
+                  <IconButton label="Apagar solicitação" size="sm" onClick={() => setSignupToDelete({ id: signup.id, email: signup.email })}><TrashIcon className="text-danger" /></IconButton>
                 </li>
               ))}
             </ul>
@@ -641,6 +666,7 @@ function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
           </button>
         </>
       )}
+      <ConfirmDialog isOpen={signupToDelete !== null} title="Apagar solicitação?" description={signupToDelete ? `A inscrição de ${signupToDelete.email} será removida definitivamente.` : ""} confirmLabel="Apagar" destructive onCancel={() => setSignupToDelete(null)} onConfirm={() => { if (signupToDelete) deleteSignup.mutate(signupToDelete.id, { onSuccess: () => toast({ title: "Solicitação apagada", tone: "success" }), onError: () => toast({ title: "Não foi possível apagar a solicitação", tone: "danger" }) }); setSignupToDelete(null); }} />
     </Panel>
   );
 }
@@ -652,6 +678,7 @@ const SECRET_LABELS: Record<string, string> = {
   cron_secret: "Segredo do agendador",
   gemini_api_key: "Chave do Gemini",
   gemini_model: "Modelo do Gemini",
+  brapi_api_key: "brapi.dev — cotações de ações, FIIs e criptomoedas",
   google_client_id: "Google OAuth — Client ID",
   google_client_secret: "Google OAuth — segredo do cliente",
   rapidapi_private_key: "RapidAPI — chave privada",
