@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { ArrowClockwiseIcon, ArrowDownIcon, ArrowUpIcon, ChartLineIcon, CoinsIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ArrowUpIcon, ChartLineIcon, CoinsIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Badge, Button, ConfirmDialog, EmptyState, Input, Notice, Select, Skeleton, Segmented, useToast } from "@qqorvex/ui";
 import type { Database, SupabaseClient } from "@qqorvex/database";
 import {
@@ -8,6 +8,7 @@ import {
   useInvestmentQuotes,
   useSaveInvestmentPosition,
 } from "../hooks/useFinancas";
+import { InvestmentMarketHome } from "./InvestmentMarketHome";
 import type { InvestmentAssetType, InvestmentPosition } from "../types";
 
 type Filter = "all" | InvestmentAssetType;
@@ -23,7 +24,7 @@ function formatMoney(value: number | null) {
 export function InvestmentsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { toast } = useToast();
   const { positions, isLoading, error } = useInvestmentPositions(client);
-  const { quotes, apiKeyConfigured, isLoading: quotesLoading, error: quoteError, refetch, isFetching } = useInvestmentQuotes(client, positions.length > 0);
+  const { quotes, market, marketError, apiKeyConfigured, isLoading: quotesLoading, error: quoteError, refetch, isFetching } = useInvestmentQuotes(client);
   const savePosition = useSaveInvestmentPosition(client, userId);
   const deletePosition = useDeleteInvestmentPosition(client);
   const [assetType, setAssetType] = useState<InvestmentAssetType>("stock");
@@ -65,13 +66,20 @@ export function InvestmentsPanel({ client, userId }: { client: SupabaseClient<Da
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
+      <InvestmentMarketHome
+        market={market}
+        marketError={marketError ?? (quoteError ? "Não foi possível consultar o mercado agora. Tente atualizar novamente." : null)}
+        isLoading={quotesLoading}
+        isFetching={isFetching}
+        onRefresh={() => void refetch()}
+      />
+
       <section className="rounded-xl border border-line bg-surface p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg"><ChartLineIcon size={18} className="text-gold-fg" /> Investimentos</h2>
-            <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-fg-3">Acompanhe quantidades, custo médio e variação de criptomoedas, ações e FIIs brasileiros em um só lugar.</p>
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg"><ChartLineIcon size={18} className="text-gold-fg" /> Minha carteira</h2>
+            <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-fg-3">Acompanhe quantidades, custo médio e variação dos seus ativos.</p>
           </div>
-          <Button size="sm" variant="secondary" leadingIcon={<ArrowClockwiseIcon size={15} />} loading={isFetching} disabled={!positions.length || isFetching} onClick={() => void refetch()}>Atualizar cotações</Button>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <SummaryCard label="Valor acompanhado" value={pricedPositions.length ? formatMoney(totalValue) : "—"} hint={positions.length ? `${pricedPositions.length} de ${positions.length} ativos com cotação` : "Adicione ativos para começar"} />

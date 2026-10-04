@@ -52,7 +52,6 @@ function needsOnboarding(user: AuthUser): boolean {
   return oauthStartedRecently || accountWasJustCreated;
 }
 
-const COLLAPSED_KEY = "qqorvex.nav.collapsed";
 const VEX_OPEN_KEY = "qqorvex.vex.open";
 
 function readFlag(key: string): boolean {
@@ -100,7 +99,7 @@ function Shell() {
   useVipSkinGuard();
   const { setPendingPrompt } = useVexSession();
   const isVexPage = location.pathname === "/vex";
-  const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSED_KEY));
+  const collapsed = true;
   const [vexOpen, setVexOpen] = useState(() => readFlag(VEX_OPEN_KEY));
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [onboardingFinished, setOnboardingFinished] = useState(false);
@@ -122,7 +121,6 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
-  useEffect(() => writeFlag(COLLAPSED_KEY, collapsed), [collapsed]);
   useEffect(() => writeFlag(VEX_OPEN_KEY, vexOpen), [vexOpen]);
 
   const openVex = useCallback(
@@ -176,7 +174,7 @@ function Shell() {
     <VexLauncherContext.Provider value={openVex}>
     <div className="flex min-h-dvh bg-canvas">
       <div className="hidden lg:block">
-        <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((value) => !value)} onOpenPalette={() => setPaletteOpen(true)} onOpenVex={() => openVex()} />
+        <Sidebar collapsed={collapsed} onOpenPalette={() => setPaletteOpen(true)} onOpenVex={() => openVex()} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">

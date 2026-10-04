@@ -70,7 +70,7 @@ export function Hero() {
             Baixar APK para Android <DownloadSimpleIcon size={18} aria-hidden="true" />
           </a>
         </div>
-        <p className="mt-3 text-sm text-fg-3">Versão beta para Android 7 ou superior. O acesso ao app requer convite.</p>
+        <p className="mt-3 text-sm text-fg-3">Versão beta para Android 14 ou superior. O acesso ao app requer convite.</p>
       </div>
       <AppPreview />
     </section>

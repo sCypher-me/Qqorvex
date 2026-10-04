@@ -36,8 +36,31 @@ export interface InvestmentQuote {
 
 export interface InvestmentQuoteResponse {
   quotes: InvestmentQuote[];
+  market: InvestmentMarketSnapshot | null;
+  marketError: string | null;
   apiKeyConfigured: boolean;
   requestedAt: string;
+}
+
+export interface InvestmentMarketAsset {
+  assetType: InvestmentAssetType;
+  symbol: string;
+  name: string;
+  price: number | null;
+  changePercent: number | null;
+  asOf: string | null;
+}
+
+export interface InvestmentMarketMovers {
+  gainers: InvestmentMarketAsset[];
+  decliners: InvestmentMarketAsset[];
+}
+
+export interface InvestmentMarketSnapshot {
+  stocks: InvestmentMarketMovers;
+  fiis: InvestmentMarketMovers;
+  crypto: InvestmentMarketAsset[];
+  updatedAt: string;
 }
 
 export interface SaveInvestmentPositionInput {
