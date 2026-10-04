@@ -142,6 +142,7 @@ export function LoginPage() {
           </Button>
         </div>
 
+        <Link to="/entrar-por-email" className="text-center text-sm text-gold-fg hover:underline">Entrar por link ou código de e-mail</Link>
         <OAuthButtons />
 
         <p className="m-0 text-center text-[13.5px] text-fg-3">

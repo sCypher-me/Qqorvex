@@ -1,5 +1,8 @@
 project_id = "uowipikbumbaprckdvkg"
 
+[functions.invite-user]
+verify_jwt = true
+
 [functions.stripe-webhook]
 # Stripe autentica este endpoint via Stripe-Signature, validada no handler.
 verify_jwt = false

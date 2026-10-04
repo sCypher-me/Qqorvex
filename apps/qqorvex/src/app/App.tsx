@@ -16,6 +16,8 @@ import { LEGACY_REDIRECTS } from "./shell/navigation";
 const HojePage = lazy(() => import("../pages/HojeEditorial").then((m) => ({ default: m.HojeEditorialPage })));
 const AppRuntime = lazy(() => import("./AppRuntime").then((m) => ({ default: m.AppRuntime })));
 const ProtectedLayout = lazy(() => import("./ProtectedLayout").then((m) => ({ default: m.ProtectedLayout })));
+const EmailLoginPage = lazy(() => import("../pages/EmailLogin").then((m) => ({ default: m.EmailLoginPage })));
+const AcceptInvitePage = lazy(() => import("../pages/AcceptInvite").then((m) => ({ default: m.AcceptInvitePage })));
 const LoginPage = lazy(() => import("../pages/Login").then((m) => ({ default: m.LoginPage })));
 const RegistrarPage = lazy(() => import("../pages/Registrar").then((m) => ({ default: m.RegistrarPage })));
 const EsqueciSenhaPage = lazy(() => import("../pages/EsqueciSenha").then((m) => ({ default: m.EsqueciSenhaPage })));
@@ -100,6 +102,8 @@ export function App() {
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
                 <Route path="/mfa" element={<MfaPage />} />
+                <Route path="/entrar-por-email" element={<EmailLoginPage />} />
+                <Route path="/aceitar-convite" element={<AcceptInvitePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/criar-conta" element={<RegistrarPage />} />
                 <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />

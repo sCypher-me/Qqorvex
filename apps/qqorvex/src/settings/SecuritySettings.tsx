@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { CheckCircleIcon, CircleDashedIcon, DesktopIcon, DeviceMobileIcon, FingerprintIcon, KeyIcon, LockKeyIcon, ShieldCheckIcon, SignOutIcon } from "@phosphor-icons/react";
 import {
+  changePassword, emailRedirect, isPasswordValid, mapAuthError, requestReauthentication,
   deletePasskey,
   enrollTotp,
   parseUserAgent,
@@ -40,6 +41,15 @@ export function SecuritySettings() {
   const { events: loginEvents, isLoading: historyLoading, error: historyError, refresh: refreshHistory } = useSecurityLoginHistory(client);
   const { hasPin, isLoading: pinLoading, refresh: refreshPin } = usePin(client);
 
+  const [nonce, setNonce] = useState("");
+  const [needsNonce, setNeedsNonce] = useState(false);
+  const [nonceBusy, setNonceBusy] = useState(false);
+  async function sendNonce() {
+    setNonceBusy(true);
+    try { const result = await requestReauthentication(client); setPasswordError(result.error); if (!result.error) setNeedsNonce(true); }
+    catch { setPasswordError("Não foi possível enviar o código. Tente novamente."); }
+    finally { setNonceBusy(false); }
+  }
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -93,13 +103,13 @@ export function SecuritySettings() {
     }
     setEmailBusy(true);
     try {
-      const { error } = await client.auth.updateUser({ email });
+      const { error } = await client.auth.updateUser({ email: email.toLowerCase() }, { emailRedirectTo: emailRedirect("/configuracoes/seguranca") });
       if (error) {
-        setEmailError(error.message);
+        setEmailError(mapAuthError(error));
         return;
       }
       setNewEmail("");
-      toast({ title: "Confirme no seu e-mail", description: "Enviamos um link para concluir a troca.", tone: "success" });
+      toast({ title: "Confirme no seu e-mail", description: "Verifique o endereço atual e o novo: o Supabase pode pedir confirmação nos dois.", tone: "success" });
     } catch (caught) {
       setEmailError(caught instanceof Error ? caught.message : "Não foi possível solicitar a troca de e-mail.");
     } finally {
@@ -110,8 +120,8 @@ export function SecuritySettings() {
   async function handleChangePassword(event: FormEvent) {
     event.preventDefault();
     setPasswordError(null);
-    if (newPassword.length < 8) {
-      setPasswordError("Use uma senha com pelo menos 8 caracteres.");
+    if (!isPasswordValid(newPassword)) {
+      setPasswordError("A senha não atende aos requisitos mínimos.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -120,11 +130,17 @@ export function SecuritySettings() {
     }
     setPasswordBusy(true);
     try {
-      const { error } = await client.auth.updateUser({ password: newPassword });
-      if (error) {
-        setPasswordError(error.message);
+      const result = await changePassword(client, newPassword, nonce);
+      if (result.requiresReauthentication) {
+        setNeedsNonce(true);
+        await sendNonce();
         return;
       }
+      if (result.error) {
+        setPasswordError(result.error);
+        return;
+      }
+      setNonce(""); setNeedsNonce(false);
       setNewPassword("");
       setConfirmPassword("");
       const { error: revokeError } = await client.auth.signOut({ scope: "others" });
@@ -295,6 +311,7 @@ export function SecuritySettings() {
           <form onSubmit={(event) => void handleChangePassword(event)} className="flex flex-col gap-3">
             <PasswordField label="Nova senha" value={newPassword} onChange={setNewPassword} autoComplete="new-password" showChecklist />
             <PasswordField label="Confirmar nova senha" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
+            {needsNonce && <><Input label="Código de verificação recebido por e-mail" value={nonce} onChange={(event) => setNonce(event.target.value)} autoComplete="one-time-code" inputMode="numeric" required /><Button type="button" variant="secondary" loading={nonceBusy} onClick={() => void sendNonce()}>Enviar novo código</Button></>}
             {passwordError && <Notice compact>{passwordError}</Notice>}
             <Button type="submit" variant="secondary" className="self-start" loading={passwordBusy} disabled={!newPassword || !confirmPassword}>
               Atualizar senha

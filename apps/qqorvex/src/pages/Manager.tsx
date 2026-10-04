@@ -117,7 +117,7 @@ export function ManagerPage() {
         />
       </PageHeader>
       {tab === "visao-geral" && <OverviewSection onNavigate={setTab} />}
-      {tab === "contas" && <AccountsSection currentUserId={userId} />}
+      {tab === "contas" && <><InviteSection /><AccountsSection currentUserId={userId} /></>}
       {tab === "codigos" && <CodesSection userId={userId} />}
       {tab === "lista" && <WaitlistSection onNavigate={setTab} />}
       {tab === "config" && <SecretsSection />}
@@ -737,4 +737,26 @@ function SecretRow({
       {saved && !editing && <p className="text-xs text-success" role="status">Configuração salva com sucesso.</p>}
     </article>
   );
+}
+
+function InviteSection() {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setMessage(null); setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("invite-user", { body: { email } });
+      if (error || data?.error) setMessage(data?.error ?? "Não foi possível enviar o convite. Confira se a conta já existe.");
+      else { setEmail(""); setMessage("Convite enviado. A pessoa poderá definir sua senha pelo link recebido."); }
+    } catch { setMessage("Não foi possível conectar. Tente novamente."); }
+    finally { setBusy(false); }
+  }
+  return <Panel title="Convidar por e-mail" description="Cria uma conta padrão. Privilégios e planos continuam sendo concedidos pelos códigos de acesso.">
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <Input label="E-mail do convidado" type="email" value={email} onChange={event => setEmail(event.target.value)} required />
+      <Button type="submit" loading={busy} disabled={busy} className="self-start">Enviar convite</Button>
+      {message && <Notice>{message}</Notice>}
+    </form>
+  </Panel>;
 }

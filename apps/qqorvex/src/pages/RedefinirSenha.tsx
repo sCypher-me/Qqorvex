@@ -63,16 +63,13 @@ export function RedefinirSenhaPage() {
     }
 
     setSubmitting(true);
-    const result = await updatePassword(password);
-    setSubmitting(false);
-
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    // Revoga as outras sessões pra que a senha vazada/antiga pare de valer em qualquer dispositivo já conectado.
-    await signOut({ scope: "others" });
-    setDone(true);
+    try {
+      const result = await updatePassword(password);
+      if (result.error) { setError(result.error); return; }
+      await signOut({ scope: "others" });
+      setDone(true);
+    } catch { setError("Não foi possível atualizar a senha. Tente novamente."); }
+    finally { setSubmitting(false); }
   }
 
   return (
