@@ -1,4 +1,6 @@
 import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js/min";
+import type { SupabaseClient, Database } from "@qqorvex/database";
+import { mapAuthError } from "./authErrors";
 
 /** Só Brasil por enquanto (campo opcional) — `import("libphonenumber-js/min")` é o bundle enxuto (~145kB) recomendado pra browser. */
 const DEFAULT_COUNTRY: CountryCode = "BR";
@@ -46,4 +48,16 @@ export function formatE164ToBRInput(e164: string): string {
   const parsed = parsePhoneNumberFromString(e164, DEFAULT_COUNTRY);
   if (!parsed) return "";
   return formatBRPhoneInput(parsed.nationalNumber);
+}
+
+/** Solicita ao Supabase a validação do telefone que será usado para entrar na conta. */
+export async function requestAuthPhoneChange(client: SupabaseClient<Database>, phone: string) {
+  const { error } = await client.auth.updateUser({ phone });
+  return { error: error ? mapAuthError(error) : null };
+}
+
+/** Só confirma a mudança após a pessoa comprovar que recebe SMS no número novo. */
+export async function verifyAuthPhoneChange(client: SupabaseClient<Database>, phone: string, token: string) {
+  const { error } = await client.auth.verifyOtp({ phone, token: token.trim(), type: "phone_change" });
+  return { error: error ? mapAuthError(error) : null };
 }

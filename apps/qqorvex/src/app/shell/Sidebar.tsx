@@ -60,10 +60,18 @@ export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex
       )}
     >
       <div className={cx("flex h-14 shrink-0 items-center", collapsed ? "justify-center" : "justify-between pl-4 pr-2")}>
-        <Link to="/" onClick={onBrandTap} className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Qqorvex — ir para Hoje">
-          <BrandSymbol size={24} />
-          {!collapsed && <Wordmark size={19} />}
-        </Link>
+        {collapsed ? (
+          <Tooltip content="Expandir menu" side="right">
+            <button type="button" onClick={onToggleCollapsed} className="flex h-9 w-9 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Expandir menu">
+              <BrandSymbol size={24} />
+            </button>
+          </Tooltip>
+        ) : (
+          <Link to="/" onClick={onBrandTap} className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Qqorvex — ir para Hoje">
+            <BrandSymbol size={24} />
+            <Wordmark size={19} />
+          </Link>
+        )}
         {!collapsed && (
           <button type="button" onClick={onToggleCollapsed} title="Recolher menu" aria-label="Recolher menu" className="flex h-8 w-8 items-center justify-center rounded-md text-fg-4 hover:bg-hover hover:text-fg-2">
             <SidebarSimpleIcon size={18} />
@@ -74,11 +82,6 @@ export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex
       <div className={cx("flex shrink-0 gap-1.5 pb-3", collapsed ? "flex-col items-center" : "px-3")}>
         {collapsed ? (
           <>
-            <Tooltip content="Expandir menu" side="right">
-              <button type="button" onClick={onToggleCollapsed} aria-label="Expandir menu" className={itemClasses(false, true)}>
-                <SidebarSimpleIcon />
-              </button>
-            </Tooltip>
             <Tooltip content={`Buscar (${isMac ? "⌘" : "Ctrl"} K)`} side="right">
               <button type="button" onClick={onOpenPalette} aria-label="Buscar e comandos" className={itemClasses(false, true)}>
                 <MagnifyingGlassIcon />

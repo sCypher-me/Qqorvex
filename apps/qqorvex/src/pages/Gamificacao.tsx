@@ -375,25 +375,24 @@ function LevelsTab({ level }: { level: number }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-[13px] text-fg-3">50 insígnias de nível. A cada 10 níveis você libera uma nova cor de destaque para o app; a {VIP_THEME.name} acompanha o Plus.</p>
+        <p className="max-w-xl text-[13px] text-fg-3">Você mantém a insígnia do seu nível atual; ao subir, ela é substituída. A cada 10 níveis você libera uma nova cor de destaque para o app; a {VIP_THEME.name} acompanha o Plus.</p>
         <ButtonLink to="/configuracoes/aparencia" size="sm" variant="secondary" leadingIcon={<PaletteIcon size={15} />}>
           Escolher cor
         </ButtonLink>
       </div>
       <ol className="grid grid-cols-5 gap-2 sm:grid-cols-10">
         {Array.from({ length: MAX_LEVEL }, (_, index) => index + 1).map((value) => {
-          const reached = value <= current;
           const isCurrent = value === current;
           const reward = rewards.get(value);
           return (
             <li
               key={value}
               aria-current={isCurrent ? "step" : undefined}
-              title={reward ? `Nível ${value} · libera a cor ${reward.name}` : `Nível ${value}`}
-              className={cx("relative flex flex-col items-center gap-1 rounded-lg border px-1 py-2", isCurrent ? "border-gold-line bg-gold-soft ring-1 ring-gold-line" : reached ? "border-line-soft bg-surface" : "border-transparent")}
+              title={`${reward ? `Nível ${value} · libera a cor ${reward.name}` : `Nível ${value}`}${value < current ? " · insígnia substituída pelo nível atual" : value > current ? " · ainda bloqueada" : " · insígnia atual"}`}
+              className={cx("relative flex flex-col items-center gap-1 rounded-lg border px-1 py-2", isCurrent ? "border-gold-line bg-gold-soft ring-1 ring-gold-line" : "border-line-soft bg-surface")}
             >
-              <LevelBadge level={value} alt={`Insígnia do nível ${value}`} className={cx("h-10 w-10", !reached && "opacity-30 grayscale")} />
-              <span className={cx("text-[11px] tabular-nums", isCurrent ? "font-semibold text-gold-fg" : reached ? "text-fg-2" : "text-fg-4")}>{value}</span>
+              <LevelBadge level={value} alt={`Insígnia do nível ${value}`} className={cx("h-10 w-10", !isCurrent && "opacity-30 grayscale")} />
+              <span className={cx("text-[11px] tabular-nums", isCurrent ? "font-semibold text-gold-fg" : "text-fg-4")}>{value}</span>
               {reward && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-2 ring-surface" style={{ backgroundColor: reward.preview.accent }} aria-hidden="true" />}
             </li>
           );

@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, TrophyIcon, UsersIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@qqorvex/module-manager";
 import { supabase } from "../app/supabase";
 import { usePageMeta } from "../app/shell/PageMeta";
+import { BADGE_CATALOG, SPECIAL_BADGE_CATALOG } from "@qqorvex/module-gamificacao";
 
 const TIER_LABEL: Record<AccountTier, string> = { padrao: "Padrão", parceiro: "Parceiro", lifetime: "Lifetime", vip: "VIP" };
 const TIER_TONE: Record<AccountTier, BadgeTone> = { padrao: "neutral", parceiro: "info", lifetime: "gold", vip: "gold" };
@@ -56,6 +57,10 @@ function SectionError({ what }: { what: string }) {
 }
 
 const shortDate = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+const MANUAL_BADGES = [
+  ...BADGE_CATALOG.map(({ key, label }) => ({ key, label })),
+  ...SPECIAL_BADGE_CATALOG.filter((badge) => badge.access !== "subscription_tenure").map(({ key, label }) => ({ key, label })),
+];
 
 /**
  * Painel Manager — só existe pro Dono. Protegido em duas camadas: `Sidebar` só mostra o link
@@ -177,10 +182,37 @@ function OverviewSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
 }
 
 function AccountsSection({ currentUserId }: { currentUserId: string }) {
+  const { toast } = useToast();
   const { accounts, isLoading, error } = useAllAccounts(supabase);
   const deleteAccountMutation = useDeleteAccount(supabase);
   const [confirming, setConfirming] = useState<{ id: string; email: string } | null>(null);
   const [search, setSearch] = useState("");
+  const [badgeTargetId, setBadgeTargetId] = useState<string | null>(null);
+  const [badgeKey, setBadgeKey] = useState(MANUAL_BADGES[0]?.key ?? "");
+  const [grantingBadge, setGrantingBadge] = useState(false);
+  const [badgeGrantError, setBadgeGrantError] = useState<string | null>(null);
+
+  async function grantBadge(accountId: string) {
+    setGrantingBadge(true);
+    setBadgeGrantError(null);
+    try {
+      const { data, error: grantError } = await supabase.rpc("owner_grant_gamification_badge", {
+        p_user_id: accountId,
+        p_badge_key: badgeKey,
+      });
+      if (grantError) throw grantError;
+      if (!data) {
+        toast({ title: "Essa conta já possui a insígnia.", tone: "info" });
+      } else {
+        toast({ title: "Insígnia concedida", description: "Ela aparecerá na conta e será celebrada quando a pessoa entrar no app.", tone: "success" });
+        window.dispatchEvent(new CustomEvent("qqorvex:gamification-updated", { detail: { userId: accountId } }));
+      }
+    } catch (caught) {
+      setBadgeGrantError(caught instanceof Error ? caught.message : "Não foi possível conceder essa insígnia.");
+    } finally {
+      setGrantingBadge(false);
+    }
+  }
 
   if (isLoading) return <Panel title="Contas"><SkeletonList rows={4} leading /></Panel>;
   if (error) return <Panel title="Contas"><SectionError what="as contas" /></Panel>;
@@ -233,6 +265,29 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
                   >
                     Excluir
                   </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  leadingIcon={<TrophyIcon size={14} />}
+                  onClick={() => {
+                    setBadgeGrantError(null);
+                    setBadgeTargetId((current) => current === account.id ? null : account.id);
+                  }}
+                >
+                  Badges
+                </Button>
+                {badgeTargetId === account.id && (
+                  <div className="flex w-full flex-wrap items-end gap-2 rounded-lg border border-gold-line/60 bg-gold-soft/30 p-3">
+                    <Select label={`Insígnia para ${name}`} value={badgeKey} onChange={(event) => setBadgeKey(event.target.value)} wrapperClassName="min-w-[220px] flex-1">
+                      {MANUAL_BADGES.map((badge) => <option key={badge.key} value={badge.key}>{badge.label}</option>)}
+                    </Select>
+                    <Button size="sm" leadingIcon={<TrophyIcon size={15} />} loading={grantingBadge} disabled={grantingBadge} onClick={() => void grantBadge(account.id)}>
+                      Conceder
+                    </Button>
+                    {badgeGrantError && <p className="w-full text-xs text-danger" role="alert">{badgeGrantError}</p>}
+                    <p className="w-full text-xs text-fg-3">Insígnias de nível e de tempo de assinatura são automáticas.</p>
+                  </div>
                 )}
               </li>
             );

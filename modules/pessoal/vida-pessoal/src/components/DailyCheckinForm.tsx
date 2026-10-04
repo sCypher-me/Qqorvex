@@ -8,9 +8,9 @@ import type { DailyCheckin } from "../types";
 
 const SCALE = [1, 2, 3, 4, 5] as const;
 const METRICS = [
-  { key: "mood", label: "Humor", question: "Como está seu humor?", icon: <SmileyIcon />, hints: ["Muito baixo", "Baixo", "Neutro", "Bom", "Ótimo"] },
-  { key: "sleep_quality", label: "Sono", question: "Como você dormiu?", icon: <MoonStarsIcon />, hints: ["Muito mal", "Mal", "Razoável", "Bem", "Muito bem"] },
-  { key: "energy", label: "Energia", question: "Quanta energia você tem?", icon: <BatteryHighIcon />, hints: ["Esgotada", "Baixa", "Média", "Boa", "Alta"] },
+  { key: "mood", label: "Humor", question: "Como está seu humor?", icon: <SmileyIcon />, emojis: ["😞", "🙁", "😐", "🙂", "😄"], hints: ["Muito baixo", "Baixo", "Neutro", "Bom", "Ótimo"] },
+  { key: "sleep_quality", label: "Sono", question: "Como você dormiu?", icon: <MoonStarsIcon />, emojis: ["😫", "😕", "😐", "🙂", "😌"], hints: ["Muito mal", "Mal", "Razoável", "Bem", "Muito bem"] },
+  { key: "energy", label: "Energia", question: "Quanta energia você tem?", icon: <BatteryHighIcon />, emojis: ["🪫", "🐢", "😐", "⚡", "🔋"], hints: ["Esgotada", "Baixa", "Média", "Boa", "Alta"] },
 ] as const;
 type MetricKey = (typeof METRICS)[number]["key"];
 type Values = Record<MetricKey, number>;
@@ -34,11 +34,11 @@ function ScaleSelector({ metric, value, onChange }: { metric: (typeof METRICS)[n
               aria-label={`${metric.label}: ${step} de 5, ${metric.hints[step - 1]}`}
               onClick={() => onChange(step)}
               className={cx(
-                "h-10 rounded-lg border text-[14px] font-semibold tabular-nums transition-colors",
+                "h-11 rounded-lg border text-[23px] leading-none transition-[border-color,background-color,transform] hover:scale-[1.03]",
                 selected ? "border-gold bg-gold text-on-gold" : step < value ? "border-gold-line bg-gold-soft text-gold-fg" : "border-line bg-field text-fg-3 hover:border-line-strong hover:text-fg",
               )}
             >
-              {step}
+              <span aria-hidden="true">{metric.emojis[step - 1]}</span>
             </button>
           );
         })}
@@ -55,7 +55,7 @@ function MetricTile({ metric, value }: { metric: (typeof METRICS)[number]; value
         {metric.label}
       </span>
       <span className="flex items-baseline gap-1.5">
-        <span className="font-display text-[22px] font-semibold leading-none tabular-nums text-fg">{value}</span>
+        <span className="text-[24px] leading-none" role="img" aria-label={`${metric.label}: ${metric.hints[value - 1]}`}>{metric.emojis[value - 1]}</span>
         <span className="truncate text-xs text-fg-3">{metric.hints[value - 1]}</span>
       </span>
       <span className="grid grid-cols-5 gap-0.5" aria-hidden="true">

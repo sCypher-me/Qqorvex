@@ -66,9 +66,15 @@ export async function listDailyChallengeHistory(
   return data;
 }
 
-async function unlockEligibleBadges(client: Client): Promise<void> {
+export async function syncGamificationBadges(client: Client, userId: string): Promise<void> {
+  const previousBadges = await listUnlockedBadges(client, userId);
   const { error } = await client.rpc("sync_my_gamification_badges");
   if (error) throw error;
+
+  const currentBadges = await listUnlockedBadges(client, userId);
+  const previousKeys = new Set(previousBadges.map((badge) => badge.badge_key));
+  const newBadgeKeys = currentBadges.filter((badge) => !previousKeys.has(badge.badge_key)).map((badge) => badge.badge_key);
+  if (newBadgeKeys.length > 0) emitGamificationUpdated(userId);
 }
 
 /**
@@ -102,7 +108,7 @@ export async function awardXp(client: Client, userId: string, action: Gamificati
     const { error } = await client.rpc("gamification_record_action", { p_action: action });
     if (error) throw error;
     await recordDailyChallengeAction(client, action);
-    await unlockEligibleBadges(client);
+    await syncGamificationBadges(client, userId);
     emitGamificationUpdated(userId);
   } catch (err) {
     console.error("Falha ao conceder XP de gamificação (ação principal não foi afetada):", err);
@@ -112,7 +118,7 @@ export async function awardXp(client: Client, userId: string, action: Gamificati
 async function recordMilestone(client: Client, userId: string, milestone: "checkin_day" | "quiz_90_plus"): Promise<void> {
   const { error } = await client.rpc("gamification_record_milestone", { p_milestone: milestone });
   if (error) throw error;
-  await unlockEligibleBadges(client);
+  await syncGamificationBadges(client, userId);
   emitGamificationUpdated(userId);
 }
 

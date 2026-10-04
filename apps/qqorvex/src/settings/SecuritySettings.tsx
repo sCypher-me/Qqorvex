@@ -17,6 +17,7 @@ import {
   useSecurityLoginHistory,
   useSessions,
   verifyTotpEnrollment,
+  isBRPhoneValid, normalizeBRPhone, requestAuthPhoneChange, verifyAuthPhoneChange,
   type TotpEnrollment,
 } from "@qqorvex/auth";
 import { Badge, Button, ConfirmDialog, Input, Notice, ProgressRing, SkeletonBlock, SkeletonList, cx, useToast } from "@qqorvex/ui";
@@ -57,6 +58,11 @@ export function SecuritySettings() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [authPhone, setAuthPhone] = useState("");
+  const [phoneToken, setPhoneToken] = useState("");
+  const [phoneRequested, setPhoneRequested] = useState(false);
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
   const [code, setCode] = useState("");
@@ -115,6 +121,31 @@ export function SecuritySettings() {
     } finally {
       setEmailBusy(false);
     }
+  }
+
+  async function handleAuthPhone(event: FormEvent) {
+    event.preventDefault(); setPhoneError(null);
+    const normalizedPhone = normalizeBRPhone(authPhone);
+    if (!normalizedPhone || !isBRPhoneValid(authPhone)) { setPhoneError("Informe um número de celular válido com DDD."); return; }
+    if (phoneRequested && phoneToken.trim()) {
+      setPhoneBusy(true);
+      try {
+        const result = await verifyAuthPhoneChange(client, normalizedPhone, phoneToken);
+        if (result.error) { setPhoneError(result.error); return; }
+        setPhoneRequested(false); setPhoneToken(""); setAuthPhone("");
+        toast({ title: "Telefone de acesso atualizado", description: "A alteração foi confirmada por SMS.", tone: "success" });
+      } catch { setPhoneError("Não foi possível confirmar o código. Tente novamente."); }
+      finally { setPhoneBusy(false); }
+      return;
+    }
+    if (normalizedPhone === session?.user.phone) { setPhoneError("Esse já é o telefone de acesso atual."); return; }
+    setPhoneBusy(true);
+    try {
+      const result = await requestAuthPhoneChange(client, normalizedPhone);
+      if (result.error) { setPhoneError(result.error); return; }
+      setPhoneRequested(true);
+    } catch { setPhoneError("Não foi possível enviar o código por SMS. Tente novamente."); }
+    finally { setPhoneBusy(false); }
   }
 
   async function handleChangePassword(event: FormEvent) {
@@ -295,8 +326,8 @@ export function SecuritySettings() {
         </ul>
       </section>
 
-      <div className="grid items-start gap-5 xl:grid-cols-2">
-        <SettingsCard id="seguranca-email" title="E-mail de acesso" description="Usado para entrar e recuperar a conta." aside={<Badge tone={emailVerified ? "success" : "warning"}>{emailVerified ? "Verificado" : "Não verificado"}</Badge>}>
+      <div className="columns-1 gap-5 xl:columns-2">
+        <SettingsCard className="mb-5 break-inside-avoid" id="seguranca-email" title="E-mail de acesso" description="Usado para entrar e recuperar a conta." aside={<Badge tone={emailVerified ? "success" : "warning"}>{emailVerified ? "Verificado" : "Não verificado"}</Badge>}>
           <p className="break-all text-[13.5px] font-medium text-fg">{session?.user.email ?? "—"}</p>
           <form onSubmit={(event) => void handleChangeEmail(event)} className="flex flex-col gap-2 sm:flex-row">
             <Input type="email" autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} placeholder="Novo e-mail" aria-label="Novo e-mail" wrapperClassName="flex-1" />
@@ -307,7 +338,19 @@ export function SecuritySettings() {
           {emailError && <Notice compact>{emailError}</Notice>}
         </SettingsCard>
 
-        <SettingsCard title="Senha" description="Ao trocar, as outras sessões são encerradas por segurança.">
+        <SettingsCard className="mb-5 break-inside-avoid" title="Telefone de acesso" description={session?.user.phone ? `Número confirmado: ${session.user.phone}` : "Adicione um celular confirmado para usar nos recursos de acesso e recuperação."}>
+          <form onSubmit={(event) => void handleAuthPhone(event)} className="flex flex-col gap-3">
+            <Input label="Celular com DDD" type="tel" autoComplete="tel" inputMode="tel" value={authPhone} onChange={(event) => setAuthPhone(event.target.value)} placeholder="(11) 99999-9999" required disabled={phoneRequested || phoneBusy} />
+            {phoneRequested && <><Notice compact>Enviamos um código por SMS. Confirme para ativar o novo telefone de acesso.</Notice><Input label="Código recebido por SMS" autoComplete="one-time-code" inputMode="numeric" value={phoneToken} onChange={(event) => setPhoneToken(event.target.value.replace(/\D/g, ""))} required /></>}
+            {phoneError && <Notice compact>{phoneError}</Notice>}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="secondary" loading={phoneBusy} disabled={!authPhone.trim() || (phoneRequested && !phoneToken.trim())}>{phoneRequested ? "Confirmar telefone" : session?.user.phone ? "Trocar telefone" : "Adicionar telefone"}</Button>
+              {phoneRequested && <Button type="button" variant="ghost" disabled={phoneBusy} onClick={() => { setPhoneRequested(false); setPhoneToken(""); setPhoneError(null); }}>Cancelar</Button>}
+            </div>
+          </form>
+        </SettingsCard>
+
+        <SettingsCard className="mb-5 break-inside-avoid" title="Senha" description="Ao trocar, as outras sessões são encerradas por segurança.">
           <form onSubmit={(event) => void handleChangePassword(event)} className="flex flex-col gap-3">
             <PasswordField label="Nova senha" value={newPassword} onChange={setNewPassword} autoComplete="new-password" showChecklist />
             <PasswordField label="Confirmar nova senha" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
@@ -321,6 +364,7 @@ export function SecuritySettings() {
 
         <SettingsCard
           id="seguranca-2fa"
+          className="mb-5 break-inside-avoid"
           title="Verificação em duas etapas"
           description="Além da senha, um código de 6 dígitos do seu app autenticador."
           aside={factorsLoading ? undefined : <Badge tone={verifiedFactors.length ? "success" : "neutral"}>{verifiedFactors.length ? "Ativa" : "Inativa"}</Badge>}
@@ -375,6 +419,7 @@ export function SecuritySettings() {
 
         <SettingsCard
           id="seguranca-passkeys"
+          className="mb-5 break-inside-avoid"
           title="Passkeys"
           description="Entre sem senha com biometria, Windows Hello ou chave de segurança."
           aside={passkeysLoading ? undefined : <Badge tone={passkeys.length ? "success" : "neutral"}>{passkeys.length ? `${passkeys.length} ${passkeys.length === 1 ? "ativa" : "ativas"}` : "Nenhuma"}</Badge>}
@@ -470,8 +515,8 @@ export function SecuritySettings() {
         {sessionError && <Notice compact>{sessionError}</Notice>}
       </SettingsCard>
 
-      <div className="grid items-start gap-5 xl:grid-cols-2">
-        <SettingsCard title="Acessos recentes" description="Entradas na sua conta nos últimos 90 dias." aside={<Button size="xs" variant="ghost" loading={historyLoading} onClick={() => void refreshHistory()}>Atualizar</Button>}>
+      <div className="columns-1 gap-5 xl:columns-2">
+        <SettingsCard className="mb-5 break-inside-avoid" title="Acessos recentes" description="Entradas na sua conta nos últimos 90 dias." aside={<Button size="xs" variant="ghost" loading={historyLoading} onClick={() => void refreshHistory()}>Atualizar</Button>}>
           {historyLoading ? (
             <SkeletonList rows={3} />
           ) : historyError ? (
@@ -497,6 +542,7 @@ export function SecuritySettings() {
 
         <SettingsCard
           id="seguranca-cofre"
+          className="mb-5 break-inside-avoid"
           title="PIN do Cofre"
           description="Protege só os documentos marcados no Cofre. Não muda sua senha."
           aside={pinLoading ? undefined : <Badge tone={hasPin ? "success" : "neutral"}>{hasPin ? "Definido" : "Sem PIN"}</Badge>}
