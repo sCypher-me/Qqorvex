@@ -520,59 +520,59 @@ export function SecuritySettings() {
             </SettingsList>
           )}
         </SettingsCard>
+
+        <SettingsCard
+          title="Onde sua conta está aberta"
+          description="Encerre acessos que você não reconhece."
+          aside={sessionsLoading ? undefined : <span className="text-xs tabular-nums text-fg-3">{sessions.length} {sessions.length === 1 ? "sessão" : "sessões"}</span>}
+          footer={
+            <>
+              <Button variant="ghost" size="sm" className="text-danger" leadingIcon={<SignOutIcon size={14} />} disabled={sessionsBusy || sessions.length === 0} onClick={() => setConfirmEverywhere(true)}>
+                Sair de todos, inclusive este
+              </Button>
+              <Button variant="secondary" size="sm" disabled={sessionsBusy || sessions.length <= 1} onClick={() => setConfirmOthers(true)}>
+                Encerrar as outras sessões
+              </Button>
+            </>
+          }
+        >
+          {sessionsLoading ? (
+            <SkeletonList rows={2} leading />
+          ) : sessions.length === 0 ? (
+            <p className="text-[13px] text-fg-3">Nenhuma sessão encontrada. Atualize a página para tentar de novo.</p>
+          ) : (
+            <SettingsList>
+              {sessions.map((item) => {
+                const { browser, os } = parseUserAgent(item.userAgent);
+                const current = item.id === currentSessionId;
+                const lastActivity = item.refreshedAt ?? item.createdAt;
+                const recent = current || Date.now() - new Date(lastActivity).getTime() < RECENT_ACTIVITY_MS;
+                return (
+                  <SettingsListRow
+                    key={item.id}
+                    leading={<IconTile tone={current ? "gold" : "neutral"}>{isMobileOs(os) ? <DeviceMobileIcon /> : <DesktopIcon />}</IconTile>}
+                    title={
+                      <span className="flex items-center gap-2">
+                        {browser} · {os}
+                        {current && <Badge tone="gold">Este dispositivo</Badge>}
+                      </span>
+                    }
+                    description={
+                      <span className="flex items-center gap-1.5">
+                        <span className={cx("h-1.5 w-1.5 rounded-full", recent ? "bg-success" : "bg-fg-4")} aria-hidden="true" />
+                        {current ? "Ativo agora" : `Ativo ${relativeTime(lastActivity)}`} · IP {item.ip ?? "desconhecido"}
+                      </span>
+                    }
+                    trailing={!current ? <Button size="xs" variant="ghost" disabled={sessionsBusy} onClick={() => setRevokeId(item.id)}>Encerrar</Button> : undefined}
+                  />
+                );
+              })}
+            </SettingsList>
+          )}
+          {sessionError && <Notice compact>{sessionError}</Notice>}
+        </SettingsCard>
         </div>
       </div>
-
-      <SettingsCard
-        title="Onde sua conta está aberta"
-        description="Encerre acessos que você não reconhece."
-        aside={sessionsLoading ? undefined : <span className="text-xs tabular-nums text-fg-3">{sessions.length} {sessions.length === 1 ? "sessão" : "sessões"}</span>}
-        footer={
-          <>
-            <Button variant="ghost" size="sm" className="text-danger" leadingIcon={<SignOutIcon size={14} />} disabled={sessionsBusy || sessions.length === 0} onClick={() => setConfirmEverywhere(true)}>
-              Sair de todos, inclusive este
-            </Button>
-            <Button variant="secondary" size="sm" disabled={sessionsBusy || sessions.length <= 1} onClick={() => setConfirmOthers(true)}>
-              Encerrar as outras sessões
-            </Button>
-          </>
-        }
-      >
-        {sessionsLoading ? (
-          <SkeletonList rows={2} leading />
-        ) : sessions.length === 0 ? (
-          <p className="text-[13px] text-fg-3">Nenhuma sessão encontrada. Atualize a página para tentar de novo.</p>
-        ) : (
-          <SettingsList>
-            {sessions.map((item) => {
-              const { browser, os } = parseUserAgent(item.userAgent);
-              const current = item.id === currentSessionId;
-              const lastActivity = item.refreshedAt ?? item.createdAt;
-              const recent = current || Date.now() - new Date(lastActivity).getTime() < RECENT_ACTIVITY_MS;
-              return (
-                <SettingsListRow
-                  key={item.id}
-                  leading={<IconTile tone={current ? "gold" : "neutral"}>{isMobileOs(os) ? <DeviceMobileIcon /> : <DesktopIcon />}</IconTile>}
-                  title={
-                    <span className="flex items-center gap-2">
-                      {browser} · {os}
-                      {current && <Badge tone="gold">Este dispositivo</Badge>}
-                    </span>
-                  }
-                  description={
-                    <span className="flex items-center gap-1.5">
-                      <span className={cx("h-1.5 w-1.5 rounded-full", recent ? "bg-success" : "bg-fg-4")} aria-hidden="true" />
-                      {current ? "Ativo agora" : `Ativo ${relativeTime(lastActivity)}`} · IP {item.ip ?? "desconhecido"}
-                    </span>
-                  }
-                  trailing={!current ? <Button size="xs" variant="ghost" disabled={sessionsBusy} onClick={() => setRevokeId(item.id)}>Encerrar</Button> : undefined}
-                />
-              );
-            })}
-          </SettingsList>
-        )}
-        {sessionError && <Notice compact>{sessionError}</Notice>}
-      </SettingsCard>
 
       <Modal
         isOpen={phoneModalOpen}
