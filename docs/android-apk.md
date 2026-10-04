@@ -24,7 +24,7 @@ atualizações do mesmo aplicativo precisam da mesma assinatura. Não publique n
 
 ## Publicar
 
-1. Valide o APK em um dispositivo Android (Android 7 ou superior), inclusive login e retorno OAuth.
+1. Valide o APK em um dispositivo Android (Android 14 ou superior), inclusive login e retorno OAuth.
 2. Publique somente o APK assinado e seu SHA-256 em uma prerelease do GitHub.
 3. Atualize `APK_URL` para o endereço exato do asset e compile `corepack pnpm --filter site build`.
 4. Abra o PR. Quando ele chegar à `main`, o Cloudflare publica o site automaticamente.

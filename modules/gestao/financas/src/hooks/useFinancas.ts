@@ -87,7 +87,16 @@ export function useInvestmentQuotes(client: SupabaseClient<Database>, enabled = 
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
-  return { quotes: query.data?.quotes ?? [], apiKeyConfigured: query.data?.apiKeyConfigured ?? false, isLoading: query.isLoading, error: query.error, refetch: query.refetch, isFetching: query.isFetching };
+  return {
+    quotes: query.data?.quotes ?? [],
+    market: query.data?.market ?? null,
+    marketError: query.data?.marketError ?? null,
+    apiKeyConfigured: query.data?.apiKeyConfigured ?? false,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    isFetching: query.isFetching,
+  };
 }
 
 export function useSaveInvestmentPosition(client: SupabaseClient<Database>, userId: string) {

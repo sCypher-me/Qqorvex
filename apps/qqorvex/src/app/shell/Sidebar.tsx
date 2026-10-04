@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { CaretDownIcon, LightningIcon, MagnifyingGlassIcon, PlusIcon, SidebarSimpleIcon } from "@phosphor-icons/react";
-import { BrandSymbol, Kbd, ProgressBar, Tooltip, VexAvatar, Wordmark, cx } from "@qqorvex/ui";
+import { CaretDownIcon, LightningIcon, MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
+import { BrandSymbol, Kbd, ProgressBar, VexAvatar, Wordmark, cx } from "@qqorvex/ui";
 import { useGamificationStats } from "@qqorvex/module-gamificacao";
 import { useAccount } from "../account";
 import { supabase } from "../supabase";
@@ -32,10 +32,10 @@ function itemClasses(active: boolean, collapsed: boolean) {
 }
 
 /**
- * Navegação principal (desktop). Hoje e Vex no topo e na base; as três áreas expandem suas
- * seções. Recolhida, vira um trilho de ícones com dicas.
+ * Navegação principal (desktop). Hoje e Vex no topo e na base; na largura reduzida, vira um
+ * trilho de ícones com o nome de cada destino no hover.
  */
-export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex }: { collapsed: boolean; onToggleCollapsed: () => void; onOpenPalette: () => void; onOpenVex: () => void }) {
+export function Sidebar({ collapsed, onOpenPalette, onOpenVex }: { collapsed: boolean; onOpenPalette: () => void; onOpenVex: () => void }) {
   const location = useLocation();
   const onBrandTap = useSecretBrandTap();
   const [expanded, setExpanded] = useState<Record<string, boolean>>(readExpanded);
@@ -61,32 +61,23 @@ export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex
     >
       <div className={cx("flex h-14 shrink-0 items-center", collapsed ? "justify-center" : "justify-between pl-4 pr-2")}>
         {collapsed ? (
-          <Tooltip content="Expandir menu" side="right">
-            <button type="button" onClick={onToggleCollapsed} className="flex h-9 w-9 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Expandir menu">
-              <BrandSymbol size={24} />
-            </button>
-          </Tooltip>
+          <Link to="/" onClick={onBrandTap} title="Hoje" className="flex h-9 w-9 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Qqorvex — Hoje">
+            <BrandSymbol size={24} />
+          </Link>
         ) : (
           <Link to="/" onClick={onBrandTap} className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Qqorvex — ir para Hoje">
             <BrandSymbol size={24} />
             <Wordmark size={19} />
           </Link>
         )}
-        {!collapsed && (
-          <button type="button" onClick={onToggleCollapsed} title="Recolher menu" aria-label="Recolher menu" className="flex h-8 w-8 items-center justify-center rounded-md text-fg-4 hover:bg-hover hover:text-fg-2">
-            <SidebarSimpleIcon size={18} />
-          </button>
-        )}
       </div>
 
       <div className={cx("flex shrink-0 gap-1.5 pb-3", collapsed ? "flex-col items-center" : "px-3")}>
         {collapsed ? (
           <>
-            <Tooltip content={`Buscar (${isMac ? "⌘" : "Ctrl"} K)`} side="right">
-              <button type="button" onClick={onOpenPalette} aria-label="Buscar e comandos" className={itemClasses(false, true)}>
-                <MagnifyingGlassIcon />
-              </button>
-            </Tooltip>
+            <button type="button" onClick={onOpenPalette} aria-label="Buscar" title="Buscar" className={itemClasses(false, true)}>
+              <MagnifyingGlassIcon />
+            </button>
           </>
         ) : (
           <button
@@ -120,7 +111,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex
         />
       </div>
 
-      <nav className={cx("flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-3", collapsed ? "items-center px-0" : "px-3")}>
+      <nav className={cx("flex min-h-0 flex-1 flex-col gap-0.5 overflow-x-hidden overflow-y-auto pb-3", collapsed ? "items-center px-0" : "px-3")}>
         <SidebarLink to={HOME.to} label={HOME.label} icon={<HOME.icon />} collapsed={collapsed} end />
 
         {AREAS.map((area) => {
@@ -172,7 +163,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex
 
 function SidebarLink({ to, label, icon, collapsed, end }: { to: string; label: string; icon: ReactNode; collapsed: boolean; end?: boolean }) {
   const link = (
-    <NavLink to={to} end={end} aria-label={collapsed ? label : undefined} className={({ isActive }) => itemClasses(isActive, collapsed)}>
+    <NavLink to={to} end={end} aria-label={collapsed ? label : undefined} title={collapsed ? label : undefined} className={({ isActive }) => itemClasses(isActive, collapsed)}>
       {({ isActive }) => (
         <>
           {isActive && !collapsed && <span aria-hidden="true" className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-gold" />}
@@ -182,13 +173,7 @@ function SidebarLink({ to, label, icon, collapsed, end }: { to: string; label: s
       )}
     </NavLink>
   );
-  return collapsed ? (
-    <Tooltip content={label} side="right">
-      {link}
-    </Tooltip>
-  ) : (
-    link
-  );
+  return link;
 }
 
 function VexLink({ collapsed, onOpenVex }: { collapsed: boolean; onOpenVex: () => void }) {
@@ -199,6 +184,7 @@ function VexLink({ collapsed, onOpenVex }: { collapsed: boolean; onOpenVex: () =
       type="button"
       onClick={onOpenVex}
       aria-label={collapsed ? "Falar com a Vex" : undefined}
+      title={collapsed ? "Vex" : undefined}
       className={cx(
         "group flex h-10 min-w-0 items-center gap-2.5 rounded-lg transition-colors duration-150",
         collapsed ? "w-10 justify-center" : "w-full px-2",
@@ -214,13 +200,7 @@ function VexLink({ collapsed, onOpenVex }: { collapsed: boolean; onOpenVex: () =
       )}
     </button>
   );
-  return collapsed ? (
-    <Tooltip content="Vex" side="right">
-      {button}
-    </Tooltip>
-  ) : (
-    button
-  );
+  return button;
 }
 
 function SidebarFooter({ collapsed }: { collapsed: boolean }) {

@@ -1,5 +1,5 @@
-import { CalendarBlankIcon, CheckIcon, ReceiptIcon, ShieldCheckIcon, SparkleIcon, StackIcon } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowRightIcon, CalendarBlankIcon, CheckIcon, ReceiptIcon, ShieldCheckIcon, SparkleIcon, StackIcon } from "@phosphor-icons/react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@qqorvex/ui";
 
 const EXAMPLES = [
@@ -36,38 +36,28 @@ const EXAMPLES = [
 ] as const;
 
 function Conversation() {
-  const [selected, setSelected] = useState(0);
-  const [outcome, setOutcome] = useState<"pending" | "confirmed" | "cancelled">("pending");
+  const [draft, setDraft] = useState("");
+  const [request, setRequest] = useState<string | null>(null);
+  const [preset, setPreset] = useState<(typeof EXAMPLES)[number] | null>(null);
+  const [stage, setStage] = useState<"idle" | "thinking" | "typing" | "proposal" | "confirmed" | "cancelled">("idle");
   const [visibleResponseLength, setVisibleResponseLength] = useState(0);
-  const [typingRun, setTypingRun] = useState(0);
-  const [hasEnteredViewport, setHasEnteredViewport] = useState(false);
-  const conversationRef = useRef<HTMLDivElement>(null);
-  const example = EXAMPLES[selected]!;
-  const ExampleIcon = example.Icon;
-  const isTyping = visibleResponseLength < example.response.length;
+  const response = preset?.response ?? "Entendi. Para responder com contexto, eu consultaria suas informações no app. Nesta prévia, você pode experimentar os exemplos guiados acima; nenhuma alteração real será feita.";
+  const isResponding = stage === "thinking" || stage === "typing";
+  const isIdle = stage === "idle";
+  const ExampleIcon = preset?.Icon;
+  const selectedExample = EXAMPLES.find((item) => item.request === draft.trim());
 
   useEffect(() => {
-    const element = conversationRef.current;
-    if (!element) return;
-    if (!("IntersectionObserver" in window)) {
-      setHasEnteredViewport(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) {
-        setHasEnteredViewport(true);
-        observer.disconnect();
-      }
-    }, { threshold: 0.2 });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+    if (stage !== "thinking") return;
+    const timer = window.setTimeout(() => setStage("typing"), 650);
+    return () => window.clearTimeout(timer);
+  }, [stage]);
 
   useEffect(() => {
-    if (!hasEnteredViewport) return;
+    if (stage !== "typing") return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setVisibleResponseLength(example.response.length);
+      setVisibleResponseLength(response.length);
+      setStage(preset ? "proposal" : "confirmed");
       return;
     }
 
@@ -75,18 +65,35 @@ function Conversation() {
     const timer = window.setInterval(() => {
       nextLength += 1;
       setVisibleResponseLength(nextLength);
-      if (nextLength >= example.response.length) window.clearInterval(timer);
-    }, 22);
+      if (nextLength >= response.length) {
+        window.clearInterval(timer);
+        setStage(preset ? "proposal" : "confirmed");
+      }
+    }, 24);
     return () => window.clearInterval(timer);
-  }, [example.response, hasEnteredViewport, typingRun]);
+  }, [preset, response, stage]);
 
-  function replayExample() {
+  function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const message = draft.trim();
+    if (!message || !isIdle) return;
+    const match = EXAMPLES.find((item) => item.request.toLocaleLowerCase("pt-BR") === message.toLocaleLowerCase("pt-BR")) ?? null;
+    setRequest(message);
+    setPreset(match);
     setVisibleResponseLength(0);
-    setTypingRun((run) => run + 1);
+    setDraft("");
+    setStage("thinking");
+  }
+
+  function startOver() {
+    setRequest(null);
+    setPreset(null);
+    setVisibleResponseLength(0);
+    setStage("idle");
   }
 
   return (
-    <div ref={conversationRef} className="min-w-0 rounded-3xl border border-line bg-surface p-4 sm:p-6">
+    <div className="min-w-0 rounded-3xl border border-line bg-surface p-4 sm:p-6">
       <div className="flex items-center gap-3 border-b border-line-soft pb-4">
         <img src="/vex-avatar.webp" alt="" width={64} height={64} className="h-14 w-14 shrink-0 rounded-full border border-ai-line object-cover sm:h-16 sm:w-16" />
         <div className="min-w-0">
@@ -95,52 +102,71 @@ function Conversation() {
         </div>
       </div>
       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ai-fg">Demonstração interativa</p>
-      <p className="mt-1 text-xs leading-relaxed text-fg-3">Escolha um exemplo. Nenhum dado real será alterado.</p>
+      <p className="mt-1 text-xs leading-relaxed text-fg-3">Envie uma mensagem e veja a Vex preparar uma ação. Nenhum dado real será alterado.</p>
       <div role="group" aria-label="Exemplos da Vex" className="mt-3 flex flex-wrap gap-2">
-        {EXAMPLES.map((item, index) => (
+        {EXAMPLES.map((item) => (
           <button
             key={item.label}
             type="button"
-            aria-pressed={selected === index}
-            onClick={() => { setSelected(index); replayExample(); setOutcome("pending"); }}
-            className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--q-focus)] ${selected === index ? "border-ai-line bg-ai-soft text-ai-fg" : "border-line bg-raised text-fg-3 hover:border-line-strong hover:text-fg"}`}
+            aria-pressed={selectedExample?.label === item.label}
+            disabled={!isIdle}
+            onClick={() => setDraft(item.request)}
+            className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--q-focus)] disabled:cursor-not-allowed disabled:opacity-50 ${selectedExample?.label === item.label ? "border-ai-line bg-ai-soft text-ai-fg" : "border-line bg-raised text-fg-3 hover:border-line-strong hover:text-fg"}`}
           >{item.label}</button>
         ))}
       </div>
-      <div className="mt-5 flex flex-col gap-4">
-        <div className="flex justify-end">
-          <p className="max-w-[92%] rounded-2xl rounded-tr-md bg-gold px-4 py-3 text-sm font-medium leading-relaxed text-on-gold">{example.request}</p>
-        </div>
-        <div className="rounded-2xl rounded-tl-md border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-fg-2" aria-label={isTyping ? "Vex está digitando" : "Resposta da Vex"}>
-          <span>{example.response.slice(0, visibleResponseLength)}</span>
-          {isTyping && <><span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-ai-fg align-middle" aria-hidden="true" /><span className="sr-only">Vex está digitando</span></>}
-        </div>
-        <div className="rounded-2xl border border-ai-line bg-ai-soft p-4">
+      <div className="mt-5 flex min-h-24 flex-col gap-4" aria-live="polite" aria-relevant="additions text">
+        {!request && <p className="my-auto py-5 text-center text-sm text-fg-4">Sua conversa começa aqui. Escolha um exemplo ou escreva um pedido.</p>}
+        {request && <div className="flex justify-end"><p className="max-w-[92%] rounded-2xl rounded-tr-md bg-gold px-4 py-3 text-sm font-medium leading-relaxed text-on-gold">{request}</p></div>}
+        {request && (stage === "thinking" ? (
+          <div className="flex items-center gap-2 self-start rounded-2xl rounded-tl-md border border-line bg-raised px-4 py-3 text-sm text-fg-3" role="status" aria-label="Vex está digitando">
+            <span>Vex está pensando</span><span className="flex gap-1" aria-hidden="true"><i className="h-1.5 w-1.5 animate-bounce rounded-full bg-ai-fg [animation-delay:-.2s]" /><i className="h-1.5 w-1.5 animate-bounce rounded-full bg-ai-fg [animation-delay:-.1s]" /><i className="h-1.5 w-1.5 animate-bounce rounded-full bg-ai-fg" /></span>
+          </div>
+        ) : (
+          <div className="max-w-[96%] self-start rounded-2xl rounded-tl-md border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-fg-2" aria-label={stage === "typing" ? "Vex está digitando" : "Resposta da Vex"}>
+            <span>{response.slice(0, visibleResponseLength)}</span>
+            {stage === "typing" && <><span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-ai-fg align-middle" aria-hidden="true" /><span className="sr-only">Vex está digitando</span></>}
+          </div>
+        ))}
+        {stage === "proposal" && preset && ExampleIcon && <div className="rounded-2xl border border-ai-line bg-ai-soft p-4">
           <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ai-fg">
-            <ShieldCheckIcon size={16} weight="bold" aria-hidden="true" /> {outcome === "confirmed" ? "Ação confirmada" : outcome === "cancelled" ? "Ação cancelada" : "Você decide"}
+            <ShieldCheckIcon size={16} weight="bold" aria-hidden="true" /> Você decide
           </p>
-          <p className="mt-2 text-sm font-medium text-fg">{example.action}</p>
+          <p className="mt-2 text-sm font-medium text-fg">{preset.action}</p>
           <div className="mt-3 flex items-start gap-3 rounded-xl border border-ai-line bg-surface/60 p-3">
             <ExampleIcon size={22} className="mt-0.5 shrink-0 text-ai-fg" aria-hidden="true" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-fg">{example.title}</p>
-              <p className="mt-1 text-xs text-fg-3">{example.detail}</p>
+              <p className="text-sm font-medium text-fg">{preset.title}</p>
+              <p className="mt-1 text-xs text-fg-3">{preset.detail}</p>
             </div>
           </div>
-          {outcome === "pending" ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="ai" className="min-h-11" onClick={() => setOutcome("confirmed")} disabled={isTyping}>Confirmar</Button>
-              <Button variant="ghost" className="min-h-11" onClick={() => setOutcome("cancelled")}>Agora não</Button>
-            </div>
-          ) : (
-            <Button variant="ghost" className="mt-3 min-h-11" onClick={() => { replayExample(); setOutcome("pending"); }}>Experimentar novamente</Button>
-          )}
-        </div>
-        <div role="status" aria-live="polite" aria-atomic="true" className="min-h-12 text-sm leading-relaxed">
-          {outcome === "confirmed" && <p className="flex items-start gap-2 text-success"><CheckIcon size={18} weight="bold" className="mt-0.5 shrink-0" aria-hidden="true" />{example.result}</p>}
-          {outcome === "cancelled" && <p className="text-fg-3">Tudo bem. Nada foi alterado na demonstração.</p>}
-        </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="ai" className="min-h-11" onClick={() => setStage("confirmed")}>Confirmar</Button>
+            <Button variant="ghost" className="min-h-11" onClick={() => setStage("cancelled")}>Agora não</Button>
+          </div>
+        </div>}
+        {stage === "confirmed" && <div role="status" className="rounded-xl border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
+          {preset ? <p className="flex items-start gap-2"><CheckIcon size={18} weight="bold" className="mt-0.5 shrink-0" aria-hidden="true" />{preset.result}</p> : <p>A prévia guiada terminou. No app, a Vex pode consultar seus dados e preparar ações para você revisar.</p>}
+        </div>}
+        {stage === "cancelled" && <p role="status" className="rounded-xl border border-line-soft px-4 py-3 text-sm text-fg-3">Tudo bem. Nada foi alterado na demonstração.</p>}
       </div>
+      {request && !isResponding && <Button variant="ghost" className="mt-3 min-h-10" onClick={startOver}>Nova conversa</Button>}
+      <form onSubmit={sendMessage} className="mt-4 flex items-end gap-2 rounded-2xl border border-line bg-canvas/50 p-2 focus-within:border-ai-line">
+        <label className="sr-only" htmlFor="vex-demo-message">Escreva uma mensagem para a Vex</label>
+        <textarea
+          id="vex-demo-message"
+          rows={2}
+          maxLength={280}
+          value={draft}
+          disabled={!isIdle}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}
+          placeholder="Escreva um pedido para a Vex…"
+          className="q-input min-h-11 min-w-0 flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-0 disabled:opacity-50"
+        />
+        <Button type="submit" variant="ai" className="min-h-11 shrink-0" leadingIcon={<ArrowRightIcon size={16} weight="bold" />} disabled={!draft.trim() || !isIdle}>Enviar</Button>
+      </form>
+      <p className="mt-2 text-[11px] text-fg-4">A demonstração é guiada e não altera dados reais.</p>
     </div>
   );
 }
