@@ -3215,6 +3215,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_badge_notifications: {
+        Row: {
+          badge_key: string
+          created_at: string
+          id: string
+          shown_at: string | null
+          user_id: string
+        }
+        Insert: {
+          badge_key: string
+          created_at?: string
+          id?: string
+          shown_at?: string | null
+          user_id: string
+        }
+        Update: {
+          badge_key?: string
+          created_at?: string
+          id?: string
+          shown_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       vehicle_important_dates: {
         Row: {
           created_at: string
@@ -3515,6 +3539,15 @@ export type Database = {
           updated_at: string
         }[]
       }
+      claim_my_badge_notifications: {
+        Args: never
+        Returns: {
+          badge_key: string
+          created_at: string
+          notification_id: string
+        }[]
+      }
+      owner_grant_gamification_badge: { Args: { p_badge_key: string; p_user_id: string }; Returns: boolean }
       redeem_code: { Args: { input_code: string }; Returns: Json }
       sync_my_gamification_badges: { Args: never; Returns: number }
       release_billing_quota: {

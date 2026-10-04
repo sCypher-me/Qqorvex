@@ -5,7 +5,7 @@ import { useGamificationStats } from "@qqorvex/module-gamificacao";
 import { Notice, cx } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
 import { LEVEL_THEMES, VIP_THEME, useTheme, type AppSkin, type ThemePreference } from "../app/ThemeContext";
-import { ThemeRewardCard, type ThemeRewardDefinition } from "../components/ThemeRewardCard";
+import { SkinPreview, ThemeRewardCard, type ThemeRewardDefinition } from "../components/ThemeRewardCard";
 import { SettingsCard, SettingsHeader } from "./shared";
 
 const DEFAULT_SKIN: ThemeRewardDefinition = {
@@ -52,6 +52,10 @@ export function AppearanceSettings() {
   const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState(false);
   const level = progress?.level ?? 1;
+  const selectedTheme = skin === VIP_THEME.id ? VIP_THEME : LEVEL_THEMES.find((theme) => theme.id === skin) ?? DEFAULT_SKIN;
+  const previousUnlock = [...LEVEL_THEMES].reverse().find((theme) => theme.level <= level)?.level ?? 0;
+  const nextUnlock = LEVEL_THEMES.find((theme) => theme.level > level);
+  const unlockProgress = nextUnlock ? Math.min(100, ((level - previousUnlock) / (nextUnlock.level - previousUnlock)) * 100) : 100;
 
   async function persist(patch: Record<string, unknown>) {
     const saved = session!.user.user_metadata.qqorvex_preferences;
@@ -122,21 +126,44 @@ export function AppearanceSettings() {
         description="Muda botões, seleções e destaques. Novas cores chegam a cada 10 níveis; a Coroa Vex acompanha o Plus."
         aside={<span className="text-xs text-fg-3">{saving ? "Salvando…" : `Você está no nível ${level}`}</span>}
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          <ThemeRewardCard theme={DEFAULT_SKIN} requirement="Sempre disponível" unlocked active={skin === "default"} busy={false} lockedMessage="" onChoose={() => chooseSkin("default")} />
+        <div className="flex flex-col gap-5">
+          <div className="grid gap-4 rounded-xl border border-gold-line bg-gold-soft/40 p-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] sm:items-center sm:p-4">
+            <SkinPreview preview={selectedTheme.preview} featured />
+            <div className="flex min-w-0 flex-col items-start gap-2 px-1 py-1 sm:px-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-[11px] font-semibold text-gold-fg"><CheckIcon size={13} weight="bold" /> TEMA ATUAL</span>
+              <h3 className="m-0 font-display text-xl font-semibold text-fg">{selectedTheme.name}</h3>
+              <p className="m-0 text-[13px] text-fg-3">{selectedTheme.essence}</p>
+              {nextUnlock ? (
+                <div className="mt-1 w-full max-w-xs">
+                  <div className="mb-1.5 flex justify-between gap-2 text-[11px] text-fg-3"><span>Próximo: {nextUnlock.name}</span><span>Nível {nextUnlock.level}</span></div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-label={`Progresso até o tema ${nextUnlock.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(unlockProgress)}><div className="h-full rounded-full bg-gold transition-[width]" style={{ width: `${unlockProgress}%` }} /></div>
+                </div>
+              ) : <p className="m-0 mt-1 text-xs text-fg-3">Todas as cores de nível estão liberadas.</p>}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="m-0 text-sm font-semibold text-fg">Escolha outra cor</h3>
+              <p className="m-0 text-xs text-fg-3">As cores bloqueadas mostram o nível necessário.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {skin !== "default" && <ThemeRewardCard theme={DEFAULT_SKIN} requirement="Sempre disponível" unlocked active={false} busy={false} lockedMessage="" onChoose={() => chooseSkin("default")} />}
           {LEVEL_THEMES.map((theme) => (
             <ThemeRewardCard
               key={theme.id}
               theme={theme}
               requirement={`Nível ${theme.level}`}
               unlocked={level >= theme.level}
-              active={skin === theme.id}
+              active={false}
               busy={false}
               lockedMessage={`Libera no nível ${theme.level}`}
               onChoose={chooseSkin}
             />
           ))}
-          <ThemeRewardCard theme={VIP_THEME} requirement="Exclusivo do Plus" unlocked={isPlus} active={skin === VIP_THEME.id} busy={false} checking={planLoading} lockedMessage="Assine o Plus para usar" onChoose={chooseSkin} />
+          {skin !== VIP_THEME.id && <ThemeRewardCard theme={VIP_THEME} requirement="Exclusivo do Plus" unlocked={isPlus} active={false} busy={false} checking={planLoading} lockedMessage="Assine o Plus para usar" onChoose={chooseSkin} />}
+            </div>
+          </div>
         </div>
       </SettingsCard>
     </div>

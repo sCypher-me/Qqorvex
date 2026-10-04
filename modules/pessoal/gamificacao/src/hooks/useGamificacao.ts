@@ -7,9 +7,10 @@ import {
   listDailyChallengeHistory,
   listDailyChallengeProgress,
   listUnlockedBadges,
+  syncGamificationBadges,
 } from "../repository";
 import { BADGE_CATALOG, computeLevelProgress, getTitleForLevel } from "../service";
-import { SPECIAL_BADGE_CATALOG } from "../specialBadges";
+import { getLatestUnlockedSubscriptionTenureKey, SPECIAL_BADGE_CATALOG } from "../specialBadges";
 import { shiftLocalDateKey } from "../dailyChallenges";
 
 const STATS_KEY = ["gamification-stats"] as const;
@@ -53,8 +54,7 @@ export function useUnlockedBadges(client: SupabaseClient<Database>, userId: stri
   const query = useQuery({
     queryKey: [...BADGES_KEY, userId],
     queryFn: async () => {
-      const { error } = await client.rpc("sync_my_gamification_badges");
-      if (error) throw error;
+      await syncGamificationBadges(client, userId);
       return listUnlockedBadges(client, userId);
     },
     staleTime: 15_000,
@@ -69,10 +69,15 @@ export function useUnlockedBadges(client: SupabaseClient<Database>, userId: stri
       isUnlocked: undefined,
     })),
   ];
+  const latestTenureKey = getLatestUnlockedSubscriptionTenureKey(unlockedAtByKey.keys());
   const badges = catalog.map((badge) => ({
     ...badge,
-    isUnlockedForUser: isOwner || unlockedAtByKey.has(badge.key),
-    unlockedAt: unlockedAtByKey.get(badge.key) ?? null,
+    isUnlockedForUser: badge.key.startsWith("assinatura_")
+      ? badge.key === latestTenureKey
+      : isOwner || unlockedAtByKey.has(badge.key),
+    unlockedAt: badge.key.startsWith("assinatura_") && badge.key !== latestTenureKey
+      ? null
+      : unlockedAtByKey.get(badge.key) ?? null,
   }));
   return { badges, isLoading: query.isLoading, error: query.error };
 }

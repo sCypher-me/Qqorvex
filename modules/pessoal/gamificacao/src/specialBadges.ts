@@ -95,3 +95,13 @@ export function getSubscriptionTenureBadge(subscriptionMonthsActive: number): Sp
       .sort((a, b) => (b.subscriptionMonths ?? 0) - (a.subscriptionMonths ?? 0))[0] ?? null
   );
 }
+
+/** Dentro dos badges já concedidos, preserva só o maior marco de assinatura. */
+export function getLatestUnlockedSubscriptionTenureKey(badgeKeys: Iterable<string>): string | null {
+  const unlocked = new Set(badgeKeys);
+  return (
+    [...SPECIAL_BADGE_CATALOG]
+      .filter((badge) => badge.access === "subscription_tenure" && unlocked.has(badge.key))
+      .sort((a, b) => (b.subscriptionMonths ?? 0) - (a.subscriptionMonths ?? 0))[0]?.key ?? null
+  );
+}

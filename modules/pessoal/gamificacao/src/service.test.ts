@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BADGE_CATALOG, computeLevel, computeLevelProgress, getTitleForLevel, xpRequiredForLevel } from "./service";
-import { SPECIAL_BADGE_CATALOG, getSubscriptionTenureBadge } from "./specialBadges";
+import { SPECIAL_BADGE_CATALOG, getLatestUnlockedSubscriptionTenureKey, getSubscriptionTenureBadge } from "./specialBadges";
 
 describe("xpRequiredForLevel", () => {
   it("nível 1 exige 0 XP, cada nível seguinte exige mais que o anterior", () => {
@@ -106,5 +106,11 @@ describe("SPECIAL_BADGE_CATALOG", () => {
     expect(getSubscriptionTenureBadge(0)).toBeNull();
     expect(getSubscriptionTenureBadge(3)?.key).toBe("assinatura_03_meses");
     expect(getSubscriptionTenureBadge(999)?.key).toBe("assinatura_50_meses");
+  });
+
+  it("mantém somente o maior badge de tempo de assinatura na conta", () => {
+    expect(getLatestUnlockedSubscriptionTenureKey(["assinatura_01_meses", "assinatura_02_meses"])).toBe("assinatura_02_meses");
+    expect(getLatestUnlockedSubscriptionTenureKey(["150_tarefas", "assinatura_10_meses", "assinatura_03_meses"])).toBe("assinatura_10_meses");
+    expect(getLatestUnlockedSubscriptionTenureKey(["150_tarefas"])).toBeNull();
   });
 });

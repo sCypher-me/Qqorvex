@@ -6,6 +6,8 @@ import type { AuthError } from "@qqorvex/database";
  * errado). Login/cadastro passam por aqui sempre — nunca mostramos `error.message` cru pro usuário.
  */
 export function mapAuthError(error: AuthError): string {
+  if (error.code === "reauthentication_needed") return "Confirme sua identidade com o código enviado ao seu e-mail.";
+  if (error.code === "reauthentication_not_valid" || error.code === "otp_expired") return "Código inválido ou expirado. Solicite um novo código.";
   const message = error.message.toLowerCase();
 
   if (message.includes("invalid login credentials")) return "E-mail ou senha incorretos.";

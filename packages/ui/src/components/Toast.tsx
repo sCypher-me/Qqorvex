@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircleIcon, InfoIcon, SparkleIcon, WarningCircleIcon, XIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, InfoIcon, SparkleIcon, TrophyIcon, WarningCircleIcon, XIcon } from "@phosphor-icons/react";
 import { cx } from "../cx";
 
-export type ToastTone = "neutral" | "success" | "danger" | "info" | "ai";
+export type ToastTone = "neutral" | "success" | "danger" | "info" | "ai" | "achievement";
 
 export interface ToastOptions {
   title: ReactNode;
@@ -32,6 +32,7 @@ const icons: Record<ToastTone, ReactNode> = {
   success: <CheckCircleIcon weight="fill" />,
   danger: <WarningCircleIcon weight="fill" />,
   ai: <SparkleIcon weight="fill" />,
+  achievement: <TrophyIcon weight="fill" />,
 };
 
 const iconColor: Record<ToastTone, string> = {
@@ -40,6 +41,7 @@ const iconColor: Record<ToastTone, string> = {
   success: "text-success",
   danger: "text-danger",
   ai: "text-ai-fg",
+  achievement: "text-gold-fg",
 };
 
 function ToastItem({ entry, onDismiss }: { entry: ToastEntry; onDismiss: () => void }) {
@@ -62,9 +64,12 @@ function ToastItem({ entry, onDismiss }: { entry: ToastEntry; onDismiss: () => v
       role={tone === "danger" ? "alert" : "status"}
       onMouseEnter={stop}
       onMouseLeave={start}
-      className="pointer-events-auto flex w-full animate-slide-in-up items-start gap-3 rounded-xl border border-line bg-overlay px-3.5 py-3 text-fg shadow-lg sm:w-[360px]"
+      className={cx(
+        "pointer-events-auto flex w-full animate-slide-in-up items-start gap-3 rounded-xl border border-line bg-overlay px-3.5 py-3 text-fg shadow-lg sm:w-[360px]",
+        tone === "achievement" && "border-gold-line shadow-[0_10px_42px_rgba(214,163,86,0.2)]",
+      )}
     >
-      <span className={cx("mt-0.5 flex shrink-0 [&_svg]:size-[18px]", iconColor[tone])}>{icons[tone]}</span>
+      <span className={cx("mt-0.5 flex shrink-0 [&_svg]:size-[18px]", iconColor[tone], tone === "achievement" && "animate-bounce motion-reduce:animate-none")}>{icons[tone]}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px] font-medium leading-snug">{entry.title}</p>
         {entry.description && <p className="mt-0.5 text-[12.5px] leading-snug text-fg-3">{entry.description}</p>}

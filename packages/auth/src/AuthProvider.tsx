@@ -9,6 +9,7 @@ import {
 import type { Session, SupabaseClient, Database } from "@qqorvex/database";
 import { signInWithOAuth, type OAuthProviderId } from "./oauth";
 import { mapAuthError } from "./authErrors";
+import { emailRedirect } from "./emailFlows";
 import { resolveInitialSession } from "./initialSession";
 
 export interface SignUpMetadata {
@@ -86,6 +87,7 @@ export function AuthProvider({
           email: email.trim().toLowerCase(),
           password,
           options: {
+            emailRedirectTo: emailRedirect(),
             ...(captchaToken ? { captchaToken } : {}),
             data: {
               full_name: metadata.fullName.trim(),
@@ -103,7 +105,7 @@ export function AuthProvider({
       },
       async resetPasswordForEmail(email, captchaToken) {
         const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-          redirectTo: `${window.location.origin}/redefinir-senha`,
+          redirectTo: emailRedirect("/redefinir-senha"),
           ...(captchaToken ? { captchaToken } : {}),
         });
         // Nunca revela se o e-mail existe ou não (previne enumeração de contas) — o Supabase já
@@ -118,7 +120,7 @@ export function AuthProvider({
         const { error } = await client.auth.resend({
           type: "signup",
           email: email.trim().toLowerCase(),
-          ...(captchaToken ? { options: { captchaToken } } : {}),
+          options: { emailRedirectTo: emailRedirect(), ...(captchaToken ? { captchaToken } : {}) },
         });
         return { error: error ? mapAuthError(error) : null };
       },

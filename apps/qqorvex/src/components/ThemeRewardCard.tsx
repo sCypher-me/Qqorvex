@@ -10,18 +10,18 @@ export interface ThemeRewardDefinition {
 }
 
 /** Miniatura da cor de destaque: fundo, painel e a cor de ação do tema. */
-function SkinPreview({ preview }: { preview: ThemeRewardDefinition["preview"] }) {
+export function SkinPreview({ preview, featured = false }: { preview: ThemeRewardDefinition["preview"]; featured?: boolean }) {
   return (
-    <div className="relative h-20 overflow-hidden rounded-lg border border-black/10" style={{ backgroundColor: preview.canvas }} aria-hidden="true">
-      <div className="absolute left-2.5 top-2.5 flex gap-1">
-        <span className="h-1.5 w-6 rounded-full" style={{ backgroundColor: preview.accent }} />
-        <span className="h-1.5 w-3 rounded-full opacity-60" style={{ backgroundColor: preview.glow }} />
+    <div className={cx("relative overflow-hidden border border-black/10", featured ? "h-32 rounded-xl sm:h-36" : "h-20 rounded-lg")} style={{ backgroundColor: preview.canvas }} aria-hidden="true">
+      <div className={cx("absolute flex gap-1", featured ? "left-4 top-4" : "left-2.5 top-2.5")}>
+        <span className={cx("rounded-full", featured ? "h-2 w-10" : "h-1.5 w-6")} style={{ backgroundColor: preview.accent }} />
+        <span className={cx("rounded-full opacity-60", featured ? "h-2 w-5" : "h-1.5 w-3")} style={{ backgroundColor: preview.glow }} />
       </div>
-      <div className="absolute inset-x-2.5 bottom-2.5 flex flex-col gap-1.5 rounded-md p-2" style={{ backgroundColor: preview.panel }}>
-        <span className="h-1.5 w-2/5 rounded-full" style={{ backgroundColor: preview.accent }} />
-        <span className="h-1.5 w-3/4 rounded-full opacity-50" style={{ backgroundColor: preview.glow }} />
+      <div className={cx("absolute flex flex-col rounded-md", featured ? "inset-x-4 bottom-4 gap-2 p-3" : "inset-x-2.5 bottom-2.5 gap-1.5 p-2")} style={{ backgroundColor: preview.panel }}>
+        <span className={cx("rounded-full", featured ? "h-2 w-2/5" : "h-1.5 w-2/5")} style={{ backgroundColor: preview.accent }} />
+        <span className={cx("rounded-full opacity-50", featured ? "h-2 w-3/4" : "h-1.5 w-3/4")} style={{ backgroundColor: preview.glow }} />
       </div>
-      <span className="absolute right-3 top-2.5 h-5 w-5 rounded-full" style={{ backgroundColor: preview.accent, boxShadow: `0 0 18px ${preview.accent}` }} />
+      <span className={cx("absolute rounded-full", featured ? "right-5 top-4 h-8 w-8" : "right-3 top-2.5 h-5 w-5")} style={{ backgroundColor: preview.accent, boxShadow: `0 0 18px ${preview.accent}` }} />
     </div>
   );
 }

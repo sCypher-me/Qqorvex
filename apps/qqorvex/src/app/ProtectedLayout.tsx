@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { RequireAuth, useAuth } from "@qqorvex/auth";
 import { cx } from "@qqorvex/ui";
 import { DailyCheckinPrompt } from "./DailyCheckinPrompt";
+import { BadgeUnlockNotifier } from "./BadgeUnlockNotifier";
 import { VexSessionProvider, useVexSession } from "../vex/VexSessionContext";
 import { CurrentItemProvider } from "../vex/CurrentItemContext";
 import { VexPanel } from "../vex/VexPanel";
@@ -197,6 +198,7 @@ function Shell() {
       <MobileBottomNav />
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} onOpenVex={openVex} />
       <DailyCheckinPrompt client={supabase} userId={user.id} />
+      <BadgeUnlockNotifier userId={user.id} />
     </div>
     </VexLauncherContext.Provider>
   );

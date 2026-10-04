@@ -1,5 +1,8 @@
 project_id = "uowipikbumbaprckdvkg"
 
+[functions.invite-user]
+verify_jwt = true
+
 [functions.stripe-webhook]
 # Stripe autentica este endpoint via Stripe-Signature, validada no handler.
 verify_jwt = false
@@ -27,3 +30,66 @@ verify_jwt = false
 [functions.waitlist-join]
 # Formulário público do site; protegido por origem, Turnstile no servidor e limite por IP.
 verify_jwt = false
+
+# Templates Auth locais. No projeto hospedado, os mesmos HTML/assuntos precisam ser colados
+# em Authentication → Email → Templates no Dashboard.
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail — Qqorvex"
+content_path = "./templates/confirmation.html"
+
+[auth.email.template.invite]
+subject = "Você foi convidado para o Qqorvex"
+content_path = "./templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Seu acesso ao Qqorvex"
+content_path = "./templates/magic-link.html"
+
+[auth.email.template.email_change]
+subject = "Confirme seu novo e-mail — Qqorvex"
+content_path = "./templates/email-change.html"
+
+[auth.email.template.recovery]
+subject = "Redefina sua senha — Qqorvex"
+content_path = "./templates/recovery.html"
+
+[auth.email.template.reauthentication]
+subject = "{{ .Token }} é seu código de confirmação — Qqorvex"
+content_path = "./templates/reauthentication.html"
+
+# Notificações de segurança. enabled=true configura o ambiente local; a habilitação do
+# projeto hospedado continua no Dashboard de Auth.
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Sua senha foi alterada — Qqorvex"
+content_path = "./templates/password_changed_notification.html"
+
+[auth.email.notification.email_changed]
+enabled = true
+subject = "Seu e-mail foi alterado — Qqorvex"
+content_path = "./templates/email_changed_notification.html"
+
+[auth.email.notification.phone_changed]
+enabled = true
+subject = "Seu telefone foi alterado — Qqorvex"
+content_path = "./templates/phone_changed_notification.html"
+
+[auth.email.notification.identity_linked]
+enabled = true
+subject = "Novo método de acesso vinculado — Qqorvex"
+content_path = "./templates/identity_linked_notification.html"
+
+[auth.email.notification.identity_unlinked]
+enabled = true
+subject = "Método de acesso removido — Qqorvex"
+content_path = "./templates/identity_unlinked_notification.html"
+
+[auth.email.notification.mfa_factor_enrolled]
+enabled = true
+subject = "Verificação extra ativada — Qqorvex"
+content_path = "./templates/mfa_factor_enrolled_notification.html"
+
+[auth.email.notification.mfa_factor_unenrolled]
+enabled = true
+subject = "Verificação extra removida — Qqorvex"
+content_path = "./templates/mfa_factor_unenrolled_notification.html"

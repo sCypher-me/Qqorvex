@@ -37,6 +37,9 @@ jobs:
       - name: Testes (Vitest)
         run: pnpm test
 
+      - name: Permissões e validação do convite por e-mail
+        run: node tools/test-invite-user.mjs
+
       - name: Tipos (todos os workspaces)
         run: pnpm -r --if-present typecheck
 
