@@ -7,7 +7,7 @@ import type { PageCheckpoint } from "../types";
 
 /**
  * Versões salvas da página. Restaurar guarda o estado atual como uma versão automática antes
- * (como um git revert, não um reset) — ver docs/decisions/segundo-cerebro-checkpoints-design.md.
+ * (como um git revert, não um reset)
  */
 export function CheckpointsPanel({ client, pageId }: { client: SupabaseClient<Database>; pageId: string }) {
   const { toast } = useToast();

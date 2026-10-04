@@ -18,6 +18,7 @@ import {
 } from "@qqorvex/module-vida-pessoal";
 import { localDateKey } from "@qqorvex/module-gamificacao";
 import type { ToolDefinition } from "../types";
+import { ambiguousSummary, matchByName } from "./shared";
 
 type Client = SupabaseClient<Database>;
 
@@ -218,11 +219,10 @@ export function createVidaPessoalTools(client: Client, userId: string): ToolDefi
       },
       requiresConfirmation: true,
       async execute(args) {
-        const query = clean(args.name).toLocaleLowerCase("pt-BR");
-        const items = await listShoppingListItems(client);
-        const item = items.find((candidate) => candidate.name.toLocaleLowerCase("pt-BR").includes(query));
-        if (!item) return { summary: "Não encontrei item parecido com \"" + args.name + "\"." };
-        const updated = await toggleShoppingListItem(client, item.id, Boolean(args.isPurchased));
+        const match = matchByName(await listShoppingListItems(client), clean(args.name), (item) => item.name);
+        if (match.kind === "none") return { summary: `Não encontrei item parecido com "${args.name}" na lista de compras.` };
+        if (match.kind === "many") return { summary: ambiguousSummary("um item", match.items, (item) => item.name) };
+        const updated = await toggleShoppingListItem(client, match.item.id, Boolean(args.isPurchased));
         return { summary: "Item \"" + updated.name + "\" marcado como " + (updated.is_purchased ? "comprado" : "pendente") + ".", data: updated };
       },
     },

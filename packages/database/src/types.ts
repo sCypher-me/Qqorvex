@@ -2162,6 +2162,33 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          ends_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ends_at: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ends_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_tier: string
@@ -2172,6 +2199,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_beta_tester: boolean
+          partner_campaign_id: string | null
           phone: string | null
           pin_failed_attempts: number
           pin_hash: string | null
@@ -2191,6 +2219,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_beta_tester?: boolean
+          partner_campaign_id?: string | null
           phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
@@ -2210,6 +2239,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_beta_tester?: boolean
+          partner_campaign_id?: string | null
           phone?: string | null
           pin_failed_attempts?: number
           pin_hash?: string | null
@@ -2220,7 +2250,15 @@ export type Database = {
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_partner_campaign_id_fkey"
+            columns: ["partner_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "partner_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_tasks: {
         Row: {
@@ -2600,6 +2638,7 @@ export type Database = {
       }
       redemption_codes: {
         Row: {
+          campaign_id: string | null
           code: string
           created_at: string
           created_by: string
@@ -2610,6 +2649,7 @@ export type Database = {
           tier: string
         }
         Insert: {
+          campaign_id?: string | null
           code: string
           created_at?: string
           created_by: string
@@ -2620,6 +2660,7 @@ export type Database = {
           tier: string
         }
         Update: {
+          campaign_id?: string | null
           code?: string
           created_at?: string
           created_by?: string
@@ -2629,7 +2670,15 @@ export type Database = {
           redeemed_by?: string | null
           tier?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "redemption_codes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "partner_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routine_habits: {
         Row: {
@@ -3290,6 +3339,30 @@ export type Database = {
           },
         ]
       }
+      waitlist_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          invited_at: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          invited_at?: string | null
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          invited_at?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       warranties: {
         Row: {
           created_at: string
@@ -3346,11 +3419,29 @@ export type Database = {
         Args: { p_feature: string; p_user_id: string }
         Returns: Json
       }
+      gamification_progress_daily_challenge: {
+        Args: {
+          p_challenge_date: string
+          p_challenge_key: string
+          p_reward_xp: number
+          p_target: number
+        }
+        Returns: boolean
+      }
+      gamification_record_action: {
+        Args: { p_action: string }
+        Returns: undefined
+      }
+      gamification_record_milestone: {
+        Args: { p_milestone: string }
+        Returns: undefined
+      }
+      get_my_access: { Args: never; Returns: Json }
       get_my_document_storage_quota: {
         Args: never
         Returns: {
           used_bytes: number
-          quota_bytes: number
+          quota_bytes: number | null
           max_file_bytes: number
           is_plus: boolean
         }[]
@@ -3366,6 +3457,17 @@ export type Database = {
           total_tasks: number
           total_transactions: number
           total_users: number
+        }[]
+      }
+      search_everything: {
+        Args: { query: string; per_kind?: number }
+        Returns: {
+          kind: string
+          id: string
+          title: string
+          snippet: string | null
+          parent_id: string | null
+          sort_date: string | null
         }[]
       }
       has_security_pin: { Args: never; Returns: boolean }
@@ -3413,7 +3515,7 @@ export type Database = {
           updated_at: string
         }[]
       }
-      redeem_code: { Args: { input_code: string }; Returns: string }
+      redeem_code: { Args: { input_code: string }; Returns: Json }
       sync_my_gamification_badges: { Args: never; Returns: number }
       release_billing_quota: {
         Args: { p_feature: string; p_month_start: string; p_user_id: string }
@@ -3432,6 +3534,15 @@ export type Database = {
         Returns: undefined
       }
       verify_security_pin: { Args: { candidate_pin: string }; Returns: boolean }
+      waitlist_register: {
+        Args: { p_email: string; p_ip_hash: string; p_source?: string }
+        Returns: string
+      }
+      unlock_vault: { Args: { pin: string }; Returns: string | null }
+      lock_vault: { Args: never; Returns: undefined }
+      vault_unlocked_until: { Args: never; Returns: string | null }
+      count_my_vault_documents: { Args: never; Returns: number }
+      move_document_to_vault: { Args: { document_id: string }; Returns: boolean }
     }
     Enums: {
       account_type: "dinheiro" | "conta_bancaria" | "carteira_digital" | "outro"

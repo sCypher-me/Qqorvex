@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canBeSubGoal, computeCurrentStreak, computeDerivedProgress, computeMilestoneProgress, getHabitWeeklyTarget, localDateKey, shiftDateKey } from "./service";
+import { canBeSubGoal, computeCurrentStreak, computeDerivedProgress, computeHabitStreak, formatHabitStreak, computeMilestoneProgress, getHabitWeeklyTarget, localDateKey, shiftDateKey } from "./service";
 import { toGoalInsert } from "./types";
 import type { Goal, GoalMilestone, Habit, HabitLog } from "./types";
 
@@ -47,6 +47,88 @@ describe("computeCurrentStreak", () => {
   it("um dia sem registro corta a sequência mesmo com dias mais antigos concluídos", () => {
     const logs = [log("2026-09-15"), log("2026-09-13")];
     expect(computeCurrentStreak(logs, new Date(2026, 8, 15))).toBe(1);
+  });
+});
+
+describe("computeHabitStreak", () => {
+  function log(date: string, state: HabitLog["state"] = "concluido"): HabitLog {
+    return { state, log_date: date } as HabitLog;
+  }
+  function habit(frequency_type: Habit["frequency_type"], frequency_config: object = {}): Habit {
+    return { status: "ativo", frequency_type, frequency_config } as unknown as Habit;
+  }
+
+  it("hábito diário mantém a contagem em dias, igual à sequência simples", () => {
+    const logs = [log("2026-09-15"), log("2026-09-14"), log("2026-09-13")];
+    expect(computeHabitStreak(habit("diaria"), logs, new Date(2026, 8, 15))).toEqual({ count: 3, unit: "dia" });
+  });
+
+  it("dias específicos: dias fora da agenda não quebram a sequência", () => {
+    // seg 14/09, qua 16/09, sex 18/09 concluídos; referência na sex 18/09.
+    const mwf = habit("dias_especificos", { days: ["mon", "wed", "fri"] });
+    const logs = [log("2026-09-18"), log("2026-09-16"), log("2026-09-14")];
+    expect(computeHabitStreak(mwf, logs, new Date(2026, 8, 18))).toEqual({ count: 3, unit: "vez" });
+  });
+
+  it("dias específicos: faltar num dia previsto quebra a sequência", () => {
+    const mwf = habit("dias_especificos", { days: ["mon", "wed", "fri"] });
+    const logs = [log("2026-09-18"), log("2026-09-14")]; // faltou a qua 16/09
+    expect(computeHabitStreak(mwf, logs, new Date(2026, 8, 18))).toEqual({ count: 1, unit: "vez" });
+  });
+
+  it("dias específicos: o dia previsto de hoje ainda não registrado não zera a sequência", () => {
+    const mwf = habit("dias_especificos", { days: ["mon", "wed", "fri"] });
+    const logs = [log("2026-09-16"), log("2026-09-14")];
+    expect(computeHabitStreak(mwf, logs, new Date(2026, 8, 18))).toEqual({ count: 2, unit: "vez" });
+  });
+
+  it("dias específicos: aceita os códigos antigos em português", () => {
+    const legacy = habit("dias_especificos", { days: ["seg", "qua", "sex"] });
+    const logs = [log("2026-09-18"), log("2026-09-16"), log("2026-09-14")];
+    expect(computeHabitStreak(legacy, logs, new Date(2026, 8, 18)).count).toBe(3);
+  });
+
+  it("X vezes por semana conta semanas que bateram a cota; a semana atual não quebra", () => {
+    const threeTimes = habit("x_vezes_semana", { timesPerWeek: 3 });
+    // Semanas começam no domingo. 06–12/09: 3 vezes; 13–19/09: 3 vezes; 20–26/09 (atual): 1 vez.
+    const logs = [
+      log("2026-09-07"), log("2026-09-09"), log("2026-09-11"),
+      log("2026-09-14"), log("2026-09-15"), log("2026-09-17"),
+      log("2026-09-21"),
+    ];
+    expect(computeHabitStreak(threeTimes, logs, new Date(2026, 8, 22))).toEqual({ count: 2, unit: "semana" });
+  });
+
+  it("X vezes por semana: semana passada abaixo da cota quebra a sequência", () => {
+    const threeTimes = habit("x_vezes_semana", { timesPerWeek: 3 });
+    const logs = [log("2026-09-07"), log("2026-09-09"), log("2026-09-11"), log("2026-09-14")];
+    expect(computeHabitStreak(threeTimes, logs, new Date(2026, 8, 22))).toEqual({ count: 0, unit: "semana" });
+  });
+
+  it("semanal: a semana atual conta assim que a cota é batida", () => {
+    const weekly = habit("semanal");
+    const logs = [log("2026-09-21"), log("2026-09-15"), log("2026-09-08")];
+    expect(computeHabitStreak(weekly, logs, new Date(2026, 8, 22))).toEqual({ count: 3, unit: "semana" });
+  });
+
+  it("mensal conta meses com pelo menos um registro concluído", () => {
+    const monthly = habit("mensal");
+    const logs = [log("2026-09-02"), log("2026-08-20"), log("2026-06-10")]; // julho ficou vazio
+    expect(computeHabitStreak(monthly, logs, new Date(2026, 8, 22))).toEqual({ count: 2, unit: "mes" });
+  });
+
+  it("sem nenhum registro concluído a sequência é 0 na unidade do hábito", () => {
+    expect(computeHabitStreak(habit("semanal"), [log("2026-09-21", "pulado")], new Date(2026, 8, 22))).toEqual({ count: 0, unit: "semana" });
+  });
+});
+
+describe("formatHabitStreak", () => {
+  it("usa singular, plural e a unidade certa", () => {
+    expect(formatHabitStreak({ count: 1, unit: "dia" })).toBe("1 dia seguido");
+    expect(formatHabitStreak({ count: 4, unit: "dia" })).toBe("4 dias seguidos");
+    expect(formatHabitStreak({ count: 3, unit: "vez" })).toBe("3 vezes seguidas");
+    expect(formatHabitStreak({ count: 2, unit: "semana" })).toBe("2 semanas seguidas");
+    expect(formatHabitStreak({ count: 1, unit: "mes" })).toBe("1 mês seguido");
   });
 });
 

@@ -59,9 +59,12 @@ import {
   useStudySessions,
   useSummaries,
   useTopics,
+  useUpdateAssessment,
+  useUpdateErrorDoubt,
   useUpdateFlashcard,
   useUpdateNotebook,
   useUpdateSummary,
+  useUpdateTopic,
   type Quiz,
 } from "@qqorvex/module-estudos";
 import { AttachDocumentPanel } from "@qqorvex/module-documentos";
@@ -138,11 +141,22 @@ function SummariesTab({ notebookId, notebookName }: { notebookId: string; notebo
   const updateSummary = useUpdateSummary(supabase, notebookId);
   const deleteSummary = useDeleteSummary(supabase, notebookId);
   const createTopic = useCreateTopic(supabase, notebookId);
+  const updateTopic = useUpdateTopic(supabase, notebookId);
   const deleteTopic = useDeleteTopic(supabase, notebookId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"read" | "create" | "edit">("read");
   const [topicFilter, setTopicFilter] = useState<string>("");
   const [newTopic, setNewTopic] = useState("");
+  const [renamingTopic, setRenamingTopic] = useState<{ id: string; draft: string } | null>(null);
+
+  /** Enter ou sair do campo salva; Esc cancela. Nome vazio ou igual não grava nada. */
+  function finishRenamingTopic() {
+    if (!renamingTopic) return;
+    const title = renamingTopic.draft.trim();
+    const current = topics.find((topic) => topic.id === renamingTopic.id);
+    setRenamingTopic(null);
+    if (title && current && title !== current.title) updateTopic.mutate({ topicId: renamingTopic.id, title });
+  }
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const visible = topicFilter ? summaries.filter((summary) => summary.topic_id === topicFilter) : summaries;
@@ -198,16 +212,45 @@ function SummariesTab({ notebookId, notebookName }: { notebookId: string; notebo
                 <button type="button" onClick={() => setTopicFilter("")} className={cx("rounded-full border px-2.5 py-1 text-xs transition-colors", !topicFilter ? "border-gold-line bg-gold-soft text-gold-fg" : "border-line text-fg-3 hover:text-fg")}>
                   Todos
                 </button>
-                {topics.map((topic) => (
+                {topics.map((topic) =>
+                  renamingTopic?.id === topic.id ? (
+                    <form
+                      key={topic.id}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        finishRenamingTopic();
+                      }}
+                    >
+                      <input
+                        value={renamingTopic.draft}
+                        onChange={(event) => setRenamingTopic({ id: topic.id, draft: event.target.value })}
+                        onBlur={finishRenamingTopic}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            setRenamingTopic(null);
+                          }
+                        }}
+                        aria-label={`Novo nome do tópico ${topic.title}`}
+                        maxLength={80}
+                        autoFocus
+                        className="h-[26px] w-36 rounded-full border border-gold-line bg-canvas px-2.5 text-xs text-fg outline-none"
+                      />
+                    </form>
+                  ) : (
                   <span key={topic.id} className={cx("group inline-flex items-center rounded-full border text-xs transition-colors", topicFilter === topic.id ? "border-gold-line bg-gold-soft text-gold-fg" : "border-line text-fg-3 hover:text-fg")}>
                     <button type="button" onClick={() => setTopicFilter(topicFilter === topic.id ? "" : topic.id)} className="py-1 pl-2.5 pr-1.5">
                       {topic.title}
                     </button>
-                    <button type="button" aria-label={`Remover tópico ${topic.title}`} onClick={() => deleteTopic.mutate(topic.id)} className="mr-1 hidden rounded-full p-0.5 hover:bg-hover group-hover:block">
+                    <button type="button" aria-label={`Renomear tópico ${topic.title}`} onClick={() => setRenamingTopic({ id: topic.id, draft: topic.title })} className="hidden rounded-full p-0.5 hover:bg-hover group-hover:block group-focus-within:block">
+                      <PencilSimpleIcon size={10} />
+                    </button>
+                    <button type="button" aria-label={`Remover tópico ${topic.title}`} onClick={() => deleteTopic.mutate(topic.id)} className="mr-1 hidden rounded-full p-0.5 hover:bg-hover group-hover:block group-focus-within:block">
                       <XIcon size={10} />
                     </button>
                   </span>
-                ))}
+                  ),
+                )}
               </div>
             )}
             <form
@@ -388,8 +431,10 @@ function DoubtsTab({ notebookId, notebookName }: { notebookId: string; notebookN
   const { errorsDoubts, isLoading } = useErrorsDoubts(supabase, notebookId);
   const create = useCreateErrorDoubt(supabase, notebookId);
   const resolve = useResolveErrorDoubt(supabase, notebookId);
+  const update = useUpdateErrorDoubt(supabase, notebookId);
   const remove = useDeleteErrorDoubt(supabase, notebookId);
   const [text, setText] = useState("");
+  const [editingDoubt, setEditingDoubt] = useState<{ id: string; draft: string } | null>(null);
   const [view, setView] = useState<"abertas" | "resolvidas">("abertas");
   const visible = errorsDoubts.filter((item) => (view === "abertas" ? !item.is_resolved : item.is_resolved));
   const openCount = errorsDoubts.filter((item) => !item.is_resolved).length;
@@ -427,7 +472,43 @@ function DoubtsTab({ notebookId, notebookName }: { notebookId: string; notebookN
       ) : (
         <Panel>
           <ul className="divide-y divide-line-soft">
-            {visible.map((item) => (
+            {visible.map((item) =>
+              editingDoubt?.id === item.id ? (
+                <li key={item.id} className="px-4 py-3">
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const description = editingDoubt.draft.trim();
+                      if (!description) return;
+                      if (description === item.description) setEditingDoubt(null);
+                      else update.mutate({ id: item.id, description }, { onSuccess: () => setEditingDoubt(null) });
+                    }}
+                    className="flex flex-col gap-2"
+                  >
+                    <Textarea
+                      value={editingDoubt.draft}
+                      onChange={(event) => setEditingDoubt({ id: item.id, draft: event.target.value })}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          setEditingDoubt(null);
+                        }
+                      }}
+                      aria-label="Texto da dúvida"
+                      rows={3}
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setEditingDoubt(null)}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" size="sm" disabled={!editingDoubt.draft.trim()} loading={update.isPending}>
+                        Salvar
+                      </Button>
+                    </div>
+                  </form>
+                </li>
+              ) : (
               <li key={item.id} className="group flex items-start gap-3 px-4 py-3">
                 <Checkbox className="mt-0.5" checked={item.is_resolved} onChange={(event) => resolve.mutate({ id: item.id, isResolved: event.target.checked })} aria-label={item.is_resolved ? "Reabrir" : "Marcar como resolvida"} />
                 <p className={cx("min-w-0 flex-1 whitespace-pre-wrap text-[13.5px]", item.is_resolved ? "text-fg-4 line-through" : "text-fg")}>{item.description}</p>
@@ -436,11 +517,15 @@ function DoubtsTab({ notebookId, notebookName }: { notebookId: string; notebookN
                     Tirar com a Vex
                   </Button>
                 )}
+                <IconButton label="Editar" size="sm" onClick={() => setEditingDoubt({ id: item.id, draft: item.description })} className="sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100">
+                  <PencilSimpleIcon />
+                </IconButton>
                 <IconButton label="Excluir" size="sm" variant="danger" onClick={() => remove.mutate(item.id)} className="sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100">
                   <TrashIcon />
                 </IconButton>
               </li>
-            ))}
+              ),
+            )}
           </ul>
         </Panel>
       )}
@@ -454,11 +539,27 @@ function AssessmentsTab({ notebookId, userId }: { notebookId: string; userId: st
   const { toast } = useToast();
   const { assessments, isLoading } = useAssessments(supabase, notebookId);
   const create = useCreateAssessment(supabase, notebookId);
+  const update = useUpdateAssessment(supabase, notebookId);
   const remove = useDeleteAssessment(supabase, notebookId);
   const toAgenda = useCreateEventForAssessment(supabase, userId);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
   const [content, setContent] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function resetForm() {
+    setEditingId(null);
+    setName("");
+    setDate("");
+    setContent("");
+  }
+
+  function startEditing(assessment: (typeof assessments)[number]) {
+    setEditingId(assessment.id);
+    setName(assessment.name);
+    setDate(assessment.assessment_date ?? "");
+    setContent(assessment.expected_content ?? "");
+  }
   const today = getLocalDateKey();
   const upcoming = assessments.filter((item) => !item.assessment_date || item.assessment_date >= today);
   const past = assessments.filter((item) => item.assessment_date && item.assessment_date < today);
@@ -485,10 +586,19 @@ function AssessmentsTab({ notebookId, userId }: { notebookId: string; userId: st
         <DropdownMenu
           label={`Ações para ${assessment.name}`}
           items={[
+            { label: "Editar", icon: <PencilSimpleIcon />, onSelect: () => startEditing(assessment) },
             ...(assessment.assessment_date && !isPast
               ? [{ label: "Adicionar à Agenda", icon: <CalendarPlusIcon />, onSelect: () => toAgenda.mutate(assessment, { onSuccess: () => toast({ title: "Avaliação na Agenda", tone: "success" }), onError: () => toast({ title: "Não foi possível adicionar à Agenda", tone: "danger" }) }) }]
               : []),
-            { label: "Excluir", icon: <TrashIcon />, danger: true, onSelect: () => remove.mutate(assessment.id) },
+            {
+              label: "Excluir",
+              icon: <TrashIcon />,
+              danger: true,
+              onSelect: () => {
+                if (editingId === assessment.id) resetForm();
+                remove.mutate(assessment.id);
+              },
+            },
           ]}
           trigger={(props) => (
             <IconButton {...props} label={`Ações para ${assessment.name}`} size="sm">
@@ -522,30 +632,43 @@ function AssessmentsTab({ notebookId, userId }: { notebookId: string; userId: st
           </>
         )}
       </div>
-      <Panel title="Nova avaliação">
+      <Panel title={editingId ? "Editar avaliação" : "Nova avaliação"}>
         <form
           className="flex flex-col gap-3 p-4"
           onSubmit={(event) => {
             event.preventDefault();
             if (!name.trim()) return;
-            create.mutate(
-              { name: name.trim(), assessmentDate: date || undefined, expectedContent: content.trim() || undefined },
-              {
-                onSuccess: () => {
-                  setName("");
-                  setDate("");
-                  setContent("");
+            const input = { name: name.trim(), assessmentDate: date || undefined, expectedContent: content.trim() || undefined };
+            if (editingId) {
+              update.mutate(
+                { assessmentId: editingId, input },
+                {
+                  onSuccess: () => {
+                    resetForm();
+                    toast({ title: "Avaliação atualizada", tone: "success" });
+                  },
+                  onError: () => toast({ title: "Não foi possível salvar a avaliação", tone: "danger" }),
                 },
-              },
-            );
+              );
+              return;
+            }
+            create.mutate(input, { onSuccess: resetForm });
           }}
         >
           <Input label="Nome" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Prova 1" required />
           <Input label="Data" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           <Textarea label="Conteúdo (opcional)" value={content} onChange={(event) => setContent(event.target.value)} placeholder="Capítulos, temas, peso…" rows={3} />
-          <Button type="submit" disabled={!name.trim()} loading={create.isPending}>
-            Adicionar
-          </Button>
+          {editingId && <p className="text-xs text-fg-3">Se a avaliação já está na Agenda, o evento acompanha a nova data.</p>}
+          <div className="flex gap-2">
+            {editingId && (
+              <Button type="button" variant="ghost" onClick={resetForm}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" className="flex-1" disabled={!name.trim()} loading={create.isPending || update.isPending}>
+              {editingId ? "Salvar alterações" : "Adicionar"}
+            </Button>
+          </div>
         </form>
       </Panel>
     </div>

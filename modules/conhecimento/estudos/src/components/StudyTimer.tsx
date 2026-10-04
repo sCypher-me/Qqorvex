@@ -30,7 +30,7 @@ function write(state: TimerState | null) {
   }
 }
 
-export function formatElapsed(ms: number): string {
+function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
@@ -40,7 +40,7 @@ export function formatElapsed(ms: number): string {
 }
 
 /** Cronômetro de sessão de estudo que sobrevive a trocas de tela (fica no armazenamento local). */
-export function useStudyTimer() {
+function useStudyTimer() {
   const [state, setState] = useState<TimerState | null>(() => (typeof window === "undefined" ? null : read()));
   const [now, setNow] = useState(() => Date.now());
 

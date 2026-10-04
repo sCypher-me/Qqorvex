@@ -1,18 +1,18 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { listDocuments, toggleImportant, uploadDocument } from "@qqorvex/module-documentos";
-import { verifySecurityPin } from "@qqorvex/auth";
 import type { ToolDefinition } from "../types";
+import { ambiguousSummary, matchByName } from "./shared";
 
 /**
  * Ferramentas da Vex para Documentos & Arquivos. Só chamam a API pública de
  * `@qqorvex/module-documentos`. `userId` só é usado por `create_text_document` (Fase 6 —
  * "pesquisa + salvar depois"); as demais ferramentas deste módulo não precisavam dele.
  *
- * Fase 7 — Barreira do Cofre, evoluída pela Central de Segurança (docs/decisions/
- * central-seguranca-pin-design.md): `list_documents` continua sempre excluindo documentos com
- * `is_vault: true` — a Vex nunca lista o Cofre. Tocar um documento específico do Cofre já
- * conhecido pelo nome agora é possível, mas só com o PIN correto (verificado no servidor via
- * `verifySecurityPin`, nunca comparado aqui) — sem PIN, a ferramenta recusa e pede.
+ * Barreira do Cofre (no servidor desde a migration vault_server_lock): com o Cofre bloqueado a
+ * API nem devolve documentos do Cofre. `list_documents` ainda filtra `is_vault` por garantia — a
+ * Vex nunca lista o Cofre. Para tocar um documento do Cofre, a ferramenta recebe o PIN, desbloqueia
+ * só pelo tempo da ação (`unlockVault`, PIN conferido no servidor) e volta a bloquear se o Cofre
+ * estava fechado antes.
  */
 export function createDocumentosTools(client: SupabaseClient<Database>, userId: string): ToolDefinition[] {
   return [
@@ -53,32 +53,25 @@ export function createDocumentosTools(client: SupabaseClient<Database>, userId: 
     {
       name: "toggle_important_by_name",
       description:
-        "Marca ou desmarca um documento como importante, pelo nome do arquivo. Se o documento estiver no Cofre, precisa do PIN do Cofre (pergunte ao usuário se ele disser que é um documento do Cofre ou se esta ferramenta recusar por causa disso)",
+        "Marca ou desmarca um documento como importante, pelo nome do arquivo. Documentos do Cofre só aparecem enquanto o Cofre estiver aberto (a pessoa abre em Documentos com o PIN). Nunca peça nem aceite o PIN do Cofre na conversa.",
       parameters: {
         type: "object",
         properties: {
           name: { type: "string", description: "Nome (ou parte dele) do arquivo" },
           isImportant: { type: "boolean", description: "true para marcar como importante, false para desmarcar" },
-          pin: { type: "string", description: "PIN do Cofre — só necessário se o documento estiver no Cofre" },
         },
         required: ["name", "isImportant"],
       },
       requiresConfirmation: true,
       async execute(args) {
-        const query = String(args.name ?? "")
-          .trim()
-          .toLowerCase();
-        const documents = await listDocuments(client);
-        const match = documents.find((d) => d.file_name.toLowerCase().includes(query));
-        if (!match) return { summary: `Não encontrei nenhum documento parecido com "${args.name}".` };
-
-        if (match.is_vault) {
-          const pin = args.pin ? String(args.pin).trim() : "";
-          const isAuthorized = pin.length > 0 && (await verifySecurityPin(client, pin));
-          if (!isAuthorized) return { summary: "Esse documento está no Cofre. Qual é o PIN do Cofre?" };
+        const match = matchByName(await listDocuments(client), String(args.name ?? ""), (document) => document.file_name);
+        if (match.kind === "none") {
+          return {
+            summary: `Não encontrei nenhum documento parecido com "${args.name}". Se ele estiver no Cofre, a pessoa precisa abrir o Cofre em Documentos (com o PIN, fora da conversa) e pedir de novo.`,
+          };
         }
-
-        const updated = await toggleImportant(client, match.id, Boolean(args.isImportant));
+        if (match.kind === "many") return { summary: ambiguousSummary("um documento", match.items, (document) => document.file_name) };
+        const updated = await toggleImportant(client, match.item.id, Boolean(args.isImportant));
         return {
           summary: `Documento "${updated.file_name}" ${updated.is_important ? "marcado como importante" : "desmarcado"}.`,
           data: updated,

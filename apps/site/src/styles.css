@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "@qqorvex/design-system/tokens.css";
+@import "@qqorvex/ui/ui.css";
+
+/* O Tailwind v4 não segue os symlinks do workspace: inclui as classes usadas nos componentes de UI. */
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

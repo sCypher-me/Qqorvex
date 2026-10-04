@@ -1,7 +1,7 @@
 import type { LibraryItemType } from "./types";
 
 /**
- * Metadata Provider Layer (docs/decisions/biblioteca-metadata-provider-design.md) — busca
+ * Metadata Provider Layer — busca
  * automática de metadados por título. Livro (Google Books, sem chave) e filme/série/anime (TMDB,
  * chave pública em `VITE_TMDB_API_KEY` — dado de filme é público, sem risco real em expor a
  * chave no cliente, mesmo padrão de `VITE_GOOGLE_CLIENT_ID`). Chamadas diretas do cliente, sem
@@ -29,7 +29,7 @@ interface GoogleBooksVolume {
   };
 }
 
-export async function searchGoogleBooks(query: string): Promise<MetadataSearchResult[]> {
+async function searchGoogleBooks(query: string): Promise<MetadataSearchResult[]> {
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=8`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Google Books respondeu ${response.status}`);
@@ -62,7 +62,7 @@ interface TmdbResult {
  * TMDB não devolve diretor/elenco na busca (exigiria uma segunda chamada a `/credits` por item —
  * custo/complexidade desproporcional pra v1). Filme/série ficam sem `creators` por enquanto.
  */
-export async function searchTmdb(query: string, type: "movie" | "series", apiKey: string): Promise<MetadataSearchResult[]> {
+async function searchTmdb(query: string, type: "movie" | "series", apiKey: string): Promise<MetadataSearchResult[]> {
   if (!apiKey) return [];
   const endpoint = type === "movie" ? "movie" : "tv";
   const url = `https://api.themoviedb.org/3/search/${endpoint}?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=pt-BR`;

@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import type { HojeItem } from "@qqorvex/module-hoje";
+import { localDateKey, localDateKeyInDays, type HojeItem } from "@qqorvex/module-hoje";
 import { listTransactions } from "./repository";
 import { computeBalances } from "./service";
 
@@ -21,10 +21,8 @@ export function createFinancasHojeProvider(client: SupabaseClient<Database>) {
       },
     ];
 
-    const today = new Date().toISOString().slice(0, 10);
-    const soon = new Date();
-    soon.setDate(soon.getDate() + 7);
-    const soonStr = soon.toISOString().slice(0, 10);
+    const today = localDateKey();
+    const soonStr = localDateKeyInDays(7);
 
     const upcoming = transactions.filter(
       (t) => t.transaction_type === "saida" && t.status === "futura" && t.date >= today && t.date <= soonStr,

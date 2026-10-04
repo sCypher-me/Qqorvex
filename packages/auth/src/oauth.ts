@@ -17,7 +17,7 @@ export interface OAuthSignInOptions {
 /**
  * Redireciona pro provedor (Google/Discord/GitHub); a troca de código por sessão acontece do lado
  * do Supabase Auth, que também é quem faz o account linking automático quando o e-mail do provedor
- * já pertence a uma conta existente (ver docs/decisions/pending.md — auth-registro-completo). Não
+ * já pertence a uma conta existente. Não
  * há callback próprio: a volta cai em `redirectTo`, o `AuthProvider` detecta a sessão sozinho.
  */
 export async function signInWithOAuth(

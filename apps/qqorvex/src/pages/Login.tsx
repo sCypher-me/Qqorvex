@@ -5,7 +5,7 @@ import { Button, Input, Notice } from "@qqorvex/ui";
 import { useAuth, signInWithPasskey } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordField } from "../components/PasswordField";
-import { TurnstileCaptcha } from "../components/TurnstileCaptcha";
+import { TurnstileCaptcha } from "@qqorvex/ui";
 import { OAuthButtons } from "../components/OAuthButtons";
 import { VerifyEmailNotice } from "../components/VerifyEmailNotice";
 

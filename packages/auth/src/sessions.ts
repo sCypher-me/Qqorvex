@@ -1,7 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 
 /**
- * Central de Segurança — sessões/dispositivos (docs/decisions/central-seguranca-sessoes-design.md).
+ * Central de Segurança — sessões/dispositivos.
  * O schema `auth` não é exposto pela API automática do Supabase por segurança, então listar/
  * revogar sessões individuais passa pelas funções `list_my_sessions`/`revoke_my_session`
  * (`security definer`, só enxergam o que pertence a `auth.uid()`).

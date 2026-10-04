@@ -100,22 +100,40 @@ function isValidGeneratedQuestion(value: unknown): value is GeneratedQuizQuestio
  * `QUIZ_QUESTION_COUNT` perguntas — quem chama decide como recusar sem persistir nada.
  */
 export function parseGeneratedQuiz(raw: string): GeneratedQuizQuestion[] | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-
+  const parsed = parseJsonLoosely(raw);
   const questions = Array.isArray(parsed)
     ? parsed
     : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as Record<string, unknown>).questions)
-      ? (parsed as Record<string, unknown>).questions
+      ? ((parsed as Record<string, unknown>).questions as unknown[])
       : null;
+  if (!questions) return null;
 
-  if (!Array.isArray(questions) || questions.length !== QUIZ_QUESTION_COUNT) return null;
-  if (!questions.every(isValidGeneratedQuestion)) return null;
-  return questions;
+  // Modelos às vezes mandam uma pergunta a mais ou uma malformada: aproveita as válidas, mas só
+  // grava o quiz se sobrarem perguntas suficientes.
+  const valid = questions.filter(isValidGeneratedQuestion).map((question) => ({
+    questionText: question.questionText.trim(),
+    options: question.options.map((option) => option.trim()),
+    correctOptionIndex: question.correctOptionIndex,
+  }));
+  return valid.length >= QUIZ_QUESTION_COUNT ? valid.slice(0, QUIZ_QUESTION_COUNT) : null;
+}
+
+/** JSON puro, dentro de bloco ```json``` ou com texto antes/depois (o primeiro objeto/lista vale). */
+function parseJsonLoosely(raw: string): unknown {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
+  const text = (fenced?.[1] ?? raw).trim();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.search(/[[{]/);
+    const end = Math.max(text.lastIndexOf("}"), text.lastIndexOf("]"));
+    if (start === -1 || end <= start) return null;
+    try {
+      return JSON.parse(text.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
 }
 
 /** Compara as respostas escolhidas (mesma ordem das perguntas) com o gabarito e retorna nº de acertos. */

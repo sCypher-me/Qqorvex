@@ -1,7 +1,7 @@
 // Edge Function acionada por pg_cron a cada 10 minutos (autenticação por segredo compartilhado
 // via header X-Cron-Secret, mesmo `cron_secret` já usado por send-notifications — por isso
 // verify_jwt=false). Sincronização bidirecional completa: "quem editou por último vence" quando
-// os dois lados mudaram a mesma coisa. Ver docs/decisions/integracoes-agenda-design.md.
+// os dois lados mudaram a mesma coisa.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 

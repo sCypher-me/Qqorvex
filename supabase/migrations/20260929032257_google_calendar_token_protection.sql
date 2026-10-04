@@ -1,5 +1,3 @@
--- Refresh tokens do not belong in a browser-readable table. Only the server-side
--- Google Calendar functions may read or mutate this connection record.
 revoke all on table public.google_calendar_connections from public, anon, authenticated;
 
 drop policy if exists "google_calendar_connections_select_own" on public.google_calendar_connections;

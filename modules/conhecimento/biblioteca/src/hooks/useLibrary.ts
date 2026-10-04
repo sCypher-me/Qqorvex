@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { addItemCreator, archiveItem, createItem, deleteItem, listArchivedItems, listItems, toggleFavorite, updateItemReview, updateItemStatus, updateProgress } from "../repository";
-import type { LibraryItem, LibraryItemStatus, NewLibraryItemInput } from "../types";
+import { useToast } from "@qqorvex/ui";
+import { nextProgressStep } from "../service";
+import { addItemCreator, archiveItem, createItem, deleteItem, listArchivedItems, listItemCreators, listItems, replaceItemCreators, toggleFavorite, updateItem, updateItemReview, updateItemStatus, updateProgress } from "../repository";
+import type { LibraryCoverChange, LibraryItem, LibraryItemEditInput, LibraryItemStatus, NewLibraryItemInput } from "../types";
 
 const ITEMS_KEY = ["library-items"] as const;
 const ARCHIVED_ITEMS_KEY = ["library-archived-items"] as const;
+const creatorsKey = (itemId: string) => ["library-item-creators", itemId] as const;
 
 /** Aplica o item devolvido pelo servidor direto no cache (a tela responde na hora) e revalida. */
 function applyUpdated(queryClient: QueryClient, updated: LibraryItem) {
@@ -21,14 +24,6 @@ export function useLibraryItems(client: SupabaseClient<Database>) {
 export function useArchivedLibraryItems(client: SupabaseClient<Database>, enabled = true) {
   const query = useQuery({ queryKey: ARCHIVED_ITEMS_KEY, queryFn: () => listArchivedItems(client), enabled });
   return { items: query.data ?? [], isLoading: query.isLoading, error: query.error };
-}
-
-export function useCreateLibraryItem(client: SupabaseClient<Database>, userId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: NewLibraryItemInput) => createItem(client, userId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ITEMS_KEY }),
-  });
 }
 
 /**
@@ -106,6 +101,73 @@ export function useDeleteLibraryItem(client: SupabaseClient<Database>) {
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: ITEMS_KEY }),
       queryClient.invalidateQueries({ queryKey: ARCHIVED_ITEMS_KEY }),
+    ]),
+  });
+}
+
+/**
+ * O "+1" rápido (Biblioteca e Hoje): aplica `nextProgressStep`, avisa com "Desfazer" (volta ao
+ * progresso anterior) e, se o passo chegou ao fim, oferece "Marcar concluído". `start` tira um
+ * item da fila ("Começar").
+ */
+export function useLibraryQuickStep(client: SupabaseClient<Database>) {
+  const { toast } = useToast();
+  const updateProgressMutation = useUpdateProgress(client);
+  const updateStatusMutation = useUpdateItemStatus(client);
+
+  function step(item: LibraryItem) {
+    const next = nextProgressStep(item);
+    if (!next || item.progress_mode === null) return;
+    const previous = {
+      mode: item.progress_mode === "percentual" ? ("percentual" as const) : ("numerico" as const),
+      current: item.progress_current ?? 0,
+      total: item.progress_total ?? undefined,
+      unit: item.progress_unit ?? undefined,
+    };
+    updateProgressMutation.mutate(
+      { itemId: item.id, progress: next.progress },
+      {
+        onSuccess: () => {
+          if (next.finished) {
+            toast({ title: `Você terminou “${item.title}”?`, tone: "success", action: { label: "Marcar concluído", onClick: () => updateStatusMutation.mutate({ itemId: item.id, status: "concluido" }) } });
+            return;
+          }
+          toast({ title: `${next.label} em “${item.title}”`, action: { label: "Desfazer", onClick: () => updateProgressMutation.mutate({ itemId: item.id, progress: previous }) } });
+        },
+        onError: () => toast({ title: "Não foi possível registrar o progresso", tone: "danger" }),
+      },
+    );
+  }
+
+  function start(item: LibraryItem) {
+    updateStatusMutation.mutate(
+      { itemId: item.id, status: "em_andamento" },
+      { onSuccess: () => toast({ title: `Começou “${item.title}”`, tone: "success" }) },
+    );
+  }
+
+  return { step, start, isPending: updateProgressMutation.isPending || updateStatusMutation.isPending };
+}
+
+export function useItemCreators(client: SupabaseClient<Database>, itemId: string, enabled = true) {
+  const query = useQuery({ queryKey: creatorsKey(itemId), queryFn: () => listItemCreators(client, itemId), enabled });
+  return { creators: query.data ?? [], isLoading: query.isLoading };
+}
+
+/** Edita dados, capa e criadores do item numa ação só (o formulário de edição salva tudo junto). */
+export function useUpdateLibraryItem(client: SupabaseClient<Database>, userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, input, cover, creators }: { itemId: string; input: LibraryItemEditInput; cover?: LibraryCoverChange; creators?: string[] }) => {
+      const item = await updateItem(client, userId, itemId, input, cover);
+      if (creators) await replaceItemCreators(client, itemId, creators);
+      return item;
+    },
+    onSuccess: (item) => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ITEMS_KEY }),
+      queryClient.invalidateQueries({ queryKey: ARCHIVED_ITEMS_KEY }),
+      queryClient.invalidateQueries({ queryKey: creatorsKey(item.id) }),
+      queryClient.invalidateQueries({ queryKey: ["hoje"] }),
     ]),
   });
 }

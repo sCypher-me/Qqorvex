@@ -14,8 +14,11 @@ import {
   deleteStudySession,
   deleteSummary,
   deleteTopic,
+  updateAssessment,
+  updateErrorDoubt,
   updateFlashcard,
   updateSummary,
+  updateTopic,
   listAssessments,
   listErrorsDoubts,
   listFlashcards,
@@ -41,7 +44,7 @@ const quizAttemptsKey = (quizId: string) => ["quiz-attempts", quizId] as const;
 const studySessionsKey = (notebookId: string) => ["study-sessions", notebookId] as const;
 
 /** Visões agregadas (lista de cadernos, Hoje, semana) que dependem do conteúdo dos cadernos. */
-export function invalidateEstudosAggregates(queryClient: QueryClient) {
+function invalidateEstudosAggregates(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: ["estudos-overview"] });
   void queryClient.invalidateQueries({ queryKey: ["estudos-stats"] });
   void queryClient.invalidateQueries({ queryKey: ["estudos-week"] });
@@ -64,6 +67,16 @@ export function useAssessments(client: SupabaseClient<Database>, notebookId: str
 export function useCreateAssessment(client: SupabaseClient<Database>, notebookId: string) {
   const onSuccess = useInvalidate(assessmentsKey(notebookId));
   return useMutation({ mutationFn: (input: { name: string; assessmentDate?: string; expectedContent?: string }) => createAssessment(client, notebookId, input), onSuccess });
+}
+
+/** Também invalida a Agenda: editar a data move o evento da avaliação, se existir. */
+export function useUpdateAssessment(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(assessmentsKey(notebookId), ["events"]);
+  return useMutation({
+    mutationFn: ({ assessmentId, input }: { assessmentId: string; input: { name: string; assessmentDate?: string; expectedContent?: string } }) =>
+      updateAssessment(client, assessmentId, input),
+    onSuccess,
+  });
 }
 
 export function useDeleteAssessment(client: SupabaseClient<Database>, notebookId: string) {
@@ -97,6 +110,11 @@ export function useCreateTopic(client: SupabaseClient<Database>, notebookId: str
     mutationFn: ({ title, parentTopicId }: { title: string; parentTopicId?: string }) => createTopic(client, notebookId, title, parentTopicId),
     onSuccess,
   });
+}
+
+export function useUpdateTopic(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(topicsKey(notebookId));
+  return useMutation({ mutationFn: ({ topicId, title }: { topicId: string; title: string }) => updateTopic(client, topicId, title), onSuccess });
 }
 
 export function useDeleteTopic(client: SupabaseClient<Database>, notebookId: string) {
@@ -167,6 +185,11 @@ export function useErrorsDoubts(client: SupabaseClient<Database>, notebookId: st
 export function useCreateErrorDoubt(client: SupabaseClient<Database>, notebookId: string) {
   const onSuccess = useInvalidate(errorsDoubtsKey(notebookId));
   return useMutation({ mutationFn: (description: string) => createErrorDoubt(client, notebookId, description), onSuccess });
+}
+
+export function useUpdateErrorDoubt(client: SupabaseClient<Database>, notebookId: string) {
+  const onSuccess = useInvalidate(errorsDoubtsKey(notebookId));
+  return useMutation({ mutationFn: ({ id, description }: { id: string; description: string }) => updateErrorDoubt(client, id, description), onSuccess });
 }
 
 export function useResolveErrorDoubt(client: SupabaseClient<Database>, notebookId: string) {

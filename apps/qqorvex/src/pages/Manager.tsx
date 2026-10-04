@@ -1,17 +1,24 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRightIcon, CopyIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
-import { useAuth, useProfile, type Profile } from "@qqorvex/auth";
+import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
+import { useAuth, useProfile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
   useAllAccounts,
+  useCreatePartnerCampaign,
   useCreateRedemptionCode,
   useDeleteAccount,
+  usePartnerCampaigns,
   useRedemptionCodes,
   useSecretKeys,
   useSetSecret,
   useSystemOverview,
+  useUpdatePartnerCampaignEnd,
+  useSetWaitlistInvited,
+  useWaitlist,
+  waitlistToCsv,
   type AccountTier,
+  type PartnerCampaign,
 } from "@qqorvex/module-manager";
 import { supabase } from "../app/supabase";
 import { usePageMeta } from "../app/shell/PageMeta";
@@ -19,9 +26,9 @@ import { usePageMeta } from "../app/shell/PageMeta";
 const TIER_LABEL: Record<AccountTier, string> = { padrao: "Padrão", parceiro: "Parceiro", lifetime: "Lifetime", vip: "VIP" };
 const TIER_TONE: Record<AccountTier, BadgeTone> = { padrao: "neutral", parceiro: "info", lifetime: "gold", vip: "gold" };
 
-type ManagerTab = "visao-geral" | "contas" | "codigos" | "config";
+type ManagerTab = "visao-geral" | "contas" | "codigos" | "lista" | "config";
 
-const TABS: ManagerTab[] = ["visao-geral", "contas", "codigos", "config"];
+const TABS: ManagerTab[] = ["visao-geral", "contas", "codigos", "lista", "config"];
 
 function Panel({ title, description, aside, children, className = "" }: { title: string; description?: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -104,6 +111,7 @@ export function ManagerPage() {
             { value: "visao-geral", label: "Visão geral" },
             { value: "contas", label: "Contas" },
             { value: "codigos", label: "Códigos" },
+            { value: "lista", label: "Lista de espera" },
             { value: "config", label: "Integrações" },
           ]}
         />
@@ -111,6 +119,7 @@ export function ManagerPage() {
       {tab === "visao-geral" && <OverviewSection onNavigate={setTab} />}
       {tab === "contas" && <AccountsSection currentUserId={userId} />}
       {tab === "codigos" && <CodesSection userId={userId} />}
+      {tab === "lista" && <WaitlistSection onNavigate={setTab} />}
       {tab === "config" && <SecretsSection />}
     </PageContainer>
   );
@@ -248,8 +257,13 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
 function CodesSection({ userId }: { userId: string }) {
   const { toast } = useToast();
   const { codes, isLoading, error } = useRedemptionCodes(supabase);
+  const { campaigns } = usePartnerCampaigns(supabase);
   const createCode = useCreateRedemptionCode(supabase, userId);
-  const [tier, setTier] = useState<"parceiro" | "lifetime" | "beta_tester">("parceiro");
+  const [tier, setTier] = useState<"parceiro" | "lifetime" | "beta_tester">("lifetime");
+  const activeCampaigns = campaigns.filter(isCampaignActive);
+  const [campaignId, setCampaignId] = useState("");
+  const selectedCampaignId = activeCampaigns.some((campaign) => campaign.id === campaignId) ? campaignId : (activeCampaigns[0]?.id ?? "");
+  const campaignName = (id: string | null) => campaigns.find((campaign) => campaign.id === id)?.name;
   const [note, setNote] = useState("");
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -260,7 +274,7 @@ function CodesSection({ userId }: { userId: string }) {
     setCreateError(null);
     setCopyMessage(null);
     try {
-      const created = await createCode.mutateAsync({ tier, note: note.trim() || undefined });
+      const created = await createCode.mutateAsync({ tier, note: note.trim() || undefined, campaignId: tier === "parceiro" ? selectedCampaignId : undefined });
       setLastGenerated(created.code);
       setNote("");
     } catch (caught) {
@@ -282,15 +296,28 @@ function CodesSection({ userId }: { userId: string }) {
 
   return (
     <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(300px,.7fr)_minmax(0,1.3fr)]">
-      <Panel title="Novo código de convite" description="Concede acesso Parceiro, Lifetime ou o selo de Beta Tester.">
+      <div className="flex min-w-0 flex-col gap-5">
+      <Panel title="Novo código de convite" description="Lifetime: ilimitado para sempre (não está à venda). Parceiro: ilimitado até o fim da campanha. A pessoa ativa tocando 7 vezes seguidas na estrela do Qqorvex.">
         <form onSubmit={handleCreate} className="flex min-w-0 flex-col gap-3">
           <Select label="Acesso concedido" value={tier} onChange={(event) => setTier(event.target.value as typeof tier)}>
-            <option value="parceiro">Parceiro</option>
             <option value="lifetime">Lifetime</option>
+            <option value="parceiro">Parceiro</option>
             <option value="beta_tester">Beta Tester</option>
           </Select>
+          {tier === "parceiro" &&
+            (activeCampaigns.length > 0 ? (
+              <Select label="Campanha" value={selectedCampaignId} onChange={(event) => setCampaignId(event.target.value)} hint="O acesso do parceiro acaba quando a campanha acaba.">
+                {activeCampaigns.map((campaign) => (
+                  <option key={campaign.id} value={campaign.id}>
+                    {campaign.name} · até {shortDate.format(new Date(campaign.ends_at))}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Notice compact tone="info">Crie uma campanha ativa abaixo antes de gerar códigos de Parceiro.</Notice>
+            ))}
           <Input label="Para quem (opcional)" placeholder="Ex.: convite para a Carol" value={note} onChange={(event) => setNote(event.target.value)} />
-          <Button type="submit" className="self-start" leadingIcon={<TicketIcon size={16} />} loading={createCode.isPending}>
+          <Button type="submit" className="self-start" leadingIcon={<TicketIcon size={16} />} loading={createCode.isPending} disabled={tier === "parceiro" && !selectedCampaignId}>
             Gerar código
           </Button>
         </form>
@@ -308,6 +335,8 @@ function CodesSection({ userId }: { userId: string }) {
           </div>
         )}
       </Panel>
+      <CampaignsPanel userId={userId} campaigns={campaigns} codes={codes} />
+      </div>
 
       <Panel title="Códigos emitidos" aside={!isLoading && !error && codes.length > 0 ? <span className="text-xs tabular-nums text-fg-3">{codes.length} · {pending} pendentes</span> : undefined}>
         {isLoading ? (
@@ -324,6 +353,7 @@ function CodesSection({ userId }: { userId: string }) {
                   <code className="block truncate font-mono text-[13.5px] font-semibold text-fg">{code.code}</code>
                   <p className="truncate text-xs text-fg-3">
                     Criado em {shortDate.format(new Date(code.created_at))}
+                    {code.campaign_id ? ` · ${campaignName(code.campaign_id) ?? "campanha"}` : ""}
                     {code.note ? ` · ${code.note}` : ""}
                   </p>
                 </div>
@@ -343,8 +373,227 @@ function CodesSection({ userId }: { userId: string }) {
   );
 }
 
+function isCampaignActive(campaign: PartnerCampaign): boolean {
+  return Date.parse(campaign.ends_at) > Date.now();
+}
+
+/** Fim do dia escolhido no horário de Brasília (sem horário de verão desde 2019). */
+function endOfDaySaoPaulo(date: string): string {
+  return new Date(`${date}T23:59:59-03:00`).toISOString();
+}
+
+function dateInputValue(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+}
+
+/**
+ * Campanhas de Parceiro: cada código de Parceiro pertence a uma. Mudar a data (estender ou
+ * encerrar) vale na hora para todos os parceiros da campanha.
+ */
+function CampaignsPanel({ userId, campaigns, codes }: { userId: string; campaigns: PartnerCampaign[]; codes: { campaign_id: string | null; redeemed_by: string | null }[] }) {
+  const { toast } = useToast();
+  const createCampaign = useCreatePartnerCampaign(supabase, userId);
+  const updateEnd = useUpdatePartnerCampaignEnd(supabase);
+  const [name, setName] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [ending, setEnding] = useState<PartnerCampaign | null>(null);
+  const today = dateInputValue(new Date().toISOString());
+
+  function handleCreate(event: FormEvent) {
+    event.preventDefault();
+    if (!name.trim() || !endDate) return;
+    createCampaign.mutate(
+      { name, endsAt: endOfDaySaoPaulo(endDate) },
+      {
+        onSuccess: () => {
+          setName("");
+          setEndDate("");
+          toast({ title: "Campanha criada", tone: "success" });
+        },
+        onError: () => toast({ title: "Não foi possível criar a campanha", tone: "danger" }),
+      },
+    );
+  }
+
+  function changeEnd(campaign: PartnerCampaign, date: string) {
+    if (!date || date === dateInputValue(campaign.ends_at)) return;
+    updateEnd.mutate(
+      { campaignId: campaign.id, endsAt: endOfDaySaoPaulo(date) },
+      { onSuccess: () => toast({ title: `“${campaign.name}” vai até ${shortDate.format(new Date(endOfDaySaoPaulo(date)))}`, tone: "success" }) },
+    );
+  }
+
+  return (
+    <Panel title="Campanhas de Parceiro" description="O acesso Parceiro dura até o fim da campanha. Estender ou encerrar vale para todos de uma vez; quem sai volta ao plano que tinha, sem perder nada.">
+      <form onSubmit={handleCreate} className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end">
+        <Input label="Nome" placeholder="Ex.: Lançamento" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} />
+        <Input label="Termina em" type="date" min={today} value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+        <Button type="submit" variant="secondary" loading={createCampaign.isPending} disabled={!name.trim() || !endDate}>
+          Criar
+        </Button>
+      </form>
+      {campaigns.length > 0 && (
+        <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
+          {campaigns.map((campaign) => {
+            const active = isCampaignActive(campaign);
+            const partners = codes.filter((code) => code.campaign_id === campaign.id && code.redeemed_by).length;
+            return (
+              <li key={campaign.id} className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13.5px] font-medium text-fg">{campaign.name}</p>
+                  <p className="text-xs text-fg-3">
+                    {partners} {partners === 1 ? "parceiro" : "parceiros"} · {active ? "até" : "terminou em"} {shortDate.format(new Date(campaign.ends_at))}
+                  </p>
+                </div>
+                <Badge tone={active ? "success" : "neutral"}>{active ? "Ativa" : "Encerrada"}</Badge>
+                <Input
+                  aria-label={`Nova data de fim de ${campaign.name}`}
+                  type="date"
+                  fieldSize="sm"
+                  wrapperClassName="w-[150px]"
+                  min={today}
+                  defaultValue={dateInputValue(campaign.ends_at)}
+                  key={campaign.ends_at}
+                  onBlur={(event) => changeEnd(campaign, event.target.value)}
+                />
+                {active && (
+                  <Button size="sm" variant="ghost" onClick={() => setEnding(campaign)}>
+                    Encerrar agora
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <ConfirmDialog
+        isOpen={ending !== null}
+        title={ending ? `Encerrar “${ending.name}” agora?` : "Encerrar campanha"}
+        description="Todos os parceiros desta campanha perdem o acesso ilimitado na hora e voltam ao plano que tinham. Dá para reativar escolhendo uma nova data de fim."
+        confirmLabel="Encerrar campanha"
+        destructive
+        onCancel={() => setEnding(null)}
+        onConfirm={() => {
+          if (ending) updateEnd.mutate({ campaignId: ending.id, endsAt: new Date().toISOString() }, { onSuccess: () => toast({ title: "Campanha encerrada", tone: "success" }) });
+          setEnding(null);
+        }}
+      />
+    </Panel>
+  );
+}
+
+type WaitlistFilter = "pendentes" | "convidados" | "todos";
+
+/**
+ * Inscrições do formulário do site. O convite em si é um código (aba Códigos) enviado por você;
+ * aqui fica o controle de quem já foi convidado.
+ */
+function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void }) {
+  const { toast } = useToast();
+  const { signups, isLoading, error } = useWaitlist(supabase);
+  const setInvited = useSetWaitlistInvited(supabase);
+  const [filter, setFilter] = useState<WaitlistFilter>("pendentes");
+  const pending = signups.filter((signup) => !signup.invited_at);
+  const invited = signups.length - pending.length;
+  const visible = filter === "pendentes" ? pending : filter === "convidados" ? signups.filter((signup) => signup.invited_at) : signups;
+
+  async function copyPendingEmails() {
+    try {
+      await navigator.clipboard.writeText(pending.map((signup) => signup.email).join(", "));
+      toast({ title: `${pending.length} e-mail${pending.length === 1 ? "" : "s"} copiado${pending.length === 1 ? "" : "s"}`, tone: "success" });
+    } catch {
+      toast({ title: "Não foi possível copiar automaticamente", tone: "danger" });
+    }
+  }
+
+  function exportCsv() {
+    const blob = new Blob([`\uFEFF${waitlistToCsv(signups)}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `lista-de-espera-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <Panel
+      title="Lista de espera"
+      description="Quem se inscreveu pelo site. Gere os convites em Códigos, envie e marque aqui quem já foi convidado."
+      aside={
+        signups.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" leadingIcon={<CopyIcon size={14} />} onClick={() => void copyPendingEmails()} disabled={pending.length === 0}>
+              Copiar e-mails pendentes
+            </Button>
+            <Button size="sm" variant="ghost" leadingIcon={<DownloadSimpleIcon size={14} />} onClick={exportCsv}>
+              Exportar CSV
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
+      {isLoading ? (
+        <SkeletonList rows={3} />
+      ) : error ? (
+        <SectionError what="a lista de espera" />
+      ) : signups.length === 0 ? (
+        <EmptyState>Ninguém se inscreveu ainda. As inscrições do formulário do site aparecem aqui.</EmptyState>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-fg-3">
+            <span className="tabular-nums">{signups.length} inscritos · {pending.length} pendentes · {invited} convidados</span>
+            <span className="flex-1" />
+            <Tabs<WaitlistFilter>
+              label="Filtro da lista"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "pendentes", label: "Pendentes" },
+                { value: "convidados", label: "Convidados" },
+                { value: "todos", label: "Todos" },
+              ]}
+            />
+          </div>
+          {visible.length === 0 ? (
+            <EmptyState>{filter === "pendentes" ? "Todos já foram convidados." : "Ninguém convidado ainda."}</EmptyState>
+          ) : (
+            <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
+              {visible.map((signup) => (
+                <li key={signup.id} className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-medium text-fg">{signup.email}</p>
+                    <p className="text-xs text-fg-3">
+                      Inscrito em {shortDate.format(new Date(signup.created_at))}
+                      {signup.invited_at ? ` · convidado em ${shortDate.format(new Date(signup.invited_at))}` : ""}
+                    </p>
+                  </div>
+                  {signup.invited_at ? <Badge tone="success">Convidado</Badge> : <Badge tone="neutral">Pendente</Badge>}
+                  <Button
+                    size="sm"
+                    variant={signup.invited_at ? "ghost" : "secondary"}
+                    disabled={setInvited.isPending}
+                    onClick={() => setInvited.mutate({ ids: [signup.id], invited: !signup.invited_at })}
+                  >
+                    {signup.invited_at ? "Desfazer" : "Marcar convidado"}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" onClick={() => onNavigate("codigos")} className="mt-1 self-start text-xs font-medium text-gold-fg hover:underline">
+            Gerar códigos de convite →
+          </button>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 const SECRET_LABELS: Record<string, string> = {
   app_base_url: "URL pública do Qqorvex",
+  site_base_url: "URL do site de apresentação (domínio próprio, se houver)",
+  turnstile_secret_key: "Turnstile — chave secreta (lista de espera do site)",
   cron_secret: "Segredo do agendador",
   gemini_api_key: "Chave do Gemini",
   gemini_model: "Modelo do Gemini",

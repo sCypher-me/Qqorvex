@@ -24,23 +24,9 @@ export function addMonths(date: Date, months: number): Date {
   return result;
 }
 
-/** Domingo como início da semana, mesma convenção já usada pela `WeekStrip`. */
-export function startOfWeek(date: Date): Date {
-  const result = startOfDay(date);
-  result.setDate(result.getDate() - result.getDay());
-  return result;
-}
-
-export function endOfWeek(date: Date): Date {
-  return addDays(startOfWeek(date), 7);
-}
 
 export function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-export function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 1);
 }
 
 /** Converte o relógio de um fuso IANA em um instante UTC, preservando mudanças de horário. */

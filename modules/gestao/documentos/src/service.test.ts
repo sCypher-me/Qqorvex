@@ -48,6 +48,12 @@ describe("cota de armazenamento de documentos", () => {
     expect(() => assertDocumentFitsStorageQuota(6 * 1024 * 1024, freeQuota))
       .toThrowError(new DocumentStorageLimitError("storage", 25 * 1024 * 1024));
   });
+
+  it("acesso Ilimitado (cota nula) não tem teto por conta, só o tamanho por arquivo", () => {
+    const unlimited = { usedBytes: 5 * 1024 * 1024 * 1024, quotaBytes: null, maxFileBytes: 50 * 1024 * 1024, isPlus: true };
+    expect(() => assertDocumentFitsStorageQuota(40 * 1024 * 1024, unlimited)).not.toThrow();
+    expect(() => assertDocumentFitsStorageQuota(60 * 1024 * 1024, unlimited)).toThrowError(new DocumentStorageLimitError("file", 50 * 1024 * 1024));
+  });
 });
 
 describe("Lixeira — expiração por retenção", () => {

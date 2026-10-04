@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Button, Input, Notice } from "@qqorvex/ui";
 import { useAuth } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
-import { TurnstileCaptcha } from "../components/TurnstileCaptcha";
+import { TurnstileCaptcha } from "@qqorvex/ui";
 
 export function EsqueciSenhaPage() {
   const { resetPasswordForEmail } = useAuth();

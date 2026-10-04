@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cx } from "../cx";
 
 /**
@@ -54,7 +54,7 @@ function niceMax(value: number): number {
 }
 
 const compactFormatter = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
-export function formatCompact(value: number): string {
+function formatCompact(value: number): string {
   return compactFormatter.format(value);
 }
 
@@ -216,111 +216,6 @@ export interface LineChartProps {
   label: string;
 }
 
-/** Linha(s) com crosshair e tooltip. */
-export function LineChart({ data, series, height = 200, format = (v) => v.toLocaleString("pt-BR"), axisFormat = formatCompact, area = true, allowNegative = false, className, label }: LineChartProps) {
-  const { ref, width } = useWidth<HTMLDivElement>();
-  const [active, setActive] = useState<number | null>(null);
-  const titleId = useId();
-  const gradientId = useId();
-  const padding = { top: 12, right: 12, bottom: 24, left: 44 };
-  const innerWidth = Math.max(0, width - padding.left - padding.right);
-  const innerHeight = height - padding.top - padding.bottom;
-  const values = data.flatMap((datum) => series.map((item) => datum.values[item.key] ?? 0));
-  const max = niceMax(Math.max(0, ...values));
-  const min = allowNegative ? -niceMax(Math.max(0, ...values.map((value) => -value))) : 0;
-  const range = max - min || 1;
-  const ticks = allowNegative && min < 0 ? [min, min / 2, 0, max / 2, max] : [0, 0.25, 0.5, 0.75, 1].map((ratio) => max * ratio);
-  const x = (index: number) => padding.left + (data.length <= 1 ? innerWidth / 2 : (index / (data.length - 1)) * innerWidth);
-  const y = (value: number) => padding.top + innerHeight - ((value - min) / range) * innerHeight;
-  const labelEvery = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(innerWidth / 56))));
-
-  const paths = useMemo(
-    () =>
-      series.map((item) => {
-        const points = data.map((datum, index) => [x(index), y(datum.values[item.key] ?? 0)] as const);
-        const line = points.map(([px, py], index) => `${index === 0 ? "M" : "L"}${px},${py}`).join(" ");
-        const areaPath = points.length ? `${line} L${points[points.length - 1]![0]},${y(Math.max(min, 0))} L${points[0]![0]},${y(Math.max(min, 0))} Z` : "";
-        return { key: item.key, line, areaPath };
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, series, width, height, min, max],
-  );
-
-  function onMove(clientX: number, rect: DOMRect) {
-    if (data.length === 0) return;
-    const relative = clientX - rect.left - padding.left;
-    const index = Math.round((relative / Math.max(1, innerWidth)) * (data.length - 1));
-    setActive(Math.max(0, Math.min(data.length - 1, index)));
-  }
-
-  return (
-    <div ref={ref} className={cx("relative w-full", className)}>
-      {width > 0 && (
-        <svg
-          width={width}
-          height={height}
-          role="img"
-          aria-labelledby={titleId}
-          tabIndex={0}
-          className="block overflow-visible outline-none"
-          onMouseMove={(event) => onMove(event.clientX, event.currentTarget.getBoundingClientRect())}
-          onMouseLeave={() => setActive(null)}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowRight") setActive((current) => Math.min(data.length - 1, (current ?? -1) + 1));
-            if (event.key === "ArrowLeft") setActive((current) => Math.max(0, (current ?? data.length) - 1));
-          }}
-          onBlur={() => setActive(null)}
-        >
-          <title id={titleId}>{label}</title>
-          <defs>
-            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor={seriesColor(series, 0)} stopOpacity="0.16" />
-              <stop offset="100%" stopColor={seriesColor(series, 0)} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {ticks.map((tick) => (
-            <g key={tick}>
-              <line x1={padding.left} x2={width - padding.right} y1={y(tick)} y2={y(tick)} stroke={tick === 0 && allowNegative ? "var(--q-line-strong)" : "var(--q-line-soft)"} strokeWidth={1} />
-              <text x={padding.left - 8} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-fg-4 text-[10.5px] tabular-nums">
-                {axisFormat(tick)}
-              </text>
-            </g>
-          ))}
-          {data.map((datum, index) =>
-            index % labelEvery === 0 || index === data.length - 1 ? (
-              <text key={datum.label + index} x={x(index)} y={height - 6} textAnchor="middle" className="fill-fg-4 text-[10.5px]">
-                {datum.label}
-              </text>
-            ) : null,
-          )}
-          {area && paths[0] && <path d={paths[0].areaPath} fill={series.length === 1 ? `url(#${CSS.escape(gradientId)})` : "none"} />}
-          {paths.map((path, index) => (
-            <path key={path.key} d={path.line} fill="none" stroke={seriesColor(series, index)} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-          ))}
-          {active !== null && (
-            <>
-              <line x1={x(active)} x2={x(active)} y1={padding.top} y2={padding.top + innerHeight} stroke="var(--q-line-strong)" strokeWidth={1} />
-              {series.map((item, index) => (
-                <circle key={item.key} cx={x(active)} cy={y(data[active]?.values[item.key] ?? 0)} r={4.5} fill={seriesColor(series, index)} stroke="var(--q-surface)" strokeWidth={2} />
-              ))}
-            </>
-          )}
-          {active === null &&
-            data.length > 0 &&
-            series.map((item, index) => (
-              <circle key={item.key} cx={x(data.length - 1)} cy={y(data[data.length - 1]?.values[item.key] ?? 0)} r={4} fill={seriesColor(series, index)} stroke="var(--q-surface)" strokeWidth={2} />
-            ))}
-        </svg>
-      )}
-      {active !== null && data[active] && (
-        <Tooltip x={x(active)} y={y(Math.max(...series.map((item) => data[active]!.values[item.key] ?? 0)))} width={width}>
-          <TooltipRows datum={data[active]!} series={series} format={format} />
-        </Tooltip>
-      )}
-    </div>
-  );
-}
-
 export interface DonutSlice {
   key: string;
   label: string;
@@ -392,60 +287,6 @@ export function DonutChart({ slices, size = 160, thickness = 18, format = (v) =>
           center
         )}
       </div>
-    </div>
-  );
-}
-
-/** Mini-linha de tendência (sem eixos). */
-export function Sparkline({ values, width = 96, height = 28, color = "var(--q-gold)", className }: { values: number[]; width?: number; height?: number; color?: string; className?: string }) {
-  if (values.length < 2) return null;
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = max - min || 1;
-  const points = values.map((value, index) => [(index / (values.length - 1)) * (width - 4) + 2, height - 3 - ((value - min) / range) * (height - 6)] as const);
-  const line = points.map(([px, py], index) => `${index === 0 ? "M" : "L"}${px.toFixed(1)},${py.toFixed(1)}`).join(" ");
-  const last = points[points.length - 1]!;
-  return (
-    <svg width={width} height={height} aria-hidden="true" className={cx("shrink-0 overflow-visible", className)}>
-      <path d={line} fill="none" stroke={color} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
-      <circle cx={last[0]} cy={last[1]} r={2.75} fill={color} />
-    </svg>
-  );
-}
-
-/** Barra horizontal empilhada (distribuição de um total). */
-export function StackedBar({ parts, height = 10, className, label }: { parts: Array<{ key: string; label: string; value: number; color?: string }>; height?: number; className?: string; label: string }) {
-  const total = parts.reduce((sum, part) => sum + Math.max(0, part.value), 0);
-  return (
-    <div role="img" aria-label={label} className={cx("flex w-full gap-[2px] overflow-hidden rounded-full", className)} style={{ height }}>
-      {total === 0 ? (
-        <span className="h-full w-full bg-selected" />
-      ) : (
-        parts.map((part, index) =>
-          part.value > 0 ? (
-            <span key={part.key} title={`${part.label}: ${Math.round((part.value / total) * 100)}%`} className="h-full first:rounded-l-full last:rounded-r-full" style={{ width: `${(part.value / total) * 100}%`, background: part.color ?? `var(--q-cat-${(index % 8) + 1})` }} />
-          ) : null,
-        )
-      )}
-    </div>
-  );
-}
-
-/** Mapa de calor de dias (hábitos/consistência). `values` 0..1 por data (YYYY-MM-DD). */
-export function DayHeatmap({ days, values, className, label }: { days: string[]; values: Record<string, number>; className?: string; label: string }) {
-  return (
-    <div role="img" aria-label={label} className={cx("grid grid-flow-col grid-rows-7 gap-[3px]", className)}>
-      {days.map((day) => {
-        const value = values[day] ?? 0;
-        return (
-          <span
-            key={day}
-            title={`${day}: ${Math.round(value * 100)}%`}
-            className="h-3 w-3 rounded-[3px]"
-            style={{ background: value <= 0 ? "var(--q-selected)" : `color-mix(in srgb, var(--q-gold) ${Math.round(25 + value * 75)}%, var(--q-surface))` }}
-          />
-        );
-      })}
     </div>
   );
 }

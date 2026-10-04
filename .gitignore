@@ -32,12 +32,7 @@ supabase/.temp/
 .pnpm-store/
 .gradle-user/
 
-# Material de design bruto (referência, não faz parte do app) e sessões do Visual Companion
+# Material de design bruto, mockups temporários e capturas de QA (podem ter dados da conta)
 designq.zip
-.superpowers/
-
-# Capturas de QA com dados da conta do usuário — somente locais
-
-# Superpowers visual brainstorming companion (mockups temporários)
 .superpowers/
 tools/visual-qa/out/

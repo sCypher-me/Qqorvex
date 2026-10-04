@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { PauseIcon, PlayIcon, RepeatIcon, XIcon } from "@phosphor-icons/react";
+import { PauseIcon, PencilSimpleIcon, PlayIcon, RepeatIcon, XIcon } from "@phosphor-icons/react";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, Select, SkeletonList, Switch, type BadgeTone, useToast } from "@qqorvex/ui";
-import { useCreateRecurringEvent, useRecurringEvents, useUpdateRecurringEventStatus } from "../hooks/useRecurringEvents";
+import { useCreateRecurringEvent, useRecurringEvents, useUpdateRecurringEvent, useUpdateRecurringEventStatus } from "../hooks/useRecurringEvents";
 import { localDateInputValue } from "../dateUtils";
 import type { RecurringEvent, RecurringEventFrequency } from "../types";
 
@@ -38,6 +38,31 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
   const [startDate, setStartDate] = useState(() => localDateInputValue(new Date()));
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<RecurringEvent | null>(null);
+  const updateRecurring = useUpdateRecurringEvent(client);
+  const [editing, setEditing] = useState<RecurringEvent | null>(null);
+  const today = localDateInputValue(new Date());
+
+  function resetForm() {
+    setEditing(null);
+    setTitle("");
+    setAllDay(false);
+    setStartTime("09:00");
+    setEndTime("10:00");
+    setFrequency("semanal");
+    setStartDate(localDateInputValue(new Date()));
+    setFormError(null);
+  }
+
+  function startEditing(item: RecurringEvent) {
+    setEditing(item);
+    setTitle(item.title);
+    setAllDay(item.is_all_day);
+    setStartTime(item.start_time?.slice(0, 5) ?? "09:00");
+    setEndTime(item.end_time?.slice(0, 5) ?? "10:00");
+    setFrequency(item.frequency);
+    setStartDate(item.next_occurrence_date);
+    setFormError(null);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -45,6 +70,19 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
     if (!clean) return;
     if (!allDay && endTime <= startTime) return setFormError("O término precisa ser depois do início.");
     setFormError(null);
+    if (editing) {
+      try {
+        await updateRecurring.mutateAsync({
+          current: editing,
+          input: { title: clean, isAllDay: allDay, startTime: `${startTime}:00`, endTime: `${endTime}:00`, frequency, nextOccurrenceDate: startDate },
+        });
+        resetForm();
+        toast({ title: "Repetição atualizada", description: "Vale a partir do próximo evento.", tone: "success" });
+      } catch (caught) {
+        setFormError(caught instanceof Error ? caught.message : "Não foi possível salvar. Tente novamente.");
+      }
+      return;
+    }
     try {
       await createRecurring.mutateAsync({
         title: clean,
@@ -67,6 +105,14 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
   return (
     <div className="flex flex-col gap-5">
       <form onSubmit={submit} className="grid gap-3 rounded-xl border border-line bg-canvas/50 p-4 sm:grid-cols-4">
+        {editing && (
+          <p className="flex items-center gap-2 text-xs text-fg-3 sm:col-span-4">
+            <PencilSimpleIcon size={12} className="text-gold-fg" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">
+              Editando <span className="font-medium text-fg">{editing.title}</span> — vale a partir do próximo evento
+            </span>
+          </p>
+        )}
         <Input label="Evento que se repete" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Aula de inglês" maxLength={200} wrapperClassName="sm:col-span-4" />
         <Select label="Repetir" value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringEventFrequency)}>
           {Object.entries(FREQUENCY_LABEL).map(([value, label]) => (
@@ -75,16 +121,27 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
             </option>
           ))}
         </Select>
-        <Input label="A partir de" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        <Input
+          label={editing ? "Próximo em" : "A partir de"}
+          type="date"
+          value={startDate}
+          min={editing && editing.next_occurrence_date >= today ? today : undefined}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
         <Input label="Início" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} disabled={allDay} />
         <Input label="Término" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} disabled={allDay} />
         <label className="flex items-center gap-2.5 text-[13px] text-fg-2 sm:col-span-2">
           <Switch checked={allDay} onChange={setAllDay} size="sm" label="Dia inteiro" />
           Dia inteiro
         </label>
-        <div className="flex justify-end sm:col-span-2">
-          <Button type="submit" loading={createRecurring.isPending} disabled={!title.trim()} leadingIcon={<RepeatIcon size={16} />}>
-            Criar repetição
+        <div className="flex justify-end gap-2 sm:col-span-2">
+          {editing && (
+            <Button type="button" variant="ghost" onClick={resetForm}>
+              Cancelar
+            </Button>
+          )}
+          <Button type="submit" loading={createRecurring.isPending || updateRecurring.isPending} disabled={!title.trim()} leadingIcon={editing ? undefined : <RepeatIcon size={16} />}>
+            {editing ? "Salvar alterações" : "Criar repetição"}
           </Button>
         </div>
         {formError && <Notice compact className="sm:col-span-4">{formError}</Notice>}
@@ -109,6 +166,9 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
                 </p>
               </div>
               <Badge tone={STATUS[item.status].tone}>{STATUS[item.status].label}</Badge>
+              <IconButton label="Editar repetição" size="sm" active={editing?.id === item.id} onClick={() => startEditing(item)}>
+                <PencilSimpleIcon />
+              </IconButton>
               {item.status === "ativa" ? (
                 <IconButton label="Pausar" size="sm" onClick={() => updateStatus.mutate({ id: item.id, status: "pausada" })}>
                   <PauseIcon />
@@ -132,6 +192,7 @@ export function RecurringEventsPanel({ client, userId }: { client: SupabaseClien
         confirmLabel="Encerrar"
         onCancel={() => setConfirmCancel(null)}
         onConfirm={() => {
+          if (confirmCancel && editing?.id === confirmCancel.id) resetForm();
           if (confirmCancel) updateStatus.mutate({ id: confirmCancel.id, status: "cancelada" });
           setConfirmCancel(null);
         }}

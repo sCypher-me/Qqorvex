@@ -4,26 +4,36 @@ import { useNavigate } from "react-router-dom";
 import {
   BooksIcon,
   CalendarBlankIcon,
+  CardsThreeIcon,
   CheckSquareIcon,
+  CurrencyCircleDollarIcon,
   FileTextIcon,
   GraduationCapIcon,
+  LightbulbIcon,
   MagnifyingGlassIcon,
   MoonIcon,
   NotebookIcon,
+  NotePencilIcon,
+  RepeatIcon,
   SparkleIcon,
   SunIcon,
+  TargetIcon,
 } from "@phosphor-icons/react";
+import { SEARCH_KINDS, searchEverything, type SearchKind } from "@qqorvex/database";
 import { Kbd, Spinner, cx } from "@qqorvex/ui";
 import { useAccount } from "../account";
 import { supabase } from "../supabase";
 import { useTheme } from "../ThemeContext";
 import { ACCOUNT_LINKS, AREAS, HOME, VEX } from "./navigation";
 import { QUICK_CREATE_OPTIONS, QUICK_CREATE_TITLES, useQuickCreate } from "./QuickCreate";
+import { SEARCH_GROUP_LABEL, searchResultMeta, searchResultRoute } from "./searchRoutes";
 
 interface PaletteEntry {
   id: string;
   group: string;
   label: string;
+  /** Segunda linha, sob o título (ex.: trecho do conteúdo onde o termo apareceu). */
+  detail?: string;
   hint?: string;
   icon: ReactNode;
   keywords?: string;
@@ -34,25 +44,37 @@ function normalize(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-/** Busca nos dados do usuário (títulos) — até 5 por tipo, ignorando falhas isoladas. */
+const SEARCH_ICON: Record<SearchKind, ReactNode> = {
+  tarefa: <CheckSquareIcon />,
+  evento: <CalendarBlankIcon />,
+  nota: <NotebookIcon />,
+  resumo: <NotePencilIcon />,
+  flashcard: <CardsThreeIcon />,
+  caderno: <GraduationCapIcon />,
+  meta: <TargetIcon />,
+  habito: <RepeatIcon />,
+  biblioteca: <BooksIcon />,
+  documento: <FileTextIcon />,
+  lancamento: <CurrencyCircleDollarIcon />,
+  ideia: <LightbulbIcon />,
+};
+
+/**
+ * Busca nos dados do usuário — títulos e conteúdo, sem acento, até 5 por tipo, agrupada na ordem
+ * de `SEARCH_KINDS`. O Cofre nunca aparece (regra da função `search_everything` no banco).
+ */
 async function searchData(term: string): Promise<Array<Omit<PaletteEntry, "run"> & { to: string }>> {
-  const pattern = `%${term.replace(/[%_]/g, "")}%`;
-  const [tasks, pages, events, library, notebooks, documents] = await Promise.all([
-    supabase.from("tasks").select("id,title,status").ilike("title", pattern).eq("is_cancelled", false).limit(5),
-    supabase.from("pages").select("id,title").ilike("title", pattern).eq("is_archived", false).limit(5),
-    supabase.from("events").select("id,title,start_at").ilike("title", pattern).order("start_at", { ascending: false }).limit(5),
-    supabase.from("library_items").select("id,title,item_type").ilike("title", pattern).limit(5),
-    supabase.from("notebooks").select("id,name").ilike("name", pattern).limit(5),
-    supabase.from("documents").select("id,file_name").ilike("file_name", pattern).is("deleted_at", null).limit(5),
-  ]);
-  const results: Array<Omit<PaletteEntry, "run"> & { to: string }> = [];
-  for (const task of tasks.data ?? []) results.push({ id: `t-${task.id}`, group: "Tarefas", label: task.title, hint: task.status === "concluido" ? "Concluída" : undefined, icon: <CheckSquareIcon />, to: `/planejar/tarefas?tarefa=${task.id}` });
-  for (const page of pages.data ?? []) results.push({ id: `p-${page.id}`, group: "Notas", label: page.title || "Sem título", icon: <NotebookIcon />, to: `/conhecimento/notas/${page.id}` });
-  for (const event of events.data ?? []) results.push({ id: `e-${event.id}`, group: "Agenda", label: event.title, hint: new Date(event.start_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }), icon: <CalendarBlankIcon />, to: `/planejar/agenda?data=${event.start_at.slice(0, 10)}` });
-  for (const notebook of notebooks.data ?? []) results.push({ id: `n-${notebook.id}`, group: "Estudos", label: notebook.name, icon: <GraduationCapIcon />, to: `/conhecimento/estudos/${notebook.id}` });
-  for (const item of library.data ?? []) results.push({ id: `l-${item.id}`, group: "Biblioteca", label: item.title, icon: <BooksIcon />, to: `/conhecimento/biblioteca?item=${item.id}` });
-  for (const doc of documents.data ?? []) results.push({ id: `d-${doc.id}`, group: "Documentos", label: doc.file_name, icon: <FileTextIcon />, to: `/vida/documentos?documento=${doc.id}` });
-  return results;
+  const results = await searchEverything(supabase, term);
+  return results
+    .sort((a, b) => SEARCH_KINDS.indexOf(a.kind) - SEARCH_KINDS.indexOf(b.kind))
+    .map((result) => ({
+      id: `${result.kind}-${result.id}`,
+      group: SEARCH_GROUP_LABEL[result.kind],
+      label: result.title || "Sem título",
+      ...searchResultMeta(result),
+      icon: SEARCH_ICON[result.kind],
+      to: searchResultRoute(result),
+    }));
 }
 
 /** Paleta de comandos (⌘K): navegar, criar, falar com a Vex e buscar nos seus dados. */
@@ -224,7 +246,10 @@ export function CommandPalette({ isOpen, onClose, onOpenVex }: { isOpen: boolean
                   )}
                 >
                   <span className={cx("flex", active ? "text-gold-fg" : "text-fg-4", entry.group === "Vex" && "text-ai-fg")}>{entry.icon}</span>
-                  <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{entry.label}</span>
+                    {entry.detail && <span className="block truncate text-xs text-fg-4">{entry.detail}</span>}
+                  </span>
                   {entry.hint && <span className="shrink-0 text-xs text-fg-4">{entry.hint}</span>}
                   {active && <span className="shrink-0 text-xs text-fg-4">↵</span>}
                 </button>

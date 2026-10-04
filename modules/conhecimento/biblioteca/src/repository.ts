@@ -1,7 +1,7 @@
-import type { SupabaseClient, Database } from "@qqorvex/database";
+import type { SupabaseClient, Database, TablesUpdate } from "@qqorvex/database";
 import { awardXp } from "@qqorvex/module-gamificacao";
-import { LIBRARY_COVER_MAX_SIZE_BYTES, LIBRARY_COVER_MIME_TYPES, type LibraryCollection, type LibraryItem, type LibraryItemCreator, type LibraryItemStatus, type NewLibraryItemInput } from "./types";
-import { toLibraryItemInsert } from "./types";
+import { LIBRARY_COVER_MAX_SIZE_BYTES, LIBRARY_COVER_MIME_TYPES, type LibraryCoverChange, type LibraryItem, type LibraryItemCreator, type LibraryItemEditInput, type LibraryItemStatus, type NewLibraryItemInput } from "./types";
+import { toLibraryItemInsert, toLibraryItemUpdate } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -75,7 +75,50 @@ export async function createItem(client: Client, userId: string, input: NewLibra
   return (await withCoverUrls(client, [data]))[0]!;
 }
 
-/** Confere o status anterior antes de gravar pra premiar XP só na transição pra "concluido" (docs/decisions/gamification-core-design.md). */
+/**
+ * Edita os dados do item e, se pedido, a capa. Sem `cover` nenhum campo de capa é gravado — o
+ * `cover_url` em memória pode ser um link assinado temporário (ver `withCoverUrls`). Ao trocar
+ * ou remover uma imagem enviada, o arquivo antigo sai do Storage depois que o banco confirmou.
+ */
+export async function updateItem(
+  client: Client,
+  userId: string,
+  itemId: string,
+  input: LibraryItemEditInput,
+  cover?: LibraryCoverChange,
+): Promise<LibraryItem> {
+  const { data: before, error: lookupError } = await client.from("library_items").select("cover_image_path").eq("id", itemId).single();
+  if (lookupError) throw lookupError;
+
+  const update: TablesUpdate<"library_items"> = toLibraryItemUpdate(input);
+  let uploadedPath: string | null = null;
+  if (cover && "file" in cover) {
+    uploadedPath = await uploadCover(client, userId, cover.file);
+    update.cover_image_path = uploadedPath;
+    update.cover_url = null;
+  } else if (cover) {
+    update.cover_image_path = null;
+    update.cover_url = cover.url;
+  }
+
+  const { data, error } = await client.from("library_items").update(update).eq("id", itemId).select("*").single();
+  if (error) {
+    if (uploadedPath) {
+      const { error: cleanupError } = await client.storage.from(COVER_BUCKET).remove([uploadedPath]);
+      if (cleanupError) console.warn("Não foi possível remover uma capa após falha ao salvar:", cleanupError);
+    }
+    throw error;
+  }
+
+  if (cover && before.cover_image_path) {
+    const { error: storageError } = await client.storage.from(COVER_BUCKET).remove([before.cover_image_path]);
+    if (storageError) console.warn("A capa antiga não foi removida do armazenamento:", storageError);
+  }
+
+  return (await withCoverUrls(client, [data]))[0]!;
+}
+
+/** Confere o status anterior antes de gravar pra premiar XP só na transição pra "concluido". */
 export async function updateItemStatus(client: Client, itemId: string, status: LibraryItemStatus): Promise<LibraryItem> {
   const { data: before, error: beforeError } = await client.from("library_items").select("status, user_id").eq("id", itemId).single();
   if (beforeError) throw beforeError;
@@ -163,27 +206,6 @@ export async function deleteItem(client: Client, itemId: string): Promise<void> 
   }
 }
 
-export async function listCollections(client: Client): Promise<LibraryCollection[]> {
-  const { data, error } = await client.from("library_collections").select("*").order("created_at", { ascending: true });
-  if (error) throw error;
-  return data;
-}
-
-export async function createCollection(client: Client, userId: string, name: string): Promise<LibraryCollection> {
-  const { data, error } = await client
-    .from("library_collections")
-    .insert({ user_id: userId, name })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function addItemToCollection(client: Client, collectionId: string, itemId: string): Promise<void> {
-  const { error } = await client.from("library_collection_items").insert({ collection_id: collectionId, item_id: itemId });
-  if (error) throw error;
-}
-
 /**
  * `library_item_creators` existia no schema desde a sessão original sem nenhuma função de
  * repositório — Metadata Provider Layer é o primeiro uso de verdade (autor/diretor vindo de
@@ -201,5 +223,24 @@ export async function listItemCreators(client: Client, itemId: string): Promise<
 
 export async function addItemCreator(client: Client, itemId: string, name: string, role: string, orderIndex: number): Promise<void> {
   const { error } = await client.from("library_item_creators").insert({ item_id: itemId, name, role, order_index: orderIndex });
+  if (error) throw error;
+}
+
+/**
+ * Substitui a lista de criadores pela ordem informada. Quem continua na lista mantém o papel que
+ * já tinha (ex.: "autor" vindo do Google Books); nomes novos entram como "criador".
+ */
+export async function replaceItemCreators(client: Client, itemId: string, names: string[]): Promise<void> {
+  const current = await listItemCreators(client, itemId);
+  if (current.length === names.length && current.every((creator, index) => creator.name === names[index])) return;
+
+  const roleByName = new Map(current.map((creator) => [creator.name, creator.role]));
+  const { error: deleteError } = await client.from("library_item_creators").delete().eq("item_id", itemId);
+  if (deleteError) throw deleteError;
+  if (names.length === 0) return;
+
+  const { error } = await client
+    .from("library_item_creators")
+    .insert(names.map((name, index) => ({ item_id: itemId, name, role: roleByName.get(name) ?? "criador", order_index: index })));
   if (error) throw error;
 }

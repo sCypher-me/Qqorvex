@@ -4,9 +4,10 @@ type BillingFeature = "vex_ai_responses" | "vex_web_searches";
 type QuotaResult = {
   allowed: boolean;
   used: number;
-  limit: number;
+  /** `null` = acesso Ilimitado (Lifetime, Parceiro ativo, Dono): nunca recusado. */
+  limit: number | null;
   month_start: string;
-  plan?: "free" | "plus";
+  plan?: "free" | "plus" | "unlimited";
 };
 
 export async function reserveMonthlyQuota(

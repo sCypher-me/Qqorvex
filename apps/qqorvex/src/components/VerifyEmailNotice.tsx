@@ -2,7 +2,7 @@ import { EnvelopeSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { Button, Notice } from "@qqorvex/ui";
 import { useAuth } from "@qqorvex/auth";
-import { TurnstileCaptcha } from "./TurnstileCaptcha";
+import { TurnstileCaptcha } from "@qqorvex/ui";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 

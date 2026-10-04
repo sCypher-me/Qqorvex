@@ -23,6 +23,24 @@ requirePattern("vex-chat", vexChat, /MAX_TOOL_SCHEMA_CHARS/, "limite de schema r
 requirePattern("vex-chat", vexChat, /new AbortController\(\)/, "timeout do provedor");
 requirePattern("vex-chat", vexChat, /jsonResponse\(\{ error: "É necessário estar autenticado\." \}, 401\)/, "resposta para sessão inválida");
 
+// Toda ferramenta que o app oferece à Vex precisa estar na allow-list do servidor (senão é
+// descartada em silêncio), e a allow-list não deve ter nomes que nenhuma ferramenta usa.
+const allowListBlock = /ALLOWED_TOOL_NAMES = new Set\(\[([\s\S]*?)\]\)/.exec(vexChat)?.[1] ?? "";
+const allowedNames = new Set([...allowListBlock.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]));
+const { readdir } = await import("node:fs/promises");
+const toolsDir = new URL("packages/vex/src/tools/", root);
+const toolNames = new Set();
+for (const file of await readdir(toolsDir)) {
+  if (!file.endsWith("Tools.ts")) continue;
+  const text = await readFile(new URL(file, toolsDir), "utf8");
+  for (const match of text.matchAll(/^\s*name: "([a-z_]+)",$/gm)) toolNames.add(match[1]);
+}
+assert.ok(toolNames.size > 0, "vex: nenhuma ferramenta encontrada em packages/vex/src/tools");
+const missingOnServer = [...toolNames].filter((name) => !allowedNames.has(name));
+const unusedOnServer = [...allowedNames].filter((name) => !toolNames.has(name));
+assert.deepEqual(missingOnServer, [], `vex-chat: ferramentas fora da allow-list: ${missingOnServer.join(", ")}`);
+assert.deepEqual(unusedOnServer, [], `vex-chat: nomes na allow-list sem ferramenta: ${unusedOnServer.join(", ")}`);
+
 const vexWebSearch = await source("vex-web-search");
 requirePattern("vex-web-search", vexWebSearch, /supabase\.auth\.getUser\(token\)/, "autenticação do bearer token");
 requirePattern("vex-web-search", vexWebSearch, /MAX_REQUESTS_PER_WINDOW\s*=\s*10/, "limite por usuário");
@@ -57,5 +75,20 @@ requirePattern("sync-google-calendar", googleSync, /x-cron-secret/, "autenticaç
 requirePattern("sync-google-calendar", googleSync, /refresh_token/, "uso do refresh token no servidor");
 requirePattern("sync-google-calendar", googleSync, /google_updated_at/, "controle de concorrência da sincronização");
 requirePattern("sync-google-calendar", googleSync, /\.eq\("user_id", connection\.user_id\)/, "isolamento da conexão por usuário");
+
+const waitlist = await source("waitlist-join");
+requirePattern("waitlist-join", waitlist, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/, "Turnstile conferido no servidor");
+requirePattern("waitlist-join", waitlist, /turnstile_secret_key/, "chave secreta fora do cliente");
+requirePattern("waitlist-join", waitlist, /body\.website/, "campo-armadilha anti-robô");
+requirePattern("waitlist-join", waitlist, /waitlist_register/, "limite por IP e gravação no banco");
+requirePattern("waitlist-join", waitlist, /if \(!allowed\) return json/, "origem permitida");
+
+// Funções chamadas sem JWT de usuário precisam estar declaradas em config.toml; publicar pela CLI
+// sem isso as deixaria exigindo login (cron, retorno do Google e formulário do site parariam).
+const config = await readFile(new URL("supabase/config.toml", root), "utf8");
+for (const name of ["send-notifications", "sync-google-calendar", "google-oauth-callback", "waitlist-join", "stripe-webhook", "billing-app-return"]) {
+  const section = config.split(`[functions.${name}]`)[1]?.split("[functions.")[0] ?? "";
+  assert.match(section, /verify_jwt = false/, `config.toml: ${name} precisa de verify_jwt = false`);
+}
 
 console.log("edge function security invariants passed");

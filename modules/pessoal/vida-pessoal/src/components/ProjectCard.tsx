@@ -14,12 +14,14 @@ export function ProjectCard({
   project,
   userId,
   onChangeStatus,
+  onEdit,
   onDelete,
 }: {
   client: SupabaseClient<Database>;
   project: Project;
   userId: string;
   onChangeStatus: (status: PlanStatus) => void;
+  onEdit?: () => void;
   onDelete: () => void;
 }) {
   const { tasks } = useTasks(client, userId);
@@ -43,7 +45,7 @@ export function ProjectCard({
           {project.description && <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-fg-2">{project.description}</p>}
         </div>
         {project.status !== "ativo" && <Badge tone={PLAN_STATUS_TONE[project.status]}>{PLAN_STATUS_LABEL[project.status]}</Badge>}
-        <KebabMenu label={`Ações para ${project.title}`} items={statusMenu(project.status, onChangeStatus, () => setConfirmOpen(true))} />
+        <KebabMenu label={`Ações para ${project.title}`} items={statusMenu(project.status, onChangeStatus, () => setConfirmOpen(true), onEdit)} />
       </div>
 
       <button type="button" onClick={() => setTasksOpen((value) => !value)} aria-expanded={tasksOpen} className="flex w-full items-center gap-3 border-t border-line-soft px-4 py-2.5 text-left hover:bg-hover">

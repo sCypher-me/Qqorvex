@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useSearchParams } from "react-router-dom";
 import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowClockwiseIcon, CheckCircleIcon, CrownIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, CheckCircleIcon, CrownIcon, InfinityIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { Badge, Button, ExternalButtonLink, IconButton, Notice, PageContainer, PageHeader, ProgressBar, Segmented, cx } from "@qqorvex/ui";
 import { BILLING_PLANS, currentBillingMonthSaoPaulo, type BillingPeriod } from "../billing/plans";
-import { hasPlusEntitlement } from "../billing/entitlements";
+import { accessLabel, hasPlusEntitlement } from "../billing/entitlements";
+import { useAccount } from "../app/account";
 import { supabase } from "../app/supabase";
 import { usePageMeta } from "../app/shell/PageMeta";
 
@@ -28,7 +29,8 @@ type BillingSnapshot = {
   notebooks: number;
   mindMaps: number;
   documentStorageBytes: number;
-  documentStorageQuotaBytes: number;
+  /** `null` = sem cota (acesso Ilimitado). */
+  documentStorageQuotaBytes: number | null;
 };
 
 const EMPTY_SNAPSHOT: BillingSnapshot = {
@@ -58,6 +60,8 @@ export function AssinaturaPage() {
   const userId = session!.user.id;
   const { profile } = useProfile(supabase, userId);
   const isOwner = profile?.role === "dono";
+  const account = useAccount();
+  const { isUnlimited, access } = account;
   usePageMeta({ title: "Plano e assinatura" });
   const [searchParams, setSearchParams] = useSearchParams();
   const checkoutStatus = searchParams.get("checkout");
@@ -104,10 +108,15 @@ export function AssinaturaPage() {
       notebooks: notebooks.count ?? 0,
       mindMaps: maps.count ?? 0,
       documentStorageBytes: Number(documentStorage.data?.[0]?.used_bytes ?? 0),
-      documentStorageQuotaBytes: Number(documentStorage.data?.[0]?.quota_bytes ?? BILLING_PLANS.free.documentStorageBytes),
+      documentStorageQuotaBytes: documentStorage.data?.[0] && documentStorage.data[0].quota_bytes === null ? null : Number(documentStorage.data?.[0]?.quota_bytes ?? BILLING_PLANS.free.documentStorageBytes),
     });
     setLoading(false);
   }, [userId]);
+
+  const refreshAll = useCallback(() => {
+    account.refresh();
+    void refresh();
+  }, [account, refresh]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -128,9 +137,11 @@ export function AssinaturaPage() {
   }, [checkoutOutcome, refresh]);
 
   const subscription = snapshot.subscription;
-  const hasPlus = hasPlusEntitlement(subscription, Date.now(), isOwner);
-  const monthLimit = hasPlus ? BILLING_PLANS.plus.vexInteractions : BILLING_PLANS.free.vexInteractions;
-  const searchLimit = hasPlus ? BILLING_PLANS.plus.webSearches : BILLING_PLANS.free.webSearches;
+  const hasPlus = isUnlimited || hasPlusEntitlement(subscription, Date.now(), isOwner);
+  const monthLimit = isUnlimited ? null : hasPlus ? BILLING_PLANS.plus.vexInteractions : BILLING_PLANS.free.vexInteractions;
+  const searchLimit = isUnlimited ? null : hasPlus ? BILLING_PLANS.plus.webSearches : BILLING_PLANS.free.webSearches;
+  /** Lifetime e Dono não compram nada; o Parceiro ainda vê os planos para depois da campanha. */
+  const permanentUnlimited = (access?.source === "lifetime" || isOwner) && !subscription;
   const annualSavings = useMemo(
     () => BILLING_PLANS.plus.monthlyPrice * 12 - BILLING_PLANS.plus.annualPrice,
     [],
@@ -188,9 +199,9 @@ export function AssinaturaPage() {
     window.location.assign(data.url);
   }
 
-  const statusText = !hasPlus ? "Plano Free" : isOwner && !subscription ? "Plus permanente · Dono" : subscription?.cancel_at_period_end ? "Plus · cancelamento agendado" : "Qqorvex Plus ativo";
+  const statusText = isUnlimited && access?.source !== "plus" && access?.source ? `${accessLabel(access)} · ilimitado` : !hasPlus ? "Plano Free" : isOwner && !subscription ? "Plus permanente · Dono" : subscription?.cancel_at_period_end ? "Plus · cancelamento agendado" : "Qqorvex Plus ativo";
   const price = period === "monthly" ? BILLING_PLANS.plus.monthlyPrice : BILLING_PLANS.plus.annualPrice;
-  const nearLimit = !hasPlus && !loading && (snapshot.vexResponses / monthLimit >= 0.8 || snapshot.activeGoals >= BILLING_PLANS.free.goals || snapshot.activeHabits >= BILLING_PLANS.free.habits);
+  const nearLimit = !hasPlus && !loading && monthLimit !== null && (snapshot.vexResponses / monthLimit >= 0.8 || snapshot.activeGoals >= BILLING_PLANS.free.goals || snapshot.activeHabits >= BILLING_PLANS.free.habits);
 
   let plusAction: ReactNode;
   if (isOwner && !subscription) plusAction = <Button variant="secondary" disabled fullWidth>Plus permanente da conta Dono</Button>;
@@ -211,7 +222,7 @@ export function AssinaturaPage() {
         actions={
           <>
             <Badge tone={hasPlus ? "gold" : "neutral"}>{statusText}</Badge>
-            <IconButton label="Atualizar status do plano" onClick={() => void refresh()}>
+            <IconButton label="Atualizar status do plano" onClick={refreshAll}>
               <ArrowClockwiseIcon />
             </IconButton>
           </>
@@ -226,6 +237,10 @@ export function AssinaturaPage() {
       {isDirectApk && !directApkNative && <Notice tone="info" title="Assine pelo app instalado">O checkout desta versão abre a partir do aplicativo instalado.</Notice>}
       {billingChannel === "disabled" && import.meta.env.DEV && <Notice tone="info" title="Canal de cobrança não configurado">Defina VITE_BILLING_CHANNEL=web (site) ou direct_apk (APK) para habilitar o checkout.</Notice>}
       {nearLimit && <Notice tone="warning" title="Você está perto dos limites do Free">O Plus libera metas, hábitos e cadernos ilimitados e 6× mais conversas com a Vex.</Notice>}
+
+      {isUnlimited && access && access.source !== "plus" && (
+        <UnlimitedCard source={access.source} partnerUntil={access.partnerUntil} partnerCampaign={access.partnerCampaign} paidPlus={subscription?.plan_key === "plus" && hasPlusEntitlement(subscription)} />
+      )}
 
       <section className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5" aria-labelledby="usage-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -246,7 +261,7 @@ export function AssinaturaPage() {
         <p className="text-xs leading-relaxed text-fg-3">Uma mensagem à Vex pode usar mais de uma interação quando ela executa uma ação. O armazenamento inclui versões anteriores e a lixeira.</p>
       </section>
 
-      <section className="flex flex-col gap-4" aria-label="Planos">
+      {!permanentUnlimited && <section className="flex flex-col gap-4" aria-label="Planos">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-[15px] font-semibold text-fg">Planos</h2>
           <Segmented<BillingPeriod>
@@ -317,10 +332,10 @@ export function AssinaturaPage() {
             </div>
           </article>
         </div>
-      </section>
+      </section>}
 
       <p className="text-center text-xs leading-relaxed text-fg-3">
-        {isOwner ? "O benefício Plus da conta Dono permanece ativo sem cobrança." : "Seus dados são seus. Se o Plus terminar, você continua consultando, editando e exportando tudo; só novas criações acima dos limites do Free ficam bloqueadas."}
+        {permanentUnlimited ? "Seu acesso ilimitado não tem cobrança nem data para acabar." : isOwner ? "O benefício Plus da conta Dono permanece ativo sem cobrança." : "Seus dados são seus. Se o Plus terminar, você continua consultando, editando e exportando tudo; só novas criações acima dos limites do Free ficam bloqueadas."}
       </p>
     </PageContainer>
   );
@@ -340,16 +355,47 @@ function formatStorage(bytes: number): string {
   return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
 }
 
-function UsageMeter({ label, used, limit, loading, format = (value) => value.toLocaleString("pt-BR") }: { label: string; used: number; limit: number; loading: boolean; format?: (value: number) => string }) {
-  const percentage = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+function UsageMeter({ label, used, limit, loading, format = (value) => value.toLocaleString("pt-BR") }: { label: string; used: number; limit: number | null; loading: boolean; format?: (value: number) => string }) {
+  const percentage = limit && limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[13px] text-fg-2">{label}</span>
-        <span className="text-[13px] tabular-nums text-fg">{loading ? "—" : `${format(used)} / ${format(limit)}`}</span>
+        <span className="text-[13px] tabular-nums text-fg">
+          {loading ? "—" : limit === null ? <>{format(used)}<span className="text-xs text-fg-3"> · ilimitado</span></> : `${format(used)} / ${format(limit)}`}
+        </span>
       </div>
-      <ProgressBar value={loading ? 0 : percentage} tone={percentage >= 90 ? "danger" : percentage >= 75 ? "warning" : "gold"} height={6} label={`${label}: ${format(used)} de ${format(limit)}`} />
+      {limit === null ? (
+        <div aria-hidden="true" className="h-1.5 rounded-full bg-[linear-gradient(90deg,var(--q-gold-soft),var(--q-gold)_50%,var(--q-gold-soft))] opacity-70" />
+      ) : (
+        <ProgressBar value={loading ? 0 : percentage} tone={percentage >= 90 ? "danger" : percentage >= 75 ? "warning" : "gold"} height={6} label={`${label}: ${format(used)} de ${format(limit)}`} />
+      )}
     </div>
+  );
+}
+
+const partnerDate = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
+
+/** Cartão de quem tem acesso Ilimitado (Lifetime, Parceiro ou Dono) no lugar da venda do Plus. */
+function UnlimitedCard({ source, partnerUntil, partnerCampaign, paidPlus }: { source: "dono" | "lifetime" | "parceiro" | null; partnerUntil: string | null; partnerCampaign: string | null; paidPlus: boolean }) {
+  const title = source === "lifetime" ? "Lifetime" : source === "parceiro" ? "Parceiro" : "Acesso ilimitado";
+  const text =
+    source === "lifetime"
+      ? "Acesso ilimitado para sempre: metas, hábitos, cadernos, mapas, Vex, buscas e armazenamento sem nenhuma cota. Acima do Plus — e não está à venda."
+      : source === "parceiro"
+        ? `Acesso ilimitado enquanto a campanha${partnerCampaign ? ` “${partnerCampaign}”` : ""} durar${partnerUntil ? `, até ${partnerDate.format(new Date(partnerUntil))}` : ""}. Depois, sua conta volta ao plano que tinha, com tudo o que você criou.`
+        : "A conta Dono não tem nenhuma cota.";
+  return (
+    <section aria-label="Seu acesso" className="relative flex items-start gap-4 overflow-hidden rounded-xl border border-gold-line bg-[linear-gradient(150deg,var(--q-gold-soft),var(--q-surface)_65%)] p-5 sm:p-6">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold text-on-gold">
+        <InfinityIcon size={24} weight="bold" />
+      </span>
+      <div className="min-w-0">
+        <h2 className="font-display text-[22px] font-semibold text-fg">{title}</h2>
+        <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-fg-2">{text}</p>
+        {paidPlus && source === "lifetime" && <p className="mt-2 text-xs text-fg-3">Você ainda tem uma assinatura Plus paga. Com o Lifetime ela não é mais necessária — cancele em “Gerenciar assinatura” se quiser.</p>}
+      </div>
+    </section>
   );
 }
 

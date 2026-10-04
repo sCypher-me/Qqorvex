@@ -16,6 +16,61 @@ export function formatLocalDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+export interface RecurringTransactionEditInput {
+  name: string;
+  amount: number;
+  transactionType: "entrada" | "saida";
+  frequency: RecurrenceFrequency;
+  nextOccurrenceDate: string;
+  isSubscription: boolean;
+  categoryId?: string;
+  accountId?: string;
+  cardId?: string;
+}
+
+/**
+ * Edição de uma recorrência: vale da próxima cobrança em diante (lançamentos já criados não
+ * mudam). Mudar a próxima data move também `start_date`, âncora do dia do mês. Regras:
+ * - data nova no passado é recusada (a geração criaria vários lançamentos de uma vez) e não pode
+ *   passar do término da série;
+ * - cartão grava o método "crédito"; sair do cartão limpa esse método, mas um método diferente
+ *   que já existia é preservado;
+ * - receita nunca é assinatura nem vai para cartão;
+ * - observação e término não estão no formulário e ficam como estão.
+ */
+export function toRecurringTransactionUpdate(
+  current: Pick<RecurringTransaction, "next_occurrence_date" | "payment_method" | "end_date">,
+  input: RecurringTransactionEditInput,
+  today = formatLocalDate(new Date()),
+): Partial<RecurringTransaction> {
+  if (!(input.amount > 0)) throw new Error("Informe um valor maior que zero.");
+  const dateChanged = input.nextOccurrenceDate !== current.next_occurrence_date;
+  if (dateChanged && input.nextOccurrenceDate < today) throw new Error("A próxima data não pode ficar no passado.");
+  if (current.end_date && input.nextOccurrenceDate > current.end_date) throw new Error("A próxima data passa do término desta recorrência.");
+
+  const isIncome = input.transactionType === "entrada";
+  const cardId = isIncome ? null : input.cardId ?? null;
+  const paymentMethod: Partial<RecurringTransaction> = cardId
+    ? { payment_method: "credito" }
+    : current.payment_method === "credito"
+      ? { payment_method: null }
+      : {};
+
+  return {
+    name: input.name,
+    amount: input.amount,
+    transaction_type: input.transactionType,
+    frequency: input.frequency,
+    next_occurrence_date: input.nextOccurrenceDate,
+    is_subscription: isIncome ? false : input.isSubscription,
+    category_id: input.categoryId ?? null,
+    account_id: cardId ? null : input.accountId ?? null,
+    card_id: cardId,
+    ...paymentMethod,
+    ...(dateChanged ? { start_date: input.nextOccurrenceDate } : {}),
+  };
+}
+
 /** Converte formatos comuns do campo monetário pt-BR, como "1.234,56" e "1234.56". */
 export function parseBRLInput(raw: string): number {
   const cleaned = raw.replace(/[^\d,.-]/g, "");
@@ -101,7 +156,7 @@ export function computeBalances(transactions: Transaction[]): Balances {
  * Saldo atual de uma Conta específica — só transações `concluida` (mesmo critério de "saldo
  * atual" de `computeBalances`). Ao contrário de `computeBalances`, transferências contam aqui:
  * saem da conta de origem (`account_id`) e entram na conta de destino (`transfer_to_account_id`).
- * Usado por Metas & Hábitos pra progresso "derivado" (docs/decisions/metas-progresso-derivado-design.md).
+ * Usado por Metas & Hábitos pra progresso "derivado".
  */
 export function computeAccountBalance(transactions: Transaction[], accountId: string): number {
   let balance = 0;
@@ -302,35 +357,4 @@ export function toReferenceMonth(closingDate: Date): string {
 /** Total da fatura é sempre calculado a partir das transações do cartão no período — nunca duplicado. */
 export function computeStatementTotal(transactions: Transaction[]): number {
   return transactions.reduce((sum, t) => sum + t.amount, 0);
-}
-
-/**
- * "Calendário Financeiro dedicado" — utilitários de grade de mês, próprios deste módulo (não
- * importados de `@qqorvex/module-agenda`: "módulos não acessam internals uns dos outros").
- */
-export function startOfCalendarMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-export function startOfCalendarWeek(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  result.setDate(result.getDate() - result.getDay());
-  return result;
-}
-
-export function addCalendarDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-export function addCalendarMonths(date: Date, months: number): Date {
-  const result = new Date(date);
-  result.setMonth(result.getMonth() + months);
-  return result;
-}
-
-export function isSameCalendarDay(a: Date, b: Date): boolean {
-  return a.toDateString() === b.toDateString();
 }

@@ -10,7 +10,8 @@ import { ACCOUNT_LINKS } from "./navigation";
 export function UserMenu({ collapsed = false, compact = false }: { collapsed?: boolean; compact?: boolean }) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { profile, displayName, email, isOwner, isPlus } = useAccount();
+  const { profile, displayName, email, isOwner, isPlus, access } = useAccount();
+  const planBadge = access?.source === "lifetime" ? "Lifetime" : access?.source === "parceiro" ? "Parceiro" : isPlus ? "Plus" : null;
   const { theme, toggleTheme } = useTheme();
 
   const items: MenuEntry[] = [
@@ -56,7 +57,7 @@ export function UserMenu({ collapsed = false, compact = false }: { collapsed?: b
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
                     <span className="truncate text-[13px] font-medium text-fg">{displayName}</span>
-                    {isPlus && <Badge tone="gold">Plus</Badge>}
+                    {planBadge && <Badge tone="gold">{planBadge}</Badge>}
                   </span>
                   <span className="block truncate text-2xs text-fg-4">{profile?.username ? `@${profile.username}` : email}</span>
                 </span>

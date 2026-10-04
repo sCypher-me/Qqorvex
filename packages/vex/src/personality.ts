@@ -1,10 +1,10 @@
 import type { ChatMessage } from "./types";
 
 /**
- * Fase 1 do Context Engine: até aqui a Vex não tinha nenhuma mensagem `system` — o histórico
- * começava vazio e ela respondia sem instrução alguma de tom. Este prompt é montado em runtime
- * (nunca persistido em `vex_messages`) e é o lugar onde fases futuras vão descrever "todas as
- * funções do app" e a barreira do Cofre.
+ * Tom e regras básicas da Vex do lado do app. Com o Gemini, a instrução que vale é a do servidor
+ * (`supabase/functions/_shared/vexGuide.ts`, com o mapa completo do app) — este texto chega lá
+ * apenas como contexto. Ele é a instrução de verdade só no Ollama local de desenvolvimento.
+ * Montado em runtime, nunca persistido em `vex_messages`.
  */
 export const VEX_SYSTEM_PROMPT: ChatMessage = {
   role: "system",

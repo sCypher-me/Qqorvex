@@ -1,6 +1,6 @@
 import type { Database, Session, SupabaseClient } from "@qqorvex/database";
 
-export const AUTH_BOOTSTRAP_TIMEOUT_MS = 8_000;
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 8_000;
 
 /** Resolve a sessão inicial sem permitir que uma rede pendente bloqueie a aplicação. */
 export async function resolveInitialSession(

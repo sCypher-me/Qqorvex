@@ -15,7 +15,6 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@qqorvex/database": "workspace:*",
-    "@qqorvex/design-system": "workspace:*",
     "@qqorvex/module-agenda": "workspace:*",
     "@qqorvex/module-documentos": "workspace:*",
     "@qqorvex/module-hoje": "workspace:*",
@@ -31,7 +30,6 @@
   },
   "devDependencies": {
     "@types/d3-force": "^3.0.10",
-    "@types/katex": "^0.16.8",
     "@types/react": "^19.0.0",
     "typescript": "^5.7.0"
   }

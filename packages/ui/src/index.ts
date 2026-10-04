@@ -16,5 +16,6 @@ export * from "./components/Charts";
 export * from "./components/Layout";
 export * from "./components/Brand";
 export * from "./components/Markdown";
+export * from "./components/TurnstileCaptcha";
 export { parseMarkdown, parseInline, markdownToPlainText, type Block as MarkdownBlock, type Inline as MarkdownInline } from "./markdown";
 export { ArrowRightIcon, CalendarBlankIcon, CaretLeftIcon, CaretRightIcon, CheckIcon, ClockIcon, DotsSixVerticalIcon, PlusIcon, XIcon } from "@phosphor-icons/react";

@@ -5,6 +5,7 @@ import {
   createGoal,
   createMilestone,
   deleteGoal,
+  deleteMilestone,
   linkGoalHabit,
   listGoalHabitRelations,
   listGoalCheckins,
@@ -12,10 +13,12 @@ import {
   listMilestones,
   toggleMilestone,
   unlinkGoalHabit,
+  updateGoal,
   updateGoalProgressSource,
   updateGoalStatus,
+  updateMilestone,
 } from "../repository";
-import type { Goal, NewGoalInput } from "../types";
+import type { Goal, GoalEditInput, NewGoalInput } from "../types";
 
 const GOALS_KEY = ["goals"] as const;
 const milestonesKey = (goalId: string) => ["goal-milestones", goalId] as const;
@@ -31,6 +34,14 @@ export function useCreateGoal(client: SupabaseClient<Database>, userId: string) 
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewGoalInput) => createGoal(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: GOALS_KEY }),
+  });
+}
+
+export function useUpdateGoal(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ goalId, input }: { goalId: string; input: GoalEditInput }) => updateGoal(client, goalId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: GOALS_KEY }),
   });
 }
@@ -79,6 +90,22 @@ export function useToggleMilestone(client: SupabaseClient<Database>, goalId: str
   return useMutation({
     mutationFn: ({ milestoneId, isDone }: { milestoneId: string; isDone: boolean }) =>
       toggleMilestone(client, milestoneId, isDone),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: milestonesKey(goalId) }),
+  });
+}
+
+export function useUpdateMilestone(client: SupabaseClient<Database>, goalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ milestoneId, title }: { milestoneId: string; title: string }) => updateMilestone(client, milestoneId, title),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: milestonesKey(goalId) }),
+  });
+}
+
+export function useDeleteMilestone(client: SupabaseClient<Database>, goalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (milestoneId: string) => deleteMilestone(client, milestoneId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: milestonesKey(goalId) }),
   });
 }

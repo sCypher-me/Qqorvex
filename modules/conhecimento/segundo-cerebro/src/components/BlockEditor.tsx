@@ -19,7 +19,7 @@ import { BlockRow } from "./BlockRow";
 import type { BlockType } from "../types";
 
 /**
- * Container do Editor de Blocos Rico (docs/decisions/segundo-cerebro-editor-blocos-design.md) —
+ * Container do Editor de Blocos Rico —
  * orquestra foco/teclado entre `BlockRow`s independentes; cada bloco é sua própria linha no
  * banco, sem aninhamento. `userId` (2ª rodada, imagem/arquivo) é só pra repassar pro
  * `uploadDocument()` de `@qqorvex/module-documentos` dentro de `BlockRow` — o Documento

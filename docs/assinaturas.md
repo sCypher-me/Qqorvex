@@ -1,4 +1,4 @@
-# Assinaturas Free e Qqorvex Plus
+# Planos: Free, Plus e acesso Ilimitado
 
 ## Valores e limites definidos
 
@@ -18,20 +18,29 @@ Todos os módulos continuam acessíveis no Free. O período anual custa R$ 23,90
 
 O armazenamento é implementado no bucket privado `documents` do Supabase Storage, com acesso restrito por usuário. A cota individual inclui arquivos atuais, versões históricas e itens na lixeira, pois todos continuam ocupando espaço até serem removidos fisicamente. Além da cota individual, o plano do Supabase impõe uma cota global compartilhada pelo projeto; ela precisa ser monitorada e ampliada quando o uso crescer.
 
+## Acesso Ilimitado (Lifetime, Parceiro e Dono)
+
+Acima do Plus, sem nenhuma cota: metas, hábitos, cadernos, mapas, Vex, buscas e armazenamento por conta (o tamanho de cada arquivo continua limitado a 50 MB pelo bucket). Também libera tudo que o Plus libera. Quem decide é `has_unlimited_access()` no banco, e o app lê o nível por `get_my_access()`.
+
+- **Lifetime:** para sempre. Não está à venda — só nasce de um código gerado pelo Dono em Central do Dono → Códigos. Ao ativar, a pessoa ganha a insígnia Amigo Lifetime na hora.
+- **Parceiro:** ilimitado enquanto a campanha durar. Crie a campanha (nome e data de fim) em Central do Dono → Códigos → Campanhas de Parceiro e gere os códigos dentro dela. Estender a data ou "Encerrar agora" vale para todos os parceiros da campanha; ao terminar, a conta volta ao plano que tinha, sem perder nada.
+- **Beta Tester:** o mesmo fluxo de código concede a insígnia de Beta Tester (sem mudar o plano).
+- **Como a pessoa ativa:** tocando 7 vezes seguidas, rápido, na estrela do Qqorvex (menu lateral no computador, barra do topo no celular). O código vale uma vez; 5 tentativas erradas em 15 minutos bloqueiam novas por um tempo.
+
 Downgrade não apaga registros. Leitura, organização e exportação continuam disponíveis; novas criações e novos arquivos/versões que ultrapassem a cota Free são impedidos. A tabela de assinatura é separada de `profiles.account_tier`, que continua representando privilégios administrativos, parceiro, VIP ou Lifetime.
 
 ## Estado atual da configuração
 
-- Os limites estão definidos no app e na migração local, mas a migração ainda não foi aplicada ao Supabase remoto.
+- Os limites e a cota de documentos estão aplicados no Supabase (migrations `plus_subscriptions`, `owner_plus_entitlement` e `secret_access_codes`).
 - O canal de cobrança permanece desabilitado por padrão. Nenhum método de pagamento deve ser considerado ativo até a configuração e validação futuras.
-- A integração de cobrança permanece apenas como preparação local; não publique nem habilite Checkout/Portal antes de reconciliar o histórico de migrações e configurar os segredos.
-- O bucket privado `documents` já existe no Supabase. A aplicação da cota de cada plano depende da migração local que instala a política de Storage e o RPC de consulta.
+- A integração de cobrança permanece apenas como preparação: as funções `billing-*` e `stripe-webhook` ainda não estão publicadas. Não habilite Checkout/Portal antes de configurar os segredos abaixo.
+- O bucket privado `documents` e a política que aplica a cota de cada plano já estão no Supabase.
 
 ## Configuração Stripe (modo de teste primeiro)
 
 1. No Stripe Dashboard, crie um produto **Qqorvex Plus** e dois preços recorrentes em BRL: `R$ 19,90` a cada mês e `R$ 214,90` a cada ano. Copie os dois IDs que começam por `price_`.
 2. Configure o Customer Portal no Stripe para exibir faturas, atualizar forma de pagamento e permitir cancelamento ao fim do período pago.
-3. Após aplicar a migração descrita na próxima seção, defina estes segredos nas Edge Functions do Supabase (Dashboard → Edge Functions → Secrets):
+3. Defina estes segredos nas Edge Functions do Supabase (Dashboard → Edge Functions → Secrets):
 
    - `STRIPE_SECRET_KEY` — comece com a chave de teste `sk_test_…`.
    - `STRIPE_PRICE_PLUS_MONTHLY` — ID do preço mensal.
@@ -45,11 +54,9 @@ Downgrade não apaga registros. Leitura, organização e exportação continuam 
 5. No ambiente de build/hospedagem **web**, defina `VITE_BILLING_CHANNEL=web`. Para o APK distribuído diretamente, gere com `VITE_BILLING_CHANNEL=direct_apk`. Esse valor não deve ser usado em um futuro build da Play Store.
 6. Em teste, use os produtos/preços e chaves do modo de teste, complete uma compra de teste e confira se o webhook colocou a linha correspondente em `billing_subscriptions`. O navegador de retorno por si só nunca concede Plus; só o webhook assinado atualiza o entitlement.
 
-## Migração e publicação Supabase
+## Publicação
 
-A nova migração local é `supabase/migrations/20260928000001_plus_subscriptions.sql`; ela ainda não foi aplicada ao projeto remoto. Este repositório tem histórico de divergência entre as migrações locais e o schema remoto, então não execute `db push` às cegas. Primeiro confira a lista de migrações remotas e faça backup; reconcilie o histórico existente e só então aplique esta migração.
-
-Depois da migração e dos segredos, publique as funções:
+Depois dos segredos, publique as funções:
 
 ```powershell
 npx supabase@latest functions deploy billing-checkout

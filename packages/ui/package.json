@@ -23,7 +23,6 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
-    "@phosphor-icons/react": "^2.1.10",
-    "@qqorvex/design-system": "workspace:*"
+    "@phosphor-icons/react": "^2.1.10"
   }
 }

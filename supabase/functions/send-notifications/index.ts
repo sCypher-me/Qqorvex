@@ -7,6 +7,28 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
+/**
+ * Datas e horários "de parede" do app (lembretes de hábito, tarefas recorrentes, orçamento do
+ * mês) seguem o horário de Brasília, como as cotas e os desafios do dia — o runtime da função
+ * roda em UTC, e usar a data UTC adiantava os lembretes em 3 horas e virava o dia às 21h.
+ * Eventos recorrentes usam o fuso salvo em cada regra.
+ */
+const APP_TIME_ZONE = "America/Sao_Paulo";
+
+function wallClockIn(timeZone: string, instant = new Date()): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant);
+  const part = (type: string) => parts.find((value) => value.type === type)?.value ?? "00";
+  return { date: `${part("year")}-${part("month")}-${part("day")}`, time: `${part("hour")}:${part("minute")}` };
+}
+
 Deno.serve(async (req) => {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -66,7 +88,8 @@ Deno.serve(async (req) => {
   // Fonte 2: alertas de orçamento estourado em Finanças. Um alerta por competência (year_month);
   // o total gasto nunca é persistido, é somado a partir de `transactions` na hora, mesmo padrão
   // de `computeBalances()`/`computeStatementTotal()` no resto de Finanças.
-  const currentYearMonth = new Date().toISOString().slice(0, 7);
+  const appNow = wallClockIn(APP_TIME_ZONE);
+  const currentYearMonth = appNow.date.slice(0, 7);
   function nextMonthStart(yearMonth: string): string {
     const [year, month] = yearMonth.split("-").map(Number);
     return new Date(year!, month!, 1).toISOString().slice(0, 10);
@@ -106,9 +129,8 @@ Deno.serve(async (req) => {
   // estava marcado como pendência em Metas & Hábitos. v1 lean: só `frequency_type = 'diaria'`
   // com `preferred_time` definido — os demais tipos de frequência exigiriam calcular "está
   // previsto hoje?" de forma mais complexa (dias específicos, X vezes por semana).
-  const now = new Date();
-  const todayDateStr = now.toISOString().slice(0, 10);
-  const currentTimeStr = now.toISOString().slice(11, 16);
+  const todayDateStr = appNow.date;
+  const currentTimeStr = appNow.time;
 
   const { data: habits } = await supabase
     .from("habits")
@@ -166,8 +188,7 @@ Deno.serve(async (req) => {
   }
 
   const DUE_REMINDER_WINDOW_DAYS = 3;
-  const todayMidnight = new Date();
-  todayMidnight.setHours(0, 0, 0, 0);
+  const todayMidnight = new Date(`${todayDateStr}T00:00:00`);
 
   const { data: cards } = await supabase
     .from("cards")
@@ -294,17 +315,6 @@ Deno.serve(async (req) => {
     return next.toISOString().slice(0, 10);
   }
 
-  function dateInTimeZone(instant: Date, timeZone: string): string {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(instant);
-    const part = (type: string) => parts.find((value) => value.type === type)?.value ?? "00";
-    return `${part("year")}-${part("month")}-${part("day")}`;
-  }
-
   function zonedDateTimeToIso(date: string, time: string, timeZone: string): string {
     const [year, month, day] = date.split("-").map(Number);
     const [hours, minutes, seconds = 0] = time.split(":").map(Number);
@@ -348,7 +358,7 @@ Deno.serve(async (req) => {
     } catch {
       timeZone = "America/Sao_Paulo";
     }
-    if (dateStr > dateInTimeZone(new Date(), timeZone)) continue;
+    if (dateStr > wallClockIn(timeZone).date) continue;
 
     const startAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "00:00:00" : recurring.start_time || "09:00:00", timeZone);
     const endAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "23:59:59" : recurring.end_time || "10:00:00", timeZone);

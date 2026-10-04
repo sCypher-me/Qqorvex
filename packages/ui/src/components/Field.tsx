@@ -28,7 +28,7 @@ export interface FieldProps {
   children: ReactNode;
 }
 
-export function Field({ label, htmlFor, hint, error, required, labelAside, descriptionId, className, children }: FieldProps) {
+function Field({ label, htmlFor, hint, error, required, labelAside, descriptionId, className, children }: FieldProps) {
   if (!label && !hint && !error) return className ? <div className={cx("min-w-0", className)}>{children}</div> : <>{children}</>;
   return (
     <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
@@ -236,18 +236,5 @@ export function Switch({ checked, onChange, disabled, label, size = "md", id }: 
     >
       <span className={cx("block rounded-full bg-white shadow-sm transition-transform duration-150 ease-q", thumb, checked && translate)} />
     </button>
-  );
-}
-
-/** Linha de configuração: rótulo + descrição à esquerda, controle à direita. */
-export function SettingRow({ title, description, control, className }: { title: ReactNode; description?: ReactNode; control: ReactNode; className?: string }) {
-  return (
-    <div className={cx("flex min-w-0 items-center justify-between gap-4 py-3", className)}>
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-medium text-fg">{title}</p>
-        {description && <p className="mt-0.5 text-xs leading-snug text-fg-3">{description}</p>}
-      </div>
-      <div className="shrink-0">{control}</div>
-    </div>
   );
 }

@@ -1,6 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { computeNextEventOccurrenceDate } from "./service";
-import { zonedDateTimeToIso } from "./dateUtils";
+import { toRecurringEventUpdate, type RecurringEventEditInput } from "./service";
 import type { CalendarEvent, EventReminder, NewEventInput, RecurringEvent, RecurringEventFrequency } from "./types";
 import { toEventInsert, toEventUpdate } from "./types";
 
@@ -55,18 +54,12 @@ export async function updateEvent(client: Client, eventId: string, input: NewEve
 }
 
 /** "Lembretes têm tabela mas nada os dispara" — agora dispara via `send-notifications` (pg_cron). */
-export async function createEventReminder(client: Client, eventId: string, minutesBefore: number): Promise<EventReminder> {
+async function createEventReminder(client: Client, eventId: string, minutesBefore: number): Promise<EventReminder> {
   const { data, error } = await client
     .from("event_reminders")
     .insert({ event_id: eventId, minutes_before: minutesBefore })
     .select("*")
     .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function listEventReminders(client: Client, eventId: string): Promise<EventReminder[]> {
-  const { data, error } = await client.from("event_reminders").select("*").eq("event_id", eventId);
   if (error) throw error;
   return data;
 }
@@ -166,6 +159,23 @@ export async function listRecurringEvents(client: Client): Promise<RecurringEven
   return data;
 }
 
+/**
+ * Grava a edição só se a série ainda estiver na data que a pessoa abriu — o cron pode tê-la
+ * avançado nesse meio-tempo, e gravar a data antiga duplicaria um evento.
+ */
+export async function updateRecurringEvent(client: Client, current: RecurringEvent, input: RecurringEventEditInput): Promise<RecurringEvent> {
+  const { data, error } = await client
+    .from("recurring_events")
+    .update(toRecurringEventUpdate(current, input))
+    .eq("id", current.id)
+    .eq("next_occurrence_date", current.next_occurrence_date)
+    .select("*")
+    .single();
+  if (error?.code === "PGRST116") throw new Error("Esta repetição avançou enquanto você editava. Abra de novo para ver a data atual.");
+  if (error) throw error;
+  return data;
+}
+
 export async function createRecurringEvent(
   client: Client,
   userId: string,
@@ -194,12 +204,6 @@ export async function createRecurringEvent(
     .insert({ ...values, time_zone: input.timeZone })
     .select("*")
     .single();
-  if (error && /time_zone/i.test(error.message) && (error.code === "42703" || error.code === "PGRST204")) {
-    // Graceful transition while the additive migration is awaiting deployment.
-    const legacyResult = await client.from("recurring_events").insert(values).select("*").single();
-    if (legacyResult.error) throw legacyResult.error;
-    return legacyResult.data;
-  }
   if (error) throw error;
   return data;
 }
@@ -212,68 +216,4 @@ export async function updateRecurringEventStatus(
   const { data, error } = await client.from("recurring_events").update({ status }).eq("id", id).select("*").single();
   if (error) throw error;
   return data;
-}
-
-/**
- * "Cada ocorrência é um evento vinculado à recorrência." Combina `next_occurrence_date` +
- * `start_time`/`end_time` (dia inteiro vira 00:00:00–23:59:59, mesmo padrão de `QuickEventForm`)
- * em `start_at`/`end_at`, cria o evento de verdade e avança `next_occurrence_date`. O evento
- * gerado é independente da recorrência depois de criada — editar/apagar não afeta a série.
- */
-export async function generateEventOccurrence(client: Client, userId: string, recurring: RecurringEvent): Promise<CalendarEvent> {
-  const dateStr = recurring.next_occurrence_date;
-  const timeZone = recurring.time_zone || "America/Sao_Paulo";
-  const startAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "00:00" : (recurring.start_time ?? "09:00:00").slice(0, 5), timeZone);
-  const endAt = zonedDateTimeToIso(dateStr, recurring.is_all_day ? "23:59" : (recurring.end_time ?? "10:00:00").slice(0, 5), timeZone, recurring.is_all_day ? 59 : 0);
-
-  const { data: insertedEvent, error: eventError } = await client
-    .from("events")
-    .upsert({
-      user_id: userId,
-      title: recurring.title,
-      description: recurring.description,
-      location: recurring.location,
-      meeting_link: recurring.meeting_link,
-      category: recurring.category,
-      is_all_day: recurring.is_all_day,
-      start_at: startAt,
-      end_at: endAt,
-      buffer_before_minutes: recurring.buffer_before_minutes,
-      buffer_after_minutes: recurring.buffer_after_minutes,
-      recurring_event_id: recurring.id,
-      recurrence_date: dateStr,
-    }, { onConflict: "recurring_event_id,recurrence_date", ignoreDuplicates: true })
-    .select("*")
-    .maybeSingle();
-  if (eventError) throw eventError;
-
-  // `ignoreDuplicates` intentionally does not return the existing row. Fetch it so a
-  // concurrent cron/UI generation remains idempotent without overwriting user edits.
-  let event = insertedEvent;
-  if (!event) {
-    const { data: existingEvent, error: lookupError } = await client
-      .from("events")
-      .select("*")
-      .eq("recurring_event_id", recurring.id)
-      .eq("recurrence_date", dateStr)
-      .single();
-    if (lookupError) throw lookupError;
-    event = existingEvent;
-  }
-  if (!event) throw new Error("A ocorrência recorrente não pôde ser localizada após a geração.");
-
-  const { error: updateError } = await client
-    .from("recurring_events")
-    .update({
-      next_occurrence_date: computeNextEventOccurrenceDate(
-        recurring.next_occurrence_date,
-        recurring.frequency,
-        Number(recurring.start_date.slice(-2)),
-      ),
-    })
-    .eq("id", recurring.id)
-    .eq("next_occurrence_date", dateStr);
-  if (updateError) throw updateError;
-
-  return event;
 }

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createRecurringEvent, listRecurringEvents, updateRecurringEventStatus } from "../repository";
+import { createRecurringEvent, listRecurringEvents, updateRecurringEvent, updateRecurringEventStatus } from "../repository";
+import type { RecurringEventEditInput } from "../service";
 import type { RecurringEvent, RecurringEventFrequency } from "../types";
 
 const RECURRING_EVENTS_KEY = ["recurring-events"] as const;
@@ -16,6 +17,15 @@ export function useCreateRecurringEvent(client: SupabaseClient<Database>, userId
     mutationFn: (input: { title: string; isAllDay?: boolean; startTime?: string; endTime?: string; frequency: RecurringEventFrequency; startDate: string; timeZone: string }) =>
       createRecurringEvent(client, userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: RECURRING_EVENTS_KEY }),
+  });
+}
+
+export function useUpdateRecurringEvent(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ current, input }: { current: RecurringEvent; input: RecurringEventEditInput }) => updateRecurringEvent(client, current, input),
+    // Mesmo no erro "a série avançou", recarrega para mostrar a data atual.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: RECURRING_EVENTS_KEY }),
   });
 }
 

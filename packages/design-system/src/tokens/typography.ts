@@ -1,14 +1,5 @@
-/**
- * Tipografia: Outfit (display — títulos, números de destaque) ecoa a geometria do wordmark;
- * Inter (interface e leitura) garante legibilidade densa; Geist Mono para código e atalhos.
- */
-export const fontFamilies = {
-  display: "'Outfit Variable', sans-serif",
-  sans: "'Inter Variable', sans-serif",
-  mono: "'Geist Mono Variable', monospace",
-} as const;
 
-export const typeScale = {
+const typeScale = {
   hero: "font-display text-[34px] leading-[1.1] font-semibold tracking-[-0.02em]",
   pageTitle: "font-display text-[26px] leading-[1.15] font-semibold tracking-[-0.015em]",
   sectionTitle: "font-display text-[17px] leading-snug font-semibold",

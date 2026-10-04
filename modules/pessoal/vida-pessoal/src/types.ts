@@ -1,8 +1,8 @@
-import type { Tables, TablesInsert } from "@qqorvex/database";
+import type { Tables, TablesInsert, TablesUpdate } from "@qqorvex/database";
 
 /**
  * Vida Pessoal — escopo recriado com o usuário em 11/09/2026 (o Xmind original dessa parte foi
- * perdido; ver docs/decisions/vida-pessoal-design.md). Bloco 1 (Planejamento): Plano é uma visão
+ * perdido). Bloco 1 (Planejamento): Plano é uma visão
  * ampla e narrativa (ex.: "Ser um designer"); Meta (`@qqorvex/module-metas-habitos`) continua o
  * item específico e mensurável de sempre — um Plano agrupa várias Metas via `plan_goals`, sem
  * duplicar dado. Projeto é só um agrupador de Tarefas (`@qqorvex/module-tarefas`) via
@@ -202,4 +202,49 @@ export function toShoppingListItemInsert(userId: string, input: NewShoppingListI
     name: input.name,
     quantity: input.quantity ?? null,
   };
+}
+
+/**
+ * Edição reaproveita o mapeamento da criação sem o dono: os campos são os mesmos do formulário e
+ * opcional em branco vira `null`, então salvar consegue limpar um campo. Status, "comprado" e
+ * vínculos têm fluxos próprios e não entram aqui.
+ */
+function withoutOwner<T extends { user_id: string }>(row: T): Omit<T, "user_id"> {
+  const { user_id: _owner, ...fields } = row;
+  return fields;
+}
+
+export function toPlanUpdate(input: NewPlanInput): TablesUpdate<"plans"> {
+  return withoutOwner(toPlanInsert("", input));
+}
+
+export function toProjectUpdate(input: NewProjectInput): TablesUpdate<"projects"> {
+  return withoutOwner(toProjectInsert("", input));
+}
+
+export function toIdeaUpdate(input: NewIdeaInput): TablesUpdate<"ideas"> {
+  return withoutOwner(toIdeaInsert("", input));
+}
+
+/** O formulário de contato não tem campo de observação — editar nunca pode apagar a nota existente. */
+export type UsefulContactEditInput = Omit<NewUsefulContactInput, "note">;
+
+export function toUsefulContactUpdate(input: UsefulContactEditInput): TablesUpdate<"useful_contacts"> {
+  return {
+    name: input.name,
+    category: input.category ?? null,
+    phone: input.phone ?? null,
+  };
+}
+
+export function toVehicleUpdate(input: NewVehicleInput): TablesUpdate<"vehicles"> {
+  return withoutOwner(toVehicleInsert("", input));
+}
+
+export function toAssetUpdate(input: NewAssetInput): TablesUpdate<"assets"> {
+  return withoutOwner(toAssetInsert("", input));
+}
+
+export function toImportantPurchaseUpdate(input: NewImportantPurchaseInput): TablesUpdate<"important_purchases"> {
+  return withoutOwner(toImportantPurchaseInsert("", input));
 }

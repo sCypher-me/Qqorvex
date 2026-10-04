@@ -24,6 +24,7 @@ import {
   updateCardClosingConfig,
   updateTransaction,
   updateRecurringStatus,
+  updateRecurringTransaction,
   updateTransactionStatus,
   createTransactionsBulk,
   updateAccount,
@@ -45,6 +46,7 @@ import type {
   TransactionType,
   UpdateTransactionInput,
 } from "../types";
+import type { RecurringTransactionEditInput } from "../service";
 
 const TRANSACTIONS_KEY = ["transactions"] as const;
 const ACCOUNTS_KEY = ["accounts"] as const;
@@ -208,6 +210,15 @@ export function useCreateRecurringTransaction(client: SupabaseClient<Database>, 
   });
 }
 
+export function useUpdateRecurringTransaction(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ current, input }: { current: RecurringTransaction; input: RecurringTransactionEditInput }) => updateRecurringTransaction(client, current, input),
+    // Mesmo no erro "a série avançou", recarrega para mostrar a data atual.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: RECURRING_KEY }),
+  });
+}
+
 export function useUpdateRecurringStatus(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -260,7 +271,7 @@ export function useCreateBudget(client: SupabaseClient<Database>, userId: string
 
 /* ── Operações adicionadas no redesenho (edição/remoção e importação) ── */
 
-function useFinanceMutation<TVariables>(client: SupabaseClient<Database>, fn: (variables: TVariables) => Promise<unknown>, keys: ReadonlyArray<readonly string[]>) {
+function useFinanceMutation<TVariables>(fn: (variables: TVariables) => Promise<unknown>, keys: ReadonlyArray<readonly string[]>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: fn,
@@ -271,33 +282,33 @@ function useFinanceMutation<TVariables>(client: SupabaseClient<Database>, fn: (v
 }
 
 export function useImportTransactions(client: SupabaseClient<Database>, userId: string) {
-  return useFinanceMutation(client, (inputs: NewTransactionInput[]) => createTransactionsBulk(client, userId, inputs), [TRANSACTIONS_KEY]);
+  return useFinanceMutation((inputs: NewTransactionInput[]) => createTransactionsBulk(client, userId, inputs), [TRANSACTIONS_KEY]);
 }
 
 export function useUpdateAccount(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, ({ id, name, accountType }: { id: string; name?: string; accountType?: Account["account_type"] }) => updateAccount(client, id, { name, accountType }), [ACCOUNTS_KEY]);
+  return useFinanceMutation(({ id, name, accountType }: { id: string; name?: string; accountType?: Account["account_type"] }) => updateAccount(client, id, { name, accountType }), [ACCOUNTS_KEY]);
 }
 
 export function useDeleteAccount(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, (id: string) => deleteAccount(client, id), [ACCOUNTS_KEY, TRANSACTIONS_KEY]);
+  return useFinanceMutation((id: string) => deleteAccount(client, id), [ACCOUNTS_KEY, TRANSACTIONS_KEY]);
 }
 
 export function useUpdateCategory(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, ({ id, name }: { id: string; name: string }) => updateCategory(client, id, name), [CATEGORIES_KEY]);
+  return useFinanceMutation(({ id, name }: { id: string; name: string }) => updateCategory(client, id, name), [CATEGORIES_KEY]);
 }
 
 export function useDeleteCategory(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, (id: string) => deleteCategory(client, id), [CATEGORIES_KEY, TRANSACTIONS_KEY, BUDGETS_KEY]);
+  return useFinanceMutation((id: string) => deleteCategory(client, id), [CATEGORIES_KEY, TRANSACTIONS_KEY, BUDGETS_KEY]);
 }
 
 export function useDeleteBudget(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, (id: string) => deleteBudget(client, id), [BUDGETS_KEY]);
+  return useFinanceMutation((id: string) => deleteBudget(client, id), [BUDGETS_KEY]);
 }
 
 export function useUpdateCard(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, ({ id, ...input }: { id: string; nickname?: string; institution?: string | null; lastDigits?: string | null }) => updateCard(client, id, input), [CARDS_KEY]);
+  return useFinanceMutation(({ id, ...input }: { id: string; nickname?: string; institution?: string | null; lastDigits?: string | null }) => updateCard(client, id, input), [CARDS_KEY]);
 }
 
 export function useDeleteCard(client: SupabaseClient<Database>) {
-  return useFinanceMutation(client, (id: string) => deleteCard(client, id), [CARDS_KEY, TRANSACTIONS_KEY]);
+  return useFinanceMutation((id: string) => deleteCard(client, id), [CARDS_KEY, TRANSACTIONS_KEY]);
 }

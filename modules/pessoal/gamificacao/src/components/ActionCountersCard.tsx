@@ -4,7 +4,7 @@ import type { GamificationAction, GamificationStats } from "../types";
 import { GAMIFICATION_COUNTER_FIELD } from "../types";
 import { formatXp } from "./GamificationWidget";
 
-export const ACTION_LABEL: Record<GamificationAction, string> = {
+const ACTION_LABEL: Record<GamificationAction, string> = {
   task_completed: "Tarefas concluídas",
   habit_or_goal_checkin: "Check-ins de hábito ou meta",
   quiz_completed: "Quizzes respondidos",

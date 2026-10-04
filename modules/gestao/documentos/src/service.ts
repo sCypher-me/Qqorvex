@@ -18,7 +18,8 @@ export type DocumentQuickFilter = "all" | "important" | "vault" | "recent";
 export type DocumentSortOrder = "newest" | "oldest" | "name" | "largest";
 export type DocumentStorageQuota = {
   usedBytes: number;
-  quotaBytes: number;
+  /** `null` = sem cota por conta (acesso Ilimitado); o tamanho por arquivo continua valendo. */
+  quotaBytes: number | null;
   maxFileBytes: number;
   isPlus: boolean;
 };
@@ -35,7 +36,7 @@ export class DocumentStorageLimitError extends Error {
 
 export function assertDocumentFitsStorageQuota(fileBytes: number, quota: DocumentStorageQuota): void {
   if (fileBytes > quota.maxFileBytes) throw new DocumentStorageLimitError("file", quota.maxFileBytes);
-  if (quota.usedBytes + fileBytes > quota.quotaBytes) throw new DocumentStorageLimitError("storage", quota.quotaBytes);
+  if (quota.quotaBytes !== null && quota.usedBytes + fileBytes > quota.quotaBytes) throw new DocumentStorageLimitError("storage", quota.quotaBytes);
 }
 
 export function documentStorageLimitFromError(error: unknown): DocumentStorageLimitError | null {
@@ -127,6 +128,22 @@ export function computeWarrantyEndDate(purchaseDate: string, durationMonths: num
 /** Caminho por usuário dentro do bucket privado, exigido pelas RLS policies de storage.objects. */
 export function buildStoragePath(userId: string, documentId: string, fileName: string): string {
   return `${userId}/${documentId}/${fileName}`;
+}
+
+/** Extensão "de verdade": 1 a 5 caracteres com pelo menos uma letra (".pdf" sim, ".2" de "v1.2" não). */
+const FILE_EXTENSION = /\.(?=[a-z0-9]{0,4}[a-z])[a-z0-9]{1,5}$/i;
+
+/**
+ * Nome novo ao renomear um documento. Sem extensão, herda a do nome atual (quem digita "Contrato
+ * do aluguel" não quer perder o ".pdf"). Barras viram "-" porque o nome entra no caminho das
+ * versões no Storage (`buildVersionStoragePath`). Vazio → `null` (não renomeia).
+ */
+export function normalizeDocumentRename(input: string, currentName: string): string | null {
+  const name = input.replace(/[/\\]/g, "-").replace(/\s+/g, " ").trim();
+  if (!name) return null;
+  const currentExtension = currentName.match(FILE_EXTENSION)?.[0];
+  if (!currentExtension || FILE_EXTENSION.test(name)) return name;
+  return `${name}${currentExtension}`;
 }
 
 /** Caminho de arquivamento de uma versão antiga, isolado do caminho "atual" para nunca colidir com ele. */

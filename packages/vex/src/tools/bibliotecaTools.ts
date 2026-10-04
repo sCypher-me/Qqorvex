@@ -10,6 +10,7 @@ import {
   type LibraryItemType,
 } from "@qqorvex/module-biblioteca";
 import type { ToolDefinition } from "../types";
+import { ambiguousSummary, matchByName } from "./shared";
 
 /** Ferramentas da Vex para Biblioteca & Conteúdo. Só chamam a API pública de `@qqorvex/module-biblioteca`. */
 export interface BibliotecaToolOptions {
@@ -111,13 +112,10 @@ export function createBibliotecaTools(client: SupabaseClient<Database>, userId: 
       },
       requiresConfirmation: true,
       async execute(args) {
-        const query = String(args.title ?? "")
-          .trim()
-          .toLowerCase();
-        const items = await listItems(client);
-        const match = items.find((i) => i.title.toLowerCase().includes(query));
-        if (!match) return { summary: `Não encontrei nenhum item parecido com "${args.title}".` };
-        const updated = await updateItemStatus(client, match.id, args.status as LibraryItemStatus);
+        const match = matchByName(await listItems(client), String(args.title ?? ""), (item) => item.title);
+        if (match.kind === "none") return { summary: `Não encontrei nenhum item parecido com "${args.title}".` };
+        if (match.kind === "many") return { summary: ambiguousSummary("um item", match.items, (item) => item.title) };
+        const updated = await updateItemStatus(client, match.item.id, args.status as LibraryItemStatus);
         return { summary: `Item "${updated.title}" atualizado para status "${updated.status}".`, data: updated };
       },
     },

@@ -2,9 +2,8 @@ import type { Tables, TablesInsert, Json } from "@qqorvex/database";
 
 /**
  * Segundo Cérebro é fonte de verdade de páginas, blocos, propriedades, bases, links internos,
- * backlinks, tags próprias e checkpoints (histórico de versões — ver
- * docs/decisions/segundo-cerebro-checkpoints-design.md). Editor de Blocos Rico implementado pra
- * 11 dos 19 tipos de bloco — ver docs/decisions/segundo-cerebro-editor-blocos-design.md. v1 lean:
+ * backlinks, tags próprias e checkpoints (histórico de versões). Editor de Blocos Rico implementado
+ * pra 11 dos 19 tipos de bloco. v1 lean:
  * sem Lixeira separada (usa is_archived) e sem múltiplas Views de Base nomeadas por Base —
  * adiáveis pelo Xmind ou de infraestrutura maior. Entidades de outros módulos (Tarefas, Cadernos,
  * Livros...) são sempre referenciadas, nunca duplicadas dentro daqui.
@@ -28,7 +27,7 @@ export interface BlockSnapshot {
 }
 
 /**
- * Editor de Blocos Rico v1 (docs/decisions/segundo-cerebro-editor-blocos-design.md) — 11 dos 19
+ * Editor de Blocos Rico v1 — 11 dos 19
  * valores do enum `block_type` têm forma de conteúdo e edição de verdade. 2ª rodada
  * (15/09/2026, ver mesmo design doc) adicionou imagem/arquivo/link, reaproveitando
  * `uploadDocument()`/`getDownloadUrl()` de `@qqorvex/module-documentos` — o Documento é sempre o

@@ -49,13 +49,3 @@ export function VexAvatar({ size = 32, className, status }: { size?: number; cla
     </span>
   );
 }
-
-/** Marca abstrata da IA (para botões e chips "Pedir à Vex"). */
-export function VexSpark({ size = 16, className }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={cx("shrink-0 text-ai-fg", className)}>
-      <path d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5Z" fill="currentColor" />
-      <path d="M19 15.5c.2 1.8 1.1 2.7 2.9 2.9-1.8.2-2.7 1.1-2.9 2.9-.2-1.8-1.1-2.7-2.9-2.9 1.8-.2 2.7-1.1 2.9-2.9Z" fill="currentColor" opacity=".7" />
-    </svg>
-  );
-}

@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import type { HojeItem } from "@qqorvex/module-hoje";
+import { localDateKey, localDateKeyInDays, type HojeItem } from "@qqorvex/module-hoje";
 import { getCheckinForDate, listAllVehicleImportantDates, listVehicles } from "./repository";
 
 const IMPORTANT_DATE_WINDOW_DAYS = 14;
@@ -11,11 +11,8 @@ const IMPORTANT_DATE_WINDOW_DAYS = 14;
  */
 export function createVidaPessoalHojeProvider(client: SupabaseClient<Database>) {
   return async function vidaPessoalHojeProvider(): Promise<HojeItem[]> {
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    const soonThreshold = new Date(today);
-    soonThreshold.setDate(soonThreshold.getDate() + IMPORTANT_DATE_WINDOW_DAYS);
-    const soonStr = soonThreshold.toISOString().slice(0, 10);
+    const todayStr = localDateKey();
+    const soonStr = localDateKeyInDays(IMPORTANT_DATE_WINDOW_DAYS);
 
     const [checkin, vehicles, vehicleDates] = await Promise.all([
       getCheckinForDate(client, todayStr),

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createEvent, createZoomMeeting, deleteEvent, listAllEvents, listEventsInRange, updateEvent } from "../repository";
+import { createEvent, deleteEvent, listAllEvents, listEventsInRange, updateEvent } from "../repository";
 import type { NewEventInput } from "../types";
 
 const eventsKey = (rangeStartIso: string, rangeEndIso: string) => ["events", rangeStartIso, rangeEndIso] as const;
@@ -40,24 +40,6 @@ export function useUpdateEvent(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ eventId, input }: { eventId: string; input: NewEventInput }) => updateEvent(client, eventId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["events"] }),
-  });
-}
-
-/** Cria a reunião no Zoom e, com o link retornado, cria o evento na Agenda numa única ação. */
-export function useCreateZoomMeeting(client: SupabaseClient<Database>, userId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: { title: string; startAt: string; endAt: string }) => {
-      const { joinUrl } = await createZoomMeeting(client, input);
-      return createEvent(client, userId, {
-        title: input.title,
-        startAt: input.startAt,
-        endAt: input.endAt,
-        category: "reuniao",
-        meetingLink: joinUrl,
-      });
-    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["events"] }),
   });
 }

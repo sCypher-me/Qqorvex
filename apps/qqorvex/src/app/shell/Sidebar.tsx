@@ -8,6 +8,7 @@ import { supabase } from "../supabase";
 import { AREAS, HOME, VEX, type NavArea } from "./navigation";
 import { QuickCreateMenu } from "./QuickCreate";
 import { UserMenu } from "./UserMenu";
+import { useSecretBrandTap } from "../secret/SecretRedeem";
 
 const EXPANDED_KEY = "qqorvex.nav.areas";
 
@@ -36,6 +37,7 @@ function itemClasses(active: boolean, collapsed: boolean) {
  */
 export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex }: { collapsed: boolean; onToggleCollapsed: () => void; onOpenPalette: () => void; onOpenVex: () => void }) {
   const location = useLocation();
+  const onBrandTap = useSecretBrandTap();
   const [expanded, setExpanded] = useState<Record<string, boolean>>(readExpanded);
   const activeArea = AREAS.find((area) => location.pathname.startsWith(area.to));
 
@@ -58,7 +60,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onOpenPalette, onOpenVex
       )}
     >
       <div className={cx("flex h-14 shrink-0 items-center", collapsed ? "justify-center" : "justify-between pl-4 pr-2")}>
-        <Link to="/" className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Qqorvex — ir para Hoje">
+        <Link to="/" onClick={onBrandTap} className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--q-focus)]" aria-label="Qqorvex — ir para Hoje">
           <BrandSymbol size={24} />
           {!collapsed && <Wordmark size={19} />}
         </Link>
