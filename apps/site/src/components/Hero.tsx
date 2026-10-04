@@ -1,6 +1,6 @@
 import { ArrowRightIcon, CheckSquareIcon, ClockIcon, DownloadSimpleIcon, SparkleIcon } from "@phosphor-icons/react";
 import { ProgressBar, buttonClasses } from "@qqorvex/ui";
-import { APK_URL, APK_URL_ARM32 } from "../config";
+import { APK_URL, APK_URL_ARM32, getApkDownloadHref } from "../config";
 
 /** Prévia estática da tela Hoje: mostra o produto sem depender de captura de tela. */
 function AppPreview() {
@@ -66,13 +66,13 @@ export function Hero() {
           <a href="#lista" className={buttonClasses({ size: "lg" })}>
             Entrar na lista de espera <ArrowRightIcon size={16} weight="bold" />
           </a>
-          <a href={APK_URL} className={buttonClasses({ variant: "secondary", size: "lg" })}>
+          <a href={getApkDownloadHref(APK_URL)} className={buttonClasses({ variant: "secondary", size: "lg" })}>
             Baixar APK 64 bits <DownloadSimpleIcon size={18} aria-hidden="true" />
           </a>
         </div>
         <p className="mt-3 text-sm text-fg-3">
           Beta para Android 14 ou superior. O acesso requer convite. Celular de 32 bits?{" "}
-          <a href={APK_URL_ARM32} className="text-fg-2 underline underline-offset-4 hover:text-fg">
+          <a href={getApkDownloadHref(APK_URL_ARM32)} className="text-fg-2 underline underline-offset-4 hover:text-fg">
             Baixe o APK alternativo.
           </a>
         </p>
