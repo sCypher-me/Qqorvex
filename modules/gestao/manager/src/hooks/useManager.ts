@@ -9,8 +9,10 @@ import {
   listPartnerCampaigns,
   listRedemptionCodes,
   listSecretKeys,
+  listWaitlist,
   redeemCode,
   setSecret,
+  setWaitlistInvited,
   updatePartnerCampaignEnd,
 } from "../repository";
 import type { NewRedemptionCodeInput, PartnerCampaignInput } from "../types";
@@ -20,6 +22,7 @@ const OVERVIEW_KEY = ["manager", "overview"] as const;
 const CODES_KEY = ["manager", "codes"] as const;
 const SECRETS_KEY = ["manager", "secrets"] as const;
 const CAMPAIGNS_KEY = ["manager", "campaigns"] as const;
+const WAITLIST_KEY = ["manager", "waitlist"] as const;
 
 export function useAllAccounts(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: ACCOUNTS_KEY, queryFn: () => listAllAccounts(client) });
@@ -60,6 +63,19 @@ export function useRedeemCode(client: SupabaseClient<Database>) {
     onSuccess: (result) => {
       if (result.ok) void queryClient.invalidateQueries();
     },
+  });
+}
+
+export function useWaitlist(client: SupabaseClient<Database>) {
+  const query = useQuery({ queryKey: WAITLIST_KEY, queryFn: () => listWaitlist(client) });
+  return { signups: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
+
+export function useSetWaitlistInvited(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, invited }: { ids: string[]; invited: boolean }) => setWaitlistInvited(client, ids, invited),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: WAITLIST_KEY }),
   });
 }
 

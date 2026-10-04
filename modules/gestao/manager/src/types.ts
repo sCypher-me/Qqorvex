@@ -12,6 +12,8 @@ export type RedemptionCodeTier = "parceiro" | "lifetime" | "beta_tester";
 
 export type RedemptionCode = Tables<"redemption_codes">;
 export type PartnerCampaign = Tables<"partner_campaigns">;
+/** Inscrição na lista de espera do beta (formulário do site). */
+export type WaitlistSignup = Tables<"waitlist_signups">;
 
 export interface ManagedAccount {
   id: string;

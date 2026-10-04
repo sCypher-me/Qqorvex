@@ -30,7 +30,8 @@ depois. Itens marcados com ✅ já foram verificados em 03/10/2026.
    - código **Beta Tester** para cada pessoa (dá a insígnia, mantém os limites do Free);
    - uma campanha de **Parceiro** "Beta" com data de fim e um código por tester — acesso ilimitado
      durante o beta, que acaba sozinho na data (ou em "Encerrar agora").
-   A pessoa ativa o código tocando 7 vezes seguidas na estrela do Qqorvex.
+   A pessoa ativa o código tocando 7 vezes seguidas na estrela do Qqorvex. Quem veio pela lista de
+   espera do site está em Manager → Lista de espera (copiar e-mails pendentes, marcar convidado).
 5. **Custo da Vex.** Cada conversa usa o Gemini e cada busca na internet usa a Tavily. As cotas
    mensais (Free: 50 conversas e 10 buscas; Parceiro/Lifetime: sem limite) protegem o orçamento —
    confira o uso nos painéis do Google AI Studio e da Tavily na primeira semana.

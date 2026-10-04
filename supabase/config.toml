@@ -11,3 +11,19 @@ verify_jwt = false
 [functions.google-calendar-disconnect]
 # A revogação sempre deriva o usuário do JWT validado; nunca aceita user_id do cliente.
 verify_jwt = true
+
+[functions.send-notifications]
+# Chamada pelo pg_cron; autentica pelo header X-Cron-Secret (cron_secret em app_secrets).
+verify_jwt = false
+
+[functions.sync-google-calendar]
+# Chamada pelo pg_cron; autentica pelo header X-Cron-Secret.
+verify_jwt = false
+
+[functions.google-oauth-callback]
+# Retorno do consentimento do Google (navegação comum, sem JWT); a segurança vem do `state` de uso único.
+verify_jwt = false
+
+[functions.waitlist-join]
+# Formulário público do site; protegido por origem, Turnstile no servidor e limite por IP.
+verify_jwt = false

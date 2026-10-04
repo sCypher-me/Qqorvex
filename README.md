@@ -40,6 +40,7 @@ O CI (`.github/workflows/ci.yml`) roda tudo isso em todo PR e push na `main`.
 | Pasta | Conteúdo |
 | --- | --- |
 | `apps/qqorvex` | o app: shell, páginas, Vex na interface, assinatura |
+| `apps/site` | site de apresentação com a lista de espera do beta (`pnpm --filter site dev`, porta 5180) |
 | `modules/<área>/<módulo>` | um módulo de domínio cada: `types` → `repository` (Supabase) → `service` (regras puras, testadas) → `hooks` (TanStack Query) → `components` |
 | `packages/auth` | sessão, 2FA, PIN do Cofre, perfil |
 | `packages/database` | cliente e tipos gerados do Supabase, busca global |

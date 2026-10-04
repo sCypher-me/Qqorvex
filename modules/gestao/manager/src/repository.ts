@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import type { ManagedAccount, NewRedemptionCodeInput, PartnerCampaign, PartnerCampaignInput, RedeemResult, RedemptionCode, RedemptionCodeTier, SystemOverview } from "./types";
+import type { ManagedAccount, NewRedemptionCodeInput, PartnerCampaign, WaitlistSignup, PartnerCampaignInput, RedeemResult, RedemptionCode, RedemptionCodeTier, SystemOverview } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -111,6 +111,29 @@ export async function updatePartnerCampaignEnd(client: Client, campaignId: strin
   const { data, error } = await client.from("partner_campaigns").update({ ends_at: endsAt }).eq("id", campaignId).select("*").single();
   if (error) throw error;
   return data;
+}
+
+/** Lista de espera — RLS só deixa o Dono ler e marcar convidados. Mais recentes primeiro. */
+export async function listWaitlist(client: Client): Promise<WaitlistSignup[]> {
+  const { data, error } = await client.from("waitlist_signups").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function setWaitlistInvited(client: Client, ids: string[], invited: boolean): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await client.from("waitlist_signups").update({ invited_at: invited ? new Date().toISOString() : null }).in("id", ids);
+  if (error) throw error;
+}
+
+function csvCell(value: string): string {
+  return /[",\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** CSV para planilhas (separador vírgula, cabeçalho em português, datas ISO). */
+export function waitlistToCsv(signups: Pick<WaitlistSignup, "email" | "source" | "created_at" | "invited_at">[]): string {
+  const rows = signups.map((signup) => [signup.email, signup.source, signup.created_at, signup.invited_at ?? ""].map(csvCell).join(","));
+  return ["email,origem,inscrito_em,convidado_em", ...rows].join("\n");
 }
 
 export interface SecretKeyStatus {

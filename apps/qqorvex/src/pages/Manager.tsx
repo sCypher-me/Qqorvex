@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowRightIcon, CopyIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, TicketIcon, UsersIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
@@ -14,6 +14,9 @@ import {
   useSetSecret,
   useSystemOverview,
   useUpdatePartnerCampaignEnd,
+  useSetWaitlistInvited,
+  useWaitlist,
+  waitlistToCsv,
   type AccountTier,
   type PartnerCampaign,
 } from "@qqorvex/module-manager";
@@ -23,9 +26,9 @@ import { usePageMeta } from "../app/shell/PageMeta";
 const TIER_LABEL: Record<AccountTier, string> = { padrao: "Padrão", parceiro: "Parceiro", lifetime: "Lifetime", vip: "VIP" };
 const TIER_TONE: Record<AccountTier, BadgeTone> = { padrao: "neutral", parceiro: "info", lifetime: "gold", vip: "gold" };
 
-type ManagerTab = "visao-geral" | "contas" | "codigos" | "config";
+type ManagerTab = "visao-geral" | "contas" | "codigos" | "lista" | "config";
 
-const TABS: ManagerTab[] = ["visao-geral", "contas", "codigos", "config"];
+const TABS: ManagerTab[] = ["visao-geral", "contas", "codigos", "lista", "config"];
 
 function Panel({ title, description, aside, children, className = "" }: { title: string; description?: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -108,6 +111,7 @@ export function ManagerPage() {
             { value: "visao-geral", label: "Visão geral" },
             { value: "contas", label: "Contas" },
             { value: "codigos", label: "Códigos" },
+            { value: "lista", label: "Lista de espera" },
             { value: "config", label: "Integrações" },
           ]}
         />
@@ -115,6 +119,7 @@ export function ManagerPage() {
       {tab === "visao-geral" && <OverviewSection onNavigate={setTab} />}
       {tab === "contas" && <AccountsSection currentUserId={userId} />}
       {tab === "codigos" && <CodesSection userId={userId} />}
+      {tab === "lista" && <WaitlistSection onNavigate={setTab} />}
       {tab === "config" && <SecretsSection />}
     </PageContainer>
   );
@@ -477,8 +482,118 @@ function CampaignsPanel({ userId, campaigns, codes }: { userId: string; campaign
   );
 }
 
+type WaitlistFilter = "pendentes" | "convidados" | "todos";
+
+/**
+ * Inscrições do formulário do site. O convite em si é um código (aba Códigos) enviado por você;
+ * aqui fica o controle de quem já foi convidado.
+ */
+function WaitlistSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void }) {
+  const { toast } = useToast();
+  const { signups, isLoading, error } = useWaitlist(supabase);
+  const setInvited = useSetWaitlistInvited(supabase);
+  const [filter, setFilter] = useState<WaitlistFilter>("pendentes");
+  const pending = signups.filter((signup) => !signup.invited_at);
+  const invited = signups.length - pending.length;
+  const visible = filter === "pendentes" ? pending : filter === "convidados" ? signups.filter((signup) => signup.invited_at) : signups;
+
+  async function copyPendingEmails() {
+    try {
+      await navigator.clipboard.writeText(pending.map((signup) => signup.email).join(", "));
+      toast({ title: `${pending.length} e-mail${pending.length === 1 ? "" : "s"} copiado${pending.length === 1 ? "" : "s"}`, tone: "success" });
+    } catch {
+      toast({ title: "Não foi possível copiar automaticamente", tone: "danger" });
+    }
+  }
+
+  function exportCsv() {
+    const blob = new Blob([`\uFEFF${waitlistToCsv(signups)}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `lista-de-espera-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <Panel
+      title="Lista de espera"
+      description="Quem se inscreveu pelo site. Gere os convites em Códigos, envie e marque aqui quem já foi convidado."
+      aside={
+        signups.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" leadingIcon={<CopyIcon size={14} />} onClick={() => void copyPendingEmails()} disabled={pending.length === 0}>
+              Copiar e-mails pendentes
+            </Button>
+            <Button size="sm" variant="ghost" leadingIcon={<DownloadSimpleIcon size={14} />} onClick={exportCsv}>
+              Exportar CSV
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
+      {isLoading ? (
+        <SkeletonList rows={3} />
+      ) : error ? (
+        <SectionError what="a lista de espera" />
+      ) : signups.length === 0 ? (
+        <EmptyState>Ninguém se inscreveu ainda. As inscrições do formulário do site aparecem aqui.</EmptyState>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-fg-3">
+            <span className="tabular-nums">{signups.length} inscritos · {pending.length} pendentes · {invited} convidados</span>
+            <span className="flex-1" />
+            <Tabs<WaitlistFilter>
+              label="Filtro da lista"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "pendentes", label: "Pendentes" },
+                { value: "convidados", label: "Convidados" },
+                { value: "todos", label: "Todos" },
+              ]}
+            />
+          </div>
+          {visible.length === 0 ? (
+            <EmptyState>{filter === "pendentes" ? "Todos já foram convidados." : "Ninguém convidado ainda."}</EmptyState>
+          ) : (
+            <ul className="-mx-4 -mb-4 flex flex-col divide-y divide-line-soft border-t border-line-soft sm:-mx-5 sm:-mb-5">
+              {visible.map((signup) => (
+                <li key={signup.id} className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-medium text-fg">{signup.email}</p>
+                    <p className="text-xs text-fg-3">
+                      Inscrito em {shortDate.format(new Date(signup.created_at))}
+                      {signup.invited_at ? ` · convidado em ${shortDate.format(new Date(signup.invited_at))}` : ""}
+                    </p>
+                  </div>
+                  {signup.invited_at ? <Badge tone="success">Convidado</Badge> : <Badge tone="neutral">Pendente</Badge>}
+                  <Button
+                    size="sm"
+                    variant={signup.invited_at ? "ghost" : "secondary"}
+                    disabled={setInvited.isPending}
+                    onClick={() => setInvited.mutate({ ids: [signup.id], invited: !signup.invited_at })}
+                  >
+                    {signup.invited_at ? "Desfazer" : "Marcar convidado"}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" onClick={() => onNavigate("codigos")} className="mt-1 self-start text-xs font-medium text-gold-fg hover:underline">
+            Gerar códigos de convite →
+          </button>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 const SECRET_LABELS: Record<string, string> = {
   app_base_url: "URL pública do Qqorvex",
+  site_base_url: "URL do site de apresentação (domínio próprio, se houver)",
+  turnstile_secret_key: "Turnstile — chave secreta (lista de espera do site)",
   cron_secret: "Segredo do agendador",
   gemini_api_key: "Chave do Gemini",
   gemini_model: "Modelo do Gemini",

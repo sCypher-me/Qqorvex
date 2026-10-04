@@ -3339,6 +3339,30 @@ export type Database = {
           },
         ]
       }
+      waitlist_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          invited_at: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          invited_at?: string | null
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          invited_at?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       warranties: {
         Row: {
           created_at: string
@@ -3510,6 +3534,10 @@ export type Database = {
         Returns: undefined
       }
       verify_security_pin: { Args: { candidate_pin: string }; Returns: boolean }
+      waitlist_register: {
+        Args: { p_email: string; p_ip_hash: string; p_source?: string }
+        Returns: string
+      }
       unlock_vault: { Args: { pin: string }; Returns: string | null }
       lock_vault: { Args: never; Returns: undefined }
       vault_unlocked_until: { Args: never; Returns: string | null }

@@ -61,7 +61,7 @@ export function TurnstileCaptcha({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "expired" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "verified" | "expired" | "error">("loading");
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export function TurnstileCaptcha({
           theme: "auto",
           size: "flexible",
           callback: (token) => {
-            setState("ready");
+            setState("verified");
             onToken(token);
           },
           "expired-callback": () => {
@@ -89,7 +89,8 @@ export function TurnstileCaptcha({
             onToken(null);
           },
         });
-        setState("ready");
+        // O callback pode disparar dentro do render (ex.: chave de teste); não volta de "verified" para "ready".
+        setState((current) => (current === "loading" ? "ready" : current));
       })
       .catch(() => {
         if (cancelled) return;
@@ -116,6 +117,7 @@ export function TurnstileCaptcha({
   const status = {
     loading: "Carregando verificação de segurança…",
     ready: "Conclua a verificação para continuar.",
+    verified: "Verificação concluída.",
     expired: "A verificação expirou. Faça-a novamente.",
     error: "Não foi possível carregar a verificação. Confira sua conexão e tente novamente.",
   }[state];

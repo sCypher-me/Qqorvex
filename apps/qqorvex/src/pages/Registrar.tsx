@@ -9,7 +9,7 @@ import { PhoneField } from "../components/PhoneField";
 import { OAuthButtons } from "../components/OAuthButtons";
 import { VerifyEmailNotice } from "../components/VerifyEmailNotice";
 import { StatusIcon } from "../components/StatusIcon";
-import { TurnstileCaptcha } from "../components/TurnstileCaptcha";
+import { TurnstileCaptcha } from "@qqorvex/ui";
 
 export function RegistrarPage() {
   const { session, isLoading, signUpWithPassword } = useAuth();

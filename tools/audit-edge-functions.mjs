@@ -76,4 +76,19 @@ requirePattern("sync-google-calendar", googleSync, /refresh_token/, "uso do refr
 requirePattern("sync-google-calendar", googleSync, /google_updated_at/, "controle de concorrência da sincronização");
 requirePattern("sync-google-calendar", googleSync, /\.eq\("user_id", connection\.user_id\)/, "isolamento da conexão por usuário");
 
+const waitlist = await source("waitlist-join");
+requirePattern("waitlist-join", waitlist, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/, "Turnstile conferido no servidor");
+requirePattern("waitlist-join", waitlist, /turnstile_secret_key/, "chave secreta fora do cliente");
+requirePattern("waitlist-join", waitlist, /body\.website/, "campo-armadilha anti-robô");
+requirePattern("waitlist-join", waitlist, /waitlist_register/, "limite por IP e gravação no banco");
+requirePattern("waitlist-join", waitlist, /if \(!allowed\) return json/, "origem permitida");
+
+// Funções chamadas sem JWT de usuário precisam estar declaradas em config.toml; publicar pela CLI
+// sem isso as deixaria exigindo login (cron, retorno do Google e formulário do site parariam).
+const config = await readFile(new URL("supabase/config.toml", root), "utf8");
+for (const name of ["send-notifications", "sync-google-calendar", "google-oauth-callback", "waitlist-join", "stripe-webhook", "billing-app-return"]) {
+  const section = config.split(`[functions.${name}]`)[1]?.split("[functions.")[0] ?? "";
+  assert.match(section, /verify_jwt = false/, `config.toml: ${name} precisa de verify_jwt = false`);
+}
+
 console.log("edge function security invariants passed");

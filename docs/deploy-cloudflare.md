@@ -70,3 +70,37 @@ aparecer. O login ainda não volta para lá até o passo 3.
 - "Esqueci a senha" → o link do e-mail abre `qqorvex-app.pages.dev/redefinir-senha`.
 - Abrir a Vex e mandar uma mensagem.
 - Recarregar a página numa rota interna (ex.: `/planejar/agenda`) — deve abrir normalmente.
+
+## 5. Site de apresentação e lista de espera
+
+Mesmo caminho do passo 1, com outro projeto:
+
+- **Project name:** `qqorvex`
+- **Build command:** `pnpm --filter site build`
+- **Build output directory:** `apps/site/dist`
+- **Root directory:** vazio
+
+| Variável | Valor |
+| --- | --- |
+| `NODE_VERSION` | `22` |
+| `PNPM_VERSION` | `9.15.9` |
+| `VITE_SUPABASE_URL` | `https://uowipikbumbaprckdvkg.supabase.co` |
+| `VITE_TURNSTILE_SITE_KEY` | a mesma do app (o mesmo widget, com os dois hostnames do passo 3.3) |
+| `VITE_APP_URL` | `https://qqorvex-app.pages.dev` (botão "Entrar") |
+
+Sem `VITE_TURNSTILE_SITE_KEY` o formulário mostra "A lista de espera abre em breve". Para abrir a lista:
+
+1. **Cloudflare → Turnstile →** o widget → copie a **Secret key**.
+2. **Central do Dono → Integrações → Nova chave:** `turnstile_secret_key` com essa secret. Sem ela, a
+   função `waitlist-join` recusa tudo com "A lista de espera ainda não está aberta.".
+3. Opcional, só com domínio próprio: `site_base_url` com o endereço do site — a função já aceita
+   `qqorvex.pages.dev`, suas prévias e `localhost:5180`.
+
+As inscrições aparecem em **Manager → Lista de espera**: copie os e-mails pendentes ou exporte o CSV,
+gere os códigos de convite e marque cada pessoa como convidada. A função confere o Turnstile no
+servidor, limita 5 tentativas por hora por IP (guardado só como hash) e ignora robôs que preenchem o
+campo-armadilha.
+
+Para rodar localmente: `pnpm --filter site dev` (porta 5180). Com
+`VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` em `apps/site/.env.local` (chave de teste da
+Cloudflare, sempre aprova) o formulário funciona sem o widget real.
