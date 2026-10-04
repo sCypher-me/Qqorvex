@@ -233,20 +233,21 @@ export function SecuritySettings() {
   async function closeEnrollmentModal() {
     if (mfaBusy) return;
     const pendingFactorId = enrollment?.factorId;
+    if (pendingFactorId) {
+      setMfaBusy(true);
+      const { error } = await unenrollFactor(client, pendingFactorId);
+      setMfaBusy(false);
+      if (error) {
+        setMfaError("A configuração pendente não foi removida. Tente novamente antes de cadastrar outro app.");
+        return;
+      }
+      refreshFactors();
+    }
+
     setMfaModalOpen(false);
     setEnrollment(null);
     setCode("");
     setMfaError(null);
-    if (!pendingFactorId) return;
-
-    setMfaBusy(true);
-    const { error } = await unenrollFactor(client, pendingFactorId);
-    setMfaBusy(false);
-    if (error) {
-      setMfaError("A configuração pendente não foi removida. Tente novamente antes de cadastrar outro app.");
-    } else {
-      refreshFactors();
-    }
   }
 
   async function removeFactor(factorId: string) {

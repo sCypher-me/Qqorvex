@@ -18,9 +18,17 @@ export interface MfaFactor {
 
 export interface TotpEnrollment {
   factorId: string;
-  /** Data URI pronta pra usar num <img src=...> — o Supabase retorna SVG cru, não URI. */
+  /** Data URI pronta pra usar num <img src=...>. */
   qrCodeDataUri: string;
   secret: string;
+}
+
+function toQrCodeDataUri(qrCode: string): string {
+  // supabase-js 2.116+ já converte o SVG em data URI durante `mfa.enroll`.
+  // Preserva esse valor para não criar um URI duplicado; versões anteriores retornavam SVG cru.
+  return qrCode.startsWith("data:image/svg+xml")
+    ? qrCode
+    : `data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`;
 }
 
 export async function enrollTotp(client: SupabaseClient<Database>): Promise<{ enrollment: TotpEnrollment | null; error: string | null }> {
@@ -29,7 +37,7 @@ export async function enrollTotp(client: SupabaseClient<Database>): Promise<{ en
   return {
     enrollment: {
       factorId: data.id,
-      qrCodeDataUri: `data:image/svg+xml;utf-8,${encodeURIComponent(data.totp.qr_code)}`,
+      qrCodeDataUri: toQrCodeDataUri(data.totp.qr_code),
       secret: data.totp.secret,
     },
     error: null,
