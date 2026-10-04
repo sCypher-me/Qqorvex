@@ -10,7 +10,7 @@ const LINKS = [
 export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-line-soft bg-canvas/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-6 sm:px-8">
         <a href="#inicio" className="flex items-center gap-2" aria-label="Qqorvex — início">
           <BrandSymbol size={24} />
           <Wordmark size={19} />
