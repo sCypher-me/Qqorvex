@@ -22,6 +22,7 @@ import {
   FinancialCalendar,
   ImportStatementDialog,
   InstallmentsPanel,
+  InvestmentsPanel,
   RecurringTransactionsPanel,
   TransactionForm,
   TransactionTable,
@@ -58,13 +59,14 @@ import { BarChart, Button, DonutChart, EmptyState, IconButton, Notice, PageConta
 import { useAccount } from "../app/account";
 import { supabase } from "../app/supabase";
 
-type Tab = "visao" | "transacoes" | "orcamentos" | "contas" | "planejamento";
+type Tab = "visao" | "transacoes" | "orcamentos" | "contas" | "planejamento" | "investimentos";
 const TABS: Array<{ value: Tab; label: string }> = [
   { value: "visao", label: "Visão geral" },
   { value: "transacoes", label: "Transações" },
   { value: "orcamentos", label: "Orçamentos" },
   { value: "contas", label: "Contas e cartões" },
   { value: "planejamento", label: "Planejamento" },
+  { value: "investimentos", label: "Investimentos" },
 ];
 
 function csvCell(value: string | number | null | undefined): string {
@@ -151,7 +153,7 @@ export function FinancasPage() {
     <PageHeader
       title="Finanças"
       description={isLoading ? "Carregando…" : `Saldo em contas: ${balances.saldoAtual < 0 ? "− " : ""}${formatBRL(balances.saldoAtual)} · projetado ${balances.saldoProjetado < 0 ? "− " : ""}${formatBRL(balances.saldoProjetado)}`}
-      actions={
+      actions={tab !== "investimentos" ? (
         <>
           <div className="flex items-center rounded-lg border border-line bg-raised shadow-sm">
             <IconButton label="Mês anterior" onClick={() => setMonth(addMonthsToDate(`${month}-01`, -1).slice(0, 7))} className="rounded-r-none">
@@ -171,7 +173,7 @@ export function FinancasPage() {
             Novo lançamento
           </Button>
         </>
-      }
+      ) : undefined}
     >
       <Tabs label="Seções de Finanças" options={TABS} value={tab} onChange={setTab} />
     </PageHeader>
@@ -181,6 +183,8 @@ export function FinancasPage() {
     <PageContainer width="wide">
       {header}
       {error && <Notice title="Não foi possível carregar suas finanças">Verifique a conexão. Nenhum dado foi perdido.</Notice>}
+
+      {tab === "investimentos" && <InvestmentsPanel client={supabase} userId={userId} />}
 
       {tab === "visao" && (
         <div className="flex flex-col gap-6">

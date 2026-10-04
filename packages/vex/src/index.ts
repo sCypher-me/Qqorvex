@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./vexStyle";
 export * from "./safety";
 export * from "./personality";
 export * from "./core/runVexTurn";

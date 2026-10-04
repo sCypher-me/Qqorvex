@@ -1,5 +1,9 @@
 project_id = "uowipikbumbaprckdvkg"
 
+[functions.investment-quotes]
+# A função consulta somente os ativos da conta autenticada e valida o JWT no servidor.
+verify_jwt = true
+
 [functions.invite-user]
 verify_jwt = true
 

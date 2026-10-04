@@ -54,7 +54,7 @@ export function EstudosPage() {
   const { dueFlashcards, upcomingAssessments, isLoading: overviewLoading } = useEstudosOverview(supabase, 30);
   const week = useStudyWeek(supabase);
   const createNotebook = useCreateNotebook(supabase, userId ?? "");
-  const updateNotebook = useUpdateNotebook(supabase);
+  const updateNotebook = useUpdateNotebook(supabase, userId ?? "");
   const deleteNotebook = useDeleteNotebook(supabase);
   const review = useReviewFlashcard(supabase);
 

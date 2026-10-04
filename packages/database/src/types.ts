@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      investment_positions: {
+        Row: {
+          asset_type: string
+          average_price: number
+          created_at: string
+          id: string
+          quantity: number
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          asset_type: string
+          average_price?: number
+          created_at?: string
+          id?: string
+          quantity?: number
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string
+          average_price?: number
+          created_at?: string
+          id?: string
+          quantity?: number
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       accounts: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -1826,6 +1856,9 @@ export type Database = {
       notebooks: {
         Row: {
           area: string | null
+          cover_image_path: string | null
+          cover_stickers: string[]
+          cover_theme: string
           created_at: string
           description: string | null
           end_date: string | null
@@ -1843,6 +1876,9 @@ export type Database = {
         }
         Insert: {
           area?: string | null
+          cover_image_path?: string | null
+          cover_stickers?: string[]
+          cover_theme?: string
           created_at?: string
           description?: string | null
           end_date?: string | null
@@ -1860,6 +1896,9 @@ export type Database = {
         }
         Update: {
           area?: string | null
+          cover_image_path?: string | null
+          cover_stickers?: string[]
+          cover_theme?: string
           created_at?: string
           description?: string | null
           end_date?: string | null
@@ -3369,6 +3408,7 @@ export type Database = {
           email: string
           id: string
           invited_at: string | null
+          rejected_at: string | null
           source: string
         }
         Insert: {
@@ -3376,6 +3416,7 @@ export type Database = {
           email: string
           id?: string
           invited_at?: string | null
+          rejected_at?: string | null
           source?: string
         }
         Update: {
@@ -3383,6 +3424,7 @@ export type Database = {
           email?: string
           id?: string
           invited_at?: string | null
+          rejected_at?: string | null
           source?: string
         }
         Relationships: []
@@ -3498,6 +3540,8 @@ export type Database = {
       has_google_calendar_connection: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
       is_username_available: { Args: { candidate: string }; Returns: boolean }
+      owner_set_account_banned: { Args: { p_banned: boolean; p_user_id: string }; Returns: undefined }
+      owner_set_account_title: { Args: { p_title: string; p_user_id: string }; Returns: undefined }
       list_all_accounts: {
         Args: never
         Returns: {
@@ -3506,7 +3550,9 @@ export type Database = {
           display_name: string
           email: string
           id: string
+          is_banned: boolean
           role: string
+          selected_title: string | null
           username: string
         }[]
       }

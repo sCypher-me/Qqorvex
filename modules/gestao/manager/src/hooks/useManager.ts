@@ -4,6 +4,7 @@ import {
   createPartnerCampaign,
   createRedemptionCode,
   deleteAccount,
+  deleteWaitlistSignup,
   getSystemOverview,
   listAllAccounts,
   listPartnerCampaigns,
@@ -12,7 +13,11 @@ import {
   listWaitlist,
   redeemCode,
   setSecret,
+  setAccountBanned,
+  setAccountTitle,
+  setWaitlistRejected,
   setWaitlistInvited,
+  revokePendingRedemptionCode,
   updatePartnerCampaignEnd,
 } from "../repository";
 import type { NewRedemptionCodeInput, PartnerCampaignInput } from "../types";
@@ -37,6 +42,22 @@ export function useDeleteAccount(client: SupabaseClient<Database>) {
   });
 }
 
+export function useSetAccountTitle(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, title }: { userId: string; title: string }) => setAccountTitle(client, userId, title),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY }),
+  });
+}
+
+export function useSetAccountBanned(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, banned }: { userId: string; banned: boolean }) => setAccountBanned(client, userId, banned),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY }),
+  });
+}
+
 export function useSystemOverview(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: OVERVIEW_KEY, queryFn: () => getSystemOverview(client) });
   return { overview: query.data ?? null, isLoading: query.isLoading, error: query.error };
@@ -51,6 +72,14 @@ export function useCreateRedemptionCode(client: SupabaseClient<Database>, userId
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: NewRedemptionCodeInput) => createRedemptionCode(client, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CODES_KEY }),
+  });
+}
+
+export function useRevokePendingRedemptionCode(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => revokePendingRedemptionCode(client, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CODES_KEY }),
   });
 }
@@ -75,6 +104,22 @@ export function useSetWaitlistInvited(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ ids, invited }: { ids: string[]; invited: boolean }) => setWaitlistInvited(client, ids, invited),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: WAITLIST_KEY }),
+  });
+}
+
+export function useSetWaitlistRejected(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, rejected }: { id: string; rejected: boolean }) => setWaitlistRejected(client, id, rejected),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: WAITLIST_KEY }),
+  });
+}
+
+export function useDeleteWaitlistSignup(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteWaitlistSignup(client, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: WAITLIST_KEY }),
   });
 }

@@ -66,6 +66,7 @@ type TurnParams = {
   provider: VexProvider;
   messages: ChatMessage[];
   tools: ToolDefinition[];
+  vexStyle?: import("../vexStyle").VexStyle;
   /** Chamado a cada consulta concluída, para a interface mostrar o progresso ("Consultando Agenda…"). */
   onStep?: (step: VexStep) => void;
 };
@@ -120,7 +121,7 @@ async function continueTurn(
   for (let round = 0; round <= MAX_VEX_READ_STEPS; round += 1) {
     // Na última rodada a Vex precisa responder com o que já tem: sem ferramentas disponíveis.
     const offerTools = round < MAX_VEX_READ_STEPS;
-    const response = await provider.chat({ messages, tools: offerTools ? tools : [] });
+    const response = await provider.chat({ messages, tools: offerTools ? tools : [], vexStyle: params.vexStyle });
 
     if (response.kind === "message") {
       const content = response.content.trim() || lastSummary || "";
@@ -160,7 +161,7 @@ async function continueTurn(
     const key = `${tool.name}:${JSON.stringify(args)}`;
     if (seen.has(key)) {
       // Pediu a mesma consulta de novo: força a resposta na próxima rodada.
-      const final = await provider.chat({ messages, tools: [] });
+      const final = await provider.chat({ messages, tools: [], vexStyle: params.vexStyle });
       const content = final.kind === "message" && final.content.trim() ? final.content : lastSummary ?? "";
       return { kind: "message", content, steps };
     }

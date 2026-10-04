@@ -14,7 +14,7 @@
 | Tamanho máximo por arquivo | 10 MB | 50 MB |
 | Preço | Grátis | R$ 19,90/mês ou R$ 214,90/ano |
 
-Todos os módulos continuam acessíveis no Free. O período anual custa R$ 23,90 menos que doze cobranças mensais (aproximadamente 10%). A Vex é uma assistente de texto; uma mensagem pode consumir mais de uma chamada se ela precisar executar uma ação, e a busca na internet é contabilizada à parte. O período de uso reinicia no primeiro dia do mês em `America/Sao_Paulo`.
+Todos os módulos continuam acessíveis no Free. O período anual custa R$ 23,90 menos que doze cobranças mensais (10% de desconto, arredondado). A Vex é uma assistente de texto; uma mensagem pode consumir mais de uma chamada se ela precisar executar uma ação, e a busca na internet é contabilizada à parte. O período de uso reinicia no primeiro dia do mês em `America/Sao_Paulo`.
 
 O armazenamento é implementado no bucket privado `documents` do Supabase Storage, com acesso restrito por usuário. A cota individual inclui arquivos atuais, versões históricas e itens na lixeira, pois todos continuam ocupando espaço até serem removidos fisicamente. Além da cota individual, o plano do Supabase impõe uma cota global compartilhada pelo projeto; ela precisa ser monitorada e ampliada quando o uso crescer.
 

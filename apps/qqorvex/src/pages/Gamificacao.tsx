@@ -134,7 +134,7 @@ export function GamificacaoPage() {
 
       {tab === "conquistas" && <BadgesTab badges={badges} stats={stats} loading={badgesLoading} error={Boolean(badgesError)} />}
 
-      {tab === "niveis" && <LevelsTab level={progress.level} />}
+      {tab === "niveis" && <LevelsTab progress={progress} title={profile?.selected_title || title || "Iniciante"} />}
     </PageContainer>
   );
 }
@@ -314,7 +314,11 @@ function BadgesTab({ badges, stats, loading, error }: { badges: BadgeWithStatus[
   const unlocked = badges.filter((badge) => badge.isUnlockedForUser);
   const visible = filter === "todas" ? badges : filter === "conquistadas" ? unlocked : badges.filter((badge) => !badge.isUnlockedForUser);
   const milestones = visible.filter((badge) => badge.subscriptionMonths == null);
-  const loyalty = visible.filter((badge) => badge.subscriptionMonths != null);
+  const allLoyalty = badges.filter((badge) => badge.subscriptionMonths != null);
+  const earnedLoyalty = allLoyalty.filter((badge) => badge.isUnlockedForUser).sort((a, b) => (a.subscriptionMonths ?? 0) - (b.subscriptionMonths ?? 0));
+  const currentLoyalty = earnedLoyalty.at(-1) ?? null;
+  const nextLoyalty = allLoyalty.find((badge) => (badge.subscriptionMonths ?? 0) > (currentLoyalty?.subscriptionMonths ?? 0)) ?? null;
+  const shownLoyalty = filter === "conquistadas" ? (currentLoyalty ? [currentLoyalty] : []) : filter === "bloqueadas" ? (nextLoyalty ? [nextLoyalty] : []) : [currentLoyalty, nextLoyalty].filter((badge): badge is BadgeWithStatus => badge !== null);
   if (error) return <Notice title="Insígnias indisponíveis">Atualize a página para tentar de novo.</Notice>;
   return (
     <div className="flex flex-col gap-4">
@@ -343,24 +347,31 @@ function BadgesTab({ badges, stats, loading, error }: { badges: BadgeWithStatus[
       ) : (
         <>
           {milestones.length > 0 && <BadgesPanel badges={milestones} stats={stats} />}
-          {loyalty.length > 0 && (
+          {allLoyalty.length > 0 && (
             <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:p-5" aria-labelledby="loyalty-title">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 id="loyalty-title" className="text-[14.5px] font-semibold text-fg">Fidelidade Plus</h3>
-                <span className="text-xs tabular-nums text-fg-3">
-                  {loyalty.filter((badge) => badge.isUnlockedForUser).length} de {loyalty.length} · um selo por mês de assinatura
-                </span>
+                <span className="text-xs tabular-nums text-fg-3">{currentLoyalty ? `${currentLoyalty.subscriptionMonths} de 50 meses` : "Seu primeiro selo chega no 1º mês"} · um selo atual por vez</span>
               </div>
-              <ul className="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2">
-                {loyalty.map((badge) => (
-                  <li key={badge.key} title={`${badge.label}${badge.isUnlockedForUser ? " · conquistado" : ""}`} className={cx("flex flex-col items-center gap-1 rounded-lg border p-2", badge.isUnlockedForUser ? "border-gold-line bg-gold-soft" : "border-line-soft")}>
-                    <SpecialBadgeArt badge={badge} locked={!badge.isUnlockedForUser} className="h-10 w-10" />
-                    <span className={cx("whitespace-nowrap text-[11px] tabular-nums", badge.isUnlockedForUser ? "text-fg-2" : "text-fg-4")}>
-                      {badge.subscriptionMonths} {badge.subscriptionMonths === 1 ? "mês" : "meses"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {shownLoyalty.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-line px-4 py-5 text-center text-sm text-fg-3">{filter === "conquistadas" ? "Você ainda não conquistou um selo de fidelidade." : "Você já chegou ao último selo de fidelidade."}</p>
+              ) : (
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {shownLoyalty.map((badge) => {
+                    const isCurrent = badge.isUnlockedForUser;
+                    return (
+                      <li key={badge.key} className={cx("flex min-w-0 items-center gap-3 rounded-xl border p-3.5", isCurrent ? "border-gold-line bg-gold-soft" : "border-line-soft bg-canvas/30")}>
+                        <SpecialBadgeArt badge={badge} locked={!isCurrent} className="h-14 w-14 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-fg-4">{isCurrent ? "Selo atual" : "Próximo selo"}</p>
+                          <p className="mt-0.5 font-medium text-fg">{badge.subscriptionMonths} {badge.subscriptionMonths === 1 ? "mês" : "meses"} de Plus</p>
+                          <p className="text-xs text-fg-3">{isCurrent ? "Este selo substitui o anterior." : "Desbloqueia ao completar mais um mês."}</p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </section>
           )}
         </>
@@ -369,38 +380,30 @@ function BadgesTab({ badges, stats, loading, error }: { badges: BadgeWithStatus[
   );
 }
 
-function LevelsTab({ level }: { level: number }) {
-  const current = Math.min(level, MAX_LEVEL);
-  const rewards = new Map<number, (typeof LEVEL_THEMES)[number]>(LEVEL_THEMES.map((theme) => [theme.level, theme]));
+function LevelsTab({ progress, title }: { progress: { level: number; xp: number; progressPercent: number; xpForCurrentLevel: number; xpForNextLevel: number }; title: string }) {
+  const current = Math.min(progress.level, MAX_LEVEL);
+  const remaining = Math.max(0, progress.xpForNextLevel - progress.xp);
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-[13px] text-fg-3">Você mantém a insígnia do seu nível atual; ao subir, ela é substituída. A cada 10 níveis você libera uma nova cor de destaque para o app; a {VIP_THEME.name} acompanha o Plus.</p>
-        <ButtonLink to="/configuracoes/aparencia" size="sm" variant="secondary" leadingIcon={<PaletteIcon size={15} />}>
-          Escolher cor
-        </ButtonLink>
+      <section className="grid min-w-0 gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+        <LevelBadge level={current} alt={`Insígnia atual do nível ${progress.level}`} className="h-20 w-20" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div><p className="text-xs text-fg-3">Sua jornada</p><h2 className="font-display text-xl font-semibold text-fg">Nível {progress.level} <span className="text-sm font-normal text-fg-3">· {title}</span></h2></div>
+            <span className="text-xs tabular-nums text-fg-3">{formatXp(progress.xp)} XP</span>
+          </div>
+          <ProgressBar value={progress.level >= MAX_LEVEL ? 100 : progress.progressPercent} height={7} className="mt-3" />
+          <p className="mt-1.5 text-xs text-fg-3">{progress.level >= MAX_LEVEL ? "Você alcançou o último nível de insígnia." : `${formatXp(remaining)} XP para o nível ${progress.level + 1}`}</p>
+        </div>
+        <ButtonLink to="/configuracoes/aparencia" size="sm" variant="secondary" leadingIcon={<PaletteIcon size={15} />}>Escolher cor</ButtonLink>
+      </section>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-[14px] font-semibold text-fg">Cores liberadas por marco</h3>
+        <p className="text-xs text-fg-3">A cada 10 níveis; a {VIP_THEME.name} acompanha o Plus.</p>
       </div>
-      <ol className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-        {Array.from({ length: MAX_LEVEL }, (_, index) => index + 1).map((value) => {
-          const isCurrent = value === current;
-          const reward = rewards.get(value);
-          return (
-            <li
-              key={value}
-              aria-current={isCurrent ? "step" : undefined}
-              title={`${reward ? `Nível ${value} · libera a cor ${reward.name}` : `Nível ${value}`}${value < current ? " · insígnia substituída pelo nível atual" : value > current ? " · ainda bloqueada" : " · insígnia atual"}`}
-              className={cx("relative flex flex-col items-center gap-1 rounded-lg border px-1 py-2", isCurrent ? "border-gold-line bg-gold-soft ring-1 ring-gold-line" : "border-line-soft bg-surface")}
-            >
-              <LevelBadge level={value} alt={`Insígnia do nível ${value}`} className={cx("h-10 w-10", !isCurrent && "opacity-30 grayscale")} />
-              <span className={cx("text-[11px] tabular-nums", isCurrent ? "font-semibold text-gold-fg" : "text-fg-4")}>{value}</span>
-              {reward && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-2 ring-surface" style={{ backgroundColor: reward.preview.accent }} aria-hidden="true" />}
-            </li>
-          );
-        })}
-      </ol>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {LEVEL_THEMES.map((theme) => {
-          const reached = level >= theme.level;
+          const reached = progress.level >= theme.level;
           return (
             <div key={theme.id} className={cx("flex items-center gap-3 rounded-xl border p-3", reached ? "border-line bg-surface" : "border-line-soft")}>
               <span className="h-8 w-8 shrink-0 rounded-full" style={{ background: `radial-gradient(circle at 35% 30%, ${theme.preview.glow}, ${theme.preview.accent} 55%, ${theme.preview.panel})`, opacity: reached ? 1 : 0.4 }} aria-hidden="true" />

@@ -20,7 +20,7 @@ import {
   isBRPhoneValid, normalizeBRPhone, requestAuthPhoneChange, verifyAuthPhoneChange,
   type TotpEnrollment,
 } from "@qqorvex/auth";
-import { Badge, Button, ConfirmDialog, Input, Notice, ProgressRing, SkeletonBlock, SkeletonList, cx, useToast } from "@qqorvex/ui";
+import { Badge, Button, ConfirmDialog, Input, Modal, Notice, ProgressRing, SkeletonBlock, SkeletonList, cx, useToast } from "@qqorvex/ui";
 import { PasswordField } from "../components/PasswordField";
 import { IconTile, SettingsCard, SettingsHeader, SettingsList, SettingsListRow, relativeTime } from "./shared";
 
@@ -58,13 +58,16 @@ export function SecuritySettings() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [authPhone, setAuthPhone] = useState("");
   const [phoneToken, setPhoneToken] = useState("");
   const [phoneRequested, setPhoneRequested] = useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
+  const [mfaModalOpen, setMfaModalOpen] = useState(false);
   const [code, setCode] = useState("");
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
@@ -87,6 +90,7 @@ export function SecuritySettings() {
   const [pinConfirm, setPinConfirm] = useState("");
   const [pinBusy, setPinBusy] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const verifiedFactors = factors.filter((factor) => factor.status === "verified");
   const emailVerified = Boolean(session?.user.email_confirmed_at);
@@ -132,7 +136,7 @@ export function SecuritySettings() {
       try {
         const result = await verifyAuthPhoneChange(client, normalizedPhone, phoneToken);
         if (result.error) { setPhoneError(result.error); return; }
-        setPhoneRequested(false); setPhoneToken(""); setAuthPhone("");
+        setPhoneRequested(false); setPhoneModalOpen(false); setPhoneToken(""); setAuthPhone("");
         toast({ title: "Telefone de acesso atualizado", description: "A alteração foi confirmada por SMS.", tone: "success" });
       } catch { setPhoneError("Não foi possível confirmar o código. Tente novamente."); }
       finally { setPhoneBusy(false); }
@@ -144,8 +148,17 @@ export function SecuritySettings() {
       const result = await requestAuthPhoneChange(client, normalizedPhone);
       if (result.error) { setPhoneError(result.error); return; }
       setPhoneRequested(true);
+      setPhoneModalOpen(true);
     } catch { setPhoneError("Não foi possível enviar o código por SMS. Tente novamente."); }
     finally { setPhoneBusy(false); }
+  }
+
+  function closePhoneModal() {
+    if (phoneBusy) return;
+    setPhoneModalOpen(false);
+    setPhoneRequested(false);
+    setPhoneToken("");
+    setPhoneError(null);
   }
 
   async function handleChangePassword(event: FormEvent) {
@@ -174,6 +187,7 @@ export function SecuritySettings() {
       setNonce(""); setNeedsNonce(false);
       setNewPassword("");
       setConfirmPassword("");
+      setPasswordModalOpen(false);
       const { error: revokeError } = await client.auth.signOut({ scope: "others" });
       refreshSessions();
       toast({
@@ -190,6 +204,7 @@ export function SecuritySettings() {
 
   async function startEnrollment() {
     setMfaError(null);
+    setMfaModalOpen(true);
     setMfaBusy(true);
     const { enrollment: result, error } = await enrollTotp(client);
     setMfaBusy(false);
@@ -210,8 +225,28 @@ export function SecuritySettings() {
     }
     setEnrollment(null);
     setCode("");
+    setMfaModalOpen(false);
     refreshFactors();
     toast({ title: "Verificação em duas etapas ativada", tone: "success" });
+  }
+
+  async function closeEnrollmentModal() {
+    if (mfaBusy) return;
+    const pendingFactorId = enrollment?.factorId;
+    setMfaModalOpen(false);
+    setEnrollment(null);
+    setCode("");
+    setMfaError(null);
+    if (!pendingFactorId) return;
+
+    setMfaBusy(true);
+    const { error } = await unenrollFactor(client, pendingFactorId);
+    setMfaBusy(false);
+    if (error) {
+      setMfaError("A configuração pendente não foi removida. Tente novamente antes de cadastrar outro app.");
+    } else {
+      refreshFactors();
+    }
   }
 
   async function removeFactor(factorId: string) {
@@ -295,6 +330,14 @@ export function SecuritySettings() {
     setPinCurrent("");
     refreshPin();
     toast({ title: hasPin ? "PIN atualizado" : "PIN criado", tone: "success" });
+    setPinModalOpen(false);
+  }
+
+  function closePasswordModal() {
+    if (passwordBusy || nonceBusy) return;
+    setPasswordModalOpen(false);
+    setNewPassword(""); setConfirmPassword(""); setNonce("");
+    setNeedsNonce(false); setPasswordError(null);
   }
 
   const pinInput = "q-input w-full font-mono tracking-[.3em] placeholder:font-sans placeholder:tracking-normal sm:w-36";
@@ -327,6 +370,8 @@ export function SecuritySettings() {
       </section>
 
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-5">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-fg-3">Acesso à conta</h3>
         <SettingsCard id="seguranca-email" title="E-mail de acesso" description="Usado para entrar e recuperar a conta." aside={<Badge tone={emailVerified ? "success" : "warning"}>{emailVerified ? "Verificado" : "Não verificado"}</Badge>}>
           <p className="break-all text-[13.5px] font-medium text-fg">{session?.user.email ?? "—"}</p>
           <form onSubmit={(event) => void handleChangeEmail(event)} className="flex flex-col gap-2 sm:flex-row">
@@ -341,26 +386,37 @@ export function SecuritySettings() {
         <SettingsCard title="Telefone de acesso" description={session?.user.phone ? `Número confirmado: ${session.user.phone}` : "Adicione um celular confirmado para usar nos recursos de acesso e recuperação."}>
           <form onSubmit={(event) => void handleAuthPhone(event)} className="flex flex-col gap-3">
             <Input label="Celular com DDD" type="tel" autoComplete="tel" inputMode="tel" value={authPhone} onChange={(event) => setAuthPhone(event.target.value)} placeholder="(11) 99999-9999" required disabled={phoneRequested || phoneBusy} />
-            {phoneRequested && <><Notice compact>Enviamos um código por SMS. Confirme para ativar o novo telefone de acesso.</Notice><Input label="Código recebido por SMS" autoComplete="one-time-code" inputMode="numeric" value={phoneToken} onChange={(event) => setPhoneToken(event.target.value.replace(/\D/g, ""))} required /></>}
-            {phoneError && <Notice compact>{phoneError}</Notice>}
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" variant="secondary" loading={phoneBusy} disabled={!authPhone.trim() || (phoneRequested && !phoneToken.trim())}>{phoneRequested ? "Confirmar telefone" : session?.user.phone ? "Trocar telefone" : "Adicionar telefone"}</Button>
-              {phoneRequested && <Button type="button" variant="ghost" disabled={phoneBusy} onClick={() => { setPhoneRequested(false); setPhoneToken(""); setPhoneError(null); }}>Cancelar</Button>}
-            </div>
+            {phoneError && !phoneModalOpen && <Notice compact>{phoneError}</Notice>}
+            <Button type="submit" variant="secondary" loading={phoneBusy} disabled={!authPhone.trim() || phoneRequested}>
+              {session?.user.phone ? "Trocar telefone" : "Adicionar telefone"}
+            </Button>
           </form>
         </SettingsCard>
 
         <SettingsCard title="Senha" description="Ao trocar, as outras sessões são encerradas por segurança.">
-          <form onSubmit={(event) => void handleChangePassword(event)} className="flex flex-col gap-3">
-            <PasswordField label="Nova senha" value={newPassword} onChange={setNewPassword} autoComplete="new-password" showChecklist />
-            <PasswordField label="Confirmar nova senha" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
-            {needsNonce && <><Input label="Código de verificação recebido por e-mail" value={nonce} onChange={(event) => setNonce(event.target.value)} autoComplete="one-time-code" inputMode="numeric" required /><Button type="button" variant="secondary" loading={nonceBusy} onClick={() => void sendNonce()}>Enviar novo código</Button></>}
-            {passwordError && <Notice compact>{passwordError}</Notice>}
-            <Button type="submit" variant="secondary" className="self-start" loading={passwordBusy} disabled={!newPassword || !confirmPassword}>
-              Atualizar senha
-            </Button>
-          </form>
+          <p className="text-[13px] text-fg-3">Use uma senha forte e única. A troca pede confirmação adicional quando necessário.</p>
+          <Button variant="secondary" className="self-start" onClick={() => { setPasswordError(null); setPasswordModalOpen(true); }}>Trocar senha</Button>
         </SettingsCard>
+
+        <SettingsCard
+          id="seguranca-cofre"
+          title="PIN do Cofre"
+          description="Protege só os documentos marcados no Cofre. Não muda sua senha."
+          aside={pinLoading ? undefined : <Badge tone={hasPin ? "success" : "neutral"}>{hasPin ? "Definido" : "Sem PIN"}</Badge>}
+        >
+          {pinLoading ? (
+            <SkeletonBlock className="h-10 w-full rounded-lg" />
+          ) : (
+            <div className="flex flex-col items-start gap-3">
+              <p className="text-[13px] text-fg-3">{hasPin ? "O PIN está ativo para os documentos protegidos." : "Adicione um PIN de pelo menos 6 números para proteger documentos do Cofre."}</p>
+              <Button variant="secondary" leadingIcon={<LockKeyIcon size={15} />} onClick={() => { setPinError(null); setPinModalOpen(true); }}>{hasPin ? "Alterar PIN" : "Criar PIN"}</Button>
+            </div>
+          )}
+        </SettingsCard>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-5">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-fg-3">Proteções e atividade</h3>
 
         <SettingsCard
           id="seguranca-2fa"
@@ -370,26 +426,6 @@ export function SecuritySettings() {
         >
           {factorsLoading ? (
             <SkeletonBlock className="h-20 w-full rounded-lg" />
-          ) : enrollment ? (
-            <form onSubmit={(event) => void confirmEnrollment(event)} className="flex flex-col gap-3">
-              <p className="text-[13px] leading-relaxed text-fg-2">Escaneie o QR code no Google Authenticator, 1Password, Authy ou similar e digite o código gerado.</p>
-              <div className="flex flex-wrap items-center gap-4">
-                <img src={enrollment.qrCodeDataUri} alt="QR code para o app autenticador" className="h-36 w-36 rounded-lg bg-white p-2" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-fg-3">Sem câmera? Digite a chave:</p>
-                  <p className="mt-1 break-all rounded-md border border-line-soft bg-canvas/40 px-2.5 py-2 font-mono text-xs text-fg-2">{enrollment.secret}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" inputMode="numeric" autoComplete="one-time-code" aria-label="Código de 6 dígitos" className="q-input w-36 font-mono tracking-[.3em]" />
-                <Button type="submit" loading={mfaBusy} disabled={code.length !== 6}>
-                  Confirmar
-                </Button>
-                <Button variant="ghost" onClick={() => { setEnrollment(null); setCode(""); }}>
-                  Cancelar
-                </Button>
-              </div>
-            </form>
           ) : verifiedFactors.length > 0 ? (
             <>
               <SettingsList>
@@ -413,12 +449,11 @@ export function SecuritySettings() {
               Ativar verificação
             </Button>
           )}
-          {mfaError && <Notice compact>{mfaError}</Notice>}
+          {!mfaModalOpen && mfaError && <Notice compact>{mfaError}</Notice>}
         </SettingsCard>
 
         <SettingsCard
           id="seguranca-passkeys"
-          className="xl:col-span-2"
           title="Passkeys"
           description="Entre sem senha com biometria, Windows Hello ou chave de segurança."
           aside={passkeysLoading ? undefined : <Badge tone={passkeys.length ? "success" : "neutral"}>{passkeys.length ? `${passkeys.length} ${passkeys.length === 1 ? "ativa" : "ativas"}` : "Nenhuma"}</Badge>}
@@ -461,6 +496,31 @@ export function SecuritySettings() {
           </Button>
           {passkeyError && <Notice compact>{passkeyError}</Notice>}
         </SettingsCard>
+
+        <SettingsCard title="Acessos recentes" description="Entradas na sua conta nos últimos 90 dias." aside={<Button size="xs" variant="ghost" loading={historyLoading} onClick={() => void refreshHistory()}>Atualizar</Button>}>
+          {historyLoading ? (
+            <SkeletonList rows={3} />
+          ) : historyError ? (
+            <Notice compact>Não foi possível carregar o histórico.</Notice>
+          ) : loginEvents.length === 0 ? (
+            <p className="text-[13px] leading-relaxed text-fg-3">Os próximos acessos aparecem aqui.</p>
+          ) : (
+            <SettingsList>
+              {loginEvents.slice(0, 8).map((event) => {
+                const { browser, os } = parseUserAgent(event.userAgent);
+                return (
+                  <SettingsListRow
+                    key={event.id}
+                    title={`${browser} · ${os}`}
+                    description={`${loginDateTime.format(new Date(event.occurredAt))} · IP ${event.ipAddress ?? "não registrado"}`}
+                    trailing={<Badge tone="neutral">{event.action === "user_signedup" ? "Conta criada" : "Login"}</Badge>}
+                  />
+                );
+              })}
+            </SettingsList>
+          )}
+        </SettingsCard>
+        </div>
       </div>
 
       <SettingsCard
@@ -514,56 +574,98 @@ export function SecuritySettings() {
         {sessionError && <Notice compact>{sessionError}</Notice>}
       </SettingsCard>
 
-      <div className="columns-1 gap-5 xl:columns-2">
-        <SettingsCard className="mb-5 break-inside-avoid" title="Acessos recentes" description="Entradas na sua conta nos últimos 90 dias." aside={<Button size="xs" variant="ghost" loading={historyLoading} onClick={() => void refreshHistory()}>Atualizar</Button>}>
-          {historyLoading ? (
-            <SkeletonList rows={3} />
-          ) : historyError ? (
-            <Notice compact>Não foi possível carregar o histórico.</Notice>
-          ) : loginEvents.length === 0 ? (
-            <p className="text-[13px] leading-relaxed text-fg-3">Os próximos acessos aparecem aqui.</p>
-          ) : (
-            <SettingsList>
-              {loginEvents.slice(0, 8).map((event) => {
-                const { browser, os } = parseUserAgent(event.userAgent);
-                return (
-                  <SettingsListRow
-                    key={event.id}
-                    title={`${browser} · ${os}`}
-                    description={`${loginDateTime.format(new Date(event.occurredAt))} · IP ${event.ipAddress ?? "não registrado"}`}
-                    trailing={<Badge tone="neutral">{event.action === "user_signedup" ? "Conta criada" : "Login"}</Badge>}
-                  />
-                );
-              })}
-            </SettingsList>
-          )}
-        </SettingsCard>
+      <Modal
+        isOpen={phoneModalOpen}
+        onClose={closePhoneModal}
+        title="Confirme seu telefone"
+        description={`Enviamos um código por SMS para ${normalizeBRPhone(authPhone) ?? authPhone}.`}
+        size="sm"
+        icon={<DeviceMobileIcon size={18} />}
+      >
+        <form onSubmit={(event) => void handleAuthPhone(event)} className="flex flex-col gap-4">
+          <Input
+            label="Código recebido por SMS"
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            value={phoneToken}
+            onChange={(event) => setPhoneToken(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            required
+            autoFocus
+          />
+          {phoneError && <Notice compact>{phoneError}</Notice>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={phoneBusy} onClick={closePhoneModal}>Cancelar</Button>
+            <Button type="submit" loading={phoneBusy} disabled={phoneToken.length < 6}>Confirmar telefone</Button>
+          </div>
+        </form>
+      </Modal>
 
-        <SettingsCard
-          id="seguranca-cofre"
-          className="mb-5 break-inside-avoid"
-          title="PIN do Cofre"
-          description="Protege só os documentos marcados no Cofre. Não muda sua senha."
-          aside={pinLoading ? undefined : <Badge tone={hasPin ? "success" : "neutral"}>{hasPin ? "Definido" : "Sem PIN"}</Badge>}
-        >
-          {pinLoading ? (
-            <SkeletonBlock className="h-10 w-full rounded-lg" />
-          ) : (
-            <form onSubmit={(event) => void savePin(event)} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                {hasPin && <input type="password" inputMode="numeric" autoComplete="current-password" value={pinCurrent} onChange={(event) => setPinCurrent(event.target.value.replace(/\D/g, ""))} placeholder="PIN atual" aria-label="PIN atual" className={pinInput} />}
-                <input type="password" inputMode="numeric" autoComplete="new-password" value={pinValue} onChange={(event) => setPinValue(event.target.value.replace(/\D/g, ""))} placeholder={hasPin ? "Novo PIN" : "Criar PIN"} aria-label={hasPin ? "Novo PIN" : "Criar PIN"} className={pinInput} />
-                <input type="password" inputMode="numeric" autoComplete="new-password" value={pinConfirm} onChange={(event) => setPinConfirm(event.target.value.replace(/\D/g, ""))} placeholder="Confirmar" aria-label="Confirmar PIN" className={pinInput} />
+      <Modal isOpen={passwordModalOpen} onClose={closePasswordModal} title="Atualizar senha" description="Depois da troca, as outras sessões serão encerradas por segurança." size="sm" icon={<LockKeyIcon size={18} />}>
+        <form onSubmit={(event) => void handleChangePassword(event)} className="flex flex-col gap-3">
+          <PasswordField label="Nova senha" value={newPassword} onChange={setNewPassword} autoComplete="new-password" showChecklist />
+          <PasswordField label="Confirmar nova senha" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
+          {needsNonce && <Input label="Código de verificação recebido por e-mail" value={nonce} onChange={(event) => setNonce(event.target.value)} autoComplete="one-time-code" inputMode="numeric" required />}
+          {passwordError && <Notice compact>{passwordError}</Notice>}
+          <div className="flex flex-wrap justify-end gap-2">
+            {needsNonce && <Button type="button" variant="secondary" loading={nonceBusy} disabled={passwordBusy} onClick={() => void sendNonce()}>Enviar novo código</Button>}
+            <Button type="button" variant="ghost" disabled={passwordBusy || nonceBusy} onClick={closePasswordModal}>Cancelar</Button>
+            <Button type="submit" loading={passwordBusy} disabled={!newPassword || !confirmPassword || (needsNonce && nonce.length < 6)}>Atualizar senha</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={pinModalOpen} onClose={() => { if (pinBusy) return; setPinModalOpen(false); setPinCurrent(""); setPinValue(""); setPinConfirm(""); setPinError(null); }} title={hasPin ? "Alterar PIN do Cofre" : "Criar PIN do Cofre"} description="Esse PIN protege somente os documentos marcados no Cofre." size="sm" icon={<LockKeyIcon size={18} />}>
+        <form onSubmit={(event) => void savePin(event)} className="flex flex-col gap-3">
+          {hasPin && <input type="password" inputMode="numeric" autoComplete="current-password" value={pinCurrent} onChange={(event) => setPinCurrent(event.target.value.replace(/\D/g, ""))} placeholder="PIN atual" aria-label="PIN atual" className={pinInput} autoFocus />}
+          <input type="password" inputMode="numeric" autoComplete="new-password" value={pinValue} onChange={(event) => setPinValue(event.target.value.replace(/\D/g, ""))} placeholder={hasPin ? "Novo PIN" : "Criar PIN"} aria-label={hasPin ? "Novo PIN" : "Criar PIN"} className={pinInput} autoFocus={!hasPin} />
+          <input type="password" inputMode="numeric" autoComplete="new-password" value={pinConfirm} onChange={(event) => setPinConfirm(event.target.value.replace(/\D/g, ""))} placeholder="Confirmar" aria-label="Confirmar PIN" className={pinInput} />
+          <p className="text-xs text-fg-3">Pelo menos 6 números.</p>
+          {pinError && <Notice compact>{pinError}</Notice>}
+          <div className="flex justify-end gap-2"><Button type="button" variant="ghost" disabled={pinBusy} onClick={() => { setPinModalOpen(false); setPinCurrent(""); setPinValue(""); setPinConfirm(""); setPinError(null); }}>Cancelar</Button><Button type="submit" leadingIcon={<LockKeyIcon size={15} />} loading={pinBusy} disabled={pinValue.length < 6 || !pinConfirm || (hasPin && !pinCurrent)}>{hasPin ? "Atualizar PIN" : "Criar PIN"}</Button></div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={mfaModalOpen}
+        onClose={() => void closeEnrollmentModal()}
+        title={verifiedFactors.length ? "Adicionar app autenticador" : "Ativar verificação em duas etapas"}
+        description="Escaneie o QR code no seu app autenticador e confirme com o código de 6 dígitos."
+        size="md"
+        icon={<KeyIcon size={18} />}
+      >
+        {enrollment ? (
+          <form onSubmit={(event) => void confirmEnrollment(event)} className="flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+              <img src={enrollment.qrCodeDataUri} alt="QR code para o app autenticador" className="h-36 w-36 shrink-0 rounded-lg bg-white p-2" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] leading-relaxed text-fg-2">Use Google Authenticator, 1Password, Authy ou outro app compatível.</p>
+                <p className="mt-3 text-xs text-fg-3">Sem câmera? Digite esta chave manualmente:</p>
+                <p className="mt-1 break-all rounded-md border border-line-soft bg-canvas/40 px-2.5 py-2 font-mono text-xs text-fg-2">{enrollment.secret}</p>
               </div>
-              <p className="text-xs text-fg-3">Pelo menos 6 números.</p>
-              {pinError && <Notice compact>{pinError}</Notice>}
-              <Button type="submit" variant="secondary" className="self-start" leadingIcon={<LockKeyIcon size={15} />} loading={pinBusy} disabled={pinValue.length < 6 || !pinConfirm || (hasPin && !pinCurrent)}>
-                {hasPin ? "Atualizar PIN" : "Criar PIN"}
-              </Button>
-            </form>
-          )}
-        </SettingsCard>
-      </div>
+            </div>
+            <label className="flex flex-col gap-1.5 text-[13px] font-medium text-fg-2">
+              Código do app autenticador
+              <input data-autofocus value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" inputMode="numeric" autoComplete="one-time-code" aria-label="Código de 6 dígitos" className="q-input w-full font-mono tracking-[.3em] sm:w-44" />
+            </label>
+            {mfaError && <Notice compact>{mfaError}</Notice>}
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="ghost" disabled={mfaBusy} onClick={() => void closeEnrollmentModal()}>Cancelar</Button>
+              <Button type="submit" loading={mfaBusy} disabled={code.length !== 6}>Confirmar ativação</Button>
+            </div>
+          </form>
+        ) : mfaBusy ? (
+          <div className="flex flex-col gap-3" aria-live="polite">
+            <p className="text-[13px] text-fg-2">Preparando a configuração do autenticador…</p>
+            <SkeletonBlock className="h-36 w-full rounded-lg" />
+          </div>
+        ) : mfaError ? (
+          <div className="flex flex-col items-start gap-3">
+            <Notice compact>{mfaError}</Notice>
+            <Button variant="secondary" onClick={() => void startEnrollment()}>Tentar novamente</Button>
+          </div>
+        ) : null}
+      </Modal>
 
       <ConfirmDialog
         isOpen={removeFactorId !== null}

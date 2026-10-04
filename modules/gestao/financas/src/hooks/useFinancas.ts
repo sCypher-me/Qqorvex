@@ -34,6 +34,10 @@ import {
   deleteBudget,
   updateCard,
   deleteCard,
+  deleteInvestmentPosition,
+  fetchInvestmentQuotes,
+  listInvestmentPositions,
+  saveInvestmentPosition,
 } from "../repository";
 import type {
   Account,
@@ -45,6 +49,7 @@ import type {
   Transaction,
   TransactionType,
   UpdateTransactionInput,
+  SaveInvestmentPositionInput,
 } from "../types";
 import type { RecurringTransactionEditInput } from "../service";
 
@@ -55,6 +60,8 @@ const CARDS_KEY = ["cards"] as const;
 const RECURRING_KEY = ["recurring-transactions"] as const;
 const INSTALLMENTS_KEY = ["installments"] as const;
 const BUDGETS_KEY = ["budgets"] as const;
+const INVESTMENT_POSITIONS_KEY = ["investment-positions"] as const;
+const INVESTMENT_QUOTES_KEY = ["investment-quotes"] as const;
 const cardStatementsKey = (cardId: string) => ["card-statements", cardId] as const;
 const cardPeriodTransactionsKey = (cardId: string, periodStartIso: string, periodEndIso: string) =>
   ["card-period-transactions", cardId, periodStartIso, periodEndIso] as const;
@@ -65,6 +72,44 @@ export function useTransactions(client: SupabaseClient<Database>, fromDate?: str
     queryFn: () => listTransactions(client, fromDate, toDate),
   });
   return { transactions: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
+
+export function useInvestmentPositions(client: SupabaseClient<Database>) {
+  const query = useQuery({ queryKey: INVESTMENT_POSITIONS_KEY, queryFn: () => listInvestmentPositions(client) });
+  return { positions: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
+
+export function useInvestmentQuotes(client: SupabaseClient<Database>, enabled = true) {
+  const query = useQuery({
+    queryKey: INVESTMENT_QUOTES_KEY,
+    queryFn: () => fetchInvestmentQuotes(client),
+    enabled,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  return { quotes: query.data?.quotes ?? [], apiKeyConfigured: query.data?.apiKeyConfigured ?? false, isLoading: query.isLoading, error: query.error, refetch: query.refetch, isFetching: query.isFetching };
+}
+
+export function useSaveInvestmentPosition(client: SupabaseClient<Database>, userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveInvestmentPositionInput) => saveInvestmentPosition(client, userId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: INVESTMENT_POSITIONS_KEY });
+      void queryClient.invalidateQueries({ queryKey: INVESTMENT_QUOTES_KEY });
+    },
+  });
+}
+
+export function useDeleteInvestmentPosition(client: SupabaseClient<Database>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteInvestmentPosition(client, id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: INVESTMENT_POSITIONS_KEY });
+      void queryClient.invalidateQueries({ queryKey: INVESTMENT_QUOTES_KEY });
+    },
+  });
 }
 
 export function useCreateTransaction(client: SupabaseClient<Database>, userId: string) {

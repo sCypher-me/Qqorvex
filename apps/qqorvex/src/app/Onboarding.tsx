@@ -23,6 +23,7 @@ import {
 } from "@qqorvex/auth";
 import { BILLING_PLANS } from "../billing/plans";
 import { useTheme, type ThemePreference } from "./ThemeContext";
+import { normalizeVexStyle, VEX_STYLE_OPTIONS, type VexStyle } from "@qqorvex/vex";
 
 type FocusArea = "routine" | "organization" | "study" | "personal";
 
@@ -45,6 +46,8 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
   const [step, setStep] = useState(0);
   const [focusArea, setFocusArea] = useState<FocusArea>("routine");
   const [selectedTheme, setSelectedTheme] = useState<ThemePreference>(preference);
+  const savedPreferences = session!.user.user_metadata.qqorvex_preferences;
+  const [vexStyle, setVexStyle] = useState<VexStyle>(() => normalizeVexStyle(savedPreferences && typeof savedPreferences === "object" ? (savedPreferences as Record<string, unknown>).vex_style : undefined));
   const themeWasSelected = useRef(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null);
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -106,6 +109,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
             ...(session!.user.user_metadata.qqorvex_preferences && typeof session!.user.user_metadata.qqorvex_preferences === "object" ? (session!.user.user_metadata.qqorvex_preferences as Record<string, unknown>) : {}),
             focus_area: focusArea,
             theme: selectedTheme,
+            vex_style: vexStyle,
           },
         },
       });
@@ -259,6 +263,18 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
                       <ThemeChoice icon={<MoonIcon size={19} />} label="Escuro" selected={selectedTheme === "dark"} onClick={() => chooseTheme("dark")} />
                       <ThemeChoice icon={<SunIcon size={19} />} label="Claro" selected={selectedTheme === "light"} onClick={() => chooseTheme("light")} />
                       <ThemeChoice icon={<DesktopIcon size={19} />} label="Automático" selected={selectedTheme === "system"} onClick={() => chooseTheme("system")} />
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="mt-7">
+                    <legend className="mb-3 text-sm font-semibold">Como a Vex conversa</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {VEX_STYLE_OPTIONS.map((option) => (
+                        <button key={option.value} type="button" aria-pressed={vexStyle === option.value} onClick={() => setVexStyle(option.value)} className={`flex min-h-[82px] items-start gap-3 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${vexStyle === option.value ? "border-gold-line bg-gold-soft" : "border-line bg-surface-0 hover:bg-hover"}`}>
+                          <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${vexStyle === option.value ? "border-gold-line" : "border-line-strong"}`}>{vexStyle === option.value && <span className="h-2 w-2 rounded-full bg-gold" />}</span>
+                          <span><span className="block text-sm font-semibold text-fg">{option.label}</span><span className="mt-1 block text-xs leading-5 text-fg-3">{option.description}</span></span>
+                        </button>
+                      ))}
                     </div>
                   </fieldset>
                 </div>

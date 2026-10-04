@@ -694,7 +694,7 @@ export function EstudosCadernoPage() {
 
   const { notebooks, isLoading } = useNotebooks(supabase);
   const notebook = notebooks.find((item) => item.id === notebookId);
-  const updateNotebook = useUpdateNotebook(supabase);
+  const updateNotebook = useUpdateNotebook(supabase, userId);
   const deleteNotebook = useDeleteNotebook(supabase);
   const { summaries } = useSummaries(supabase, notebookId);
   const { flashcards } = useFlashcards(supabase, notebookId);

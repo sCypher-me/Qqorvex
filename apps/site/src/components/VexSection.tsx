@@ -1,5 +1,5 @@
 import { CalendarBlankIcon, CheckIcon, ReceiptIcon, ShieldCheckIcon, SparkleIcon, StackIcon } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@qqorvex/ui";
 
 const EXAMPLES = [
@@ -38,11 +38,55 @@ const EXAMPLES = [
 function Conversation() {
   const [selected, setSelected] = useState(0);
   const [outcome, setOutcome] = useState<"pending" | "confirmed" | "cancelled">("pending");
+  const [visibleResponseLength, setVisibleResponseLength] = useState(0);
+  const [typingRun, setTypingRun] = useState(0);
+  const [hasEnteredViewport, setHasEnteredViewport] = useState(false);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const example = EXAMPLES[selected]!;
   const ExampleIcon = example.Icon;
+  const isTyping = visibleResponseLength < example.response.length;
+
+  useEffect(() => {
+    const element = conversationRef.current;
+    if (!element) return;
+    if (!("IntersectionObserver" in window)) {
+      setHasEnteredViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        setHasEnteredViewport(true);
+        observer.disconnect();
+      }
+    }, { threshold: 0.2 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!hasEnteredViewport) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setVisibleResponseLength(example.response.length);
+      return;
+    }
+
+    let nextLength = 0;
+    const timer = window.setInterval(() => {
+      nextLength += 1;
+      setVisibleResponseLength(nextLength);
+      if (nextLength >= example.response.length) window.clearInterval(timer);
+    }, 22);
+    return () => window.clearInterval(timer);
+  }, [example.response, hasEnteredViewport, typingRun]);
+
+  function replayExample() {
+    setVisibleResponseLength(0);
+    setTypingRun((run) => run + 1);
+  }
 
   return (
-    <div className="min-w-0 rounded-3xl border border-line bg-surface p-4 sm:p-6">
+    <div ref={conversationRef} className="min-w-0 rounded-3xl border border-line bg-surface p-4 sm:p-6">
       <div className="flex items-center gap-3 border-b border-line-soft pb-4">
         <img src="/vex-avatar.webp" alt="" width={64} height={64} className="h-14 w-14 shrink-0 rounded-full border border-ai-line object-cover sm:h-16 sm:w-16" />
         <div className="min-w-0">
@@ -58,7 +102,7 @@ function Conversation() {
             key={item.label}
             type="button"
             aria-pressed={selected === index}
-            onClick={() => { setSelected(index); setOutcome("pending"); }}
+            onClick={() => { setSelected(index); replayExample(); setOutcome("pending"); }}
             className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--q-focus)] ${selected === index ? "border-ai-line bg-ai-soft text-ai-fg" : "border-line bg-raised text-fg-3 hover:border-line-strong hover:text-fg"}`}
           >{item.label}</button>
         ))}
@@ -67,7 +111,10 @@ function Conversation() {
         <div className="flex justify-end">
           <p className="max-w-[92%] rounded-2xl rounded-tr-md bg-gold px-4 py-3 text-sm font-medium leading-relaxed text-on-gold">{example.request}</p>
         </div>
-        <div className="rounded-2xl rounded-tl-md border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-fg-2">{example.response}</div>
+        <div className="rounded-2xl rounded-tl-md border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-fg-2" aria-label={isTyping ? "Vex está digitando" : "Resposta da Vex"}>
+          <span>{example.response.slice(0, visibleResponseLength)}</span>
+          {isTyping && <><span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-ai-fg align-middle" aria-hidden="true" /><span className="sr-only">Vex está digitando</span></>}
+        </div>
         <div className="rounded-2xl border border-ai-line bg-ai-soft p-4">
           <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ai-fg">
             <ShieldCheckIcon size={16} weight="bold" aria-hidden="true" /> {outcome === "confirmed" ? "Ação confirmada" : outcome === "cancelled" ? "Ação cancelada" : "Você decide"}
@@ -82,11 +129,11 @@ function Conversation() {
           </div>
           {outcome === "pending" ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="ai" className="min-h-11" onClick={() => setOutcome("confirmed")}>Confirmar</Button>
+              <Button variant="ai" className="min-h-11" onClick={() => setOutcome("confirmed")} disabled={isTyping}>Confirmar</Button>
               <Button variant="ghost" className="min-h-11" onClick={() => setOutcome("cancelled")}>Agora não</Button>
             </div>
           ) : (
-            <Button variant="ghost" className="mt-3 min-h-11" onClick={() => setOutcome("pending")}>Experimentar novamente</Button>
+            <Button variant="ghost" className="mt-3 min-h-11" onClick={() => { replayExample(); setOutcome("pending"); }}>Experimentar novamente</Button>
           )}
         </div>
         <div role="status" aria-live="polite" aria-atomic="true" className="min-h-12 text-sm leading-relaxed">

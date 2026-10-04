@@ -1,5 +1,13 @@
 import type { Flashcard, FlashcardReviewGrade, QuizQuestion, Topic } from "./types";
 
+/** Cor estável para relacionar visualmente o caderno nos painéis de estudo. */
+export function notebookColor(notebookId: string | null | undefined): string {
+  const paletteSize = 8;
+  let hash = 0;
+  for (const character of notebookId ?? "") hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return `var(--q-cat-${(hash % paletteSize) + 1})`;
+}
+
 /**
  * "Manter hierarquia simples/limitada" para tópicos — mesmo teto de profundidade usado em
  * Metas (principal + subtópico), validado em TS, não no banco.

@@ -40,7 +40,7 @@ export class ResilientProvider implements VexProvider {
     this.name = primary.name;
   }
 
-  async chat(input: { messages: ChatMessage[]; tools: ToolDefinition[] }): Promise<VexProviderResponse> {
+  async chat(input: Parameters<VexProvider["chat"]>[0]): Promise<VexProviderResponse> {
     if (Date.now() < this.primaryUnavailableUntil) return this.fallback.chat(input);
 
     try {

@@ -22,48 +22,110 @@ import { toFlashcardInsert, toNotebookInsert } from "./types";
 
 type Client = SupabaseClient<Database>;
 
+const NOTEBOOK_COVER_BUCKET = "notebook-covers";
+const NOTEBOOK_COVER_TTL_SECONDS = 60 * 60 * 24 * 7;
+const NOTEBOOK_COVER_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+async function uploadNotebookCover(client: Client, userId: string, notebookId: string, file: File): Promise<string> {
+  if (!(NOTEBOOK_COVER_MIME_TYPES as readonly string[]).includes(file.type)) throw new Error("Escolha uma imagem PNG, JPG ou WebP.");
+  if (file.size <= 0 || file.size > 5 * 1024 * 1024) throw new Error("A imagem da capa deve ter até 5 MB.");
+  const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
+  const path = `${userId}/${notebookId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await client.storage.from(NOTEBOOK_COVER_BUCKET).upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+async function withNotebookCoverUrls(client: Client, notebooks: Notebook[]): Promise<Notebook[]> {
+  return Promise.all(notebooks.map(async (notebook) => {
+    if (!notebook.cover_image_path) return { ...notebook, cover_image_url: null };
+    const { data, error } = await client.storage.from(NOTEBOOK_COVER_BUCKET).createSignedUrl(notebook.cover_image_path, NOTEBOOK_COVER_TTL_SECONDS);
+    if (error) {
+      console.warn("Não foi possível carregar a capa privada do caderno:", error);
+      return { ...notebook, cover_image_url: null };
+    }
+    return { ...notebook, cover_image_url: data.signedUrl };
+  }));
+}
+
 export async function listNotebooks(client: Client): Promise<Notebook[]> {
   const { data, error } = await client.from("notebooks").select("*").order("created_at", { ascending: true });
   if (error) throw error;
-  return data;
+  return withNotebookCoverUrls(client, data);
 }
 
 export async function createNotebook(client: Client, userId: string, input: NewNotebookInput): Promise<Notebook> {
-  const { data, error } = await client
-    .from("notebooks")
-    .insert(toNotebookInsert(userId, input))
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
+  const { coverImage, ...details } = input;
+  const { data: created, error: createError } = await client.from("notebooks").insert(toNotebookInsert(userId, details)).select("*").single();
+  if (createError) throw createError;
+  let uploadedPath: string | null = null;
+  if (coverImage instanceof File) {
+    try {
+      uploadedPath = await uploadNotebookCover(client, userId, created.id, coverImage);
+      const { data, error } = await client.from("notebooks").update({ cover_image_path: uploadedPath }).eq("id", created.id).select("*").single();
+      if (error) throw error;
+      return (await withNotebookCoverUrls(client, [data]))[0]!;
+    } catch (error) {
+      if (uploadedPath) await client.storage.from(NOTEBOOK_COVER_BUCKET).remove([uploadedPath]).catch(() => undefined);
+      await client.from("notebooks").delete().eq("id", created.id);
+      throw error;
+    }
+  }
+  return (await withNotebookCoverUrls(client, [created]))[0]!;
 }
 
 export async function deleteNotebook(client: Client, notebookId: string): Promise<void> {
+  const { data: before, error: lookupError } = await client.from("notebooks").select("cover_image_path").eq("id", notebookId).single();
+  if (lookupError) throw lookupError;
   const { error } = await client.from("notebooks").delete().eq("id", notebookId);
   if (error) throw error;
+  if (before.cover_image_path) {
+    const { error: storageError } = await client.storage.from(NOTEBOOK_COVER_BUCKET).remove([before.cover_image_path]);
+    if (storageError) console.warn("A capa do caderno não foi removida do armazenamento:", storageError);
+  }
 }
 
 export async function updateNotebook(
   client: Client,
   notebookId: string,
   input: Partial<NewNotebookInput> & { status?: Notebook["status"]; isFavorite?: boolean },
+  userId: string,
 ): Promise<Notebook> {
+  const { coverImage, ...details } = input;
+  const { data: before, error: lookupError } = await client.from("notebooks").select("cover_image_path").eq("id", notebookId).single();
+  if (lookupError) throw lookupError;
   const update = {
-    ...(input.name !== undefined ? { name: input.name } : {}),
-    ...(input.notebookType !== undefined ? { notebook_type: input.notebookType } : {}),
-    ...(input.area !== undefined ? { area: input.area || null } : {}),
-    ...(input.tags !== undefined ? { tags: input.tags } : {}),
-    ...(input.description !== undefined ? { description: input.description || null } : {}),
-    ...(input.institution !== undefined ? { institution: input.institution || null } : {}),
-    ...(input.instructor !== undefined ? { instructor: input.instructor || null } : {}),
-    ...(input.startDate !== undefined ? { start_date: input.startDate || null } : {}),
-    ...(input.endDate !== undefined ? { end_date: input.endDate || null } : {}),
-    ...(input.status !== undefined ? { status: input.status } : {}),
-    ...(input.isFavorite !== undefined ? { is_favorite: input.isFavorite } : {}),
+    ...(details.name !== undefined ? { name: details.name } : {}),
+    ...(details.notebookType !== undefined ? { notebook_type: details.notebookType } : {}),
+    ...(details.area !== undefined ? { area: details.area || null } : {}),
+    ...(details.tags !== undefined ? { tags: details.tags } : {}),
+    ...(details.description !== undefined ? { description: details.description || null } : {}),
+    ...(details.institution !== undefined ? { institution: details.institution || null } : {}),
+    ...(details.instructor !== undefined ? { instructor: details.instructor || null } : {}),
+    ...(details.startDate !== undefined ? { start_date: details.startDate || null } : {}),
+    ...(details.endDate !== undefined ? { end_date: details.endDate || null } : {}),
+    ...(details.coverTheme !== undefined ? { cover_theme: details.coverTheme } : {}),
+    ...(details.coverStickers !== undefined ? { cover_stickers: details.coverStickers } : {}),
+    ...(details.status !== undefined ? { status: details.status } : {}),
+    ...(details.isFavorite !== undefined ? { is_favorite: details.isFavorite } : {}),
   };
+  let uploadedPath: string | null = null;
+  if (coverImage instanceof File) {
+    uploadedPath = await uploadNotebookCover(client, userId, notebookId, coverImage);
+    Object.assign(update, { cover_image_path: uploadedPath });
+  } else if (coverImage === null) {
+    Object.assign(update, { cover_image_path: null });
+  }
   const { data, error } = await client.from("notebooks").update(update).eq("id", notebookId).select("*").single();
-  if (error) throw error;
-  return data;
+  if (error) {
+    if (uploadedPath) await client.storage.from(NOTEBOOK_COVER_BUCKET).remove([uploadedPath]).catch(() => undefined);
+    throw error;
+  }
+  if (coverImage !== undefined && before.cover_image_path) {
+    const { error: cleanupError } = await client.storage.from(NOTEBOOK_COVER_BUCKET).remove([before.cover_image_path]);
+    if (cleanupError) console.warn("A capa antiga do caderno não foi removida do armazenamento:", cleanupError);
+  }
+  return (await withNotebookCoverUrls(client, [data]))[0]!;
 }
 
 export async function listTopics(client: Client, notebookId: string): Promise<Topic[]> {

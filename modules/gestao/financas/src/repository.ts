@@ -18,16 +18,49 @@ import type {
   Category,
   CategoryKind,
   Installment,
+  InvestmentPosition,
+  InvestmentQuoteResponse,
   NewTransactionInput,
   RecurrenceFrequency,
   RecurringTransaction,
   Transaction,
   TransactionType,
   UpdateTransactionInput,
+  SaveInvestmentPositionInput,
 } from "./types";
 import { toTransactionInsert } from "./types";
 
 type Client = SupabaseClient<Database>;
+
+export async function listInvestmentPositions(client: Client): Promise<InvestmentPosition[]> {
+  const { data, error } = await client.from("investment_positions").select("*").order("asset_type").order("symbol");
+  if (error) throw error;
+  return data;
+}
+
+export async function saveInvestmentPosition(client: Client, userId: string, input: SaveInvestmentPositionInput): Promise<InvestmentPosition> {
+  const { data, error } = await client.from("investment_positions").upsert({
+    user_id: userId,
+    asset_type: input.assetType,
+    symbol: input.symbol.trim().toUpperCase(),
+    quantity: input.quantity,
+    average_price: input.averagePrice,
+  }, { onConflict: "user_id,asset_type,symbol" }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteInvestmentPosition(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("investment_positions").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchInvestmentQuotes(client: Client): Promise<InvestmentQuoteResponse> {
+  const { data, error } = await client.functions.invoke<InvestmentQuoteResponse>("investment-quotes", { body: {} });
+  if (error) throw error;
+  if (!data || !Array.isArray(data.quotes)) throw new Error("A resposta do serviço de cotações está inválida.");
+  return data;
+}
 
 export async function listTransactions(client: Client, fromDate?: string, toDate?: string): Promise<Transaction[]> {
   let query = client.from("transactions").select("*").order("date", { ascending: false });
