@@ -91,8 +91,7 @@ export function VexWelcome({ variant, firstName, starters, onPick }: { variant: 
   if (variant === "panel") {
     return (
       <div className="flex flex-col gap-4 px-1 pt-2">
-        <div className="flex items-center gap-3">
-          <VexAvatar size={40} />
+        <div className="flex flex-col gap-1">
           <div>
             <p className="font-display text-[17px] font-semibold leading-tight text-fg">{greeting(firstName)}</p>
             <p className="text-[13px] text-fg-3">Como posso ajudar?</p>
