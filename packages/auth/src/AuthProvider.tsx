@@ -98,7 +98,7 @@ export function AuthProvider({
             },
           },
         });
-        return { error: error ? mapAuthError(error) : null };
+        return { error: error ? mapAuthError(error, { operation: "signUp" }) : null };
       },
       async signInWithOAuth(provider, options) {
         return signInWithOAuth(client, provider, options);
