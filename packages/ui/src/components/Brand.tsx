@@ -43,7 +43,7 @@ export function Wordmark({ className, size = 20 }: { className?: string; size?: 
 export function VexAvatar({ size = 32, className, status }: { size?: number; className?: string; status?: "idle" | "thinking" | "offline" }) {
   return (
     <span className={cx("relative inline-flex shrink-0", className)} style={{ width: size, height: size }}>
-      <img src="/brand/vex-avatar-256.webp" alt="" width={size} height={size} className="h-full w-full rounded-full object-cover ring-1 ring-ai-line" />
+      <img src="/brand/vex-avatar.png" alt="" width={size} height={size} className="h-full w-full rounded-full object-cover ring-1 ring-ai-line" />
       {status === "thinking" && <span aria-hidden="true" className="absolute -inset-0.5 animate-pulse-soft rounded-full ring-2 ring-ai" />}
       {status === "offline" && <span aria-hidden="true" className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-canvas bg-fg-4" />}
     </span>
