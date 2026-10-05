@@ -55,13 +55,29 @@ function useFloatingPosition(open: boolean, placement: Placement) {
 function useDismiss(open: boolean, onClose: () => void, refs: Array<{ current: HTMLElement | null }>) {
   useEffect(() => {
     if (!open) return;
+    function belongsToNestedLayer(target: EventTarget | null) {
+      if (!(target instanceof Element)) return false;
+      const layer = target.closest<HTMLElement>("[data-floating-owner-trigger]");
+      const triggerId = layer?.dataset.floatingOwnerTrigger;
+      const trigger = triggerId
+        ? Array.from(document.querySelectorAll<HTMLElement>("[data-floating-trigger-id]")).find((element) => element.dataset.floatingTriggerId === triggerId)
+        : null;
+      return Boolean(trigger && refs.some((ref) => ref.current?.contains(trigger)));
+    }
+    function isInsideOpenDialog(target: EventTarget | null) {
+      return target instanceof Element && Boolean(target.closest("dialog[open]"));
+    }
     function onPointer(event: PointerEvent) {
       const target = event.target as Node;
       if (refs.some((ref) => ref.current?.contains(target))) return;
+      // Menus/popovers render in portals. Keep their owning layer open while interacting with them.
+      if (belongsToNestedLayer(event.target) || isInsideOpenDialog(event.target)) return;
       onClose();
     }
     function onKey(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
+        // A modal or nested menu owns Escape until that topmost layer has closed.
+        if (belongsToNestedLayer(event.target) || isInsideOpenDialog(event.target)) return;
         event.stopPropagation();
         onClose();
       }
@@ -89,6 +105,7 @@ export interface PopoverProps {
 
 /** Painel flutuante genérico (filtros, seletores, formulários curtos). */
 export function Popover({ trigger, children, placement = "bottom-start", className, label, open: controlledOpen, onOpenChange }: PopoverProps) {
+  const id = useId();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = useCallback(
@@ -102,13 +119,13 @@ export function Popover({ trigger, children, placement = "bottom-start", classNa
   const { triggerRef, floatingRef, style } = useFloatingPosition(open, placement);
   const refs = useRef([triggerRef, floatingRef]).current;
   useDismiss(open, close, refs as Array<{ current: HTMLElement | null }>);
-  const id = useId();
 
   return (
     <>
       {trigger({
         ref: (element) => {
           triggerRef.current = element;
+          if (element) element.dataset.floatingTriggerId = id;
         },
         onClick: () => setOpen(!open),
         "aria-expanded": open,
@@ -120,6 +137,7 @@ export function Popover({ trigger, children, placement = "bottom-start", classNa
           <div
             ref={floatingRef}
             id={id}
+            data-floating-owner-trigger={id}
             role="dialog"
             aria-label={label}
             style={{ position: "fixed", top: style?.top ?? -9999, left: style?.left ?? -9999, zIndex: 70, visibility: style ? "visible" : "hidden" }}
@@ -158,12 +176,12 @@ export interface DropdownMenuProps {
 
 /** Menu de ações (kebab, "Mais opções"). Navegável por setas, Home/End, Enter e Esc. */
 export function DropdownMenu({ trigger, items, placement = "bottom-end", label, className }: DropdownMenuProps) {
+  const id = useId();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const { triggerRef, floatingRef, style } = useFloatingPosition(open, placement);
   const refs = useRef([triggerRef, floatingRef]).current;
   useDismiss(open, close, refs as Array<{ current: HTMLElement | null }>);
-  const id = useId();
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
@@ -191,6 +209,7 @@ export function DropdownMenu({ trigger, items, placement = "bottom-end", label, 
       {trigger({
         ref: (element) => {
           triggerRef.current = element;
+          if (element) element.dataset.floatingTriggerId = id;
         },
         onClick: () => setOpen((value) => !value),
         "aria-expanded": open,
@@ -202,6 +221,7 @@ export function DropdownMenu({ trigger, items, placement = "bottom-end", label, 
           <div
             ref={floatingRef}
             id={id}
+            data-floating-owner-trigger={id}
             role="menu"
             aria-label={label}
             onKeyDown={onKeyDown}
