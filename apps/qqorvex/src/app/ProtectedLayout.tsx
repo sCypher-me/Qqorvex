@@ -172,7 +172,7 @@ function Shell() {
 
   return (
     <VexLauncherContext.Provider value={openVex}>
-    <div className="flex min-h-dvh bg-canvas">
+    <div data-app-shell className="flex min-h-dvh bg-canvas">
       <div className="hidden lg:block">
         <Sidebar collapsed={collapsed} onOpenPalette={() => setPaletteOpen(true)} onOpenVex={() => openVex()} />
       </div>

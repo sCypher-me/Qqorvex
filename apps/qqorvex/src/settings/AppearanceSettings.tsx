@@ -148,17 +148,17 @@ export function AppearanceSettings() {
       </SettingsCard>
 
       <SettingsCard
-        title="Cor de destaque"
-        description="Muda botões, seleções e destaques. Novas cores chegam a cada 10 níveis; a Coroa Vex acompanha o Plus."
+        title="Temas visuais"
+        description="Temas de nível mudam a cor de destaque; a Coroa Vex transforma superfícies, navegação e atmosfera para assinantes Plus."
         aside={<span className="text-xs text-fg-3">{saving ? "Salvando…" : `Você está no nível ${level}`}</span>}
       >
         <div className="flex flex-col gap-5">
           <div className="grid gap-4 rounded-xl border border-gold-line bg-gold-soft/40 p-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] sm:items-center sm:p-4">
-            <SkinPreview preview={selectedTheme.preview} featured />
+            <SkinPreview preview={selectedTheme.preview} featured skin={selectedTheme.id} />
             <div className="flex min-w-0 flex-col items-start gap-2 px-1 py-1 sm:px-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-[11px] font-semibold text-gold-fg"><CheckIcon size={13} weight="bold" /> TEMA ATUAL</span>
               <h3 className="m-0 font-display text-xl font-semibold text-fg">{selectedTheme.name}</h3>
-              <p className="m-0 text-[13px] text-fg-3">{selectedTheme.essence}</p>
+              <p className="m-0 max-w-md text-[13px] leading-relaxed text-fg-3">{selectedTheme.essence}</p>
               {nextUnlock ? (
                 <div className="mt-1 w-full max-w-xs">
                   <div className="mb-1.5 flex justify-between gap-2 text-[11px] text-fg-3"><span>Próximo: {nextUnlock.name}</span><span>Nível {nextUnlock.level}</span></div>

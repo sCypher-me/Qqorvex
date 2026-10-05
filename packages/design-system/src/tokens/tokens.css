@@ -162,21 +162,122 @@ html[data-theme="light"] {
 }
 
 /*
- * Temas de recompensa (Gamificação): trocam só o acento de marca — superfícies, texto e
- * semântica permanecem, para que a legibilidade nunca dependa do tema desbloqueado.
+ * Temas de recompensa: as cores de nível trocam só o acento de marca. A Coroa Vex também
+ * transforma as superfícies e a atmosfera do app, mantendo os tokens semânticos de feedback.
  */
 html[data-skin="aurora"] { --q-gold: #4fbf8f; --q-gold-hover: #62cc9e; --q-gold-press: #3f9e76; --q-gold-fg: #6fd3a6; --q-gold-soft: rgb(79 191 143 / 0.13); --q-gold-line: rgb(79 191 143 / 0.38); --q-on-gold: #04170f; --q-focus: #6fd3a6; }
 html[data-skin="sakura"] { --q-gold: #e98bab; --q-gold-hover: #f09dba; --q-gold-press: #c97090; --q-gold-fg: #f3a4bf; --q-gold-soft: rgb(233 139 171 / 0.13); --q-gold-line: rgb(233 139 171 / 0.38); --q-on-gold: #2a0a16; --q-focus: #f3a4bf; }
 html[data-skin="solstice"] { --q-gold: #f0b240; --q-gold-hover: #f6c05a; --q-gold-press: #cf952e; --q-gold-fg: #f7c35e; --q-gold-soft: rgb(240 178 64 / 0.14); --q-gold-line: rgb(240 178 64 / 0.4); --q-on-gold: #1f1403; --q-focus: #f7c35e; }
 html[data-skin="nebula"] { --q-gold: #a595f0; --q-gold-hover: #b4a6f5; --q-gold-press: #8a79d6; --q-gold-fg: #bbaeff; --q-gold-soft: rgb(165 149 240 / 0.14); --q-gold-line: rgb(165 149 240 / 0.4); --q-on-gold: #120c2b; --q-focus: #bbaeff; }
 html[data-skin="eclipse"] { --q-gold: #6cc3e6; --q-gold-hover: #82cfee; --q-gold-press: #52a6c8; --q-gold-fg: #8ad4f0; --q-gold-soft: rgb(108 195 230 / 0.13); --q-gold-line: rgb(108 195 230 / 0.38); --q-on-gold: #04161e; --q-focus: #8ad4f0; }
-html[data-skin="vip"] { --q-gold: #b28af0; --q-gold-hover: #c09ef5; --q-gold-press: #946cd6; --q-gold-fg: #c7a6ff; --q-gold-soft: rgb(178 138 240 / 0.14); --q-gold-line: rgb(178 138 240 / 0.4); --q-on-gold: #160b28; --q-focus: #c7a6ff; }
+html[data-skin="vip"] {
+  --q-canvas: #090710;
+  --q-sidebar: #08070d;
+  --q-surface: #12101b;
+  --q-raised: #1a1725;
+  --q-overlay: #231e30;
+  --q-field: #0e0c15;
+  --q-hover: rgb(218 199 255 / 0.055);
+  --q-selected: rgb(186 145 248 / 0.13);
+  --q-selected-solid: #2b223b;
+  --q-scrim: rgb(5 3 10 / 0.76);
+
+  --q-line-soft: rgb(218 199 255 / 0.065);
+  --q-line: rgb(218 199 255 / 0.11);
+  --q-line-strong: rgb(218 199 255 / 0.2);
+
+  --q-fg: #f5effb;
+  --q-fg-2: #d0c5df;
+  --q-fg-3: #a296b4;
+  --q-fg-4: #766b87;
+
+  --q-gold: #b28af0;
+  --q-gold-hover: #c09ef5;
+  --q-gold-press: #946cd6;
+  --q-gold-fg: #d2b7ff;
+  --q-gold-soft: rgb(178 138 240 / 0.15);
+  --q-gold-line: rgb(194 158 248 / 0.4);
+  --q-on-gold: #160b28;
+  --q-focus: #d2b7ff;
+
+  --q-ai: #7452ae;
+  --q-ai-fg: #d2b7ff;
+  --q-ai-soft: rgb(164 126 226 / 0.14);
+  --q-ai-line: rgb(188 155 241 / 0.38);
+  --q-on-ai: #ffffff;
+}
+
+/* Acentos escuros recebem fundos em ameixa clara para manter contraste e sensação premium. */
+html[data-theme="light"][data-skin="vip"] {
+  --q-canvas: #f4f0f8;
+  --q-sidebar: #ede7f4;
+  --q-surface: #fbf9fd;
+  --q-raised: #ffffff;
+  --q-overlay: #ffffff;
+  --q-field: #ffffff;
+  --q-hover: rgb(59 38 88 / 0.045);
+  --q-selected: rgb(112 71 168 / 0.09);
+  --q-selected-solid: #e8dff2;
+  --q-scrim: rgb(24 16 34 / 0.46);
+  --q-line-soft: rgb(59 38 88 / 0.07);
+  --q-line: rgb(59 38 88 / 0.12);
+  --q-line-strong: rgb(59 38 88 / 0.22);
+  --q-fg: #21182b;
+  --q-fg-2: #50415f;
+  --q-fg-3: #766985;
+  --q-fg-4: #a094ad;
+  --q-gold: #865dc0;
+  --q-gold-hover: #744aae;
+  --q-gold-press: #633d9d;
+  --q-gold-fg: #69459f;
+  --q-gold-soft: rgb(116 74 174 / 0.12);
+  --q-gold-line: rgb(116 74 174 / 0.36);
+  --q-on-gold: #ffffff;
+  --q-focus: #69459f;
+
+  --q-ai: #8159ba;
+  --q-ai-fg: #5e3c90;
+  --q-ai-soft: rgb(116 74 174 / 0.11);
+  --q-ai-line: rgb(116 74 174 / 0.34);
+  --q-on-ai: #ffffff;
+}
+
+/* Luz ambiente sutil e filete champanhe na navegação: a assinatura muda o espaço inteiro. */
+html[data-skin="vip"] body {
+  background-image:
+    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(119 72 181 / 0.17), transparent 72%),
+    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.075), transparent 70%),
+    linear-gradient(var(--q-canvas), var(--q-canvas));
+  background-attachment: fixed;
+}
+
+html[data-skin="vip"] [data-app-shell] {
+  background-image:
+    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(119 72 181 / 0.17), transparent 72%),
+    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.075), transparent 70%);
+}
+
+html[data-skin="vip"] aside[aria-label="Navegação principal"] {
+  background-image: linear-gradient(180deg, rgb(220 182 112 / 0.055), transparent 10rem);
+  box-shadow: inset -1px 0 0 rgb(186 145 230 / 0.08), inset 0 1px 0 rgb(224 192 128 / 0.16);
+}
 html[data-theme="light"][data-skin="aurora"] { --q-gold-fg: #237552; --q-focus: #237552; }
 html[data-theme="light"][data-skin="sakura"] { --q-gold-fg: #a33c63; --q-focus: #a33c63; }
 html[data-theme="light"][data-skin="solstice"] { --q-gold-fg: #8a5a08; --q-focus: #8a5a08; }
 html[data-theme="light"][data-skin="nebula"] { --q-gold-fg: #5b47b3; --q-focus: #5b47b3; }
 html[data-theme="light"][data-skin="eclipse"] { --q-gold-fg: #1d6a8a; --q-focus: #1d6a8a; }
-html[data-theme="light"][data-skin="vip"] { --q-gold-fg: #6a3fb0; --q-focus: #6a3fb0; }
+html[data-theme="light"][data-skin="vip"] body {
+  background-image:
+    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(155 116 204 / 0.13), transparent 72%),
+    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.09), transparent 70%),
+    linear-gradient(var(--q-canvas), var(--q-canvas));
+}
+
+html[data-theme="light"][data-skin="vip"] [data-app-shell] {
+  background-image:
+    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(155 116 204 / 0.13), transparent 72%),
+    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.09), transparent 70%);
+}
 
 @theme {
   --color-canvas: var(--q-canvas);
