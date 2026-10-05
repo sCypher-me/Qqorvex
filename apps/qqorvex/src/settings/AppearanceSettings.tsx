@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckIcon, DesktopIcon, MoonIcon, SparkleIcon, SunIcon } from "@phosphor-icons/react";
+import { CheckIcon, CrownIcon, DesktopIcon, MoonIcon, SparkleIcon, SunIcon } from "@phosphor-icons/react";
 import { useAuth } from "@qqorvex/auth";
 import { useGamificationStats } from "@qqorvex/module-gamificacao";
 import { Notice, cx } from "@qqorvex/ui";
@@ -153,10 +153,10 @@ export function AppearanceSettings() {
         aside={<span className="text-xs text-fg-3">{saving ? "Salvando…" : `Você está no nível ${level}`}</span>}
       >
         <div className="flex flex-col gap-5">
-          <div className="grid gap-4 rounded-xl border border-gold-line bg-gold-soft/40 p-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] sm:items-center sm:p-4">
+          <div data-vip-theme-current={skin === VIP_THEME.id ? "" : undefined} className="grid gap-4 rounded-xl border border-gold-line bg-gold-soft/40 p-3 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] sm:items-center sm:p-4">
             <SkinPreview preview={selectedTheme.preview} featured skin={selectedTheme.id} />
             <div className="flex min-w-0 flex-col items-start gap-2 px-1 py-1 sm:px-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-[11px] font-semibold text-gold-fg"><CheckIcon size={13} weight="bold" /> TEMA ATUAL</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-[11px] font-semibold text-gold-fg">{skin === VIP_THEME.id ? <CrownIcon size={13} weight="fill" /> : <CheckIcon size={13} weight="bold" />}{skin === VIP_THEME.id ? "COROA VEX · PLUS" : "TEMA ATUAL"}</span>
               <h3 className="m-0 font-display text-xl font-semibold text-fg">{selectedTheme.name}</h3>
               <p className="m-0 max-w-md text-[13px] leading-relaxed text-fg-3">{selectedTheme.essence}</p>
               {nextUnlock ? (
@@ -170,8 +170,8 @@ export function AppearanceSettings() {
 
           <div>
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="m-0 text-sm font-semibold text-fg">Escolha outra cor</h3>
-              <p className="m-0 text-xs text-fg-3">As cores bloqueadas mostram o nível necessário.</p>
+              <h3 className="m-0 text-sm font-semibold text-fg">Trocar tema</h3>
+              <p className="m-0 text-xs text-fg-3">Temas de nível mudam o acento; Coroa Vex transforma o visual completo.</p>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {skin !== "default" && <ThemeRewardCard theme={DEFAULT_SKIN} requirement="Sempre disponível" unlocked active={false} busy={false} lockedMessage="" onChoose={() => chooseSkin("default")} />}

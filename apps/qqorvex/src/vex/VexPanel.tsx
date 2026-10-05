@@ -48,6 +48,7 @@ export function VexPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     <aside
       ref={panelRef}
       id="vex-side-panel"
+      data-vex-panel
       aria-label="Conversa com a Vex"
       onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
         if (event.key === "Escape" && !event.defaultPrevented) {

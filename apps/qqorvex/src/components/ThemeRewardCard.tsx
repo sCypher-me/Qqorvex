@@ -17,7 +17,7 @@ export function SkinPreview({ preview, featured = false, skin = "default" }: { p
         className={cx("relative overflow-hidden border border-white/10", featured ? "h-32 rounded-xl sm:h-36" : "h-20 rounded-lg")}
         style={{
           backgroundColor: preview.canvas,
-          backgroundImage: "radial-gradient(ellipse at 72% 0%, rgb(153 104 218 / .32), transparent 62%), linear-gradient(130deg, rgb(220 181 106 / .08), transparent 50%)",
+          backgroundImage: "radial-gradient(ellipse at 72% 0%, rgb(141 97 190 / .3), transparent 62%), linear-gradient(130deg, rgb(220 181 106 / .12), transparent 50%)",
         }}
         aria-hidden="true"
       >
@@ -37,7 +37,7 @@ export function SkinPreview({ preview, featured = false, skin = "default" }: { p
           <div className={cx("flex min-h-0 flex-1 gap-1.5", featured && "gap-2")}>
             <span className="flex min-w-0 flex-[1.35] flex-col justify-between rounded-md border border-white/10 bg-white/[0.07] p-1.5">
               <span className={cx("font-medium text-white/80", featured ? "text-[8px]" : "text-[6px]")}>Seu espaço, elevado.</span>
-              <span className={cx("block rounded-full bg-[#b28af0]", featured ? "h-1.5 w-2/5" : "h-1 w-2/5")} />
+              <span className={cx("block rounded-full bg-[#c5a467]", featured ? "h-1.5 w-2/5" : "h-1 w-2/5")} />
             </span>
             <span className="flex min-w-0 flex-1 flex-col justify-between rounded-md border border-[#dcb670]/20 bg-[#dcb670]/[0.07] p-1.5">
               <span className={cx("font-medium text-[#e6c987]", featured ? "text-[7px]" : "text-[5px]")}>PLUS</span>

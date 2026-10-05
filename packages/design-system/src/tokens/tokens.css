@@ -171,95 +171,131 @@ html[data-skin="solstice"] { --q-gold: #f0b240; --q-gold-hover: #f6c05a; --q-gol
 html[data-skin="nebula"] { --q-gold: #a595f0; --q-gold-hover: #b4a6f5; --q-gold-press: #8a79d6; --q-gold-fg: #bbaeff; --q-gold-soft: rgb(165 149 240 / 0.14); --q-gold-line: rgb(165 149 240 / 0.4); --q-on-gold: #120c2b; --q-focus: #bbaeff; }
 html[data-skin="eclipse"] { --q-gold: #6cc3e6; --q-gold-hover: #82cfee; --q-gold-press: #52a6c8; --q-gold-fg: #8ad4f0; --q-gold-soft: rgb(108 195 230 / 0.13); --q-gold-line: rgb(108 195 230 / 0.38); --q-on-gold: #04161e; --q-focus: #8ad4f0; }
 html[data-skin="vip"] {
-  --q-canvas: #090710;
-  --q-sidebar: #08070d;
-  --q-surface: #12101b;
-  --q-raised: #1a1725;
-  --q-overlay: #231e30;
-  --q-field: #0e0c15;
-  --q-hover: rgb(218 199 255 / 0.055);
-  --q-selected: rgb(186 145 248 / 0.13);
-  --q-selected-solid: #2b223b;
-  --q-scrim: rgb(5 3 10 / 0.76);
+  --q-canvas: #09080a;
+  --q-sidebar: #070608;
+  --q-surface: rgb(20 18 22 / 0.94);
+  --q-raised: rgb(29 26 31 / 0.97);
+  --q-overlay: rgb(37 33 40 / 0.98);
+  --q-field: rgb(14 13 15 / 0.96);
+  --q-hover: rgb(239 222 188 / 0.055);
+  --q-selected: rgb(199 165 103 / 0.12);
+  --q-selected-solid: #302719;
+  --q-scrim: rgb(5 4 5 / 0.78);
 
-  --q-line-soft: rgb(218 199 255 / 0.065);
-  --q-line: rgb(218 199 255 / 0.11);
-  --q-line-strong: rgb(218 199 255 / 0.2);
+  --q-line-soft: rgb(224 199 150 / 0.065);
+  --q-line: rgb(224 199 150 / 0.12);
+  --q-line-strong: rgb(224 199 150 / 0.22);
 
-  --q-fg: #f5effb;
-  --q-fg-2: #d0c5df;
-  --q-fg-3: #a296b4;
-  --q-fg-4: #766b87;
+  --q-fg: #f5f0e8;
+  --q-fg-2: #d4cabc;
+  --q-fg-3: #a59a89;
+  --q-fg-4: #756d62;
 
-  --q-gold: #b28af0;
-  --q-gold-hover: #c09ef5;
-  --q-gold-press: #946cd6;
-  --q-gold-fg: #d2b7ff;
-  --q-gold-soft: rgb(178 138 240 / 0.15);
-  --q-gold-line: rgb(194 158 248 / 0.4);
-  --q-on-gold: #160b28;
-  --q-focus: #d2b7ff;
+  --q-gold: #c5a467;
+  --q-gold-hover: #d6b778;
+  --q-gold-press: #a17f43;
+  --q-gold-fg: #e4ca8c;
+  --q-gold-soft: rgb(197 164 103 / 0.14);
+  --q-gold-line: rgb(224 190 125 / 0.42);
+  --q-on-gold: #1b1409;
+  --q-focus: #e4ca8c;
 
-  --q-ai: #7452ae;
-  --q-ai-fg: #d2b7ff;
-  --q-ai-soft: rgb(164 126 226 / 0.14);
-  --q-ai-line: rgb(188 155 241 / 0.38);
+  --q-ai: #7554ae;
+  --q-ai-fg: #cdb2fa;
+  --q-ai-soft: rgb(151 116 211 / 0.15);
+  --q-ai-line: rgb(176 145 229 / 0.38);
   --q-on-ai: #ffffff;
 }
 
-/* Acentos escuros recebem fundos em ameixa clara para manter contraste e sensação premium. */
+/* A versão clara mantém a joalheria da paleta: papel marfim, ouro quente e ametista na Vex. */
 html[data-theme="light"][data-skin="vip"] {
-  --q-canvas: #f4f0f8;
-  --q-sidebar: #ede7f4;
-  --q-surface: #fbf9fd;
-  --q-raised: #ffffff;
-  --q-overlay: #ffffff;
-  --q-field: #ffffff;
-  --q-hover: rgb(59 38 88 / 0.045);
-  --q-selected: rgb(112 71 168 / 0.09);
-  --q-selected-solid: #e8dff2;
-  --q-scrim: rgb(24 16 34 / 0.46);
-  --q-line-soft: rgb(59 38 88 / 0.07);
-  --q-line: rgb(59 38 88 / 0.12);
-  --q-line-strong: rgb(59 38 88 / 0.22);
-  --q-fg: #21182b;
-  --q-fg-2: #50415f;
-  --q-fg-3: #766985;
-  --q-fg-4: #a094ad;
-  --q-gold: #865dc0;
-  --q-gold-hover: #744aae;
-  --q-gold-press: #633d9d;
-  --q-gold-fg: #69459f;
-  --q-gold-soft: rgb(116 74 174 / 0.12);
-  --q-gold-line: rgb(116 74 174 / 0.36);
+  --q-canvas: #f5f0e8;
+  --q-sidebar: #eee6d8;
+  --q-surface: rgb(255 253 248 / 0.96);
+  --q-raised: #fffdfa;
+  --q-overlay: #fffdfa;
+  --q-field: #fffdfa;
+  --q-hover: rgb(64 47 22 / 0.045);
+  --q-selected: rgb(151 111 47 / 0.09);
+  --q-selected-solid: #eee3ce;
+  --q-scrim: rgb(30 23 14 / 0.46);
+  --q-line-soft: rgb(74 57 30 / 0.075);
+  --q-line: rgb(74 57 30 / 0.13);
+  --q-line-strong: rgb(74 57 30 / 0.23);
+  --q-fg: #282219;
+  --q-fg-2: #51483a;
+  --q-fg-3: #786e5f;
+  --q-fg-4: #a49987;
+  --q-gold: #946a2c;
+  --q-gold-hover: #805720;
+  --q-gold-press: #704919;
+  --q-gold-fg: #79551e;
+  --q-gold-soft: rgb(148 106 44 / 0.13);
+  --q-gold-line: rgb(148 106 44 / 0.38);
   --q-on-gold: #ffffff;
-  --q-focus: #69459f;
+  --q-focus: #79551e;
 
-  --q-ai: #8159ba;
-  --q-ai-fg: #5e3c90;
-  --q-ai-soft: rgb(116 74 174 / 0.11);
-  --q-ai-line: rgb(116 74 174 / 0.34);
+  --q-ai: #7553aa;
+  --q-ai-fg: #5f408d;
+  --q-ai-soft: rgb(117 83 170 / 0.11);
+  --q-ai-line: rgb(117 83 170 / 0.34);
   --q-on-ai: #ffffff;
 }
 
-/* Luz ambiente sutil e filete champanhe na navegação: a assinatura muda o espaço inteiro. */
+/* Luz de galeria: obsidiana, reflexos ameixa e poeira champanhe quase imperceptível. */
 html[data-skin="vip"] body {
   background-image:
-    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(119 72 181 / 0.17), transparent 72%),
-    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.075), transparent 70%),
+    radial-gradient(ellipse 50rem 33rem at 14% -13%, rgb(112 71 157 / 0.2), transparent 72%),
+    radial-gradient(ellipse 43rem 27rem at 100% 4%, rgb(193 151 83 / 0.09), transparent 70%),
+    radial-gradient(circle at 18% 22%, rgb(255 238 203 / 0.2) 0.7px, transparent 1.2px),
+    radial-gradient(circle at 82% 34%, rgb(211 184 241 / 0.18) 0.7px, transparent 1.2px),
     linear-gradient(var(--q-canvas), var(--q-canvas));
   background-attachment: fixed;
 }
 
 html[data-skin="vip"] [data-app-shell] {
+  background-color: transparent;
   background-image:
-    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(119 72 181 / 0.17), transparent 72%),
-    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.075), transparent 70%);
+    radial-gradient(ellipse 52rem 35rem at 12% -12%, rgb(112 71 157 / 0.16), transparent 73%),
+    radial-gradient(ellipse 42rem 28rem at 100% 2%, rgb(193 151 83 / 0.075), transparent 72%);
+}
+
+html[data-skin="vip"] [data-app-shell] main {
+  background-image: radial-gradient(ellipse 45rem 35rem at 60% 0%, rgb(110 75 145 / 0.055), transparent 75%);
+}
+
+html[data-skin="vip"] [data-app-shell] section.rounded-xl.border.bg-surface,
+html[data-skin="vip"] [data-app-shell] article.rounded-xl.border.bg-surface {
+  background-image: linear-gradient(138deg, rgb(226 194 140 / 0.04), transparent 38%, rgb(136 101 176 / 0.035));
+  box-shadow: inset 0 1px 0 rgb(255 248 230 / 0.035), 0 16px 40px rgb(0 0 0 / 0.1);
 }
 
 html[data-skin="vip"] aside[aria-label="Navegação principal"] {
-  background-image: linear-gradient(180deg, rgb(220 182 112 / 0.055), transparent 10rem);
-  box-shadow: inset -1px 0 0 rgb(186 145 230 / 0.08), inset 0 1px 0 rgb(224 192 128 / 0.16);
+  background-image: linear-gradient(180deg, rgb(220 182 112 / 0.075), transparent 13rem);
+  box-shadow: inset -1px 0 0 rgb(224 190 125 / 0.14), inset 0 1px 0 rgb(224 192 128 / 0.2);
+}
+
+html[data-skin="vip"] [data-premium-topbar] {
+  background-image: linear-gradient(90deg, rgb(193 151 83 / 0.055), transparent 62%);
+  box-shadow: inset 0 1px 0 rgb(224 190 125 / 0.13);
+}
+
+html[data-skin="vip"] [data-vex-panel] {
+  background-image:
+    radial-gradient(ellipse 33rem 23rem at 80% 0%, rgb(123 83 177 / 0.15), transparent 70%),
+    linear-gradient(180deg, rgb(193 151 83 / 0.045), transparent 12rem);
+  box-shadow: inset 1px 0 0 rgb(224 190 125 / 0.12), -18px 0 55px rgb(0 0 0 / 0.15);
+}
+
+html[data-skin="vip"] [data-vip-theme-current] {
+  background-image:
+    radial-gradient(ellipse 34rem 18rem at 3% 0%, rgb(124 79 165 / 0.17), transparent 74%),
+    linear-gradient(112deg, rgb(204 167 100 / 0.1), transparent 58%);
+  box-shadow: inset 0 1px 0 rgb(244 215 162 / 0.16), 0 20px 50px rgb(0 0 0 / 0.18);
+}
+
+@media (max-width: 640px) {
+  html[data-skin="vip"] body { background-attachment: scroll; }
 }
 html[data-theme="light"][data-skin="aurora"] { --q-gold-fg: #237552; --q-focus: #237552; }
 html[data-theme="light"][data-skin="sakura"] { --q-gold-fg: #a33c63; --q-focus: #a33c63; }
@@ -268,15 +304,15 @@ html[data-theme="light"][data-skin="nebula"] { --q-gold-fg: #5b47b3; --q-focus: 
 html[data-theme="light"][data-skin="eclipse"] { --q-gold-fg: #1d6a8a; --q-focus: #1d6a8a; }
 html[data-theme="light"][data-skin="vip"] body {
   background-image:
-    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(155 116 204 / 0.13), transparent 72%),
-    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.09), transparent 70%),
+    radial-gradient(ellipse 50rem 33rem at 14% -13%, rgb(132 93 178 / 0.14), transparent 72%),
+    radial-gradient(ellipse 43rem 27rem at 100% 4%, rgb(193 151 83 / 0.1), transparent 70%),
     linear-gradient(var(--q-canvas), var(--q-canvas));
 }
 
 html[data-theme="light"][data-skin="vip"] [data-app-shell] {
   background-image:
-    radial-gradient(ellipse 58rem 36rem at 7% -15%, rgb(155 116 204 / 0.13), transparent 72%),
-    radial-gradient(ellipse 44rem 28rem at 100% 0%, rgb(218 176 103 / 0.09), transparent 70%);
+    radial-gradient(ellipse 50rem 33rem at 14% -13%, rgb(132 93 178 / 0.12), transparent 72%),
+    radial-gradient(ellipse 43rem 27rem at 100% 4%, rgb(193 151 83 / 0.08), transparent 70%);
 }
 
 @theme {
