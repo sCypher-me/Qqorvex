@@ -236,7 +236,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
 
                   <fieldset className="mt-7">
                     <legend className="mb-3 text-sm font-semibold">Por onde começar?</legend>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {FOCUS_OPTIONS.map((option) => (
                         <button
                           key={option.value}

@@ -133,7 +133,7 @@ export function AppearanceSettings() {
       </SettingsCard>
 
       <SettingsCard title="Jeito da Vex" description="Escolha como ela escreve. Você pode mudar isso quando quiser.">
-        <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Estilo de conversa da Vex">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Estilo de conversa da Vex">
           {VEX_STYLE_OPTIONS.map((option) => {
             const selected = vexStyle === option.value;
             return (

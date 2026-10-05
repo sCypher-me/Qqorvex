@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQuizSource, cleanFlashcardDrafts } from "./estudosTools";
+import { buildQuizSource, cleanFlashcardDrafts, createEstudosTools } from "./estudosTools";
 
 describe("buildQuizSource", () => {
   it("junta título e conteúdo dos resumos", () => {
@@ -43,5 +43,19 @@ describe("cleanFlashcardDrafts", () => {
     expect(cleanFlashcardDrafts(many)).toHaveLength(20);
     expect(cleanFlashcardDrafts(undefined)).toEqual([]);
     expect(cleanFlashcardDrafts({ front: "a", back: "b" })).toEqual([]);
+  });
+});
+
+describe("prévia de criação do resumo", () => {
+  it("mostra o destino e o título sem despejar o resumo no chat", () => {
+    const tool = createEstudosTools({} as never, "user-id", {} as never).find((item) => item.name === "create_summary_by_notebook_name");
+    expect(tool?.preview).toBeTypeOf("function");
+    const action = tool!.preview!({ notebookName: "Biologia", title: "Sistema reprodutor", content: "RESUMO COMPLETO E PRIVADO" });
+    expect(action.fields).toEqual([
+      { label: "Caderno", value: "Biologia" },
+      { label: "Título", value: "Sistema reprodutor" },
+    ]);
+    expect(JSON.stringify(action)).not.toContain("RESUMO COMPLETO E PRIVADO");
+    expect(action.note).toContain("depois que você confirmar");
   });
 });

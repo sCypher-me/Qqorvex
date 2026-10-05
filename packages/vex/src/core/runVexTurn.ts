@@ -6,6 +6,7 @@ const MAX_TOOL_ARGUMENTS_CHARS = 16_000;
 type JsonSchemaProperty = {
   type?: string;
   enum?: unknown[];
+  maxLength?: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -48,6 +49,9 @@ export function validateToolArguments(tool: ToolDefinition, args: unknown): stri
     }
 
     if (property.type === "string" && typeof value !== "string") return `"${key}" precisa ser texto`;
+    if (property.type === "string" && typeof value === "string" && property.maxLength !== undefined && value.length > property.maxLength) {
+      return `"${key}" ultrapassa o limite de ${property.maxLength} caracteres`;
+    }
     if (property.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
       return `"${key}" precisa ser um número válido`;
     }

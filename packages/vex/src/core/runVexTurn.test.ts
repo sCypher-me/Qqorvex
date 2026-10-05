@@ -38,6 +38,19 @@ describe("validateToolArguments", () => {
   it("recusa payloads grandes antes de executar a ferramenta", () => {
     expect(validateToolArguments(tool, { title: "x".repeat(17_000), time: "09:00" })).toContain("limite");
   });
+
+  it("respeita o limite de texto declarado pela ferramenta", () => {
+    const boundedTool: ToolDefinition = {
+      ...tool,
+      parameters: {
+        type: "object",
+        properties: { title: { type: "string", maxLength: 5 }, time: { type: "string", enum: ["09:00", "18:00"] } },
+        required: ["title", "time"],
+        additionalProperties: false,
+      },
+    };
+    expect(validateToolArguments(boundedTool, { title: "longo demais", time: "09:00" })).toContain("5 caracteres");
+  });
 });
 
 function scriptedProvider(responses: VexProviderResponse[]) {

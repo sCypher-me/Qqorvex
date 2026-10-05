@@ -154,17 +154,25 @@ export function createEstudosTools(client: SupabaseClient<Database>, userId: str
     {
       name: "create_summary_by_notebook_name",
       description:
-        "Cria um Resumo dentro de um Caderno existente, pelo nome do Caderno — use quando o usuário pedir para salvar algo pesquisado/discutido na conversa como Resumo de Estudos",
+        "Prepara um Resumo de Estudos completo, organizado em Markdown e pronto para salvar dentro de um Caderno existente. Use depois de pesquisar ou reunir o conteúdo solicitado. Estruture com título, visão geral, seções explicativas, exemplos quando úteis e pontos-chave; inclua fontes confiáveis quando a pesquisa as fornecer e nunca invente referências. A pessoa verá somente o caderno, o título e um botão de confirmação — não envie o texto integral do resumo na conversa.",
       parameters: {
         type: "object",
         properties: {
-          notebookName: { type: "string", description: "Nome (ou parte dele) do Caderno onde salvar" },
-          title: { type: "string", description: "Título do Resumo" },
-          content: { type: "string", description: "Conteúdo (texto) do Resumo" },
+          notebookName: { type: "string", description: "Nome (ou parte dele) do Caderno onde salvar", maxLength: 120 },
+          title: { type: "string", description: "Título claro do Resumo", maxLength: 180 },
+          content: { type: "string", description: "Resumo completo e formatado em Markdown (até 12 mil caracteres)", maxLength: 12_000 },
         },
         required: ["notebookName", "title", "content"],
       },
       requiresConfirmation: true,
+      preview: (args) => ({
+        title: "Adicionar resumo ao Caderno",
+        fields: [
+          { label: "Caderno", value: String(args.notebookName ?? "") },
+          { label: "Título", value: String(args.title ?? "") },
+        ],
+        note: "O resumo completo e formatado será criado no Caderno depois que você confirmar.",
+      }),
       async execute(args) {
         const title = String(args.title ?? "").trim();
         const content = String(args.content ?? "").trim();

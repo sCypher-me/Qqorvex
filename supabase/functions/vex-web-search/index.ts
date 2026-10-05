@@ -4,6 +4,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { releaseMonthlyQuota, reserveMonthlyQuota } from "../_shared/billing.ts";
+import { checkQuerySafety } from "../_shared/vexSafety.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -73,6 +74,8 @@ Deno.serve(async (req) => {
   const query = (body.query ?? "").replace(/[\u0000-\u001F\u007F]/g, " ").trim();
   if (!query) return jsonResponse({ error: "query é obrigatório." }, 400);
   if (query.length > MAX_QUERY_CHARS) return jsonResponse({ error: "A busca é longa demais." }, 400);
+  const safety = checkQuerySafety(query);
+  if (safety.blocked) return jsonResponse({ error: safety.reason, safety: { blocked: true } }, 422);
 
   const { data: secretRows, error: secretsError } = await supabase
     .from("app_secrets")

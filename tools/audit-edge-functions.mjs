@@ -19,6 +19,7 @@ requirePattern("vex-chat", vexChat, /SERVER_SYSTEM_PROMPT/, "prompt de sistema c
 requirePattern("vex-chat", vexChat, /DADOS NÃO CONFIÁVEIS/, "marcação de resultados externos");
 requirePattern("vex-chat", vexChat, /<APP_CONTEXT>/, "separação do contexto do aplicativo");
 requirePattern("vex-chat", vexChat, /ALLOWED_TOOL_NAMES/, "allow-list de ferramentas");
+requirePattern("vex-chat", vexChat, /checkQuerySafety\(latestUserMessage\)/, "bloqueio de mídia sexual explícita antes do modelo");
 requirePattern("vex-chat", vexChat, /MAX_TOOL_SCHEMA_CHARS/, "limite de schema recebido");
 requirePattern("vex-chat", vexChat, /new AbortController\(\)/, "timeout do provedor");
 requirePattern("vex-chat", vexChat, /jsonResponse\(\{ error: "É necessário estar autenticado\." \}, 401\)/, "resposta para sessão inválida");
@@ -47,6 +48,8 @@ requirePattern("vex-web-search", vexWebSearch, /MAX_REQUESTS_PER_WINDOW\s*=\s*10
 requirePattern("vex-web-search", vexWebSearch, /replace\(\/[\\u0000-\\u001F\\u007F]/, "remoção de caracteres de controle");
 requirePattern("vex-web-search", vexWebSearch, /\.from\("app_secrets"\)/, "segredo fora do bundle");
 requirePattern("vex-web-search", vexWebSearch, /new AbortController\(\)/, "timeout do provedor");
+requirePattern("vex-web-search", vexWebSearch, /checkQuerySafety\(query\)/, "bloqueio de pesquisa pornográfica antes da busca externa");
+assert.ok(vexWebSearch.indexOf("checkQuerySafety(query)") < vexWebSearch.indexOf("reserveMonthlyQuota("), "vex-web-search: valide a intenção antes de reservar cota ou chamar a busca externa");
 
 const notifications = await source("send-notifications");
 requirePattern("send-notifications", notifications, /x-cron-secret/, "autenticação do cron");

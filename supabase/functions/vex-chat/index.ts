@@ -14,6 +14,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { releaseMonthlyQuota, reserveMonthlyQuota } from "../_shared/billing.ts";
 import { VEX_GUIDE } from "../_shared/vexGuide.ts";
+import { checkQuerySafety } from "../_shared/vexSafety.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +40,7 @@ const ALLOWED_TOOL_NAMES = new Set([
   "list_documents", "create_text_document", "toggle_important_by_name",
   "delete_notebook_by_name", "list_due_flashcards", "list_notebooks", "get_notebook_by_name", "create_notebook",
   "create_summary_by_notebook_name", "create_flashcard_by_notebook_name", "create_flashcards_by_notebook_name", "generate_quiz_by_notebook_name",
-  "get_financial_summary", "get_month_spending", "list_upcoming_bills", "create_transaction", "update_transaction_by_name", "create_recurring_transaction",
+  "get_investment_market_overview", "get_financial_summary", "get_month_spending", "list_upcoming_bills", "create_transaction", "update_transaction_by_name", "create_recurring_transaction",
   "create_goal", "update_goal_status_by_title", "log_habit_by_name", "list_goals", "list_habits_today",
   "create_page", "create_page_with_content", "archive_page_by_title", "list_pages",
   "list_tasks", "create_task", "complete_task_by_title", "update_task_by_id",
@@ -58,6 +59,7 @@ const SERVER_SYSTEM_PROMPT = VEX_GUIDE;
 const VEX_STYLE_PROMPTS = {
   direct: "Estilo escolhido pela pessoa: Direta e acolhedora. Vá ao ponto com gentileza. Prefira 1 a 4 frases e listas curtas quando ajudam. Não repita o pedido nem use uma saudação em toda resposta.",
   conversational: "Estilo escolhido pela pessoa: Calorosa e conversadora. Fale de um jeito próximo e natural, acrescente contexto útil e faça a conversa fluir sem rodeios longos. Evite respostas telegráficas e não repita o pedido.",
+  encouraging: "Estilo escolhido pela pessoa: Leve e motivadora. Reconheça esforço de forma sincera, ajude a destravar com próximos passos pequenos e transmita confiança sem pressionar, infantilizar ou usar positividade forçada.",
 } as const;
 
 function jsonResponse(body: unknown, status = 200) {
@@ -183,10 +185,13 @@ Deno.serve(async (req) => {
   if (!isValidMessages(messages) || !isValidTools(body.tools)) {
     return jsonResponse({ error: "messages é obrigatório." }, 400);
   }
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+  const safety = checkQuerySafety(latestUserMessage);
+  if (safety.blocked) return jsonResponse({ error: safety.reason, safety: { blocked: true } }, 422);
   // Ferramentas fora da lista conhecida são descartadas (não recusam a conversa): um app mais
   // novo que esta função continua funcionando, só sem as capacidades que ela ainda não conhece.
   const tools = body.tools?.filter((tool) => ALLOWED_TOOL_NAMES.has(tool.name));
-  const vexStyle = body.vexStyle === "conversational" ? "conversational" : "direct";
+  const vexStyle = body.vexStyle === "conversational" || body.vexStyle === "encouraging" ? body.vexStyle : "direct";
 
   const { data: secretRows, error: secretsError } = await supabase
     .from("app_secrets")
