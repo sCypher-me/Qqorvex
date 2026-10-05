@@ -45,22 +45,31 @@ export function VexPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
   if (!isOpen) return null;
 
   return (
-    <aside
-      ref={panelRef}
-      id="vex-side-panel"
-      data-vex-panel
-      aria-label="Conversa com a Vex"
-      onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
-        if (event.key === "Escape" && !event.defaultPrevented) {
-          event.preventDefault();
-          onClose();
-        }
-      }}
-      className="fixed inset-y-0 right-0 z-40 hidden w-[min(var(--q-vex-panel-width),calc(100vw-80px))] animate-slide-in-right flex-col border-l border-line bg-surface shadow-lg lg:flex xl:sticky xl:top-0 xl:z-auto xl:h-dvh xl:shrink-0 xl:shadow-none"
-    >
-      <Suspense fallback={<PanelSkeleton />}>
-        <VexConversationView variant="panel" onClose={onClose} />
-      </Suspense>
-    </aside>
+    <>
+      {/* Em telas comuns, a Vex flutua sobre a página sem forçar cada rota a caber em duas colunas. */}
+      <button
+        type="button"
+        aria-label="Fechar painel da Vex"
+        onClick={onClose}
+        className="fixed inset-0 z-30 hidden bg-black/35 backdrop-blur-[1px] min-[1720px]:hidden lg:block"
+      />
+      <aside
+        ref={panelRef}
+        id="vex-side-panel"
+        data-vex-panel
+        aria-label="Conversa com a Vex"
+        onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
+          if (event.key === "Escape" && !event.defaultPrevented) {
+            event.preventDefault();
+            onClose();
+          }
+        }}
+        className="fixed inset-y-0 right-0 z-40 hidden w-[min(var(--q-vex-panel-width),calc(100vw-80px))] animate-slide-in-right flex-col border-l border-line bg-surface shadow-lg lg:flex min-[1720px]:sticky min-[1720px]:inset-y-auto min-[1720px]:right-auto min-[1720px]:top-0 min-[1720px]:z-auto min-[1720px]:h-dvh min-[1720px]:shrink-0 min-[1720px]:shadow-none"
+      >
+        <Suspense fallback={<PanelSkeleton />}>
+          <VexConversationView variant="panel" onClose={onClose} />
+        </Suspense>
+      </aside>
+    </>
   );
 }
