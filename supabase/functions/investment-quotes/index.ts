@@ -64,6 +64,15 @@ async function timedFetch(url: string, apiKey: string, signal: AbortSignal) {
   return fetch(url, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {}, signal });
 }
 
+function normalizeBrapiApiKey(value: unknown): string {
+  if (typeof value !== "string") return "";
+  let key = value.trim().replace(/^Bearer\s+/i, "").trim();
+  if (key.length >= 2 && ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'")))) {
+    key = key.slice(1, -1).trim();
+  }
+  return key;
+}
+
 const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function fetchBrapiJSON(url: string, apiKey: string): Promise<Record<string, unknown>> {
@@ -159,7 +168,7 @@ async function loadMarketSnapshot(apiKey: string): Promise<MarketLoadResult> {
     if (failedFeeds.length === feeds.length) {
       const failures = failedFeeds.map((feed) => feed.result.status === "rejected" ? feed.result.reason : null);
       if (failures.some((error) => error instanceof BrapiRequestError && (error.status === 401 || error.status === 403))) {
-        throw new Error("A chave configurada da brapi.dev foi recusada. Peça ao Dono para conferir a integração.");
+        throw new Error("A brapi.dev negou acesso aos dados. Confira se a chave está ativa e se o plano permite consultar estes endpoints em Central do Dono → Integrações.");
       }
       if (failures.some((error) => error instanceof BrapiRequestError && error.status === 429)) {
         throw new Error("A brapi.dev limitou temporariamente as cotações. Aguarde um pouco e tente de novo.");
@@ -193,9 +202,11 @@ async function loadMarketSnapshot(apiKey: string): Promise<MarketLoadResult> {
     };
     const warningByFeed = [...new Set(failedFeeds.map((feed) => feed.name))];
     if (cryptoResult.status === "fulfilled" && crypto.length === 0) warningByFeed.push("criptomoedas");
-    const keyWasRejected = failedFeeds.some((feed) => feed.result.status === "rejected" && feed.result.reason instanceof BrapiRequestError && (feed.result.reason.status === 401 || feed.result.reason.status === 403));
-    const warning = keyWasRejected
-      ? "A brapi.dev recusou a chave configurada; algumas cotações podem não aparecer. Peça ao Dono para conferir a integração."
+    const deniedFeeds = [...new Set(feeds
+      .filter((feed) => feed.result.status === "rejected" && feed.result.reason instanceof BrapiRequestError && (feed.result.reason.status === 401 || feed.result.reason.status === 403))
+      .map((feed) => feed.name))];
+    const warning = deniedFeeds.length
+      ? `A brapi.dev negou acesso a ${deniedFeeds.join(", ")}. Confira se a chave está ativa e se o plano permite consultar esses dados em Central do Dono → Integrações.`
       : warningByFeed.length
         ? `Algumas cotações estão indisponíveis: ${[...new Set(warningByFeed)].join(", ")}. O restante do mercado continua disponível.`
         : null;
@@ -248,7 +259,7 @@ Deno.serve(async (req) => {
   if (positionError) return json({ error: "Não foi possível carregar os ativos da carteira." }, 500);
   if (secretError) return json({ error: "Não foi possível consultar a configuração do provedor de cotações." }, 500);
 
-  const apiKey = typeof secretRow?.value === "string" ? secretRow.value.trim() : "";
+  const apiKey = normalizeBrapiApiKey(secretRow?.value);
   const positions = (positionRows ?? []) as Position[];
   const marketPromise = loadMarketSnapshot(apiKey);
   const quotes: Quote[] = [];

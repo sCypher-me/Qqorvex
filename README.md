@@ -9,7 +9,7 @@ Eu estou construindo o Qqorvex para reunir planejamento, estudos, documentos, fi
 [Conheça o projeto](https://qqorvex.pages.dev) · [Abrir o app](https://qqorvex-app.pages.dev) · [Versões e downloads](https://github.com/sCypher-me/Qqorvex/releases) · [Changelog](CHANGELOG.md)
 
 ![CI](https://github.com/sCypher-me/Qqorvex/actions/workflows/ci.yml/badge.svg?branch=main)
-![Versão beta](https://img.shields.io/badge/beta-0.2.0-D6A04D)
+![Versão beta](https://img.shields.io/badge/beta-0.3.0-D6A04D)
 ![Idioma](https://img.shields.io/badge/idioma-pt--BR-2C9C7A)
 
 </div>

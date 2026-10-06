@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@qqorvex/ui";
 import { AreaLayout } from "./shell/AreaLayout";
 import { LEGACY_REDIRECTS } from "./shell/navigation";
+import { AppUpdateBanner } from "./updates/AppUpdateBanner";
 
 /**
  * Code-splitting por rota: cada página vira o próprio chunk, carregado só quando visitada.
@@ -69,6 +70,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
+          <AppUpdateBanner />
           <Suspense fallback={<PageFallback />}>
             <AppRuntime>
               <Routes>

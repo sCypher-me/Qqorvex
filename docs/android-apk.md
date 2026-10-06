@@ -24,8 +24,8 @@ Confira os caminhos ARM64 e ARM32 retornados pelo Tauri. Execute o script abaixo
 arquivo, usando o caminho unsigned correspondente e nomes estáveis para os assets da release:
 
 ```powershell
-pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM64 unsigned>" -OutputApk artifacts.local/0.2.1/qqorvex-android-arm64.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
-pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM32 unsigned>" -OutputApk artifacts.local/0.2.1/qqorvex-android-arm32.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
+pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM64 unsigned>" -OutputApk artifacts.local/0.3.0/qqorvex-android-arm64.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
+pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM32 unsigned>" -OutputApk artifacts.local/0.3.0/qqorvex-android-arm32.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
 ```
 
 O script alinha, assina, verifica o certificado e imprime o SHA-256 do APK. A primeira execução gera uma chave
