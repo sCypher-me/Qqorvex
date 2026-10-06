@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database, TablesUpdate } from "@qqorvex/database";
-import { awardXp } from "@qqorvex/module-gamificacao";
+import { refreshGamificationAfterSourceWrite } from "@qqorvex/module-gamificacao";
 import { LIBRARY_COVER_MAX_SIZE_BYTES, LIBRARY_COVER_MIME_TYPES, type LibraryCoverChange, type LibraryItem, type LibraryItemCreator, type LibraryItemEditInput, type LibraryItemStatus, type NewLibraryItemInput } from "./types";
 import { toLibraryItemInsert, toLibraryItemUpdate } from "./types";
 
@@ -132,7 +132,7 @@ export async function updateItemStatus(client: Client, itemId: string, status: L
   if (error) throw error;
 
   if (before.status !== "concluido" && status === "concluido") {
-    await awardXp(client, before.user_id, "library_item_completed");
+    await refreshGamificationAfterSourceWrite(client, before.user_id);
   }
 
   return data;

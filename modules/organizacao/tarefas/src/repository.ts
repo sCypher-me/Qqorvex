@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database, TablesUpdate } from "@qqorvex/database";
-import { awardXp } from "@qqorvex/module-gamificacao";
+import { refreshGamificationAfterSourceWrite } from "@qqorvex/module-gamificacao";
 import { computeNextTaskOccurrenceDate, localDateKey, toRecurringTaskUpdate, type RecurringTaskEditInput } from "./service";
 import type { ChecklistItem, NewTaskInput, RecurringTask, Task, TaskRecurrenceFrequency, TaskStatus, TaskUpdateInput } from "./types";
 import { toTaskInsert } from "./types";
@@ -80,7 +80,7 @@ export async function updateTaskStatus(client: Client, taskId: string, status: T
   if (error) throw error;
 
   if (before.status !== "concluido" && status === "concluido") {
-    await awardXp(client, before.user_id, "task_completed");
+    await refreshGamificationAfterSourceWrite(client, before.user_id);
   }
 
   return data;

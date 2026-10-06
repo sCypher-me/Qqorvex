@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
   ChecksIcon,
   CopyIcon,
+  FileTextIcon,
   GraduationCapIcon,
   HeartIcon,
   LightningIcon,
@@ -23,6 +24,8 @@ import { Button, ButtonLink, IconButton, Markdown, Notice, VexAvatar, cx, markdo
 import type { VexActionPreview, VexStep } from "@qqorvex/vex";
 import { supabase } from "../app/supabase";
 import type { ActionStatus, DisplayMessage, PendingAction, ProviderIssue, VexNotice } from "./useVexChat";
+import { latestVexRequestHasCompletedAction } from "./retryHistory";
+import { decodeVexAttachmentMessage } from "./fileAttachments";
 
 type Icon = ComponentType<IconProps>;
 
@@ -155,7 +158,7 @@ function StepsLine({ steps }: { steps: VexStep[] }) {
   );
 }
 
-function AssistantMessage({ content, steps, variant }: { content: string; steps?: VexStep[]; variant: "panel" | "page" }) {
+function AssistantMessage({ content, steps, variant, fallback }: { content: string; steps?: VexStep[]; variant: "panel" | "page"; fallback?: boolean }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [confirmNote, setConfirmNote] = useState(false);
@@ -199,6 +202,7 @@ function AssistantMessage({ content, steps, variant }: { content: string; steps?
       <VexAvatar size={variant === "page" ? 30 : 26} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         {steps && <StepsLine steps={steps} />}
+        {fallback && <p className="mb-1 text-[11px] font-medium text-warning">Resposta de contingência · confira antes de seguir</p>}
         <Markdown text={content} className={variant === "page" ? "text-[15px]" : "text-[14px]"} />
         {confirmNote && (
           <div className="mt-3 max-w-lg rounded-xl border border-line bg-surface p-3.5" role="group" aria-label="Confirmar salvamento da resposta em Notas">
@@ -311,18 +315,32 @@ export interface VexThreadProps {
 
 /** Lista de mensagens: pergunta, resposta formatada, ações confirmadas e o cartão de confirmação. */
 export function VexThread({ variant, messages, busy, liveStep, pending, notice, providerIssue, onConfirm, onCancel, onRetry, onDismissIssue }: VexThreadProps) {
+  const canRetryFallback = !pending && !latestVexRequestHasCompletedAction(messages);
   return (
     <div className={cx("flex flex-col", variant === "page" ? "gap-6" : "gap-5")}>
       {messages.map((message) => {
         if (message.role === "user") {
+          const attachment = decodeVexAttachmentMessage(message.content);
+          const visibleContent = attachment?.prompt ?? message.content;
           return (
             <div key={message.id} className="flex justify-end">
-              <div className={cx("max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-line bg-raised px-4 py-2.5 text-fg", variant === "page" ? "text-[15px]" : "text-[14px]")}>{message.content}</div>
+              <div className={cx("flex max-w-[85%] min-w-0 flex-col gap-2 rounded-2xl rounded-br-md border border-line bg-raised px-4 py-2.5 text-fg", variant === "page" ? "text-[15px]" : "text-[14px]")}>
+                {attachment && (
+                  <div className="flex min-w-0 items-center gap-2 rounded-xl border border-line-soft bg-surface/80 px-2.5 py-2">
+                    <FileTextIcon size={18} className="shrink-0 text-ai-fg" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-fg">{attachment.file.fileName}</p>
+                      <p className="text-[10px] text-fg-4">Arquivo lido pela Vex</p>
+                    </div>
+                  </div>
+                )}
+                {visibleContent && <p className="m-0 whitespace-pre-wrap break-words">{visibleContent}</p>}
+              </div>
             </div>
           );
         }
         if (message.role === "action") return <ActionReceipt key={message.id} action={message.action} status={message.status} />;
-        return <AssistantMessage key={message.id} content={message.content} steps={message.steps} variant={variant} />;
+        return <AssistantMessage key={message.id} content={message.content} steps={message.steps} variant={variant} fallback={message.fallback} />;
       })}
 
       {pending && (
@@ -349,15 +367,16 @@ export function VexThread({ variant, messages, busy, liveStep, pending, notice, 
                 Conhecer o Plus
               </ButtonLink>
             ) : (
-              <Button size="sm" variant="ghost" onClick={onDismissIssue}>
-                Entendi
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {canRetryFallback && <Button size="sm" variant="secondary" leadingIcon={<ArrowClockwiseIcon size={14} />} onClick={onRetry}>Retomar pedido</Button>}
+                <Button size="sm" variant="ghost" onClick={onDismissIssue}>Entendi</Button>
+              </div>
             )
           }
         >
           {providerIssue.quota
             ? providerIssue.message
-            : "Não consegui falar com o serviço de IA, então por enquanto entendo só comandos simples (como “criar tarefa: …”). Tente de novo em instantes."}
+            : "O serviço principal falhou e esta resposta veio do modo básico. Se o pedido não foi resolvido, retome-o com um toque — você não precisa escrevê-lo de novo."}
         </Notice>
       )}
 

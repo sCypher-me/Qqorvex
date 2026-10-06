@@ -89,7 +89,7 @@ if (!baseUrl) {
   await waitFor(baseUrl);
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(args.executablePath ? { executablePath: args.executablePath } : {});
 const problems = [];
 let pageErrors = 0;
 
@@ -117,7 +117,7 @@ try {
 
       for (const route of routes) {
         const page = await context.newPage();
-        const isPublic = ["/login", "/criar-conta", "/esqueci-senha", "/redefinir-senha", "/mfa"].includes(route);
+        const isPublic = ["/login", "/criar-conta", "/esqueci-senha", "/redefinir-senha", "/mfa", "/entrar-por-email"].includes(route);
         if (!isPublic) await installSupabaseMock(page, { log: args.log === "true", onboarding: args.onboarding === "true", owner: args.owner === "true" });
         else {
           await page.addInitScript((key) => {
@@ -142,6 +142,12 @@ try {
           .waitForFunction(() => !document.querySelector('[aria-busy="true"]') && document.querySelector("#root")?.childElementCount, null, { timeout: 45_000 })
           .catch(() => problems.push(`[timeout] ${route} (${viewportName}/${theme}): ainda carregando`));
         await page.waitForTimeout(Number(args.wait ?? 900));
+        const horizontalOverflow = await page.evaluate(() =>
+          Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0) - window.innerWidth,
+        );
+        if (horizontalOverflow > 2) {
+          problems.push(`[overflow] ${route} (${viewportName}/${theme}): ${horizontalOverflow}px além da largura da tela`);
+        }
         // Passos opcionais: --steps='[{"click":"Texto"},{"press":"Escape"},{"wait":400},{"fill":["placeholder","texto"]}]'
         for (const step of args.steps ? JSON.parse(args.steps) : []) {
           if (step.click) await page.getByText(step.click, { exact: step.exact ?? false }).first().click();
@@ -169,4 +175,4 @@ if (unique.length) {
   console.log(`\n${unique.length} problema(s):`);
   for (const line of unique) console.log(`  ${line}`);
 }
-process.exit(pageErrors > 0 ? 1 : 0);
+process.exit(pageErrors > 0 || unique.some((line) => line.startsWith("[overflow]")) ? 1 : 0);

@@ -104,10 +104,9 @@ function isValidGeneratedQuestion(value: unknown): value is GeneratedQuizQuestio
 /**
  * Valida o JSON cru que o provider devolveu ao gerar um quiz — nunca confia cegamente num LLM
  * local pequeno. Aceita tanto um array puro quanto `{ questions: [...] }` (modelos variam no
- * envelope). Retorna `null` para qualquer formato inesperado, incompleto ou com menos/mais que
- * `QUIZ_QUESTION_COUNT` perguntas — quem chama decide como recusar sem persistir nada.
+ * envelope). Retorna `null` para formato inesperado ou se faltar a quantidade pedida.
  */
-export function parseGeneratedQuiz(raw: string): GeneratedQuizQuestion[] | null {
+export function parseGeneratedQuiz(raw: string, expectedQuestionCount = QUIZ_QUESTION_COUNT): GeneratedQuizQuestion[] | null {
   const parsed = parseJsonLoosely(raw);
   const questions = Array.isArray(parsed)
     ? parsed
@@ -123,7 +122,7 @@ export function parseGeneratedQuiz(raw: string): GeneratedQuizQuestion[] | null 
     options: question.options.map((option) => option.trim()),
     correctOptionIndex: question.correctOptionIndex,
   }));
-  return valid.length >= QUIZ_QUESTION_COUNT ? valid.slice(0, QUIZ_QUESTION_COUNT) : null;
+  return valid.length >= expectedQuestionCount ? valid.slice(0, expectedQuestionCount) : null;
 }
 
 /** JSON puro, dentro de bloco ```json``` ou com texto antes/depois (o primeiro objeto/lista vale). */

@@ -16,6 +16,18 @@ export type DailyChallengeDefinition = {
   rewardXp: number;
 };
 
+const DAILY_CHALLENGE_TIME_ZONE = "America/Sao_Paulo";
+const DAILY_CHALLENGE_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: DAILY_CHALLENGE_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
 const DAILY_CHALLENGE_XP: Record<DailyChallengeDifficulty, number> = {
   Fácil: 10,
   Médio: 25,
@@ -177,10 +189,9 @@ const DAILY_CHALLENGE_POOL: Record<Exclude<DailyChallengeDifficulty, "Especial">
 };
 
 export function localDateKey(date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const parts = DAILY_CHALLENGE_DATE_TIME_FORMATTER.formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 /** Desloca uma data civil YYYY-MM-DD sem depender de UTC/local ou de horário de verão. */
@@ -190,9 +201,20 @@ export function shiftLocalDateKey(dateKey: string, offsetDays: number): string {
 }
 
 function millisecondsUntilNextMidnight(date = new Date()): number {
-  const nextMidnight = new Date(date);
-  nextMidnight.setHours(24, 0, 0, 0);
-  return Math.max(0, nextMidnight.getTime() - date.getTime());
+  const parts = Object.fromEntries(DAILY_CHALLENGE_DATE_TIME_FORMATTER.formatToParts(date).map((part) => [part.type, part.value]));
+  const wallClockAsUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  const dateAtSecondPrecision = Math.floor(date.getTime() / 1000) * 1000;
+  const utcOffset = wallClockAsUtc - dateAtSecondPrecision;
+  const nextDay = shiftLocalDateKey(localDateKey(date), 1).split("-").map(Number);
+  const nextMidnightUtc = Date.UTC(nextDay[0]!, nextDay[1]! - 1, nextDay[2]!) - utcOffset;
+  return Math.max(0, nextMidnightUtc - date.getTime());
 }
 
 export function formatDailyCountdown(date = new Date()): string {

@@ -51,8 +51,24 @@ describe("enrollTotp", () => {
     } as unknown as SupabaseClient<Database>;
   }
 
-  it("uses the data URI already returned by Supabase JS", async () => {
+  it("escapes the SVG payload in the data URI returned by Supabase JS", async () => {
     const qrCode = "data:image/svg+xml;utf-8,<svg></svg>";
+    const result = await enrollTotp(fakeEnrollClient(qrCode));
+
+    expect(result.enrollment?.qrCodeDataUri).toBe("data:image/svg+xml;utf-8,%3Csvg%3E%3C%2Fsvg%3E");
+  });
+
+  it("escapes fragments and spaces in the SVG payload", async () => {
+    const qrCode = "data:image/svg+xml;utf-8,<svg><path d=\"a#b\" /></svg>";
+    const result = await enrollTotp(fakeEnrollClient(qrCode));
+
+    expect(result.enrollment?.qrCodeDataUri).toBe(
+      "data:image/svg+xml;utf-8,%3Csvg%3E%3Cpath%20d%3D%22a%23b%22%20%2F%3E%3C%2Fsvg%3E",
+    );
+  });
+
+  it("preserves an already encoded SVG data URI", async () => {
+    const qrCode = "data:image/svg+xml;utf-8,%3Csvg%3E%3C%2Fsvg%3E";
     const result = await enrollTotp(fakeEnrollClient(qrCode));
 
     expect(result.enrollment?.qrCodeDataUri).toBe(qrCode);

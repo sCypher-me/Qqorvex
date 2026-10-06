@@ -24,18 +24,23 @@ export function EsqueciSenhaPage() {
       return;
     }
     setSubmitting(true);
-    const result = await resetPasswordForEmail(email, captchaToken ?? undefined);
-    setSubmitting(false);
-    if (captchaSiteKey) {
-      setCaptchaToken(null);
-      setCaptchaResetSignal((value) => value + 1);
+    try {
+      const result = await resetPasswordForEmail(email, captchaToken ?? undefined);
+      // Sempre neutro — o Supabase não diz se o e-mail existe, então não fingimos saber (previne enumeração).
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("Não foi possível conectar. Verifique sua internet e tente novamente.");
+    } finally {
+      setSubmitting(false);
+      if (captchaSiteKey) {
+        setCaptchaToken(null);
+        setCaptchaResetSignal((value) => value + 1);
+      }
     }
-    // Sempre neutro — o Supabase não diz se o e-mail existe, então não fingimos saber (previne enumeração).
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    setSent(true);
   }
 
   if (sent) {

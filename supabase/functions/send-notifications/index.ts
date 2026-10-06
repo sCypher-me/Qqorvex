@@ -14,6 +14,19 @@ import webpush from "npm:web-push@3.6.7";
  * Eventos recorrentes usam o fuso salvo em cada regra.
  */
 const APP_TIME_ZONE = "America/Sao_Paulo";
+// Uma chamada travada de banco ou de Push Service não deve manter a função sem resposta por
+// mais que o limite de inatividade do runtime. O cron roda novamente a cada 5 minutos, então
+// interrompemos entre itens e deixamos o trabalho ainda pendente para a próxima execução.
+const SUPABASE_REQUEST_TIMEOUT_MS = 10_000;
+const PUSH_REQUEST_TIMEOUT_MS = 8_000;
+const RUN_BUDGET_MS = 70_000;
+
+const timedFetch: typeof fetch = (input, init) => {
+  const requestSignal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+  const timeoutSignal = AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS);
+  const signal = requestSignal ? AbortSignal.any([requestSignal, timeoutSignal]) : timeoutSignal;
+  return fetch(input, { ...init, signal });
+};
 
 function wallClockIn(timeZone: string, instant = new Date()): { date: string; time: string } {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -30,13 +43,52 @@ function wallClockIn(timeZone: string, instant = new Date()): { date: string; ti
 }
 
 Deno.serve(async (req) => {
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const startedAt = Date.now();
+  const hasRuntimeBudget = () => Date.now() - startedAt < RUN_BUDGET_MS;
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { global: { fetch: timedFetch } },
+  );
+
+  let remindersChecked = 0;
+  let budgetsChecked = 0;
+  let budgetsAlerted = 0;
+  let habitsChecked = 0;
+  let habitsReminded = 0;
+  let cardsChecked = 0;
+  let statementsReminded = 0;
+  let recurringTasksChecked = 0;
+  let tasksGenerated = 0;
+  let recurringEventsChecked = 0;
+  let eventsGenerated = 0;
+  let totalSent = 0;
+
+  function progressResponse(partial: boolean): Response {
+    return new Response(JSON.stringify({
+      partial,
+      remindersChecked,
+      budgetsChecked,
+      budgetsAlerted,
+      habitsChecked,
+      habitsReminded,
+      cardsChecked,
+      statementsReminded,
+      recurringTasksChecked,
+      tasksGenerated,
+      recurringEventsChecked,
+      eventsGenerated,
+      notificationsSent: totalSent,
+    }), { headers: { "Content-Type": "application/json" } });
+  }
 
   const { data: cronSecretRow } = await supabase.from("app_secrets").select("value").eq("key", "cron_secret").single();
   const providedSecret = req.headers.get("x-cron-secret");
   if (!cronSecretRow || providedSecret !== cronSecretRow.value) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  if (!hasRuntimeBudget()) return progressResponse(true);
 
   const { data: vapidPublicRow } = await supabase.from("app_secrets").select("value").eq("key", "vapid_public_key").single();
   const { data: vapidPrivateRow } = await supabase.from("app_secrets").select("value").eq("key", "vapid_private_key").single();
@@ -47,33 +99,38 @@ Deno.serve(async (req) => {
 
   async function sendToUser(userId: string, payload: Record<string, unknown>) {
     const { data: subscriptions } = await supabase.from("push_subscriptions").select("*").eq("user_id", userId);
-    let delivered = 0;
-    for (const sub of subscriptions ?? []) {
+    const outcomes = await Promise.all((subscriptions ?? []).map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify(payload),
+          { timeout: PUSH_REQUEST_TIMEOUT_MS },
         );
-        delivered++;
+        return { delivered: true, expiredId: null };
       } catch (err) {
         const statusCode = (err as { statusCode?: number }).statusCode;
-        if (statusCode === 404 || statusCode === 410) {
-          // Inscrição expirada/revogada no navegador — não adianta tentar de novo.
-          await supabase.from("push_subscriptions").delete().eq("id", sub.id);
-        }
+        return { delivered: false, expiredId: statusCode === 404 || statusCode === 410 ? sub.id : null };
       }
+    }));
+
+    // Remove endpoints inválidos em lote, sem aguardar serialmente uma chamada por dispositivo.
+    const expiredIds = outcomes.flatMap((outcome) => outcome.expiredId ? [outcome.expiredId] : []);
+    if (expiredIds.length) {
+      await supabase.from("push_subscriptions").delete().in("id", expiredIds);
     }
-    return delivered;
+    return outcomes.filter((outcome) => outcome.delivered).length;
   }
 
   // Fonte 1: lembretes de evento da Agenda ("Lembretes têm tabela mas nada os dispara").
+  if (!hasRuntimeBudget()) return progressResponse(true);
   const { data: reminders } = await supabase
     .from("event_reminders")
     .select("id, minutes_before, events!inner(id, title, start_at, user_id)")
     .is("sent_at", null);
 
-  let totalSent = 0;
+  remindersChecked = reminders?.length ?? 0;
   for (const reminder of reminders ?? []) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
     const event = reminder.events as unknown as { id: string; title: string; start_at: string; user_id: string };
     const triggerAtMs = new Date(event.start_at).getTime() - reminder.minutes_before * 60_000;
     if (triggerAtMs > Date.now()) continue;
@@ -95,14 +152,16 @@ Deno.serve(async (req) => {
     return new Date(year!, month!, 1).toISOString().slice(0, 10);
   }
 
+  if (!hasRuntimeBudget()) return progressResponse(true);
   const { data: budgets } = await supabase
     .from("budgets")
     .select("id, user_id, category_id, year_month, limit_amount, categories(name)")
     .eq("year_month", currentYearMonth)
     .is("alert_sent_at", null);
 
-  let budgetsAlerted = 0;
+  budgetsChecked = budgets?.length ?? 0;
   for (const budget of budgets ?? []) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
     const { data: transactions } = await supabase
       .from("transactions")
       .select("amount")
@@ -132,6 +191,7 @@ Deno.serve(async (req) => {
   const todayDateStr = appNow.date;
   const currentTimeStr = appNow.time;
 
+  if (!hasRuntimeBudget()) return progressResponse(true);
   const { data: habits } = await supabase
     .from("habits")
     .select("id, user_id, name, preferred_time, last_reminder_sent_date")
@@ -139,8 +199,9 @@ Deno.serve(async (req) => {
     .eq("frequency_type", "diaria")
     .not("preferred_time", "is", null);
 
-  let habitsReminded = 0;
+  habitsChecked = habits?.length ?? 0;
   for (const habit of habits ?? []) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
     if (habit.last_reminder_sent_date === todayDateStr) continue;
     const preferredTime = habit.preferred_time!.slice(0, 5);
     if (currentTimeStr < preferredTime) continue;
@@ -190,14 +251,16 @@ Deno.serve(async (req) => {
   const DUE_REMINDER_WINDOW_DAYS = 3;
   const todayMidnight = new Date(`${todayDateStr}T00:00:00`);
 
+  if (!hasRuntimeBudget()) return progressResponse(true);
   const { data: cards } = await supabase
     .from("cards")
     .select("id, user_id, nickname, closing_day, due_day")
     .not("closing_day", "is", null)
     .not("due_day", "is", null);
 
-  let statementsReminded = 0;
+  cardsChecked = cards?.length ?? 0;
   for (const card of cards ?? []) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
     const closingDate = currentClosingDate(card.closing_day!, todayMidnight);
     const dueDate = statementDueDate(closingDate, card.due_day!);
     const daysUntilDue = Math.round((dueDate.getTime() - todayMidnight.getTime()) / 86_400_000);
@@ -250,14 +313,16 @@ Deno.serve(async (req) => {
     return date.toISOString().slice(0, 10);
   }
 
+  if (!hasRuntimeBudget()) return progressResponse(true);
   const { data: recurringTasks } = await supabase
     .from("recurring_tasks")
     .select("*")
     .eq("status", "ativa")
     .lte("next_occurrence_date", todayDateStr);
 
-  let tasksGenerated = 0;
+  recurringTasksChecked = recurringTasks?.length ?? 0;
   for (const recurring of recurringTasks ?? []) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
     const occurrenceDate = recurring.next_occurrence_date;
     const { error: insertError } = await supabase.from("tasks").upsert({
       user_id: recurring.user_id,
@@ -341,6 +406,7 @@ Deno.serve(async (req) => {
     return new Date(instant).toISOString();
   }
 
+  if (!hasRuntimeBudget()) return progressResponse(true);
   const { data: recurringEvents } = await supabase
     .from("recurring_events")
     .select("*")
@@ -349,8 +415,9 @@ Deno.serve(async (req) => {
     // exatamente pelo dia local de cada regra, sem deixar eventos elegíveis para trás.
     .lte("next_occurrence_date", addCalendarDay(todayDateStr));
 
-  let eventsGenerated = 0;
+  recurringEventsChecked = recurringEvents?.length ?? 0;
   for (const recurring of recurringEvents ?? []) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
     const dateStr = recurring.next_occurrence_date;
     let timeZone = recurring.time_zone || "America/Sao_Paulo";
     try {
@@ -420,21 +487,5 @@ Deno.serve(async (req) => {
     eventsGenerated++;
   }
 
-  return new Response(
-    JSON.stringify({
-      remindersChecked: reminders?.length ?? 0,
-      budgetsChecked: budgets?.length ?? 0,
-      budgetsAlerted,
-      habitsChecked: habits?.length ?? 0,
-      habitsReminded,
-      cardsChecked: cards?.length ?? 0,
-      statementsReminded,
-      recurringTasksChecked: recurringTasks?.length ?? 0,
-      tasksGenerated,
-      recurringEventsChecked: recurringEvents?.length ?? 0,
-      eventsGenerated,
-      notificationsSent: totalSent,
-    }),
-    { headers: { "Content-Type": "application/json" } },
-  );
+  return progressResponse(false);
 });

@@ -10,6 +10,9 @@ vi.mock("@qqorvex/module-estudos", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   listNotebooks: vi.fn(),
   createFlashcard: vi.fn(async (_client: unknown, notebookId: string, input: { front: string; back: string }) => ({ id: "f1", notebook_id: notebookId, ...input })),
+  createFlashcards: vi.fn(async () => []),
+  createQuiz: vi.fn(async (_client: unknown, notebookId: string, title: string, questions: unknown[]) => ({ id: "q1", notebook_id: notebookId, title, questions })),
+  listSummaries: vi.fn(),
 }));
 vi.mock("@qqorvex/database", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -17,8 +20,9 @@ vi.mock("@qqorvex/database", async (importOriginal) => ({
 }));
 
 import { searchEverything } from "@qqorvex/database";
-import { createFlashcard, listNotebooks } from "@qqorvex/module-estudos";
+import { createFlashcard, createFlashcards, createQuiz, listNotebooks, listSummaries } from "@qqorvex/module-estudos";
 import { listTransactions, updateTransaction } from "@qqorvex/module-financas";
+import { confirmVexToolCall, runVexTurn } from "../core/runVexTurn";
 import { rescheduleEvent } from "./agendaTools";
 import { createBuscaTools } from "./buscaTools";
 import { createEstudosTools } from "./estudosTools";
@@ -98,6 +102,82 @@ describe("create_flashcard_by_notebook_name", () => {
     const result = await create.execute({ notebookName: "física", front: "A", back: "B" });
     expect(result.summary).toMatch(/Pergunte à pessoa/);
     expect(createFlashcard).not.toHaveBeenCalled();
+  });
+});
+
+describe("generate_study_materials_by_notebook_name", () => {
+  const request = "Crie uma avaliação e flashcards com todos os resumos do caderno Biologia";
+  const generatedChunk = (chunk: number) => JSON.stringify({
+    questions: Array.from({ length: 5 }, (_, index) => ({
+      questionText: `Pergunta ${index + 1}`,
+      options: ["A", "B", "C", "D"],
+      correctOptionIndex: index % 4,
+    })),
+    flashcards: [{ front: `Conceito ${chunk}`, back: "Explicação" }],
+  });
+
+  beforeEach(() => {
+    vi.mocked(createFlashcards).mockClear();
+    vi.mocked(createQuiz).mockClear();
+  });
+
+  it("só consulta os resumos depois do pedido, processa todos os trechos e salva após confirmação", async () => {
+    vi.mocked(listNotebooks).mockResolvedValue([{ id: "n1", name: "Biologia" }] as never);
+    vi.mocked(listSummaries).mockResolvedValue([
+      { id: "s1", title: "Células", content: `MARCADOR_CELULAS ${"célula ".repeat(1_100)}` },
+      { id: "s2", title: "Genética", content: `MARCADOR_GENETICA ${"gene ".repeat(1_500)}` },
+    ] as never);
+    let sourceCalls = 0;
+    const provider: VexProvider = {
+      name: "scripted-study",
+      async chat({ messages, tools }) {
+        if (tools.length > 0) return { kind: "tool_call", toolCall: { name: "generate_study_materials_by_notebook_name", arguments: { notebookName: "Biologia", materialType: "quiz_e_flashcards" } } };
+        if (messages.at(-1)?.role === "tool") return { kind: "message", content: "Material criado." };
+        sourceCalls += 1;
+        return { kind: "message", content: generatedChunk(sourceCalls) };
+      },
+    };
+    const tools = createEstudosTools(client, "u1", provider);
+    const proposal = await runVexTurn({ provider, messages: [{ role: "user", content: request }], tools });
+
+    expect(proposal.kind).toBe("confirmation_required");
+    expect(listSummaries).not.toHaveBeenCalled();
+    expect(createQuiz).not.toHaveBeenCalled();
+    expect(createFlashcards).not.toHaveBeenCalled();
+    if (proposal.kind !== "confirmation_required") return;
+
+    const result = await confirmVexToolCall({
+      provider,
+      messages: [{ role: "user", content: request }],
+      tools,
+      tool: proposal.tool,
+      args: proposal.toolCall.arguments,
+    });
+
+    expect(result.kind).toBe("message");
+    expect(sourceCalls).toBe(2);
+    expect(createQuiz).toHaveBeenCalledWith(client, "n1", "Avaliação completa — Biologia", expect.arrayContaining([
+      expect.objectContaining({ questionText: "Pergunta 1" }),
+    ]));
+    expect(vi.mocked(createQuiz).mock.calls[0]?.[3]).toHaveLength(10);
+    expect(createFlashcards).toHaveBeenCalledWith(client, "n1", [
+      { front: "Conceito 1", back: "Explicação" },
+      { front: "Conceito 2", back: "Explicação" },
+    ]);
+  });
+
+  it("marca falha se o provedor de contingência não gerar conteúdo válido, sem salvar", async () => {
+    vi.mocked(listNotebooks).mockResolvedValue([{ id: "n1", name: "Biologia" }] as never);
+    vi.mocked(listSummaries).mockResolvedValue([{ id: "s1", title: "Células", content: "Biologia celular" }] as never);
+    const provider: VexProvider = { name: "fallback", async chat() { return { kind: "message", content: "Não consegui acessar a IA. Ainda não criei nada." }; } };
+    const action = tool(createEstudosTools(client, "u1", provider), "generate_study_materials_by_notebook_name");
+
+    const result = await action.execute({ notebookName: "Biologia", materialType: "quiz_e_flashcards" });
+
+    expect(result.ok).toBe(false);
+    expect(result.summary).toContain("Nada foi salvo");
+    expect(createQuiz).not.toHaveBeenCalled();
+    expect(createFlashcards).not.toHaveBeenCalled();
   });
 });
 

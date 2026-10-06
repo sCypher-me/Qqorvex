@@ -1,6 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { getDailyChallenges, localDateKey } from "./dailyChallenges";
-import type { DailyChallengeProgress, GamificationAction, GamificationStats, UserBadge } from "./types";
+import type { DailyChallengeProgress, GamificationStats, UserBadge } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -78,64 +77,16 @@ export async function syncGamificationBadges(client: Client, userId: string): Pr
 }
 
 /**
- * Avança os desafios do dia ligados à ação. O catálogo é determinístico por data (o mesmo em todo
- * dispositivo); o servidor guarda o progresso e concede o bônus uma única vez por desafio.
+ * Os gatilhos SQL concedem XP, desafios e marcos dentro da própria gravação do evento-fonte.
+ * Depois da gravação, esta função apenas atualiza insígnias e a interface; nunca concede XP.
  */
-async function recordDailyChallengeAction(client: Client, action: GamificationAction, challengeDate = localDateKey()): Promise<void> {
+export async function refreshGamificationAfterSourceWrite(client: Client, userId: string): Promise<void> {
   try {
-    for (const challenge of getDailyChallenges(challengeDate).filter((item) => item.action === action)) {
-      const { error } = await client.rpc("gamification_progress_daily_challenge", {
-        p_challenge_date: challengeDate,
-        p_challenge_key: challenge.key,
-        p_target: challenge.target,
-        p_reward_xp: challenge.rewardXp,
-      });
-      if (error) throw error;
-    }
-  } catch (err) {
-    console.error("Falha ao atualizar o desafio diário (ação principal não foi afetada):", err);
-  }
-}
-
-/**
- * Concede o XP e o contador da ação (incremento atômico no servidor, com o XP de cada ação
- * definido lá), avança os desafios do dia e desbloqueia as insígnias que passaram a valer. Nunca
- * lança: quem chama (repository de outro módulo) precisa que a ação principal (concluir a tarefa
- * etc.) nunca falhe por causa da gamificação.
- */
-export async function awardXp(client: Client, userId: string, action: GamificationAction): Promise<void> {
-  try {
-    const { error } = await client.rpc("gamification_record_action", { p_action: action });
-    if (error) throw error;
-    await recordDailyChallengeAction(client, action);
     await syncGamificationBadges(client, userId);
     emitGamificationUpdated(userId);
   } catch (err) {
-    console.error("Falha ao conceder XP de gamificação (ação principal não foi afetada):", err);
-  }
-}
-
-async function recordMilestone(client: Client, userId: string, milestone: "checkin_day" | "quiz_90_plus"): Promise<void> {
-  const { error } = await client.rpc("gamification_record_milestone", { p_milestone: milestone });
-  if (error) throw error;
-  await syncGamificationBadges(client, userId);
-  emitGamificationUpdated(userId);
-}
-
-/** Registra um dia de check-in diário (quem chama garante que a data ainda não tinha check-in). */
-export async function recordCheckinDay(client: Client, userId: string): Promise<void> {
-  try {
-    await recordMilestone(client, userId, "checkin_day");
-  } catch (err) {
-    console.error("Falha ao registrar o dia de check-in para as conquistas:", err);
-  }
-}
-
-/** Registra uma tentativa de quiz com aproveitamento mínimo de 90%. */
-export async function recordHighAccuracyQuiz(client: Client, userId: string): Promise<void> {
-  try {
-    await recordMilestone(client, userId, "quiz_90_plus");
-  } catch (err) {
-    console.error("Falha ao registrar o quiz de alto aproveitamento para as conquistas:", err);
+    // A gravação principal já foi concluída; falhas de sincronização de badges não podem fazê-la
+    // parecer perdida nem pedir ao usuário para repetir a ação.
+    console.error("Falha ao atualizar as insígnias de gamificação (a ação principal foi salva):", err);
   }
 }

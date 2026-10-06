@@ -68,22 +68,27 @@ export function RegistrarPage() {
     }
 
     setSubmitting(true);
-    const result = await signUpWithPassword(email, password, {
-      fullName: trimmedName,
-      username: username.trim() || undefined,
-      phone: normalizeBRPhone(phone) ?? undefined,
-    }, captchaToken ?? undefined);
-    setSubmitting(false);
-    if (captchaSiteKey) {
-      setCaptchaToken(null);
-      setCaptchaResetSignal((value) => value + 1);
-    }
+    try {
+      const result = await signUpWithPassword(email, password, {
+        fullName: trimmedName,
+        username: username.trim() || undefined,
+        phone: normalizeBRPhone(phone) ?? undefined,
+      }, captchaToken ?? undefined);
 
-    if (result.error) {
-      setError(result.error);
-      return;
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setRegistered(true);
+    } catch {
+      setError("Não foi possível conectar. Verifique sua internet e tente criar a conta novamente.");
+    } finally {
+      setSubmitting(false);
+      if (captchaSiteKey) {
+        setCaptchaToken(null);
+        setCaptchaResetSignal((value) => value + 1);
+      }
     }
-    setRegistered(true);
   }
 
   return (

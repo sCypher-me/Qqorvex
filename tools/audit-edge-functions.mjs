@@ -59,6 +59,10 @@ requirePattern("send-notifications", notifications, /recurring_event_id/, "idemp
 requirePattern("send-notifications", notifications, /ignoreDuplicates:\s*true/, "upsert sem duplicação");
 requirePattern("send-notifications", notifications, /\.eq\("user_id", budget\.user_id\)/, "isolamento do orçamento por usuário");
 requirePattern("send-notifications", notifications, /\.eq\("next_occurrence_date", occurrenceDate\)/, "compare-and-set da recorrência");
+requirePattern("send-notifications", notifications, /AbortSignal\.timeout\(SUPABASE_REQUEST_TIMEOUT_MS\)/, "timeout das chamadas ao Supabase");
+requirePattern("send-notifications", notifications, /timeout:\s*PUSH_REQUEST_TIMEOUT_MS/, "timeout dos envios Web Push");
+requirePattern("send-notifications", notifications, /RUN_BUDGET_MS/, "limite de duração por execução do cron");
+requirePattern("send-notifications", notifications, /progressResponse\(true\)/, "retomada parcial do cron no próximo ciclo");
 
 const oauth = await source("google-oauth-callback");
 requirePattern("google-oauth-callback", oauth, /google_oauth_states/, "estado OAuth persistido");

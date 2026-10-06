@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDailyCountdown, getDailyChallenges, shiftLocalDateKey, summarizeDailyChallengeHistory } from "./dailyChallenges";
+import { formatDailyCountdown, getDailyChallenges, localDateKey, shiftLocalDateKey, summarizeDailyChallengeHistory } from "./dailyChallenges";
 import type { DailyChallengeProgress } from "./types";
 
 describe("desafios diários", () => {
@@ -22,8 +22,9 @@ describe("desafios diários", () => {
     );
   });
 
-  it("conta precisamente até a meia-noite local", () => {
-    expect(formatDailyCountdown(new Date(2026, 8, 22, 23, 59, 59))).toBe("00:00:01");
+  it("usa a mesma data civil de São Paulo que concede os desafios no banco", () => {
+    expect(localDateKey(new Date("2026-09-23T02:59:59.000Z"))).toBe("2026-09-22");
+    expect(formatDailyCountdown(new Date("2026-09-23T02:59:59.000Z"))).toBe("00:00:01");
   });
 
   it("mantém 00h e a aritmética de data local ao atravessar mês, ano e ano bissexto", () => {

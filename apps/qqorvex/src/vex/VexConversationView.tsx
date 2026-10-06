@@ -65,9 +65,9 @@ export function VexConversationView({ onClose, variant = "panel" }: { onClose?: 
     if (isPage && window.matchMedia("(pointer: fine)").matches) composerRef.current?.focus();
   }, [isPage, chat.activeConversationId]);
 
-  function send(text: string) {
+  function send(text: string, attachment?: File) {
     jump("auto");
-    void chat.send(text);
+    void chat.send(text, { attachment });
   }
 
   function selectConversation(id: string) {

@@ -143,6 +143,31 @@ describe("runVexTurn", () => {
     expect(result.kind === "message" && result.steps).toEqual([{ tool: "create_event", label: "create_event", ok: true }]);
   });
 
+  it("registra uma execução recusada pelo tool como falha, nunca como ação concluída", async () => {
+    const failedTool: ToolDefinition = {
+      ...tool,
+      async execute() { return { summary: "Não foi possível criar o quiz.", ok: false }; },
+    };
+    const { provider, calls } = scriptedProvider([{ kind: "message", content: "Ainda não foi criado." }]);
+    const result = await confirmVexToolCall({ provider, messages: user, tools: [failedTool], tool: failedTool, args: { title: "Quiz", time: "09:00" } });
+
+    expect(result.kind === "message" && result.steps[0]?.ok).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("preserva o resultado real se o provedor falhar só depois de a ação ser executada", async () => {
+    let executed = false;
+    const completedTool: ToolDefinition = {
+      ...tool,
+      async execute() { executed = true; return { summary: "O evento foi criado." }; },
+    };
+    const provider: VexProvider = { name: "offline-after-save", async chat() { throw new Error("rede caiu depois do salvamento"); } };
+    const result = await confirmVexToolCall({ provider, messages: user, tools: [completedTool], tool: completedTool, args: { title: "Dentista", time: "09:00" } });
+
+    expect(executed).toBe(true);
+    expect(result).toMatchObject({ kind: "message", content: expect.stringContaining("O evento foi criado"), steps: [{ ok: true }] });
+  });
+
   it("depois de confirmar, o modelo vê que a ação foi dele e já aconteceu", async () => {
     const { provider, calls } = scriptedProvider([{ kind: "message", content: "Pronto." }]);
     await confirmVexToolCall({ provider, messages: user, tools: [tool], tool, args: { title: "Estudar", time: "09:00" } });
