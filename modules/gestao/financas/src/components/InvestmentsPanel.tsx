@@ -23,10 +23,10 @@ function formatMoney(value: number | null) {
 
 export function InvestmentsPanel({ client, userId }: { client: SupabaseClient<Database>; userId: string }) {
   const { toast } = useToast();
-  const { positions, isLoading, error } = useInvestmentPositions(client);
-  const { quotes, market, marketError, apiKeyConfigured, isLoading: quotesLoading, error: quoteError, refetch, isFetching } = useInvestmentQuotes(client);
+  const { positions, isLoading, error } = useInvestmentPositions(client, userId);
+  const { quotes, market, marketError, apiKeyConfigured, isLoading: quotesLoading, error: quoteError, refetch, isFetching } = useInvestmentQuotes(client, userId);
   const savePosition = useSaveInvestmentPosition(client, userId);
-  const deletePosition = useDeleteInvestmentPosition(client);
+  const deletePosition = useDeleteInvestmentPosition(client, userId);
   const [assetType, setAssetType] = useState<InvestmentAssetType>("stock");
   const [symbol, setSymbol] = useState("");
   const [quantity, setQuantity] = useState("0");

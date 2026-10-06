@@ -1,5 +1,5 @@
 /** Endereços e chaves públicas do site (todas podem ir para o navegador). */
-const APK_RELEASE = "https://github.com/sCypher-me/Qqorvex/releases/download/android-beta-20261006-v0.1.5";
+const APK_RELEASE = "https://github.com/sCypher-me/Qqorvex/releases/download/android-beta-20261006-v0.1.6";
 export const APK_URL = `${APK_RELEASE}/qqorvex-android-arm64.apk`;
 export const APK_URL_ARM32 = `${APK_RELEASE}/qqorvex-android-arm32.apk`;
 

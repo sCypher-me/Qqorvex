@@ -9,7 +9,9 @@ const CORS_HEADERS = {
 const MAX_POSITIONS = 30;
 const REQUEST_TIMEOUT_MS = 8_000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 2;
+// Permite a carga inicial e uma recuperação automática do feed sem bloquear o usuário
+// após dois pedidos; a janela curta ainda protege o provedor de atualizações em loop.
+const MAX_REQUESTS_PER_WINDOW = 8;
 const MARKET_CACHE_TTL_MS = 2 * 60_000;
 const CRYPTO_MARKET_SYMBOLS = "BTC,ETH,BNB,SOL,XRP,DOGE,ADA";
 const requestBuckets = new Map<string, { startedAt: number; count: number }>();
@@ -41,10 +43,18 @@ type MarketSnapshot = {
   crypto: MarketAsset[];
   updatedAt: string;
 };
+type MarketLoadResult = { snapshot: MarketSnapshot; warning: string | null };
 type BrapiListAsset = { stock?: string; name?: string; close?: unknown; change?: unknown };
 
-let cachedMarketSnapshot: { value: MarketSnapshot; expiresAt: number } | null = null;
-let pendingMarketRequest: Promise<MarketSnapshot> | null = null;
+class BrapiRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`brapi returned ${status}`);
+    this.name = "BrapiRequestError";
+  }
+}
+
+let cachedMarketSnapshot: { value: MarketLoadResult; expiresAt: number } | null = null;
+let pendingMarketRequest: Promise<MarketLoadResult> | null = null;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
@@ -54,16 +64,37 @@ async function timedFetch(url: string, apiKey: string, signal: AbortSignal) {
   return fetch(url, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {}, signal });
 }
 
+const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 async function fetchBrapiJSON(url: string, apiKey: string): Promise<Record<string, unknown>> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const response = await timedFetch(url, apiKey, controller.signal);
-    if (!response.ok) throw new Error(`brapi returned ${response.status}`);
-    return await response.json();
-  } finally {
-    clearTimeout(timeout);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await timedFetch(url, apiKey, controller.signal);
+      if (!response.ok) {
+        const error = new BrapiRequestError(response.status);
+        const transient = response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500;
+        if (transient && attempt === 0) {
+          await pause(350);
+          continue;
+        }
+        throw error;
+      }
+      const body: unknown = await response.json();
+      if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("brapi returned an invalid response");
+      return body as Record<string, unknown>;
+    } catch (error) {
+      if (attempt === 0 && !(error instanceof BrapiRequestError && error.status < 500 && error.status !== 408 && error.status !== 425 && error.status !== 429)) {
+        await pause(350);
+        continue;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+  throw new Error("brapi request failed");
 }
 
 function numeric(value: unknown): number | null {
@@ -102,11 +133,11 @@ async function fetchMarketList(apiKey: string, asset: "stock" | "fii", sortOrder
   });
 }
 
-async function loadMarketSnapshot(apiKey: string): Promise<MarketSnapshot> {
+async function loadMarketSnapshot(apiKey: string): Promise<MarketLoadResult> {
   if (cachedMarketSnapshot && cachedMarketSnapshot.expiresAt > Date.now()) return cachedMarketSnapshot.value;
   if (pendingMarketRequest) return pendingMarketRequest;
 
-  const request = (async (): Promise<MarketSnapshot> => {
+  const request = (async (): Promise<MarketLoadResult> => {
     const cryptoUrl = new URL("https://brapi.dev/api/v2/crypto");
     cryptoUrl.searchParams.set("coin", CRYPTO_MARKET_SYMBOLS);
     cryptoUrl.searchParams.set("currency", "BRL");
@@ -117,8 +148,23 @@ async function loadMarketSnapshot(apiKey: string): Promise<MarketSnapshot> {
       fetchMarketList(apiKey, "fii", "asc"),
       fetchBrapiJSON(cryptoUrl.toString(), apiKey),
     ]);
-    if ([stockGainersResult, stockDeclinersResult, fiiGainersResult, fiiDeclinersResult, cryptoResult].every((result) => result.status === "rejected")) {
-      throw new Error("No market data available");
+    const feeds = [
+      { name: "ações", result: stockGainersResult },
+      { name: "ações", result: stockDeclinersResult },
+      { name: "FIIs", result: fiiGainersResult },
+      { name: "FIIs", result: fiiDeclinersResult },
+      { name: "criptomoedas", result: cryptoResult },
+    ] as const;
+    const failedFeeds = feeds.filter((feed) => feed.result.status === "rejected");
+    if (failedFeeds.length === feeds.length) {
+      const failures = failedFeeds.map((feed) => feed.result.status === "rejected" ? feed.result.reason : null);
+      if (failures.some((error) => error instanceof BrapiRequestError && (error.status === 401 || error.status === 403))) {
+        throw new Error("A chave configurada da brapi.dev foi recusada. Peça ao Dono para conferir a integração.");
+      }
+      if (failures.some((error) => error instanceof BrapiRequestError && error.status === 429)) {
+        throw new Error("A brapi.dev limitou temporariamente as cotações. Aguarde um pouco e tente de novo.");
+      }
+      throw new Error("Não foi possível receber cotações da brapi.dev agora. O app vai tentar novamente automaticamente.");
     }
     const stockGainers = stockGainersResult.status === "fulfilled" ? stockGainersResult.value : [];
     const stockDecliners = stockDeclinersResult.status === "fulfilled" ? stockDeclinersResult.value : [];
@@ -145,8 +191,19 @@ async function loadMarketSnapshot(apiKey: string): Promise<MarketSnapshot> {
       crypto,
       updatedAt: new Date().toISOString(),
     };
-    cachedMarketSnapshot = { value: snapshot, expiresAt: Date.now() + MARKET_CACHE_TTL_MS };
-    return snapshot;
+    const warningByFeed = [...new Set(failedFeeds.map((feed) => feed.name))];
+    if (cryptoResult.status === "fulfilled" && crypto.length === 0) warningByFeed.push("criptomoedas");
+    const keyWasRejected = failedFeeds.some((feed) => feed.result.status === "rejected" && feed.result.reason instanceof BrapiRequestError && (feed.result.reason.status === 401 || feed.result.reason.status === 403));
+    const warning = keyWasRejected
+      ? "A brapi.dev recusou a chave configurada; algumas cotações podem não aparecer. Peça ao Dono para conferir a integração."
+      : warningByFeed.length
+        ? `Algumas cotações estão indisponíveis: ${[...new Set(warningByFeed)].join(", ")}. O restante do mercado continua disponível.`
+        : null;
+    const loaded = { snapshot, warning };
+    // Não segurar resultados incompletos no cache: a segunda tentativa automática precisa
+    // poder buscar de novo justamente o feed que falhou (muito comum em cripto).
+    if (!warning) cachedMarketSnapshot = { value: loaded, expiresAt: Date.now() + MARKET_CACHE_TTL_MS };
+    return loaded;
   })();
 
   pendingMarketRequest = request;
@@ -184,13 +241,14 @@ Deno.serve(async (req) => {
   if (authError || !authData.user) return json({ error: "Sessão inválida. Entre novamente." }, 401);
   if (!consumeRateLimit(authData.user.id)) return json({ error: "Você atualizou as cotações muitas vezes. Aguarde um minuto." }, 429);
 
-  const [{ data: positionRows, error: positionError }, { data: secretRow }] = await Promise.all([
+  const [{ data: positionRows, error: positionError }, { data: secretRow, error: secretError }] = await Promise.all([
     supabase.from("investment_positions").select("id, asset_type, symbol").eq("user_id", authData.user.id).order("symbol").limit(MAX_POSITIONS),
     supabase.from("app_secrets").select("value").eq("key", "brapi_api_key").maybeSingle(),
   ]);
   if (positionError) return json({ error: "Não foi possível carregar os ativos da carteira." }, 500);
+  if (secretError) return json({ error: "Não foi possível consultar a configuração do provedor de cotações." }, 500);
 
-  const apiKey = secretRow?.value ?? "";
+  const apiKey = typeof secretRow?.value === "string" ? secretRow.value.trim() : "";
   const positions = (positionRows ?? []) as Position[];
   const marketPromise = loadMarketSnapshot(apiKey);
   const quotes: Quote[] = [];
@@ -243,9 +301,11 @@ Deno.serve(async (req) => {
   let market: MarketSnapshot | null = null;
   let marketError: string | null = null;
   try {
-    market = await marketPromise;
-  } catch {
-    marketError = "Não foi possível carregar o mercado agora. Tente atualizar novamente em instantes.";
+    const loadedMarket = await marketPromise;
+    market = loadedMarket.snapshot;
+    marketError = loadedMarket.warning;
+  } catch (error) {
+    marketError = error instanceof Error ? error.message : "Não foi possível carregar o mercado agora. Tente novamente em instantes.";
   }
 
   return json({ quotes, market, marketError, apiKeyConfigured: Boolean(apiKey), requestedAt: new Date().toISOString() });

@@ -60,8 +60,8 @@ const CARDS_KEY = ["cards"] as const;
 const RECURRING_KEY = ["recurring-transactions"] as const;
 const INSTALLMENTS_KEY = ["installments"] as const;
 const BUDGETS_KEY = ["budgets"] as const;
-const INVESTMENT_POSITIONS_KEY = ["investment-positions"] as const;
-const INVESTMENT_QUOTES_KEY = ["investment-quotes"] as const;
+const investmentPositionsKey = (userId: string) => ["investment-positions", userId] as const;
+const investmentQuotesKey = (userId: string) => ["investment-quotes", userId] as const;
 const cardStatementsKey = (cardId: string) => ["card-statements", cardId] as const;
 const cardPeriodTransactionsKey = (cardId: string, periodStartIso: string, periodEndIso: string) =>
   ["card-period-transactions", cardId, periodStartIso, periodEndIso] as const;
@@ -74,23 +74,35 @@ export function useTransactions(client: SupabaseClient<Database>, fromDate?: str
   return { transactions: query.data ?? [], isLoading: query.isLoading, error: query.error };
 }
 
-export function useInvestmentPositions(client: SupabaseClient<Database>) {
-  const query = useQuery({ queryKey: INVESTMENT_POSITIONS_KEY, queryFn: () => listInvestmentPositions(client) });
+export function useInvestmentPositions(client: SupabaseClient<Database>, userId: string) {
+  const query = useQuery({ queryKey: investmentPositionsKey(userId), queryFn: () => listInvestmentPositions(client) });
   return { positions: query.data ?? [], isLoading: query.isLoading, error: query.error };
 }
 
-export function useInvestmentQuotes(client: SupabaseClient<Database>, enabled = true) {
+export function useInvestmentQuotes(client: SupabaseClient<Database>, userId: string, enabled = true) {
   const query = useQuery({
-    queryKey: INVESTMENT_QUOTES_KEY,
-    queryFn: () => fetchInvestmentQuotes(client),
+    queryKey: investmentQuotesKey(userId),
+    queryFn: async () => {
+      let result = await fetchInvestmentQuotes(client);
+      const needsMarketRetry = !result.market || result.market.crypto.length === 0;
+      // O endpoint mantém HTTP 200 para que as cotações da carteira continuem disponíveis
+      // mesmo quando o feed público do mercado falha. Tenta recuperar uma vez antes de exibir
+      // o estado parcial; isso evita depender de vários cliques manuais.
+      if (needsMarketRetry) {
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+        result = await fetchInvestmentQuotes(client);
+      }
+      return result;
+    },
     enabled,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 5_000),
   });
   return {
     quotes: query.data?.quotes ?? [],
     market: query.data?.market ?? null,
-    marketError: query.data?.marketError ?? null,
+    marketError: query.data?.marketError ?? (query.error instanceof Error ? query.error.message : null),
     apiKeyConfigured: query.data?.apiKeyConfigured ?? false,
     isLoading: query.isLoading,
     error: query.error,
@@ -104,19 +116,19 @@ export function useSaveInvestmentPosition(client: SupabaseClient<Database>, user
   return useMutation({
     mutationFn: (input: SaveInvestmentPositionInput) => saveInvestmentPosition(client, userId, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: INVESTMENT_POSITIONS_KEY });
-      void queryClient.invalidateQueries({ queryKey: INVESTMENT_QUOTES_KEY });
+      void queryClient.invalidateQueries({ queryKey: investmentPositionsKey(userId) });
+      void queryClient.invalidateQueries({ queryKey: investmentQuotesKey(userId) });
     },
   });
 }
 
-export function useDeleteInvestmentPosition(client: SupabaseClient<Database>) {
+export function useDeleteInvestmentPosition(client: SupabaseClient<Database>, userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteInvestmentPosition(client, id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: INVESTMENT_POSITIONS_KEY });
-      void queryClient.invalidateQueries({ queryKey: INVESTMENT_QUOTES_KEY });
+      void queryClient.invalidateQueries({ queryKey: investmentPositionsKey(userId) });
+      void queryClient.invalidateQueries({ queryKey: investmentQuotesKey(userId) });
     },
   });
 }
