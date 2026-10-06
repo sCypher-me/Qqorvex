@@ -54,9 +54,9 @@ export const LEVEL_THEMES = [
 export const VIP_THEME = {
   id: "vip",
   name: "Coroa Vex",
-  essence: "Seu Plus, seu espaço de destaque",
-  description: "Obsidiana com ametista elétrica e detalhes de ouro champagne.",
-  preview: { canvas: "#100d19", panel: "#282139", accent: "#a878f5", glow: "#f0cc77" },
+  essence: "Obsidiana profunda, ouro champanhe e a energia ametista da Vex",
+  description: "Uma edição Plus de alto contraste: superfícies de obsidiana com reflexos ameixa, metais champanhe e a Vex em ametista.",
+  preview: { canvas: "#09080a", panel: "#141216", accent: "#c5a467", glow: "#b995e9" },
 } as const;
 
 export function isAppSkin(value: unknown): value is AppSkin {

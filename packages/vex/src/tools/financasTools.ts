@@ -3,6 +3,7 @@ import {
   computeBalances,
   createRecurringTransaction,
   createTransaction,
+  fetchInvestmentQuotes,
   listCategories,
   listRecurringTransactions,
   listTransactions,
@@ -11,6 +12,7 @@ import {
   updateTransaction,
   upcomingBills,
   type RecurrenceFrequency,
+  type InvestmentMarketAsset,
 } from "@qqorvex/module-financas";
 import type { ToolDefinition } from "../types";
 import { addDays, ambiguousSummary, formatDateKey, formatMoney, isDateKey, localDateKey, matchByName } from "./shared";
@@ -24,12 +26,53 @@ function monthLabel(yearMonth: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
+const marketPrice = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
+const marketDateTime = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+function marketAssetLine(asset: InvestmentMarketAsset, period: string): string {
+  const change = asset.changePercent;
+  const movement = change === null || !Number.isFinite(change) ? "variação indisponível" : `${change > 0 ? "+" : ""}${change.toFixed(2).replace(".", ",")}% ${period}`;
+  const price = asset.price !== null && Number.isFinite(asset.price) ? ` · ${marketPrice.format(asset.price)}` : "";
+  return `- ${asset.name} (${asset.symbol}): ${movement}${price}`;
+}
+
+function marketGroup(label: string, assets: InvestmentMarketAsset[], period: string): string {
+  return `${label}:\n${assets.length ? assets.map((asset) => marketAssetLine(asset, period)).join("\n") : "- Sem cotações disponíveis."}`;
+}
+
 /**
  * Ferramentas da Vex para Finanças. Toda operação passa pelas APIs do módulo; a Vex nunca
  * acessa o banco diretamente. Consultas executam direto; lançamentos exigem confirmação.
  */
 export function createFinancasTools(client: SupabaseClient<Database>, userId: string): ToolDefinition[] {
   return [
+    {
+      name: "get_investment_market_overview",
+      label: "Mercado",
+      description: "Consulta na tela Finanças → Investimentos as ações e FIIs que mais subiram e caíram no último pregão e a variação de criptomoedas nas últimas 24 horas. Use para perguntas sobre cotações e movimento do mercado. São dados informativos, nunca recomendações de investimento.",
+      parameters: { type: "object", properties: {} },
+      requiresConfirmation: false,
+      async execute() {
+        const response = await fetchInvestmentQuotes(client);
+        const market = response.market;
+        if (!market) {
+          return { summary: response.marketError ?? "O mercado está temporariamente indisponível. A pessoa pode tentar atualizar em Finanças → Investimentos.", data: response };
+        }
+        const updatedAt = marketDateTime.format(new Date(market.updatedAt));
+        const lines = [
+          `Cotações do mercado atualizadas em ${updatedAt}. Ações e FIIs: variação do último pregão; cripto: janela de 24 horas. Dados informativos, sem recomendação financeira.`,
+          marketGroup("Ações que mais subiram", market.stocks.gainers, "no último pregão"),
+          marketGroup("Ações que mais caíram", market.stocks.decliners, "no último pregão"),
+          marketGroup("FIIs que mais subiram", market.fiis.gainers, "no último pregão"),
+          marketGroup("FIIs que mais caíram", market.fiis.decliners, "no último pregão"),
+          marketGroup("Criptomoedas", market.crypto, "em 24 h"),
+        ];
+        if (response.quotes.length) {
+          lines.push(marketGroup("Cotações da carteira", response.quotes.map((quote) => ({ assetType: quote.assetType, symbol: quote.symbol, name: quote.name, price: quote.price, changePercent: quote.changePercent, asOf: quote.asOf })), "na variação informada pelo provedor"));
+        }
+        return { summary: lines.join("\n\n"), data: response };
+      },
+    },
     {
       name: "get_financial_summary",
       label: "Finanças",

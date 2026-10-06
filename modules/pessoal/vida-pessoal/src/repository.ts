@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { recordCheckinDay } from "@qqorvex/module-gamificacao";
+import { refreshGamificationAfterSourceWrite } from "@qqorvex/module-gamificacao";
 import type {
   Asset,
   CheckinInput,
@@ -184,7 +184,7 @@ export async function upsertCheckin(client: Client, userId: string, date: string
     .select("*")
     .single();
   if (error) throw error;
-  if (!existing) await recordCheckinDay(client, userId);
+  if (!existing) await refreshGamificationAfterSourceWrite(client, userId);
   return data;
 }
 

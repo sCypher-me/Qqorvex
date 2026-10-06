@@ -6,6 +6,7 @@ const MAX_TOOL_ARGUMENTS_CHARS = 16_000;
 type JsonSchemaProperty = {
   type?: string;
   enum?: unknown[];
+  maxLength?: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -48,6 +49,9 @@ export function validateToolArguments(tool: ToolDefinition, args: unknown): stri
     }
 
     if (property.type === "string" && typeof value !== "string") return `"${key}" precisa ser texto`;
+    if (property.type === "string" && typeof value === "string" && property.maxLength !== undefined && value.length > property.maxLength) {
+      return `"${key}" ultrapassa o limite de ${property.maxLength} caracteres`;
+    }
     if (property.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
       return `"${key}" precisa ser um número válido`;
     }
@@ -101,7 +105,13 @@ export async function confirmVexToolCall(params: TurnParams & { tool: ToolDefini
   // solto parece um pedido ainda pendente e ele propõe a mesma ação de novo.
   const executed: ChatMessage = { role: "assistant", content: actionRecord("done", previewToolCall(params.tool, params.args)) };
   const executedKey = `${params.tool.name}:${JSON.stringify(params.args)}`;
-  const result = await continueTurn({ ...params, messages: [...params.messages, executed, message] }, [step], { executedKey, summary: message.content });
+  let result: VexTurnResult;
+  try {
+    result = await continueTurn({ ...params, messages: [...params.messages, executed, message] }, [step], { executedKey, summary: message.content });
+  } catch {
+    // A falha ao redigir a resposta posterior não desfaz nem invalida a ação já executada.
+    return { kind: "message", content: `${message.content} A ação foi concluída, mas não consegui continuar a resposta agora.`, steps: [step] };
+  }
   // Se o modelo não comentar o resultado, o resumo da ferramenta é a resposta.
   if (result.kind === "message" && !result.content.trim()) return { ...result, content: message.content };
   return result;
@@ -181,7 +191,7 @@ async function executeTool(tool: ToolDefinition, args: Record<string, unknown>):
   const label = tool.label ?? tool.name;
   try {
     const result = await tool.execute(args);
-    return { message: { role: "tool", toolName: tool.name, content: result.summary }, step: { tool: tool.name, label, ok: true } };
+    return { message: { role: "tool", toolName: tool.name, content: result.summary }, step: { tool: tool.name, label, ok: result.ok !== false } };
   } catch (error) {
     const detail = error instanceof Error && error.message ? ` (${error.message.slice(0, 160)})` : "";
     return {

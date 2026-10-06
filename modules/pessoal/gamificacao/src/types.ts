@@ -4,9 +4,8 @@ import type { Tables } from "@qqorvex/database";
  * Gamification Core é a fonte única de Nível/XP/
  * Badges/Título — Perfil (`/perfil`) só referencia. Nível e Título nunca são guardados: são
  * sempre derivados de `xp` (mesmo padrão de "Metas — progresso derivado"), pra nunca divergir do
- * total real. `awardXp()` é chamado de dentro dos repositories de Tarefas, Metas & Hábitos,
- * Estudos e Biblioteca — não da página do app — pra premiar tanto ações feitas na UI quanto via
- * Vex (que chama os repositories diretamente).
+ * total real. Gatilhos no banco concedem XP a partir dos eventos persistidos em Tarefas, Metas &
+ * Hábitos, Estudos e Biblioteca, então ações da UI e da Vex usam o mesmo caminho validado.
  */
 export type GamificationStats = Tables<"gamification_stats">;
 export type UserBadge = Tables<"user_badges">;

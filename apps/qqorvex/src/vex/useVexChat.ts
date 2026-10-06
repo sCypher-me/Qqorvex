@@ -31,6 +31,8 @@ import { useCurrentPageMeta } from "../app/shell/PageMeta";
 import { useCurrentItem } from "./CurrentItemContext";
 import { useVexSession } from "./VexSessionContext";
 import { titleFromPrompt } from "./helpers";
+import { latestVexRequestHasCompletedAction, prepareVexRetryHistory } from "./retryHistory";
+import { buildVexAttachmentChatMessages, decodeVexAttachmentMessage, encodeVexAttachmentMessage, extractVexFile } from "./fileAttachments";
 
 /**
  * Cadeia de provedores: Gemini hospedado (funciona de qualquer lugar) → Ollama local, só em
@@ -43,12 +45,14 @@ const provider =
     : new ResilientProvider(hostedProvider, new EchoProvider());
 
 const PROVIDER_ERROR_EVENT = "qv:vex-provider-error";
+const FALLBACK_MESSAGE_MARKER = "[Resposta em modo básico] ";
+const FALLBACK_AFTER_ACTION_MARKER = "[Resposta em modo básico após ação confirmada] ";
 
 export type ActionStatus = "done" | "cancelled" | "failed";
 
 export type DisplayMessage =
   | { id: string; role: "user"; content: string }
-  | { id: string; role: "assistant"; content: string; steps?: VexStep[] }
+  | { id: string; role: "assistant"; content: string; steps?: VexStep[]; fallback?: boolean; completedAction?: boolean }
   | { id: string; role: "action"; action: VexActionPreview; status: ActionStatus };
 
 export interface PendingAction {
@@ -76,11 +80,16 @@ const uid = () => `m${Date.now().toString(36)}${(sequence += 1)}`;
 
 /** Histórico para o modelo. Ações (confirmadas, recusadas ou que falharam) entram como registro. */
 function toChat(history: DisplayMessage[]): ChatMessage[] {
-  return history.map((message): ChatMessage =>
-    message.role === "action"
-      ? { role: "assistant", content: actionRecord(message.status, message.action) }
-      : { role: message.role, content: message.content },
-  );
+  return history.flatMap((message): ChatMessage[] => {
+    if (message.role === "action") return [{ role: "assistant", content: actionRecord(message.status, message.action) }];
+    if (message.role === "assistant" && message.fallback) return [];
+    if (message.role === "user") {
+      const attachment = decodeVexAttachmentMessage(message.content);
+      if (!attachment) return [{ role: "user", content: message.content }];
+      return buildVexAttachmentChatMessages(attachment.prompt, attachment.file);
+    }
+    return [{ role: message.role, content: message.content }];
+  });
 }
 
 /**
@@ -113,6 +122,7 @@ export function useVexChat() {
 
   const loadedFor = useRef<string | null>(null);
   const turnRef = useRef(0);
+  const fallbackEpochRef = useRef(0);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const pendingRef = useRef(pending);
@@ -124,11 +134,23 @@ export function useVexChat() {
     conversationRef.current = activeConversationId;
     if (!activeConversationId || loadedFor.current === activeConversationId || !messagesQuery.data) return;
     loadedFor.current = activeConversationId;
-    setMessages(messagesQuery.data.map((row) => ({ id: row.id, role: row.role === "user" ? "user" : "assistant", content: row.content })));
+    setMessages(messagesQuery.data.map((row) => {
+      const completedAction = row.role !== "user" && row.content.startsWith(FALLBACK_AFTER_ACTION_MARKER);
+      const fallback = completedAction || (row.role !== "user" && row.content.startsWith(FALLBACK_MESSAGE_MARKER));
+      const marker = completedAction ? FALLBACK_AFTER_ACTION_MARKER : FALLBACK_MESSAGE_MARKER;
+      return {
+        id: row.id,
+        role: row.role === "user" ? "user" as const : "assistant" as const,
+        content: fallback ? row.content.slice(marker.length) : row.content,
+        ...(fallback ? { fallback: true } : {}),
+        ...(completedAction ? { completedAction: true } : {}),
+      };
+    }));
   }, [activeConversationId, messagesQuery.data]);
 
   useEffect(() => {
     const onProviderError = (event: Event) => {
+      fallbackEpochRef.current += 1;
       const message = (event as CustomEvent<{ message?: string }>).detail?.message?.trim() ?? "";
       setProviderIssue({ message, quota: /limite/i.test(message) && /vex/i.test(message) });
     };
@@ -153,7 +175,7 @@ export function useVexChat() {
   );
 
   const applyResult = useCallback(
-    (result: VexTurnResult, history: DisplayMessage[], conversationId: string) => {
+    (result: VexTurnResult, history: DisplayMessage[], conversationId: string, usedFallback = false) => {
       if (result.kind === "blocked") {
         setNotice({ text: result.reason, tone: "info" });
         return;
@@ -163,8 +185,10 @@ export function useVexChat() {
         return;
       }
       const content = result.content.trim() || "Não recebi uma resposta desta vez. Pode reformular?";
-      setMessages([...history, { id: uid(), role: "assistant", content, steps: result.steps }]);
-      appendMessage.mutate({ conversationId, role: "assistant", content });
+      const completedAction = latestVexRequestHasCompletedAction(history);
+      setMessages([...history, { id: uid(), role: "assistant", content, steps: result.steps, fallback: usedFallback, completedAction }]);
+      const marker = completedAction ? FALLBACK_AFTER_ACTION_MARKER : FALLBACK_MESSAGE_MARKER;
+      appendMessage.mutate({ conversationId, role: "assistant", content: usedFallback ? `${marker}${content}` : content });
     },
     [appendMessage],
   );
@@ -175,6 +199,7 @@ export function useVexChat() {
       setBusy(true);
       setLiveStep(null);
       try {
+        const fallbackEpoch = fallbackEpochRef.current;
         const result = await runVexTurn({
           provider,
           messages: contextFor(history),
@@ -185,7 +210,7 @@ export function useVexChat() {
           },
         });
         if (turn !== turnRef.current) return;
-        applyResult(result, history, conversationId);
+        applyResult(result, history, conversationId, fallbackEpochRef.current > fallbackEpoch);
       } catch {
         if (turn === turnRef.current) setNotice({ text: "Não consegui responder agora. Verifique a conexão e tente de novo.", tone: "error", retry: true });
       } finally {
@@ -199,32 +224,58 @@ export function useVexChat() {
   );
 
   const send = useCallback(
-    async (raw: string, options: { fresh?: boolean } = {}) => {
-      const text = raw.trim();
-      if (!text || !userId) return;
+    async (raw: string, options: { fresh?: boolean; attachment?: File } = {}) => {
+      const typedText = raw.trim();
+      if ((!typedText && !options.attachment) || !userId) return;
+      const prompt = typedText || "Leia o arquivo anexado e me pergunte o que eu gostaria de fazer com ele.";
       setNotice(null);
+      setProviderIssue(null);
+      const sendTurn = (turnRef.current += 1);
+      setBusy(true);
+      setLiveStep(options.attachment ? "Lendo o arquivo" : null);
+
+      let text = prompt;
+      if (options.attachment) {
+        try {
+          const extractedFile = await extractVexFile(options.attachment);
+          if (sendTurn !== turnRef.current) return;
+          text = encodeVexAttachmentMessage(prompt, extractedFile);
+        } catch (error) {
+          if (sendTurn === turnRef.current) {
+            const detail = error instanceof Error && error.message ? error.message : "Não consegui ler esse arquivo.";
+            setBusy(false);
+            setLiveStep(null);
+            setNotice({ text: detail, tone: "error" });
+          }
+          return;
+        }
+      }
+      if (sendTurn !== turnRef.current) return;
+      setLiveStep(null);
       const skipped = pendingRef.current;
       setPending(null);
       // Escrever outra coisa com uma ação aguardando equivale a recusá-la.
       const base: DisplayMessage[] = options.fresh ? [] : skipped ? [...skipped.history, { id: uid(), role: "action", action: skipped.action, status: "cancelled" }] : messagesRef.current;
       const history: DisplayMessage[] = [...base, { id: uid(), role: "user", content: text }];
       setMessages(history);
-      setBusy(true);
 
       let conversationId = options.fresh ? null : conversationRef.current;
       try {
         if (!conversationId) {
           const conversation = await createConversation.mutateAsync();
+          if (sendTurn !== turnRef.current) return;
           conversationId = conversation.id;
           loadedFor.current = conversationId;
           conversationRef.current = conversationId;
           setActiveConversationId(conversationId);
-          renameConversation.mutate({ conversationId, title: titleFromPrompt(text) });
+          renameConversation.mutate({ conversationId, title: titleFromPrompt(prompt) });
         }
         appendMessage.mutate({ conversationId, role: "user", content: text });
       } catch {
-        setBusy(false);
-        setNotice({ text: "Não consegui iniciar a conversa. Verifique a conexão e tente de novo.", tone: "error", retry: true });
+        if (sendTurn === turnRef.current) {
+          setBusy(false);
+          setNotice({ text: "Não consegui iniciar a conversa. Verifique a conexão e tente de novo.", tone: "error", retry: true });
+        }
         return;
       }
       await runTurn(history, conversationId);
@@ -235,15 +286,21 @@ export function useVexChat() {
   /** Refaz o último pedido sem duplicar a mensagem da pessoa. */
   const retry = useCallback(async () => {
     const history = messagesRef.current;
-    const last = history.at(-1);
+    const lastUser = [...history].reverse().find((message) => message.role === "user");
     setNotice(null);
-    if (last?.role !== "user") return;
-    if (!conversationRef.current) {
-      await send(last.content, { fresh: true });
+    setProviderIssue(null);
+    if (pendingRef.current || !lastUser || latestVexRequestHasCompletedAction(history)) return;
+    const conversationId = conversationRef.current;
+    if (!conversationId) {
+      await send(lastUser.content, { fresh: true });
       return;
     }
-    await runTurn(history, conversationRef.current);
-  }, [runTurn, send]);
+    const retryHistory = prepareVexRetryHistory(history, uid());
+    if (!retryHistory) return;
+    setMessages(retryHistory);
+    appendMessage.mutate({ conversationId, role: "user", content: lastUser.content });
+    await runTurn(retryHistory, conversationId);
+  }, [appendMessage, runTurn, send]);
 
   const stop = useCallback(() => {
     turnRef.current += 1;
@@ -256,9 +313,11 @@ export function useVexChat() {
     if (!pending) return;
     const current = pending;
     setPending(null);
+    setProviderIssue(null);
     const turn = (turnRef.current += 1);
     setBusy(true);
     try {
+      const fallbackEpoch = fallbackEpochRef.current;
       const result = await confirmVexToolCall({
         provider,
         messages: contextFor(current.history),
@@ -279,10 +338,13 @@ export function useVexChat() {
       }
       setMessages(history);
       // O primeiro passo é a própria ação confirmada (já aparece no recibo), não uma consulta.
-      applyResult(result.kind === "blocked" ? result : { ...result, steps: result.steps.slice(1) }, history, current.conversationId);
+      applyResult(result.kind === "blocked" ? result : { ...result, steps: result.steps.slice(1) }, history, current.conversationId, fallbackEpochRef.current > fallbackEpoch);
+      if (failed && fallbackEpochRef.current === fallbackEpoch) {
+        setNotice({ text: "Não consegui concluir essa ação. O pedido original continua aqui; tente novamente quando a conexão estabilizar.", tone: "error", retry: true });
+      }
     } catch {
       setMessages([...current.history, { id: uid(), role: "action", action: current.action, status: "failed" }]);
-      setNotice({ text: "Não consegui concluir essa ação. Nada foi alterado.", tone: "error" });
+      setNotice({ text: "Não consegui verificar se a ação foi concluída. Confira a área correspondente antes de tentar novamente.", tone: "error" });
     } finally {
       if (turn === turnRef.current) {
         setBusy(false);
@@ -295,6 +357,7 @@ export function useVexChat() {
     if (!pending) return;
     setMessages([...pending.history, { id: uid(), role: "action", action: pending.action, status: "cancelled" }]);
     setPending(null);
+    setProviderIssue(null);
   }, [pending]);
 
   const reset = useCallback(() => {

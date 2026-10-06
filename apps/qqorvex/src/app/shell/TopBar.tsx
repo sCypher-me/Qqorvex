@@ -19,7 +19,7 @@ export function TopBar({ onOpenPalette, onToggleVex, vexOpen }: { onOpenPalette:
   const onBrandTap = useSecretBrandTap();
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-line-soft bg-canvas/85 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-6 lg:px-8">
+    <header data-premium-topbar className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-line-soft bg-canvas/85 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-6 lg:px-8">
       <Link to="/" onClick={onBrandTap} className="flex items-center lg:hidden" aria-label="Ir para Hoje">
         <BrandSymbol size={22} />
       </Link>

@@ -1,5 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { awardXp } from "@qqorvex/module-gamificacao";
+import { refreshGamificationAfterSourceWrite } from "@qqorvex/module-gamificacao";
 import type {
   Goal,
   GoalEditInput,
@@ -146,7 +146,7 @@ export async function createCheckin(
   if (error) throw error;
 
   const { data: goal } = await client.from("goals").select("user_id").eq("id", goalId).single();
-  if (goal) await awardXp(client, goal.user_id, "habit_or_goal_checkin");
+  if (goal) await refreshGamificationAfterSourceWrite(client, goal.user_id);
 
   return data;
 }
@@ -214,7 +214,7 @@ export async function logHabit(
 
   if (before?.state !== "concluido" && state === "concluido") {
     const { data: habit } = await client.from("habits").select("user_id").eq("id", habitId).single();
-    if (habit) await awardXp(client, habit.user_id, "habit_or_goal_checkin");
+    if (habit) await refreshGamificationAfterSourceWrite(client, habit.user_id);
   }
 
   return data;

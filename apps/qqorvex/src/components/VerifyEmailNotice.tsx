@@ -35,18 +35,23 @@ export function VerifyEmailNotice({ email, onChangeEmail }: { email: string; onC
     }
     setSending(true);
     setFeedback(null);
-    const { error } = await resendSignupConfirmation(email, captchaToken ?? undefined);
-    setSending(false);
-    if (captchaSiteKey) {
-      setCaptchaToken(null);
-      setCaptchaResetSignal((value) => value + 1);
+    try {
+      const { error } = await resendSignupConfirmation(email, captchaToken ?? undefined);
+      if (error) {
+        setFeedback({ tone: "error", text: error });
+        return;
+      }
+      setFeedback({ tone: "success", text: "E-mail reenviado." });
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch {
+      setFeedback({ tone: "error", text: "Não foi possível conectar. Verifique sua internet e tente novamente." });
+    } finally {
+      setSending(false);
+      if (captchaSiteKey) {
+        setCaptchaToken(null);
+        setCaptchaResetSignal((value) => value + 1);
+      }
     }
-    if (error) {
-      setFeedback({ tone: "error", text: error });
-      return;
-    }
-    setFeedback({ tone: "success", text: "E-mail reenviado." });
-    setCooldown(RESEND_COOLDOWN_SECONDS);
   }
 
   return (

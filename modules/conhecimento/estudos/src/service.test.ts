@@ -61,6 +61,11 @@ describe("parseGeneratedQuiz", () => {
     expect(parseGeneratedQuiz(JSON.stringify(fiveValid))).toEqual(fiveValid);
   });
 
+  it("aceita a quantidade pedida para juntar quizzes de todos os resumos", () => {
+    const tenQuestions = Array.from({ length: 10 }, (_, index) => ({ ...validQuestion, questionText: `Questão ${index + 1}` }));
+    expect(parseGeneratedQuiz(JSON.stringify({ questions: tenQuestions }), 10)).toHaveLength(10);
+  });
+
   it("aceita envelope { questions: [...] }", () => {
     expect(parseGeneratedQuiz(JSON.stringify({ questions: fiveValid }))).toEqual(fiveValid);
   });

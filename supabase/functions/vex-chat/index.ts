@@ -13,7 +13,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { releaseMonthlyQuota, reserveMonthlyQuota } from "../_shared/billing.ts";
+import { requestModelWithFallbacks } from "../_shared/geminiFallback.ts";
 import { VEX_GUIDE } from "../_shared/vexGuide.ts";
+import { checkQuerySafety } from "../_shared/vexSafety.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -38,8 +40,8 @@ const ALLOWED_TOOL_NAMES = new Set([
   "add_library_item", "update_library_item_status_by_title", "list_library_items",
   "list_documents", "create_text_document", "toggle_important_by_name",
   "delete_notebook_by_name", "list_due_flashcards", "list_notebooks", "get_notebook_by_name", "create_notebook",
-  "create_summary_by_notebook_name", "create_flashcard_by_notebook_name", "create_flashcards_by_notebook_name", "generate_quiz_by_notebook_name",
-  "get_financial_summary", "get_month_spending", "list_upcoming_bills", "create_transaction", "update_transaction_by_name", "create_recurring_transaction",
+  "create_summary_by_notebook_name", "create_flashcard_by_notebook_name", "create_flashcards_by_notebook_name", "generate_quiz_by_notebook_name", "generate_study_materials_by_notebook_name",
+  "get_investment_market_overview", "get_financial_summary", "get_month_spending", "list_upcoming_bills", "create_transaction", "update_transaction_by_name", "create_recurring_transaction",
   "create_goal", "update_goal_status_by_title", "log_habit_by_name", "list_goals", "list_habits_today",
   "create_page", "create_page_with_content", "archive_page_by_title", "list_pages",
   "list_tasks", "create_task", "complete_task_by_title", "update_task_by_id",
@@ -58,6 +60,7 @@ const SERVER_SYSTEM_PROMPT = VEX_GUIDE;
 const VEX_STYLE_PROMPTS = {
   direct: "Estilo escolhido pela pessoa: Direta e acolhedora. Vá ao ponto com gentileza. Prefira 1 a 4 frases e listas curtas quando ajudam. Não repita o pedido nem use uma saudação em toda resposta.",
   conversational: "Estilo escolhido pela pessoa: Calorosa e conversadora. Fale de um jeito próximo e natural, acrescente contexto útil e faça a conversa fluir sem rodeios longos. Evite respostas telegráficas e não repita o pedido.",
+  encouraging: "Estilo escolhido pela pessoa: Mentora estratégica. Ajude a esclarecer prioridades, comparar alternativas e transformar objetivos em passos realistas. Aponte riscos e trade-offs com cuidado, preserve a autonomia da pessoa e nunca use culpa ou pressão.",
 } as const;
 
 function jsonResponse(body: unknown, status = 200) {
@@ -183,10 +186,13 @@ Deno.serve(async (req) => {
   if (!isValidMessages(messages) || !isValidTools(body.tools)) {
     return jsonResponse({ error: "messages é obrigatório." }, 400);
   }
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+  const safety = checkQuerySafety(latestUserMessage);
+  if (safety.blocked) return jsonResponse({ error: safety.reason, safety: { blocked: true } }, 422);
   // Ferramentas fora da lista conhecida são descartadas (não recusam a conversa): um app mais
   // novo que esta função continua funcionando, só sem as capacidades que ela ainda não conhece.
   const tools = body.tools?.filter((tool) => ALLOWED_TOOL_NAMES.has(tool.name));
-  const vexStyle = body.vexStyle === "conversational" ? "conversational" : "direct";
+  const vexStyle = body.vexStyle === "conversational" || body.vexStyle === "encouraging" ? body.vexStyle : "direct";
 
   const { data: secretRows, error: secretsError } = await supabase
     .from("app_secrets")
@@ -257,13 +263,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  let geminiResponse = await requestModel(model);
-  const retryableStatuses = new Set([400, 404, 429, 500, 502, 503, 504]);
-  for (const fallbackModel of GEMINI_FALLBACK_MODELS) {
-    if (geminiResponse?.ok || (geminiResponse && !retryableStatuses.has(geminiResponse.status)) || model === fallbackModel) break;
-    console.warn("Gemini model unavailable; retrying with fallback", model, fallbackModel, geminiResponse.status);
-    geminiResponse = await requestModel(fallbackModel);
-  }
+  const geminiResponse = await requestModelWithFallbacks(
+    [model, ...GEMINI_FALLBACK_MODELS],
+    requestModel,
+    (failedModel, fallbackModel, status) => {
+      console.warn("Gemini model unavailable; retrying with fallback", failedModel, fallbackModel, status ?? "no response");
+    },
+  );
 
   if (!geminiResponse) {
     await releaseMonthlyQuota(supabase, userId, "vex_ai_responses", quota.month_start);

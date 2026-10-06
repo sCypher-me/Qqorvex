@@ -1,7 +1,7 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { createEvent as createAgendaEvent, listEventsByAssessment, updateEvent as updateAgendaEvent, type CalendarEvent } from "@qqorvex/module-agenda";
 import type { LibraryItem } from "@qqorvex/module-biblioteca";
-import { awardXp, recordHighAccuracyQuiz } from "@qqorvex/module-gamificacao";
+import { refreshGamificationAfterSourceWrite } from "@qqorvex/module-gamificacao";
 import { computeNextReview, type GeneratedQuizQuestion } from "./service";
 import type {
   Assessment,
@@ -225,6 +225,21 @@ export async function createFlashcard(
   return data;
 }
 
+/** Insere um conjunto de cartões numa única operação para evitar gravações parciais por cartão. */
+export async function createFlashcards(
+  client: Client,
+  notebookId: string,
+  inputs: NewFlashcardInput[],
+): Promise<Flashcard[]> {
+  if (inputs.length === 0) return [];
+  const { data, error } = await client
+    .from("flashcards")
+    .insert(inputs.map((input) => toFlashcardInsert(notebookId, input)))
+    .select("*");
+  if (error) throw error;
+  return data;
+}
+
 /**
  * Registra a revisão no histórico e atualiza o estado do flashcard com o resultado do
  * algoritmo de repetição espaçada (`computeNextReview`, isolado em service.ts).
@@ -408,8 +423,7 @@ export async function listQuizQuestions(client: Client, quizId: string): Promise
 }
 
 /**
- * Cria o quiz e as `QUIZ_QUESTION_COUNT` perguntas juntas — quem chama já validou o formato via
- * `parseGeneratedQuiz()` (service.ts), então aqui é só persistir. Nunca criado sem perguntas.
+ * Cria um quiz com todas as perguntas já validadas por quem chamou. Nunca criado sem perguntas.
  */
 export async function createQuiz(
   client: Client,
@@ -463,10 +477,8 @@ export async function createQuizAttempt(
     .single();
   if (error) throw error;
 
-  await awardXp(client, userId, "quiz_completed");
-  if (answers.length > 0 && score / answers.length >= 0.9) {
-    await recordHighAccuracyQuiz(client, userId);
-  }
+  // O gatilho SQL calcula a nota a partir das respostas e registra XP/marco atomicamente.
+  await refreshGamificationAfterSourceWrite(client, userId);
 
   return data;
 }

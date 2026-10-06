@@ -155,6 +155,14 @@ export async function installSupabaseMock(page, { log = false, onboarding = fals
   if (owner) for (const profile of mock.db.profiles ?? []) profile.role = "dono";
   const session = fakeSession({ onboarding });
 
+  // A fixture without a Realtime server should close mocked WebSockets locally instead of
+  // letting the browser attempt DNS/network access for the fake Supabase host.
+  if (typeof page.routeWebSocket === "function") {
+    await page.routeWebSocket(/^wss:\/\/qa-mock\.supabase\.co\/realtime\/v1\/websocket/, (socket) => {
+      socket.close({ code: 1000, reason: "Realtime is disabled in visual QA" });
+    });
+  }
+
   await page.addInitScript(
     ([key, value]) => {
       try {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowClockwiseIcon,
@@ -6,6 +6,7 @@ import {
   CheckCircleIcon,
   ChecksIcon,
   CopyIcon,
+  FileTextIcon,
   GraduationCapIcon,
   HeartIcon,
   LightningIcon,
@@ -23,6 +24,8 @@ import { Button, ButtonLink, IconButton, Markdown, Notice, VexAvatar, cx, markdo
 import type { VexActionPreview, VexStep } from "@qqorvex/vex";
 import { supabase } from "../app/supabase";
 import type { ActionStatus, DisplayMessage, PendingAction, ProviderIssue, VexNotice } from "./useVexChat";
+import { latestVexRequestHasCompletedAction } from "./retryHistory";
+import { decodeVexAttachmentMessage } from "./fileAttachments";
 
 type Icon = ComponentType<IconProps>;
 
@@ -90,28 +93,25 @@ function greeting(firstName: string | null): string {
 export function VexWelcome({ variant, firstName, starters, onPick }: { variant: "panel" | "page"; firstName: string | null; starters: Starter[]; onPick: (prompt: string) => void }) {
   if (variant === "panel") {
     return (
-      <div className="flex flex-col gap-4 px-1 pt-2">
-        <div className="flex items-center gap-3">
-          <VexAvatar size={40} />
-          <div>
-            <p className="font-display text-[17px] font-semibold leading-tight text-fg">{greeting(firstName)}</p>
-            <p className="text-[13px] text-fg-3">Como posso ajudar?</p>
-          </div>
+      <div className="flex flex-col gap-3 px-1 pt-2">
+        <div className="max-w-[92%] self-start rounded-2xl rounded-bl-md border border-line bg-surface px-3.5 py-3">
+          <p className="font-display text-[15px] font-semibold leading-tight text-fg">{greeting(firstName)}</p>
+          <p className="mt-1 text-[13px] text-fg-2">Como posso ajudar?</p>
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col items-end gap-2">
           {starters.map((starter) => (
             <button
               key={starter.label}
               type="button"
               onClick={() => onPick(starter.prompt)}
-              className="flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2.5 text-left text-[13px] text-fg-2 transition-colors hover:border-ai-line hover:bg-ai-soft hover:text-fg"
+              className="flex max-w-[94%] items-center gap-2.5 rounded-2xl rounded-br-md border border-ai-line bg-ai-soft/70 px-3.5 py-2.5 text-left text-[13px] text-fg transition-colors hover:bg-ai-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-line"
             >
               <starter.icon size={16} className="shrink-0 text-ai-fg" />
               {starter.label}
             </button>
           ))}
         </div>
-        <p className="text-xs leading-relaxed text-fg-4">Eu consulto suas tarefas, agenda, hábitos e finanças, e crio ou altero coisas sempre com a sua confirmação.</p>
+        <p className="max-w-[92%] self-start rounded-2xl rounded-bl-md border border-line-soft bg-surface/70 px-3.5 py-2.5 text-xs leading-relaxed text-fg-3">Não precisa decorar os menus: posso ajudar a encontrar recursos e organizar as coisas com você. Nada é salvo sem sua confirmação.</p>
       </div>
     );
   }
@@ -158,9 +158,11 @@ function StepsLine({ steps }: { steps: VexStep[] }) {
   );
 }
 
-function AssistantMessage({ content, steps, variant }: { content: string; steps?: VexStep[]; variant: "panel" | "page" }) {
+function AssistantMessage({ content, steps, variant, fallback }: { content: string; steps?: VexStep[]; variant: "panel" | "page"; fallback?: boolean }) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [confirmNote, setConfirmNote] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
 
   async function copy() {
     try {
@@ -172,20 +174,26 @@ function AssistantMessage({ content, steps, variant }: { content: string; steps?
   }
 
   async function saveAsNote() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const plain = markdownToPlainText(content);
-    const heading = /^\s{0,3}#{1,6}\s+(.+)$/m.exec(content)?.[1];
-    const firstLine = (heading ?? plain.split("\n").find((line) => line.trim()) ?? "Resposta da Vex").replace(/[*_`#]/g, "").trim();
-    const title = firstLine.length > 60 ? `${firstLine.slice(0, 57)}…` : firstLine;
+    if (savingNote) return;
+    setSavingNote(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Entre novamente para salvar a nota", tone: "info" });
+        return;
+      }
+      const plain = markdownToPlainText(content);
+      const heading = /^\s{0,3}#{1,6}\s+(.+)$/m.exec(content)?.[1];
+      const firstLine = (heading ?? plain.split("\n").find((line) => line.trim()) ?? "Resposta da Vex").replace(/[*_`#]/g, "").trim();
+      const title = firstLine.length > 60 ? `${firstLine.slice(0, 57)}…` : firstLine;
       const page = await createPage(supabase, user.id, { title });
       await createBlock(supabase, page.id, "texto", { text: plain }, 0);
+      setConfirmNote(false);
       toast({ title: "Salvo em Notas", description: title, tone: "success", action: { label: "Abrir", onClick: () => navigate(`/conhecimento/notas/${page.id}`) } });
     } catch {
       toast({ title: "Não foi possível salvar a nota", tone: "danger" });
+    } finally {
+      setSavingNote(false);
     }
   }
 
@@ -194,12 +202,23 @@ function AssistantMessage({ content, steps, variant }: { content: string; steps?
       <VexAvatar size={variant === "page" ? 30 : 26} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         {steps && <StepsLine steps={steps} />}
+        {fallback && <p className="mb-1 text-[11px] font-medium text-warning">Resposta de contingência · confira antes de seguir</p>}
         <Markdown text={content} className={variant === "page" ? "text-[15px]" : "text-[14px]"} />
+        {confirmNote && (
+          <div className="mt-3 max-w-lg rounded-xl border border-line bg-surface p-3.5" role="group" aria-label="Confirmar salvamento da resposta em Notas">
+            <p className="text-sm font-semibold text-fg">Salvar esta resposta em Notas?</p>
+            <p className="mt-1 text-xs leading-relaxed text-fg-3">Uma nova página será criada com o conteúdo desta resposta.</p>
+            <div className="mt-3 flex justify-end gap-2">
+              <Button size="sm" variant="ghost" disabled={savingNote} onClick={() => setConfirmNote(false)}>Cancelar</Button>
+              <Button size="sm" leadingIcon={<NotebookIcon size={15} />} loading={savingNote} onClick={() => void saveAsNote()}>Confirmar</Button>
+            </div>
+          </div>
+        )}
         <div className="mt-1.5 flex gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
           <IconButton label="Copiar resposta" size="sm" onClick={() => void copy()}>
             <CopyIcon />
           </IconButton>
-          <IconButton label="Salvar em Notas" size="sm" onClick={() => void saveAsNote()}>
+          <IconButton label={confirmNote ? "Salvar nota aguardando confirmação" : "Salvar em Notas"} size="sm" disabled={confirmNote || savingNote} onClick={() => setConfirmNote(true)}>
             <NotebookIcon />
           </IconButton>
         </div>
@@ -296,18 +315,32 @@ export interface VexThreadProps {
 
 /** Lista de mensagens: pergunta, resposta formatada, ações confirmadas e o cartão de confirmação. */
 export function VexThread({ variant, messages, busy, liveStep, pending, notice, providerIssue, onConfirm, onCancel, onRetry, onDismissIssue }: VexThreadProps) {
+  const canRetryFallback = !pending && !latestVexRequestHasCompletedAction(messages);
   return (
     <div className={cx("flex flex-col", variant === "page" ? "gap-6" : "gap-5")}>
       {messages.map((message) => {
         if (message.role === "user") {
+          const attachment = decodeVexAttachmentMessage(message.content);
+          const visibleContent = attachment?.prompt ?? message.content;
           return (
             <div key={message.id} className="flex justify-end">
-              <div className={cx("max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-line bg-raised px-4 py-2.5 text-fg", variant === "page" ? "text-[15px]" : "text-[14px]")}>{message.content}</div>
+              <div className={cx("flex max-w-[85%] min-w-0 flex-col gap-2 rounded-2xl rounded-br-md border border-line bg-raised px-4 py-2.5 text-fg", variant === "page" ? "text-[15px]" : "text-[14px]")}>
+                {attachment && (
+                  <div className="flex min-w-0 items-center gap-2 rounded-xl border border-line-soft bg-surface/80 px-2.5 py-2">
+                    <FileTextIcon size={18} className="shrink-0 text-ai-fg" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-fg">{attachment.file.fileName}</p>
+                      <p className="text-[10px] text-fg-4">Arquivo lido pela Vex</p>
+                    </div>
+                  </div>
+                )}
+                {visibleContent && <p className="m-0 whitespace-pre-wrap break-words">{visibleContent}</p>}
+              </div>
             </div>
           );
         }
         if (message.role === "action") return <ActionReceipt key={message.id} action={message.action} status={message.status} />;
-        return <AssistantMessage key={message.id} content={message.content} steps={message.steps} variant={variant} />;
+        return <AssistantMessage key={message.id} content={message.content} steps={message.steps} variant={variant} fallback={message.fallback} />;
       })}
 
       {pending && (
@@ -334,15 +367,16 @@ export function VexThread({ variant, messages, busy, liveStep, pending, notice, 
                 Conhecer o Plus
               </ButtonLink>
             ) : (
-              <Button size="sm" variant="ghost" onClick={onDismissIssue}>
-                Entendi
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {canRetryFallback && <Button size="sm" variant="secondary" leadingIcon={<ArrowClockwiseIcon size={14} />} onClick={onRetry}>Retomar pedido</Button>}
+                <Button size="sm" variant="ghost" onClick={onDismissIssue}>Entendi</Button>
+              </div>
             )
           }
         >
           {providerIssue.quota
             ? providerIssue.message
-            : "Não consegui falar com o serviço de IA, então por enquanto entendo só comandos simples (como “criar tarefa: …”). Tente de novo em instantes."}
+            : "O serviço principal falhou e esta resposta veio do modo básico. Se o pedido não foi resolvido, retome-o com um toque — você não precisa escrevê-lo de novo."}
         </Notice>
       )}
 

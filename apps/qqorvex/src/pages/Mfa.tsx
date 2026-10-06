@@ -96,13 +96,18 @@ export function MfaPage() {
     if (!verifiedFactor) return;
     setError(null);
     setBusy(true);
-    const { error: verifyError } = await verifyTotpChallenge(client, verifiedFactor.id, code);
-    setBusy(false);
-    if (verifyError) {
-      setError(verifyError);
-      return;
+    try {
+      const { error: verifyError } = await verifyTotpChallenge(client, verifiedFactor.id, code);
+      if (verifyError) {
+        setError(verifyError);
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Não foi possível validar o código. Verifique sua conexão e tente novamente.");
+    } finally {
+      setBusy(false);
     }
-    setDone(true);
   }
 
   async function handleBack() {

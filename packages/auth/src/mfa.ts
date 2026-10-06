@@ -24,11 +24,16 @@ export interface TotpEnrollment {
 }
 
 function toQrCodeDataUri(qrCode: string): string {
-  // supabase-js 2.116+ já converte o SVG em data URI durante `mfa.enroll`.
-  // Preserva esse valor para não criar um URI duplicado; versões anteriores retornavam SVG cru.
-  return qrCode.startsWith("data:image/svg+xml")
-    ? qrCode
-    : `data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`;
+  // supabase-js 2.116+ prefixa o SVG com `data:image/svg+xml;utf-8,`, mas não
+  // escapa o conteúdo. Caracteres como `#` passam a ser fragmento da URL e quebram o <img>.
+  const separator = qrCode.indexOf(",");
+  const hasSvgDataUri = /^data:image\/svg\+xml(?:;[^,]*)?,/i.test(qrCode);
+  const header = hasSvgDataUri ? qrCode.slice(0, separator + 1) : "data:image/svg+xml;utf-8,";
+  const payload = hasSvgDataUri ? qrCode.slice(separator + 1) : qrCode;
+
+  // Base64 e conteúdo já percent-encoded são data URIs válidas; não os codifique duas vezes.
+  if (/;base64$/i.test(header.slice(0, -1)) || /^%3c/i.test(payload)) return qrCode;
+  return `${header}${encodeURIComponent(payload)}`;
 }
 
 export async function enrollTotp(client: SupabaseClient<Database>): Promise<{ enrollment: TotpEnrollment | null; error: string | null }> {

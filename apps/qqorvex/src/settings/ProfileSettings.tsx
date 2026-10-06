@@ -184,11 +184,11 @@ export function ProfileSettings() {
                 </label>
                 <input id="profile-avatar-file" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={avatarBusy} onChange={handleAvatarChange} />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-[11rem] flex-1">
                 <p className="text-[13.5px] font-medium text-fg">Foto de perfil</p>
                 <p className="text-xs text-fg-3">JPG, PNG ou WEBP. Aparece no menu e na sua vitrine.</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="secondary" loading={avatarBusy} onClick={() => document.getElementById("profile-avatar-file")?.click()}>
                   {profile?.avatar_url ? "Trocar" : "Enviar foto"}
                 </Button>

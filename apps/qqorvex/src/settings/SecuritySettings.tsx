@@ -206,10 +206,15 @@ export function SecuritySettings() {
     setMfaError(null);
     setMfaModalOpen(true);
     setMfaBusy(true);
-    const { enrollment: result, error } = await enrollTotp(client);
-    setMfaBusy(false);
-    if (error) setMfaError(error);
-    else setEnrollment(result);
+    try {
+      const { enrollment: result, error } = await enrollTotp(client);
+      if (error) setMfaError(error);
+      else setEnrollment(result);
+    } catch {
+      setMfaError("Não foi possível conectar para preparar o autenticador. Tente novamente.");
+    } finally {
+      setMfaBusy(false);
+    }
   }
 
   async function confirmEnrollment(event: FormEvent) {
@@ -217,17 +222,22 @@ export function SecuritySettings() {
     if (!enrollment) return;
     setMfaError(null);
     setMfaBusy(true);
-    const { error } = await verifyTotpEnrollment(client, enrollment.factorId, code);
-    setMfaBusy(false);
-    if (error) {
-      setMfaError(error);
-      return;
+    try {
+      const { error } = await verifyTotpEnrollment(client, enrollment.factorId, code);
+      if (error) {
+        setMfaError(error);
+        return;
+      }
+      setEnrollment(null);
+      setCode("");
+      setMfaModalOpen(false);
+      refreshFactors();
+      toast({ title: "Verificação em duas etapas ativada", tone: "success" });
+    } catch {
+      setMfaError("Não foi possível verificar o código. Confira sua conexão e tente novamente.");
+    } finally {
+      setMfaBusy(false);
     }
-    setEnrollment(null);
-    setCode("");
-    setMfaModalOpen(false);
-    refreshFactors();
-    toast({ title: "Verificação em duas etapas ativada", tone: "success" });
   }
 
   async function closeEnrollmentModal() {
@@ -235,13 +245,19 @@ export function SecuritySettings() {
     const pendingFactorId = enrollment?.factorId;
     if (pendingFactorId) {
       setMfaBusy(true);
-      const { error } = await unenrollFactor(client, pendingFactorId);
-      setMfaBusy(false);
-      if (error) {
-        setMfaError("A configuração pendente não foi removida. Tente novamente antes de cadastrar outro app.");
+      try {
+        const { error } = await unenrollFactor(client, pendingFactorId);
+        if (error) {
+          setMfaError("A configuração pendente não foi removida. Tente novamente antes de cadastrar outro app.");
+          return;
+        }
+        refreshFactors();
+      } catch {
+        setMfaError("Não foi possível remover a configuração pendente. Verifique sua conexão e tente novamente.");
         return;
+      } finally {
+        setMfaBusy(false);
       }
-      refreshFactors();
     }
 
     setMfaModalOpen(false);
@@ -252,10 +268,15 @@ export function SecuritySettings() {
 
   async function removeFactor(factorId: string) {
     setMfaBusy(true);
-    const { error } = await unenrollFactor(client, factorId);
-    setMfaBusy(false);
-    if (error) setMfaError(error);
-    else refreshFactors();
+    try {
+      const { error } = await unenrollFactor(client, factorId);
+      if (error) setMfaError("Não foi possível remover o app autenticador. Tente novamente.");
+      else refreshFactors();
+    } catch {
+      setMfaError("Não foi possível remover o app autenticador. Verifique sua conexão e tente novamente.");
+    } finally {
+      setMfaBusy(false);
+    }
   }
 
   async function addPasskey() {

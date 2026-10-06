@@ -1,7 +1,6 @@
 import type { AchievementCounterField, GamificationAction, GamificationStats } from "./types";
 
-/** XP concedido por ação — números de partida, fáceis de recalibrar depois (só código, sem migration). */
-/** XP por ação — espelho para exibição; quem concede é `gamification_record_action` no banco. */
+/** Espelho para exibição; a fonte de verdade e os valores de XP ficam nos gatilhos do banco. */
 export const XP_BY_ACTION: Record<GamificationAction, number> = {
   task_completed: 10,
   habit_or_goal_checkin: 5,

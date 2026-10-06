@@ -19,6 +19,8 @@ export interface ChatMessage {
 export interface ToolResult {
   summary: string;
   data?: unknown;
+  /** Ação recusada ou não concluída, sem representar sucesso ao usuário. */
+  ok?: boolean;
 }
 
 /** Como uma ação que exige confirmação aparece para a pessoa: um título e os campos em português. */

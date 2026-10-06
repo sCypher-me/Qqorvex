@@ -39,13 +39,18 @@ export function LoginPage() {
       return;
     }
     setPasskeySubmitting(true);
-    const { error: passkeyError } = await signInWithPasskey(client, captchaToken ?? undefined);
-    setPasskeySubmitting(false);
-    if (captchaSiteKey) {
-      setCaptchaToken(null);
-      setCaptchaResetSignal((value) => value + 1);
+    try {
+      const { error: passkeyError } = await signInWithPasskey(client, captchaToken ?? undefined);
+      if (passkeyError) setError(passkeyError);
+    } catch {
+      setError("Não foi possível concluir o acesso. Verifique sua internet e tente novamente.");
+    } finally {
+      setPasskeySubmitting(false);
+      if (captchaSiteKey) {
+        setCaptchaToken(null);
+        setCaptchaResetSignal((value) => value + 1);
+      }
     }
-    if (passkeyError) setError(passkeyError);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -56,21 +61,25 @@ export function LoginPage() {
       return;
     }
     setSubmitting(true);
-    const result = await signInWithPassword(email, password, captchaToken ?? undefined);
-    setSubmitting(false);
-    if (captchaSiteKey) {
-      setCaptchaToken(null);
-      setCaptchaResetSignal((value) => value + 1);
-    }
-
-    if (result.error) {
-      if (result.error.toLowerCase().includes("confirme seu e-mail")) {
-        setNeedsVerification(true);
-        return;
+    try {
+      const result = await signInWithPassword(email, password, captchaToken ?? undefined);
+      if (result.error) {
+        if (result.error.toLowerCase().includes("confirme seu e-mail")) {
+          setNeedsVerification(true);
+          return;
+        }
+        setError(result.error);
+        // Foco automático no primeiro erro.
+        emailInputRef.current?.focus();
       }
-      setError(result.error);
-      // Foco automático no primeiro erro.
-      emailInputRef.current?.focus();
+    } catch {
+      setError("Não foi possível conectar. Verifique sua internet e tente entrar novamente.");
+    } finally {
+      setSubmitting(false);
+      if (captchaSiteKey) {
+        setCaptchaToken(null);
+        setCaptchaResetSignal((value) => value + 1);
+      }
     }
   }
 
