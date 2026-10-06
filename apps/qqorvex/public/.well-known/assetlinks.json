@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tech.biocypher.qqorvex",
+      "sha256_cert_fingerprints": [
+        "D8:25:F3:70:5D:4D:09:5C:DB:2D:05:0D:3A:73:9A:78:D5:00:2F:A1:3F:F0:AF:CF:FA:78:B5:3D:A8:47:94:4F"
+      ]
+    }
+  }
+]

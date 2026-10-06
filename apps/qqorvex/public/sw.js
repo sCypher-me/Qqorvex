@@ -12,7 +12,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title ?? "Qqorvex", {
       body: payload.body,
-      icon: "/favicon.png",
+      icon: "/qqorvex-icon.png",
     }),
   );
 });
