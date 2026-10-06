@@ -8,10 +8,11 @@ O arquivo não entra no Git nem no build do Cloudflare Pages (limite de 25 MiB p
 
 Com o SDK/NDK Android, JDK, Rust e Tauri CLI configurados, atualize a versão em
 `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml` (e regenere o `Cargo.lock`), instale as
-dependências e gere APKs separados para celulares ARM de 32 e 64 bits:
+dependências e gere os ícones adaptativos e APKs separados para celulares ARM de 32 e 64 bits:
 
 ```powershell
 corepack pnpm install --frozen-lockfile
+cargo tauri icon src-tauri/icon-manifest.json
 cargo tauri android build --apk --target aarch64 armv7 --split-per-abi
 Get-ChildItem src-tauri/gen/android/app/build/outputs/apk -Recurse -File -Filter '*unsigned.apk'
 ```
@@ -23,8 +24,8 @@ Confira os caminhos ARM64 e ARM32 retornados pelo Tauri. Execute o script abaixo
 arquivo, usando o caminho unsigned correspondente e nomes estáveis para os assets da release:
 
 ```powershell
-pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM64 unsigned>" -OutputApk artifacts.local/0.2.0/qqorvex-android-arm64.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
-pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM32 unsigned>" -OutputApk artifacts.local/0.2.0/qqorvex-android-arm32.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
+pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM64 unsigned>" -OutputApk artifacts.local/0.2.1/qqorvex-android-arm64.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
+pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM32 unsigned>" -OutputApk artifacts.local/0.2.1/qqorvex-android-arm32.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
 ```
 
 O script alinha, assina, verifica o certificado e imprime o SHA-256 do APK. A primeira execução gera uma chave

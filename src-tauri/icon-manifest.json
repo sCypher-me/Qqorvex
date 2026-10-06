@@ -2,7 +2,7 @@
   "default": "../brand-source/logotipos/Symbol Official.png",
   "bg_color": "#171513",
   "android_bg": "../brand-source/logotipos/Icon Background Dark.png",
-  "android_fg": "../brand-source/logotipos/Symbol Official.png",
-  "android_fg_scale": 82,
-  "android_monochrome": "../brand-source/logotipos/Symbol Official.png"
+  "android_fg": "../brand-source/logotipos/Symbol Android Adaptive.png",
+  "android_fg_scale": 100,
+  "android_monochrome": "../brand-source/logotipos/Symbol Android Adaptive.png"
 }

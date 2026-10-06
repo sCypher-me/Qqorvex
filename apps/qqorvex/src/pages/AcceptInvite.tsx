@@ -24,7 +24,13 @@ export function AcceptInvitePage() {
       const { error: consentError } = await client.rpc("record_user_terms_acceptance", { p_terms_version: CURRENT_TERMS_VERSION, p_source: "invite_acceptance" });
       if (consentError) throw new Error("Não foi possível registrar a aceitação dos Termos. Tente novamente.");
       const result = await updatePassword(password);
-      if (result.error) setError(result.error); else setDone(true);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        const { error: onboardingError } = await client.auth.updateUser({ data: { qqorvex_onboarding_pending: true } });
+        if (onboardingError) throw new Error("Senha salva, mas não foi possível iniciar o onboarding. Atualize a página para tentar novamente.");
+        setDone(true);
+      }
     }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Não foi possível concluir seu cadastro. Tente novamente."); }
     finally { setBusy(false); }

@@ -22,6 +22,8 @@ import { supabase } from "./supabase";
 import { Onboarding } from "./Onboarding";
 import { APP_SKIN_STORAGE_KEY, isAppSkin, useTheme, type ThemePreference } from "./ThemeContext";
 import { TermsAcceptanceGate } from "./TermsAcceptanceGate";
+import { needsSocialPasswordSetup } from "./initialAccountFlow";
+import { SocialPasswordSetup } from "./SocialPasswordSetup";
 
 type AuthUser = NonNullable<ReturnType<typeof useAuth>["session"]>["user"];
 
@@ -106,6 +108,7 @@ function Shell() {
   const [vexOpen, setVexOpen] = useState(() => readFlag(VEX_OPEN_KEY));
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [onboardingFinished, setOnboardingFinished] = useState(false);
+  const [passwordSetupFinished, setPasswordSetupFinished] = useState(false);
   const user = session!.user;
   const remotePreferences = user.user_metadata.qqorvex_preferences as { theme?: ThemePreference; skin?: unknown } | undefined;
 
@@ -156,6 +159,17 @@ function Shell() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [location.pathname]);
+
+  let oauthStartedAt: string | null = null;
+  try {
+    oauthStartedAt = window.sessionStorage.getItem("qqorvex.oauth.started_at");
+  } catch {
+    /* The recent-account check still handles fresh social registrations. */
+  }
+
+  if (!passwordSetupFinished && needsSocialPasswordSetup(user, Date.now(), oauthStartedAt)) {
+    return <SocialPasswordSetup onComplete={() => setPasswordSetupFinished(true)} />;
+  }
 
   if (!onboardingFinished && needsOnboarding(user)) {
     return (

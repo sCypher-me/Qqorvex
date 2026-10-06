@@ -1,11 +1,12 @@
-import { useEffect, type PropsWithChildren } from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { useNavigate } from "react-router-dom";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
-import { AuthProvider } from "@qqorvex/auth";
+import { AuthProvider, useAuth } from "@qqorvex/auth";
 import { registerHojeProvider } from "@qqorvex/module-hoje";
 import { parseBillingCheckoutReturn } from "../billing/deepLink";
 import { parseInvitationDeepLink } from "./invitationDeepLink";
+import { parseEmailConfirmationDeepLink } from "./emailConfirmationDeepLink";
 import { parseOAuthCallback } from "./oauthDeepLink";
 import { supabase } from "./supabase";
 
@@ -92,6 +93,17 @@ function BillingDeepLinkRouter() {
 }
 
 function OAuthDeepLinkRouter() {
+  const { session } = useAuth();
+  const navigate = useNavigate();
+  const [completedUserId, setCompletedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (completedUserId && session?.user.id === completedUserId) {
+      setCompletedUserId(null);
+      navigate("/", { replace: true });
+    }
+  }, [completedUserId, navigate, session?.user.id]);
+
   useEffect(() => {
     if (!isTauri()) return;
 
@@ -111,10 +123,15 @@ function OAuthDeepLinkRouter() {
               access_token: payload.accessToken,
               refresh_token: payload.refreshToken,
             });
-        void completeSignIn.then(({ error }) => {
-          if (error && active) {
+        void completeSignIn.then(({ data, error }) => {
+          if (!active) return;
+          if (error) {
             console.error("Não foi possível concluir o retorno OAuth no app.", error.message);
+            return;
           }
+          if (data.session?.user.id) setCompletedUserId(data.session.user.id);
+        }).catch(() => {
+          if (active) console.error("Não foi possível concluir o retorno OAuth no app.");
         });
       }
     };
@@ -169,9 +186,19 @@ function InvitationDeepLinkRouter() {
             ? supabase.auth.verifyOtp({ token_hash: payload.tokenHash, type: "invite" })
             : supabase.auth.setSession({ access_token: payload.accessToken, refresh_token: payload.refreshToken });
 
-        void result.then(({ error }) => {
+        void result.then(async ({ data, error }) => {
           if (!active) return;
-          if (error) console.error("Não foi possível validar o convite no app.", error.message);
+          if (error) {
+            console.error("Não foi possível validar o convite no app.", error.message);
+            navigate("/aceitar-convite", { replace: true });
+            return;
+          }
+          if (data.session?.user && data.session.user.user_metadata.qqorvex_onboarding_completed !== true) {
+            const { error: onboardingError } = await supabase.auth.updateUser({
+              data: { qqorvex_onboarding_pending: true },
+            });
+            if (onboardingError) console.error("Não foi possível marcar o onboarding do convite.", onboardingError.message);
+          }
           navigate("/aceitar-convite", { replace: true });
         }).catch(() => {
           if (active) navigate("/aceitar-convite", { replace: true });
@@ -203,6 +230,73 @@ function InvitationDeepLinkRouter() {
   return null;
 }
 
+function EmailConfirmationDeepLinkRouter() {
+  const { session } = useAuth();
+  const navigate = useNavigate();
+
+  const [completedUserId, setCompletedUserId] = useState<string | null>(null);
+  useEffect(() => {
+    if (completedUserId && session?.user.id === completedUserId) {
+      setCompletedUserId(null);
+      navigate("/", { replace: true });
+    }
+  }, [completedUserId, navigate, session?.user.id]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    const handled = new Set<string>();
+    const handleUrls = (urls: string[]) => {
+      for (const value of urls) {
+        const payload = parseEmailConfirmationDeepLink(value);
+        if (!payload || handled.has(value)) continue;
+        handled.add(value);
+
+        const result = payload.type === "code"
+          ? supabase.auth.exchangeCodeForSession(payload.code)
+          : payload.type === "token_hash"
+            ? supabase.auth.verifyOtp({ token_hash: payload.tokenHash, type: "signup" })
+            : supabase.auth.setSession({ access_token: payload.accessToken, refresh_token: payload.refreshToken });
+
+        void result.then(({ data, error }) => {
+          if (!active) return;
+          if (error) {
+            console.error("Não foi possível concluir a confirmação de e-mail no app.", error.message);
+            return;
+          }
+          if (data.session?.user.id) setCompletedUserId(data.session.user.id);
+        }).catch((error: unknown) => {
+          if (active) console.error("Não foi possível concluir a confirmação de e-mail no app.", error);
+        });
+      }
+    };
+
+    void (async () => {
+      try {
+        const stopListening = await onOpenUrl(handleUrls);
+        if (!active) {
+          stopListening();
+          return;
+        }
+        unlisten = stopListening;
+        const initialUrls = await getCurrent();
+        if (initialUrls) handleUrls(initialUrls);
+      } catch (error) {
+        console.error("Não foi possível receber a confirmação de e-mail no app.", error);
+      }
+    })();
+
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, []);
+
+  return null;
+}
+
 export function AppRuntime({ children }: PropsWithChildren) {
   return (
     <AuthProvider client={supabase}>
@@ -210,6 +304,7 @@ export function AppRuntime({ children }: PropsWithChildren) {
       <BillingDeepLinkRouter />
       <OAuthDeepLinkRouter />
       <InvitationDeepLinkRouter />
+      <EmailConfirmationDeepLinkRouter />
       {children}
     </AuthProvider>
   );
