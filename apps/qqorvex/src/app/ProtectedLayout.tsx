@@ -21,6 +21,7 @@ import { QuickCreateProvider } from "./shell/QuickCreate";
 import { supabase } from "./supabase";
 import { Onboarding } from "./Onboarding";
 import { APP_SKIN_STORAGE_KEY, isAppSkin, useTheme, type ThemePreference } from "./ThemeContext";
+import { TermsAcceptanceGate } from "./TermsAcceptanceGate";
 
 type AuthUser = NonNullable<ReturnType<typeof useAuth>["session"]>["user"];
 
@@ -74,19 +75,21 @@ function writeFlag(key: string, value: boolean) {
 export function ProtectedLayout() {
   return (
     <RequireAuth>
-      <AccountProvider>
-        <VexSessionProvider>
-          <CurrentItemProvider>
-            <PageMetaProvider>
-              <QuickCreateProvider>
-                <SecretRedeemProvider>
-                  <Shell />
-                </SecretRedeemProvider>
-              </QuickCreateProvider>
-            </PageMetaProvider>
-          </CurrentItemProvider>
-        </VexSessionProvider>
-      </AccountProvider>
+      <TermsAcceptanceGate>
+        <AccountProvider>
+          <VexSessionProvider>
+            <CurrentItemProvider>
+              <PageMetaProvider>
+                <QuickCreateProvider>
+                  <SecretRedeemProvider>
+                    <Shell />
+                  </SecretRedeemProvider>
+                </QuickCreateProvider>
+              </PageMetaProvider>
+            </CurrentItemProvider>
+          </VexSessionProvider>
+        </AccountProvider>
+      </TermsAcceptanceGate>
     </RequireAuth>
   );
 }

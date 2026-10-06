@@ -3476,6 +3476,27 @@ export type Database = {
           },
         ]
       }
+      user_terms_acceptances: {
+        Row: {
+          accepted_at: string
+          source: string
+          terms_version: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          source: string
+          terms_version: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          source?: string
+          terms_version?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -3488,6 +3509,11 @@ export type Database = {
       get_my_access: { Args: never; Returns: Json }
       get_my_discord_connection: { Args: never; Returns: Json }
       discord_role_metadata: { Args: { p_user_id: string }; Returns: Json }
+      record_user_terms_acceptance: {
+        Args: { p_terms_version: string; p_source?: string }
+        Returns: string
+      }
+      requires_current_terms_acceptance: { Args: never; Returns: boolean }
       get_my_document_storage_quota: {
         Args: never
         Returns: {

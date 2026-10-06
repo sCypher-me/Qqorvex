@@ -15,9 +15,12 @@ const functions = [
   { name: "create-zoom-meeting", expected: new Set([401]) },
   { name: "sync-google-calendar", expected: new Set([401]) },
   { name: "send-notifications", expected: new Set([401]) },
+  { name: "discord-link", expected: new Set([401]) },
+  { name: "discord-roles-sync", expected: new Set([401]) },
   // O callback sem state pode redirecionar para a tela de erro ou rejeitar a entrada,
   // mas nunca deve concluir um fluxo OAuth não autenticado.
   { name: "google-oauth-callback", expected: new Set([302, 303, 307, 308, 400, 401, 403]) },
+  { name: "discord-link-callback", method: "GET", expected: new Set([302, 303, 307, 308, 400, 401, 403]) },
 ];
 
 for (const fn of functions) {
@@ -26,10 +29,11 @@ for (const fn of functions) {
 
   let response;
   try {
+    const method = fn.method ?? "POST";
     response = await fetch(`${baseUrl}/functions/v1/${fn.name}`, {
-      method: "POST",
+      method,
       headers: { "content-type": "application/json" },
-      body: "{}",
+      ...(method === "GET" ? {} : { body: "{}" }),
       redirect: "manual",
       signal: controller.signal,
     });

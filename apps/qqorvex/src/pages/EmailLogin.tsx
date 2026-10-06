@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { requestEmailLogin, verifyEmailLogin, useAuth } from "@qqorvex/auth";
+import { clearPendingTermsReceipt, requestEmailLogin, verifyEmailLogin, useAuth } from "@qqorvex/auth";
 import { Button, Input, Notice, TurnstileCaptcha } from "@qqorvex/ui";
 import { AuthLayout } from "./AuthLayout";
 
@@ -17,6 +17,7 @@ export function EmailLoginPage() {
   if (!isLoading && session) return <Navigate to="/" replace />;
   async function submit(event: FormEvent) {
     event.preventDefault(); setError(null);
+    clearPendingTermsReceipt();
     if (!sent && siteKey && !captcha) { setError("Conclua a verificação de segurança."); return; }
     setBusy(true);
     try {

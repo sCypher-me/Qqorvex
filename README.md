@@ -1,70 +1,153 @@
+<div align="center">
+
 # Qqorvex
 
-App de gestão de vida pessoal com uma assistente de IA própria, a **Vex**. Tarefas, agenda,
-metas e hábitos, estudos, notas (segundo cérebro), biblioteca, documentos, finanças e vida
-pessoal num lugar só — e a Vex consultando e agindo em todos eles, sempre pedindo confirmação
-antes de mudar qualquer dado. Interface em pt-BR.
+**Organização de verdade para a vida que acontece.**
 
-## Stack
+Eu estou construindo o Qqorvex para reunir planejamento, estudos, documentos, finanças e vida pessoal em um só lugar — com a Vex ajudando a transformar pedidos em ações que eu posso revisar e confirmar.
 
-- **App:** React 19 + Vite 6 + Tailwind v4 + TanStack Query (`apps/qqorvex`)
-- **Desktop/Android:** Tauri 2 (`src-tauri`), empacotando o mesmo frontend
-- **Backend:** Supabase — Postgres com RLS, Auth, Storage, Edge Functions (Deno) e pg_cron
-- **Monorepo:** pnpm 9 (`packageManager` no `package.json`)
+[Conheça o projeto](https://qqorvex.pages.dev) · [Abrir o app](https://qqorvex-app.pages.dev) · [Versões e downloads](https://github.com/sCypher-me/Qqorvex/releases) · [Changelog](CHANGELOG.md)
 
-## Como rodar
+![CI](https://github.com/sCypher-me/Qqorvex/actions/workflows/ci.yml/badge.svg?branch=main)
+![Versão beta](https://img.shields.io/badge/beta-0.2.0-D6A04D)
+![Idioma](https://img.shields.io/badge/idioma-pt--BR-2C9C7A)
+
+</div>
+
+---
+
+## O que é o Qqorvex
+
+O Qqorvex é meu app de organização pessoal, feito para que eu não precise espalhar tarefas, ideias, estudos e informações importantes por um monte de ferramentas diferentes. Estou desenvolvendo o produto em português, para desktop, web e Android.
+
+A Vex é a assistente do app. Ela conhece os módulos do Qqorvex, pode ajudar a organizar informações e preparar ações com contexto. Quando uma ação altera meus dados, a interface mostra o que será feito e pede minha confirmação antes de executar.
+
+O projeto está em beta. Algumas integrações dependem de configuração externa, podem ter limites e podem mudar enquanto eu testo o produto.
+
+## O que já estou construindo
+
+| Área | O que encontro nela |
+| --- | --- |
+| **Hoje e planejamento** | Visão do dia, tarefas, agenda, metas, hábitos e check-ins. |
+| **Estudos e conhecimento** | Cadernos, resumos, flashcards, avaliações, biblioteca e notas conectadas. |
+| **Documentos** | Arquivos, organização, datas importantes e Cofre protegido. |
+| **Finanças** | Contas, cartões, movimentações, orçamento e acompanhamento informativo de ações, FIIs e cripto. |
+| **Vida pessoal** | Espaço para cuidar de planos, ideias e informações pessoais. |
+| **Conquistas** | Níveis, badges e temas, sem apagar progresso por deixar de usar o app. |
+| **Vex** | Ajuda com o conteúdo dos módulos e prepara ações para eu revisar e confirmar. |
+| **Discord** | Vinculação opcional de cargos conforme benefícios como Beta Tester, Plus, Lifetime e Parceiro. |
+
+As cotações são informativas e podem atrasar ou falhar. O Qqorvex não executa investimentos nem substitui uma fonte financeira profissional.
+
+## O que eu priorizo
+
+- **Eu continuo no controle.** A Vex mostra uma proposta antes de criar, alterar ou apagar dados.
+- **Meus dados têm dono.** O acesso às informações da conta é limitado no banco por políticas de segurança; operações administrativas e códigos são validados no servidor.
+- **O app deve ser acolhedor.** Gamificação serve para motivar, não para punir quando eu faço uma pausa.
+- **O beta precisa ser transparente.** Integrações, limites e recursos experimentais podem mudar, e as telas devem deixar isso claro.
+
+A Vex pode errar ou não ter informação atualizada. Eu confiro respostas importantes e uso fontes confiáveis para decisões de saúde, direito e finanças.
+
+## Beta e acesso
+
+O beta é distribuído por convite. Baixar o APK não libera uma conta automaticamente; o acesso continua sujeito ao convite ou código emitido pelo Qqorvex. A página do projeto e a tela de acesso mostram o fluxo disponível.
+
+O APK Android desta fase é destinado ao **Android 14 ou superior**. Para instalar, baixe a versão adequada ao aparelho na [página de releases](https://github.com/sCypher-me/Qqorvex/releases) ou pelo [site do Qqorvex](https://qqorvex.pages.dev). Os APKs são assinados para que versões futuras possam atualizar a mesma instalação. Confira o SHA-256 publicado junto com cada release se quiser validar o arquivo.
+
+## Tecnologias
+
+- **Interface:** React 19, TypeScript, Vite 6, Tailwind CSS 4 e TanStack Query.
+- **Aplicativo nativo:** Tauri 2 para desktop e Android.
+- **Servidor:** Supabase Auth, PostgreSQL com RLS, Storage e Edge Functions em Deno.
+- **Organização do código:** pnpm workspaces em um monorepo.
+- **Publicação web:** Cloudflare Pages.
+
+## Rodar localmente
+
+### Requisitos
+
+- Node.js 22 ou superior.
+- Corepack e pnpm 9.15.9.
+- Para compilar o app nativo: Rust, JDK 21 e Android SDK/NDK configurados.
+
+### Instalação
 
 ```bash
-pnpm install
-cp apps/qqorvex/.env.example apps/qqorvex/.env   # preencha as chaves (ver comentários no arquivo)
-pnpm dev                                          # http://localhost:5173
+corepack pnpm install --frozen-lockfile
+cp apps/qqorvex/.env.example apps/qqorvex/.env
 ```
 
-A porta 5173 é a cadastrada nos redirecionamentos de OAuth do Supabase; o login com GitHub/Google
-no ambiente local só volta para ela.
+Preencha somente as variáveis necessárias para os serviços que você habilitar. A porta web local é `5173` e a do site é `5180`; esses endereços aparecem nos fluxos de retorno OAuth de desenvolvimento.
+
+```bash
+corepack pnpm dev
+corepack pnpm --filter site dev
+```
+
+Nunca publique arquivos `.env`, tokens OAuth, chaves de provedor, credenciais de assinatura ou segredos do Supabase. Segredos de servidor devem ficar no Supabase, e não em variáveis `VITE_*`.
 
 ## Verificações
 
 ```bash
-pnpm test          # Vitest (regras puras de todos os módulos)
-pnpm typecheck     # TypeScript em todos os workspaces
-pnpm build         # build de produção
-pnpm audit:edge    # invariantes de segurança das Edge Functions (inclui a allow-list da Vex)
-pnpm audit:native  # configuração do Tauri
+corepack pnpm test
+corepack pnpm typecheck
+corepack pnpm build
+corepack pnpm audit:edge
+corepack pnpm audit:edge:runtime
+corepack pnpm audit:native
 ```
 
-O CI (`.github/workflows/ci.yml`) roda tudo isso em todo PR e push na `main`.
+A suíte Vitest cobre regras dos módulos, fluxos de autenticação, Vex, finanças, estudos, documentos, convites e gamificação. O CI executa testes, tipos, builds e auditorias estáticas em pull requests e na branch principal. `audit:edge:runtime` chama endpoints reais sem autenticação para conferir que funções protegidas negam a requisição.
 
-## Estrutura
+A auditoria de isolamento entre duas contas é somente leitura e precisa de dois tokens de teste temporários:
 
-| Pasta | Conteúdo |
+```bash
+RLS_AUDIT_USER_A_TOKEN=... RLS_AUDIT_USER_B_TOKEN=... corepack pnpm audit:rls:two-user
+```
+
+## Dados e migrations
+
+O schema do Supabase é versionado em [`supabase/migrations`](supabase/migrations). Quando eu adiciono uma tabela exposta pela API, habilito RLS e concedo apenas as permissões necessárias. Funções `SECURITY DEFINER` usam um `search_path` controlado e verificam a identidade e a autorização no servidor.
+
+As variáveis públicas do navegador ficam em `VITE_*`; segredos e chaves privadas ficam no Supabase. Os Termos de Uso e o aceite versionado estão descritos em [`docs/termos-e-aceitacao.md`](docs/termos-e-aceitacao.md) e disponíveis no app em `/termos`.
+
+## Versões e changelog
+
+Eu sigo `MAJOR.MINOR.PATCH`:
+
+- **Mudança pequena:** `1.0.0` → `1.1.0`.
+- **Nova versão principal:** `1.1.0` → `2.0.0`.
+- **Correção pontual:** `1.1.0` → `1.1.1`.
+
+Assim, uma melhoria pequena não vira uma versão principal. O histórico de cada lançamento fica em [`CHANGELOG.md`](CHANGELOG.md), e os APKs e respectivos hashes ficam nas [releases do GitHub](https://github.com/sCypher-me/Qqorvex/releases).
+
+## Estrutura do projeto
+
+| Caminho | Conteúdo |
 | --- | --- |
-| `apps/qqorvex` | o app: shell, páginas, Vex na interface, assinatura |
-| `apps/site` | site de apresentação com a lista de espera do beta (`pnpm --filter site dev`, porta 5180) |
-| `modules/<área>/<módulo>` | um módulo de domínio cada: `types` → `repository` (Supabase) → `service` (regras puras, testadas) → `hooks` (TanStack Query) → `components` |
-| `packages/auth` | sessão, 2FA, PIN do Cofre, perfil |
-| `packages/database` | cliente e tipos gerados do Supabase, busca global |
-| `packages/ui`, `packages/design-system` | componentes e tokens visuais |
-| `packages/vex` | ferramentas da Vex (uma por ação em cada módulo), personalidade e provedores de IA |
-| `packages/notifications` | Web Push |
-| `supabase/migrations` | schema versionado (o nome de cada arquivo é a versão aplicada no banco) |
-| `supabase/functions` | Edge Functions: `vex-chat`, `vex-web-search`, cobrança Stripe, Google Agenda, Zoom, notificações |
-| `brand-source` | artes originais da marca e da Vex (o app usa cópias otimizadas em `apps/qqorvex/public`) |
-| `tools` | auditorias usadas no CI e scripts de apoio |
-
-## Banco de dados
-
-Mudanças de schema entram como nova migration em `supabase/migrations`, aplicada no projeto e com
-o arquivo renomeado para a versão registrada pelo Supabase. Depois de aplicar, regenere os tipos
-em `packages/database/src/types.ts`. Toda tabela tem RLS; funções `SECURITY DEFINER` usam
-`search_path` vazio e só são liberadas para os papéis que precisam delas.
+| `apps/qqorvex` | Aplicativo web, shell, autenticação, Vex e configurações. |
+| `apps/site` | Site de apresentação e lista de espera. |
+| `modules` | Módulos de tarefas, agenda, estudos, documentos, finanças e organização pessoal. |
+| `packages/auth` | Sessão, OAuth, segurança, 2FA e dados do perfil. |
+| `packages/vex` | Personalidade, contexto, ferramentas e regras de segurança da Vex. |
+| `packages/ui`, `packages/design-system` | Componentes e tokens de interface. |
+| `packages/database` | Cliente Supabase, tipos e utilitários do banco. |
+| `supabase` | Migrations, Edge Functions e configuração do backend. |
+| `tools` | Auditorias e scripts de verificação. |
 
 ## Documentação
 
-- [`docs/beta.md`](docs/beta.md) — checklist para liberar o beta e como acompanhar
-- [`docs/deploy-cloudflare.md`](docs/deploy-cloudflare.md) — publicar o app e o site no Cloudflare Pages
-- [`docs/assinaturas.md`](docs/assinaturas.md) — planos Free/Plus/Ilimitado e configuração do Stripe
-- [`docs/vex-online-setup.md`](docs/vex-online-setup.md) — publicar a Vex (modelos, segredos, funções)
-- [`docs/vex-behavior.md`](docs/vex-behavior.md) — onde e como a Vex aparece na interface
-- [`docs/authentication-flows.md`](docs/authentication-flows.md) — fluxos de login, 2FA e recuperação
-- [`docs/DESIGN.md`](docs/DESIGN.md) — linguagem visual
+- [Checklist do beta](docs/beta.md)
+- [Publicação no Cloudflare Pages](docs/deploy-cloudflare.md)
+- [Geração e publicação do APK](docs/android-apk.md)
+- [Fluxos de autenticação](docs/authentication-flows.md)
+- [Cargos vinculados do Discord](docs/discord-cargos-vinculados.md)
+- [Termos de Uso e registro de aceite](docs/termos-e-aceitacao.md)
+- [Configuração online da Vex](docs/vex-online-setup.md)
+- [Comportamento da Vex no app](docs/vex-behavior.md)
+- [Planos e benefícios](docs/assinaturas.md)
+- [Linguagem visual](docs/DESIGN.md)
+
+---
+
+**Qqorvex é um projeto em construção.** Eu agradeço cada teste, cada relato honesto e cada ideia que ajude a deixar o app mais útil, claro e confiável.

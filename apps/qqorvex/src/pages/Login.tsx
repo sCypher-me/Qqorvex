@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { FingerprintIcon } from "@phosphor-icons/react";
 import { Button, Input, Notice } from "@qqorvex/ui";
-import { useAuth, signInWithPasskey } from "@qqorvex/auth";
+import { clearPendingTermsReceipt, useAuth, signInWithPasskey } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordField } from "../components/PasswordField";
 import { TurnstileCaptcha } from "@qqorvex/ui";
@@ -33,6 +33,7 @@ export function LoginPage() {
   }
 
   async function handlePasskeyLogin() {
+    clearPendingTermsReceipt();
     setError(null);
     if (captchaSiteKey && !captchaToken) {
       setError("Conclua a verificação de segurança para entrar.");
@@ -55,6 +56,7 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    clearPendingTermsReceipt();
     setError(null);
     if (captchaSiteKey && !captchaToken) {
       setError("Conclua a verificação de segurança para entrar.");

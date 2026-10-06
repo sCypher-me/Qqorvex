@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from "react";
 import { Button, Notice, triggerHaptic } from "@qqorvex/ui";
-import { useAuth, OAUTH_PROVIDERS, type OAuthProviderId } from "@qqorvex/auth";
+import { clearPendingTermsReceipt, savePendingTermsReceipt, useAuth, OAUTH_PROVIDERS, type OAuthProviderId } from "@qqorvex/auth";
 import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { OAUTH_MOBILE_CALLBACK_URL } from "../app/oauthDeepLink";
@@ -35,7 +35,7 @@ function GitHubIcon() {
 const ICONS: Record<OAuthProviderId, () => ReactElement> = { google: GoogleIcon, discord: DiscordIcon, github: GitHubIcon };
 
 /** "Continuar com Google", nunca "Gmail" — os 3 apontam pro mesmo signInWithOAuth, o Supabase já faz o account linking automático se o e-mail bater com uma conta existente. */
-export function OAuthButtons() {
+export function OAuthButtons({ requireTerms = false, termsAccepted = false }: { requireTerms?: boolean; termsAccepted?: boolean }) {
   const { signInWithOAuth } = useAuth();
   const [pending, setPending] = useState<OAuthProviderId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +43,18 @@ export function OAuthButtons() {
   async function handleClick(provider: OAuthProviderId) {
     triggerHaptic("light");
     setError(null);
+    if (requireTerms && !termsAccepted) {
+      setError("Aceite os Termos de Uso antes de criar sua conta.");
+      return;
+    }
     setPending(provider);
     const mobileApp = isTauri() && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
     try {
+      if (requireTerms) {
+        savePendingTermsReceipt();
+      } else {
+        clearPendingTermsReceipt();
+      }
       const { error, url } = await signInWithOAuth(
         provider,
         mobileApp
@@ -53,11 +62,13 @@ export function OAuthButtons() {
           : undefined,
       );
       if (error) {
+        if (requireTerms) clearPendingTermsReceipt();
         setError(error);
         return;
       }
       if (mobileApp) {
         if (!url) {
+          if (requireTerms) clearPendingTermsReceipt();
           setError("Não foi possível iniciar o acesso com este provedor.");
           return;
         }
@@ -65,6 +76,7 @@ export function OAuthButtons() {
       }
       // Na Web, o Supabase redireciona a própria página. No app, abre o navegador do sistema.
     } catch {
+      if (requireTerms) clearPendingTermsReceipt();
       setError("Não foi possível abrir o provedor de acesso. Tente novamente.");
     } finally {
       setPending(null);
@@ -87,7 +99,7 @@ export function OAuthButtons() {
               type="button"
               variant="secondary"
               onClick={() => handleClick(id)}
-              disabled={pending !== null}
+              disabled={pending !== null || (requireTerms && !termsAccepted)}
               title={`Continuar com ${label}`}
               aria-label={`Continuar com ${label}`}
               size="lg"

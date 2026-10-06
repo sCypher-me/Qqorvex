@@ -11,6 +11,7 @@ import { signInWithOAuth, type OAuthProviderId } from "./oauth";
 import { mapAuthError } from "./authErrors";
 import { emailRedirect } from "./emailFlows";
 import { resolveInitialSession } from "./initialSession";
+import { CURRENT_TERMS_VERSION } from "./terms";
 
 export interface SignUpMetadata {
   fullName: string;
@@ -18,6 +19,8 @@ export interface SignUpMetadata {
   username?: string;
   /** Já em E.164 (`+55...`) — normalização acontece no formulário, nunca aqui. */
   phone?: string;
+  /** Version of the terms explicitly accepted on the public registration form. */
+  termsVersion: typeof CURRENT_TERMS_VERSION;
 }
 
 interface AuthContextValue {
@@ -95,6 +98,8 @@ export function AuthProvider({
               username: metadata.username?.trim().toLowerCase() || undefined,
               phone: metadata.phone || undefined,
               qqorvex_onboarding_pending: true,
+              qqorvex_terms_version: metadata.termsVersion,
+              qqorvex_terms_acceptance_source: "email_signup",
             },
           },
         });
