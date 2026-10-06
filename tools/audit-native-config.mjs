@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const config = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
 const security = config.app?.security;
@@ -19,5 +19,15 @@ for (const policy of [csp, devCsp]) {
 assert.match(config.build?.beforeDevCommand ?? "", /corepack pnpm/);
 assert.match(config.build?.beforeBuildCommand ?? "", /ensure-android-microphone-permission/);
 assert.equal(config.bundle?.android?.debugApplicationIdSuffix, ".debug");
+assert.equal(config.bundle?.android?.minSdkVersion, 34, "beta APKs must require Android 14 or newer");
+
+const generatedGradle = new URL("../src-tauri/gen/android/app/build.gradle.kts", import.meta.url);
+try {
+  await access(generatedGradle);
+  const gradle = await readFile(generatedGradle, "utf8");
+  assert.match(gradle, /minSdk\s*=\s*34\b/, "generated Android project must match minSdkVersion 34");
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
 
 console.log("native security configuration invariants passed");

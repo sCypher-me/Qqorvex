@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Button, Input, Notice } from "@qqorvex/ui";
-import { useAuth, isPasswordValid, normalizeBRPhone } from "@qqorvex/auth";
+import { clearPendingTermsReceipt, CURRENT_TERMS_VERSION, useAuth, isPasswordValid, normalizeBRPhone } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 import { PasswordField } from "../components/PasswordField";
 import { UsernameField } from "../components/UsernameField";
@@ -25,6 +25,7 @@ export function RegistrarPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   if (!isLoading && session) return <Navigate to="/" replace />;
 
@@ -40,7 +41,7 @@ export function RegistrarPage() {
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const phoneOk = phone.trim() === "" || normalizeBRPhone(phone) !== null;
   const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? "";
-  const canSubmit = trimmedName.length > 0 && email.trim().length > 0 && isPasswordValid(password) && passwordsMatch && phoneOk && (!captchaSiteKey || Boolean(captchaToken));
+  const canSubmit = trimmedName.length > 0 && email.trim().length > 0 && isPasswordValid(password) && passwordsMatch && phoneOk && acceptedTerms && (!captchaSiteKey || Boolean(captchaToken));
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -66,6 +67,10 @@ export function RegistrarPage() {
       setError("Conclua a verificação de segurança para criar sua conta.");
       return;
     }
+    if (!acceptedTerms) {
+      setError("Leia e aceite os Termos de Uso para criar sua conta.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -73,14 +78,18 @@ export function RegistrarPage() {
         fullName: trimmedName,
         username: username.trim() || undefined,
         phone: normalizeBRPhone(phone) ?? undefined,
+        termsVersion: CURRENT_TERMS_VERSION,
       }, captchaToken ?? undefined);
 
       if (result.error) {
+        clearPendingTermsReceipt();
         setError(result.error);
         return;
       }
       setRegistered(true);
+      clearPendingTermsReceipt();
     } catch {
+      clearPendingTermsReceipt();
       setError("Não foi possível conectar. Verifique sua internet e tente criar a conta novamente.");
     } finally {
       setSubmitting(false);
@@ -161,6 +170,23 @@ export function RegistrarPage() {
           />
         )}
 
+        <label className="flex items-start gap-3 text-[13px] leading-relaxed text-fg-3">
+          <input
+            type="checkbox"
+            required
+            checked={acceptedTerms}
+            onChange={(event) => setAcceptedTerms(event.target.checked)}
+            className="mt-1 size-4 shrink-0 accent-gold"
+          />
+          <span>
+            Li e aceito os{" "}
+            <Link to="/termos" target="_blank" rel="noopener noreferrer" className="font-medium text-gold-fg underline underline-offset-2">
+              Termos de Uso
+            </Link>{" "}
+            e estou ciente das informações sobre meus dados descritas no documento.
+          </span>
+        </label>
+
         {error && <Notice tone="error">{error}</Notice>}
 
         <Button
@@ -173,7 +199,7 @@ export function RegistrarPage() {
           {submitting ? "Criando…" : "Criar conta grátis"}
         </Button>
 
-        <OAuthButtons />
+        <OAuthButtons requireTerms termsAccepted={acceptedTerms} />
 
         <p className="m-0 text-center text-[13.5px] text-fg-3">
           Já tem conta?{" "}

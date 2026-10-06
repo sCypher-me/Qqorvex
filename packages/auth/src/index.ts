@@ -22,3 +22,4 @@ export * from "./password";
 export * from "./phone";
 
 export * from "./emailFlows";
+export * from "./terms";

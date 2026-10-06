@@ -20,6 +20,7 @@ const EmailLoginPage = lazy(() => import("../pages/EmailLogin").then((m) => ({ d
 const AcceptInvitePage = lazy(() => import("../pages/AcceptInvite").then((m) => ({ default: m.AcceptInvitePage })));
 const LoginPage = lazy(() => import("../pages/Login").then((m) => ({ default: m.LoginPage })));
 const RegistrarPage = lazy(() => import("../pages/Registrar").then((m) => ({ default: m.RegistrarPage })));
+const TermosPage = lazy(() => import("../pages/Termos").then((m) => ({ default: m.TermosPage })));
 const EsqueciSenhaPage = lazy(() => import("../pages/EsqueciSenha").then((m) => ({ default: m.EsqueciSenhaPage })));
 const RedefinirSenhaPage = lazy(() => import("../pages/RedefinirSenha").then((m) => ({ default: m.RedefinirSenhaPage })));
 const MfaPage = lazy(() => import("../pages/Mfa").then((m) => ({ default: m.MfaPage })));
@@ -106,6 +107,7 @@ export function App() {
                 <Route path="/aceitar-convite" element={<AcceptInvitePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/criar-conta" element={<RegistrarPage />} />
+                <Route path="/termos" element={<TermosPage />} />
                 <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
                 <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
               </Routes>

@@ -12,16 +12,19 @@ dependências e gere APKs separados para celulares ARM de 32 e 64 bits:
 
 ```powershell
 corepack pnpm install --frozen-lockfile
-cargo tauri android build --apk --target aarch64 armv7 --split-per-abi --ci
+cargo tauri android build --apk --target aarch64 armv7 --split-per-abi
 Get-ChildItem src-tauri/gen/android/app/build/outputs/apk -Recurse -File -Filter '*unsigned.apk'
 ```
+
+O `minSdkVersion` do beta fica em 34 (Android 14). Confirme esse valor no manifesto dos dois APKs
+assinados antes de publicar.
 
 Confira os caminhos ARM64 e ARM32 retornados pelo Tauri. Execute o script abaixo uma vez para cada
 arquivo, usando o caminho unsigned correspondente e nomes estáveis para os assets da release:
 
 ```powershell
-pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM64 unsigned>" -OutputApk artifacts.local/0.1.3/qqorvex-android-arm64.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
-pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM32 unsigned>" -OutputApk artifacts.local/0.1.3/qqorvex-android-arm32.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
+pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM64 unsigned>" -OutputApk artifacts.local/0.2.0/qqorvex-android-arm64.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
+pwsh -File tools/sign-android-apk.ps1 -InputApk "<APK ARM32 unsigned>" -OutputApk artifacts.local/0.2.0/qqorvex-android-arm32.apk -BuildTools "$env:ANDROID_HOME/build-tools/35.0.0"
 ```
 
 O script alinha, assina, verifica o certificado e imprime o SHA-256 do APK. A primeira execução gera uma chave
