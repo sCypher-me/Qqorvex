@@ -86,8 +86,9 @@ function SecretRedeemDialog({ onClose }: { onClose: () => void }) {
   }
 
   if (result?.ok) {
+    const isLifetime = result.tier === "lifetime";
     const success =
-      result.tier === "lifetime"
+      isLifetime
         ? {
             icon: <InfinityIcon size={30} weight="bold" />,
             title: "Bem-vindo ao Lifetime",
@@ -111,11 +112,31 @@ function SecretRedeemDialog({ onClose }: { onClose: () => void }) {
               badgeLabel: "Ver insígnia",
             };
     return (
-      <Modal isOpen onClose={onClose} ariaLabel={success.title} size="sm">
+      <Modal isOpen onClose={onClose} ariaLabel={isLifetime ? "Uma carta do Júlio para você" : success.title} size={isLifetime ? "md" : "sm"}>
         <div className="flex flex-col items-center gap-3 py-2 text-center">
           <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gold text-on-gold shadow-lg">{success.icon}</span>
-          <h2 className="font-display text-[24px] font-semibold text-fg">{success.title}</h2>
-          <p className="max-w-sm text-[13.5px] leading-relaxed text-fg-2">{success.text}</p>
+          {isLifetime ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-fg">Uma carta do Júlio</p>
+              <h2 className="font-display text-[24px] font-semibold text-fg">Bem-vindo ao Lifetime</h2>
+              <article className="relative w-full overflow-hidden rounded-xl border border-[#d6b77f] bg-[#f5ead6] p-5 text-left shadow-lg sm:p-6">
+                <span aria-hidden="true" className="absolute -right-5 -top-8 select-none font-display text-[120px] leading-none text-[#d6b77f]/15">✦</span>
+                <div className="relative">
+                  <p className="font-display text-[15px] font-semibold text-[#46351f]">Para você,</p>
+                  <p className="mt-3 text-[14px] leading-relaxed text-[#46351f]">
+                    Obrigado por me apoiar nessa jornada, espero que o app possa te ajudar, e acredite nos seus sonhos, lute por eles e que você tenha um futuro incrível,
+                  </p>
+                  <p className="mt-4 font-display text-[15px] font-semibold text-[#46351f]">- Abraços do Júlio</p>
+                </div>
+              </article>
+              <p className="max-w-sm text-[12px] leading-relaxed text-fg-3">{success.text}</p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-display text-[24px] font-semibold text-fg">{success.title}</h2>
+              <p className="max-w-sm text-[13.5px] leading-relaxed text-fg-2">{success.text}</p>
+            </>
+          )}
           <div className="mt-2 flex flex-wrap justify-center gap-2">
             {success.badge && (
               <Button
