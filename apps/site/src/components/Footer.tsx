@@ -25,6 +25,14 @@ export function Footer() {
           <a href="#planos" className="hover:text-fg">
             Planos
           </a>
+          <a
+            href="https://discord.gg/JsMHH6dEjN"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-fg"
+          >
+            Discord oficial
+          </a>
         </nav>
         <p className="text-fg-4">© {new Date().getFullYear()} Qqorvex</p>
       </div>
