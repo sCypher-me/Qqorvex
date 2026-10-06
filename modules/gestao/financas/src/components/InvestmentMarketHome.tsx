@@ -42,7 +42,7 @@ export function InvestmentMarketHome({
       </header>
 
       <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-2">
-        {marketError && <Notice className="xl:col-span-2" tone="warning" title="Mercado temporariamente indisponível">{marketError}</Notice>}
+        {marketError && <Notice className="xl:col-span-2" tone="warning" title={market ? "Acesso parcial ao mercado" : "Mercado temporariamente indisponível"}>{marketError}</Notice>}
         {isLoading ? (
           <>
             <MarketSkeleton />

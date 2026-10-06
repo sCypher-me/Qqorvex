@@ -6,6 +6,8 @@ import { Button, Notice } from "@qqorvex/ui";
 export function TermsAcceptanceGate({ children }: { children: ReactNode }) {
   const { client, session } = useAuth();
   const user = session?.user;
+  const userId = user?.id;
+  const userCreatedAt = user?.created_at;
   const [gateStatus, setGateStatus] = useState<"checking" | "required" | "accepted" | "error">("checking");
   const [checkAttempt, setCheckAttempt] = useState(0);
   const [checked, setChecked] = useState(false);
@@ -14,7 +16,7 @@ export function TermsAcceptanceGate({ children }: { children: ReactNode }) {
   const processing = useRef(false);
 
   const recordAcceptance = useCallback(async (source: TermsAcceptanceSource) => {
-    if (!user || processing.current) return;
+    if (!userId || processing.current) return;
     processing.current = true;
     setBusy(true);
     setError(null);
@@ -32,10 +34,10 @@ export function TermsAcceptanceGate({ children }: { children: ReactNode }) {
       processing.current = false;
       setBusy(false);
     }
-  }, [client, user]);
+  }, [client, userId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let current = true;
     setGateStatus("checking");
     void (async () => {
@@ -47,7 +49,7 @@ export function TermsAcceptanceGate({ children }: { children: ReactNode }) {
           setGateStatus("error");
         } else if (data) {
           setGateStatus("required");
-          if (hasPendingTermsReceipt(user.created_at)) await recordAcceptance("oauth_registration");
+          if (userCreatedAt && hasPendingTermsReceipt(userCreatedAt)) await recordAcceptance("oauth_registration");
         } else {
           clearPendingTermsReceipt();
           setGateStatus("accepted");
@@ -59,7 +61,7 @@ export function TermsAcceptanceGate({ children }: { children: ReactNode }) {
       }
     })();
     return () => { current = false; };
-  }, [client, user?.id, checkAttempt, recordAcceptance]);
+  }, [client, userId, userCreatedAt, checkAttempt, recordAcceptance]);
 
   if (gateStatus === "accepted") return <>{children}</>;
 

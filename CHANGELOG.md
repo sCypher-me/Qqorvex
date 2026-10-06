@@ -3,6 +3,27 @@
 Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são identificados com
 `android-beta-<data>-v<versão>` e publicados como prereleases no GitHub.
 
+## [0.3.0] — 2026-10-06
+
+### Adicionado
+
+- Atualização do APK dentro do app: verifica novas versões beta, baixa a arquitetura correta e
+  confere o SHA-256 antes de abrir o instalador do Android.
+
+### Corrigido
+
+- Navegar entre telas não reinicia a verificação dos Termos durante a renovação da sessão.
+- A barra superior no Android respeita a área segura da barra de status.
+- A tela de investimentos identifica quais grupos de cotações a BrAPI negou e normaliza a chave
+  configurada antes da consulta.
+
+### Atualizado
+
+- Versão do app Android/Desktop atualizada para 0.3.0.
+- O site passa a oferecer o APK 0.3.0, primeiro beta com atualizações recebidas dentro do app.
+- Após instalar esta versão inicial, as próximas atualizações podem ser baixadas pelo próprio app;
+  o Android ainda pede autorização da fonte e confirmação da instalação.
+
 ## [0.2.1] — 2026-10-06
 
 ### Corrigido

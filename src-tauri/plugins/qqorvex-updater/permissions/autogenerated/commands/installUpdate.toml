@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-installUpdate"
+description = "Enables the installUpdate command without any pre-configured scope."
+commands.allow = ["installUpdate"]
+
+[[permission]]
+identifier = "deny-installUpdate"
+description = "Denies the installUpdate command without any pre-configured scope."
+commands.deny = ["installUpdate"]

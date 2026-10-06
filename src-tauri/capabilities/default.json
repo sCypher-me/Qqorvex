@@ -9,6 +9,7 @@
     "core:default",
     "core:event:default",
     "deep-link:default",
+    "qqorvex-updater:default",
     {
       "identifier": "opener:allow-open-url",
       "allow": [
