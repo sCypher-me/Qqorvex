@@ -31,6 +31,18 @@ verify_jwt = false
 # Retorno do consentimento do Google (navegação comum, sem JWT); a segurança vem do `state` de uso único.
 verify_jwt = false
 
+[functions.discord-link]
+# Início e desconexão dos cargos vinculados; o usuário sempre vem do JWT validado.
+verify_jwt = true
+
+[functions.discord-link-callback]
+# Retorno do consentimento do Discord (navegação comum, sem JWT); a segurança vem do `state` de uso único.
+verify_jwt = false
+
+[functions.discord-roles-sync]
+# Chamada pelo pg_cron; autentica pelo header X-Cron-Secret.
+verify_jwt = false
+
 [functions.waitlist-join]
 # Formulário público do site; protegido por origem, Turnstile no servidor e limite por IP.
 verify_jwt = false

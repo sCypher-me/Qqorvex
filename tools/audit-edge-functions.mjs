@@ -90,10 +90,29 @@ requirePattern("waitlist-join", waitlist, /body\.website/, "campo-armadilha anti
 requirePattern("waitlist-join", waitlist, /waitlist_register/, "limite por IP e gravação no banco");
 requirePattern("waitlist-join", waitlist, /if \(!allowed\) return json/, "origem permitida");
 
+const discordLink = await source("discord-link");
+requirePattern("discord-link", discordLink, /admin\.auth\.getUser\(token\)/, "usuário derivado do JWT validado");
+requirePattern("discord-link", discordLink, /discord_oauth_states/, "estado OAuth criado no servidor");
+requirePattern("discord-link", discordLink, /\.eq\("user_id", userId\)/, "isolamento da conexão por usuário");
+
+const discordCallback = await source("discord-link-callback");
+requirePattern("discord-link-callback", discordCallback, /discord_oauth_states/, "estado OAuth persistido");
+requirePattern("discord-link-callback", discordCallback, /10 \* 60_000/, "expiração do estado OAuth");
+requirePattern("discord-link-callback", discordCallback, /\.delete\(\)\.eq\("id", state\)/, "consumo único do estado OAuth");
+
+const discordShared = await readFile(new URL("supabase/functions/_shared/discord.ts", root), "utf8");
+requirePattern("_shared/discord", discordShared, /discord_client_secret/, "segredo OAuth somente no servidor");
+requirePattern("_shared/discord", discordShared, /AbortSignal\.timeout\(REQUEST_TIMEOUT_MS\)/, "timeout das chamadas ao Discord");
+
+const discordSync = await source("discord-roles-sync");
+requirePattern("discord-roles-sync", discordSync, /x-cron-secret/, "autenticação do cron");
+requirePattern("discord-roles-sync", discordSync, /RUN_BUDGET_MS/, "limite de duração por execução do cron");
+requirePattern("discord-roles-sync", discordSync, /\.eq\("user_id", connection\.user_id\)/, "isolamento da conexão por usuário");
+
 // Funções chamadas sem JWT de usuário precisam estar declaradas em config.toml; publicar pela CLI
 // sem isso as deixaria exigindo login (cron, retorno do Google e formulário do site parariam).
 const config = await readFile(new URL("supabase/config.toml", root), "utf8");
-for (const name of ["send-notifications", "sync-google-calendar", "google-oauth-callback", "waitlist-join", "stripe-webhook", "billing-app-return"]) {
+for (const name of ["send-notifications", "sync-google-calendar", "google-oauth-callback", "waitlist-join", "stripe-webhook", "billing-app-return", "discord-link-callback", "discord-roles-sync"]) {
   const section = config.split(`[functions.${name}]`)[1]?.split("[functions.")[0] ?? "";
   assert.match(section, /verify_jwt = false/, `config.toml: ${name} precisa de verify_jwt = false`);
 }
