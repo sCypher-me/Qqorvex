@@ -3486,6 +3486,8 @@ export type Database = {
         Returns: Json
       }
       get_my_access: { Args: never; Returns: Json }
+      get_my_discord_connection: { Args: never; Returns: Json }
+      discord_role_metadata: { Args: { p_user_id: string }; Returns: Json }
       get_my_document_storage_quota: {
         Args: never
         Returns: {
