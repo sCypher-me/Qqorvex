@@ -1,5 +1,4 @@
 import { BrandSymbol, Wordmark, buttonClasses } from "@qqorvex/ui";
-import { APP_URL } from "../config";
 
 const LINKS = [
   { href: "#recursos", label: "Recursos" },
@@ -23,9 +22,6 @@ export function Header() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <a href={APP_URL} className={buttonClasses({ variant: "ghost", size: "sm" })}>
-            Entrar
-          </a>
           <a href="#lista" className={buttonClasses({ size: "sm" })}>
             Lista de espera
           </a>
