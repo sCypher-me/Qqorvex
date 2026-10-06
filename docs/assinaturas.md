@@ -22,7 +22,7 @@ O armazenamento é implementado no bucket privado `documents` do Supabase Storag
 
 Acima do Plus, sem nenhuma cota: metas, hábitos, cadernos, mapas, Vex, buscas e armazenamento por conta (o tamanho de cada arquivo continua limitado a 50 MB pelo bucket). Também libera tudo que o Plus libera. Quem decide é `has_unlimited_access()` no banco, e o app lê o nível por `get_my_access()`.
 
-- **Lifetime:** para sempre. Não está à venda — só nasce de um código gerado pelo Dono em Central do Dono → Códigos. Ao ativar, a pessoa ganha a insígnia Amigo Lifetime na hora.
+- **Lifetime:** para sempre. Não está à venda — só nasce de um código gerado pelo Dono em Central do Dono → Códigos. Ao ativar, a pessoa ganha as insígnias Amigo Lifetime e Beta Tester automaticamente.
 - **Parceiro:** ilimitado enquanto a campanha durar. Crie a campanha (nome e data de fim) em Central do Dono → Códigos → Campanhas de Parceiro e gere os códigos dentro dela. Estender a data ou "Encerrar agora" vale para todos os parceiros da campanha; ao terminar, a conta volta ao plano que tinha, sem perder nada.
 - **Beta Tester:** o mesmo fluxo de código concede a insígnia de Beta Tester (sem mudar o plano).
 - **Como a pessoa ativa:** tocando 7 vezes seguidas, rápido, na estrela do Qqorvex (menu lateral no computador, barra do topo no celular). O código vale uma vez; 5 tentativas erradas em 15 minutos bloqueiam novas por um tempo.

@@ -91,8 +91,9 @@ function SecretRedeemDialog({ onClose }: { onClose: () => void }) {
         ? {
             icon: <InfinityIcon size={30} weight="bold" />,
             title: "Bem-vindo ao Lifetime",
-            text: "Acesso ilimitado para sempre: nada de cotas em metas, hábitos, cadernos, mapas, Vex, buscas ou armazenamento. A insígnia Amigo Lifetime já é sua.",
+            text: "Acesso ilimitado para sempre: nada de cotas em metas, hábitos, cadernos, mapas, Vex, buscas ou armazenamento. Você também recebe automaticamente as insígnias Amigo Lifetime e Beta Tester.",
             badge: true,
+            badgeLabel: "Ver insígnias",
           }
         : result.tier === "parceiro"
           ? {
@@ -100,12 +101,14 @@ function SecretRedeemDialog({ onClose }: { onClose: () => void }) {
               title: "Você é Parceiro",
               text: `Acesso ilimitado durante a campanha${result.partnerCampaign ? ` “${result.partnerCampaign}”` : ""}${result.partnerUntil ? `, até ${untilFormat.format(new Date(result.partnerUntil))}` : ""}. Depois, sua conta volta ao plano que tinha, com tudo o que você criou.`,
               badge: false,
+              badgeLabel: "Ver insígnia",
             }
           : {
               icon: <FlaskIcon size={30} weight="fill" />,
               title: "Você é Beta Tester",
               text: "Obrigado por testar o Qqorvex antes de todo mundo. A insígnia Beta Tester já é sua.",
               badge: true,
+              badgeLabel: "Ver insígnia",
             };
     return (
       <Modal isOpen onClose={onClose} ariaLabel={success.title} size="sm">
@@ -122,7 +125,7 @@ function SecretRedeemDialog({ onClose }: { onClose: () => void }) {
                   navigate("/conquistas");
                 }}
               >
-                Ver insígnia
+                {success.badgeLabel}
               </Button>
             )}
             <Button onClick={onClose}>Começar</Button>
