@@ -679,6 +679,8 @@ const SECRET_LABELS: Record<string, string> = {
   gemini_api_key: "Chave do Gemini",
   gemini_model: "Modelo do Gemini",
   brapi_api_key: "brapi.dev — cotações de ações, FIIs e criptomoedas",
+  discord_client_id: "Discord — Client ID (cargos vinculados)",
+  discord_client_secret: "Discord — segredo do cliente (cargos vinculados)",
   google_client_id: "Google OAuth — Client ID",
   google_client_secret: "Google OAuth — segredo do cliente",
   rapidapi_private_key: "RapidAPI — chave privada",
