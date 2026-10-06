@@ -1,5 +1,5 @@
 import { BrandSymbol, Wordmark } from "@qqorvex/ui";
-import { APK_URL, APK_URL_ARM32, APP_URL, getApkDownloadHref } from "../config";
+import { APK_URL, APK_URL_ARM32, getApkDownloadHref } from "../config";
 
 export function Footer() {
   return (
@@ -24,9 +24,6 @@ export function Footer() {
           </a>
           <a href="#planos" className="hover:text-fg">
             Planos
-          </a>
-          <a href={APP_URL} className="hover:text-fg">
-            Entrar no app
           </a>
         </nav>
         <p className="text-fg-4">© {new Date().getFullYear()} Qqorvex</p>
