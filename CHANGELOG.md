@@ -3,6 +3,24 @@
 Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são identificados com
 `android-beta-<data>-v<versão>` e publicados como prereleases no GitHub.
 
+## [0.2.1] — 2026-10-06
+
+### Corrigido
+
+- Confirmação de e-mail no navegador e no Android direciona automaticamente o cadastro por e-mail
+  ao onboarding.
+- Cadastros novos com Google, Discord e GitHub criam uma senha do Qqorvex antes do onboarding;
+  convites mantêm o fluxo próprio de criar senha e depois configurar a conta.
+- Contas de e-mail com identidade social vinculada não recebem uma solicitação redundante de senha.
+- Ferramentas da Vex removem campos incompatíveis com o schema do Gemini, evitando erro 502 e o
+  fallback antes da resposta do modelo.
+
+### Atualizado
+
+- Versão do app Android/Desktop atualizada para 0.2.1.
+- Links de convite e confirmação de e-mail abrem o app Android quando instalado.
+- Ícone adaptativo Android ajustado com mais margem ao redor da marca.
+
 ## [0.2.0] — 2026-10-06
 
 ### Adicionado

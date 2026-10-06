@@ -20,7 +20,7 @@ Em Authentication → URL Configuration, o Site URL deve apontar para `https://q
 - `https://qqorvex-app.pages.dev/redefinir-senha`
 - `https://qqorvex-app.pages.dev/configuracoes/seguranca`
 
-Os links enviados pelo APK abrem o app web. Domínios de preview precisam de autorização própria para testar links ali. O backend pode substituir retornos não autorizados pelo Site URL.
+Cadastro direto com e-mail já inclui senha: depois de confirmar em `/login`, navegador ou Android segue ao onboarding. Contas novas por Google, Discord ou GitHub pedem a criação de uma senha antes do onboarding. Convites seguem outro caminho: `/aceitar-convite` abre a definição de senha e depois leva ao onboarding. No Android, os dois caminhos de retorno do APK são App Links. Domínios de preview precisam de autorização própria para testar links ali. O backend pode substituir retornos não autorizados pelo Site URL.
 
 Em Email Templates, os arquivos e assuntos estão em [supabase/templates](../supabase/templates/README.md). Criar arquivos no repositório não altera os templates no painel. O template de Magic link precisa manter `{{ .Token }}` para permitir digitação do código; os links usam `{{ .ConfirmationURL }}`. Reauthentication usa `{{ .Token }}`.
 

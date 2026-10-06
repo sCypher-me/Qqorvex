@@ -14,6 +14,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { releaseMonthlyQuota, reserveMonthlyQuota } from "../_shared/billing.ts";
 import { requestModelWithFallbacks } from "../_shared/geminiFallback.ts";
+import { toGeminiFunctionSchema } from "../_shared/geminiSchema.ts";
 import { VEX_GUIDE } from "../_shared/vexGuide.ts";
 import { checkQuerySafety } from "../_shared/vexSafety.ts";
 
@@ -231,7 +232,11 @@ Deno.serve(async (req) => {
   if (tools && tools.length > 0) {
     requestBody.tools = [
       {
-        functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+        functionDeclarations: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          parameters: toGeminiFunctionSchema(t.parameters),
+        })),
       },
     ];
   }
