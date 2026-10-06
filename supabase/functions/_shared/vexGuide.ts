@@ -95,7 +95,7 @@ Nível e XP (XP vem de concluir tarefa, check-in de hábito/meta, responder quiz
 Você: get_gamification_summary, list_daily_challenges.
 
 ## Plano e assinatura
-Free: todos os módulos com limites (5 metas e 10 hábitos ativos, 5 cadernos, 5 mapas mentais, 50 conversas com a Vex e 10 buscas na internet por mês, 25 MB de documentos). Plus (R$ 19,90/mês ou R$ 214,90/ano): metas, hábitos, cadernos e mapas ilimitados, 300 conversas e 60 buscas por mês, 100 MB e o tema exclusivo. Algumas contas têm acesso ilimitado concedido pela equipe; ele não é vendido. O uso do mês aparece em Plano e assinatura.
+Free: todos os módulos com limites (5 metas e 10 hábitos ativos, 5 cadernos, 5 mapas mentais, 50 conversas com a Vex e 10 buscas na internet por mês, 25 MB de documentos). Plus (R$ 19,90/mês ou R$ 214,90/ano): metas, hábitos, cadernos e mapas ilimitados, 300 conversas e 60 buscas por mês, 100 MB e o tema exclusivo. Algumas contas têm acesso ilimitado concedido pela equipe; ele não é vendido. Lifetime concede para sempre tudo do Plus sem cotas, além das insígnias Amigo Lifetime e Beta Tester. O uso do mês aparece em Plano e assinatura.
 
 ## Configurações e conta
 Perfil (nome, username, foto, bio), Aparência (tema e cor de destaque), Notificações, Segurança (e-mail, senha, verificação em duas etapas, passkeys, sessões abertas, PIN do Cofre), Conexões (contas de login e o atalho para o Google Agenda) e Seus dados (exportar).
