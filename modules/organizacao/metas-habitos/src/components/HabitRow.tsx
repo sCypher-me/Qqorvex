@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { CheckIcon, CircleHalfIcon, DotsThreeIcon, FireIcon, MinusIcon, PauseIcon, PencilSimpleIcon, PlayIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
+import { CheckIcon, CircleHalfIcon, DotsThreeIcon, MinusIcon, PauseIcon, PencilSimpleIcon, PlayIcon, SealCheckIcon, TrashIcon, XIcon } from "@phosphor-icons/react";
 import { Badge, ConfirmDialog, DropdownMenu, cx } from "@qqorvex/ui";
-import { computeHabitStreak, formatHabitStreak, getHabitWeeklyTarget, shiftDateKey } from "../service";
+import { formatHabitConsistency, getHabitWeeklyTarget, shiftDateKey, type HabitConsistency } from "../service";
 import type { Habit, HabitFrequencyConfig, HabitLog, HabitLogState } from "../types";
 
 const DAY_LABEL: Record<string, string> = { mon: "seg", tue: "ter", wed: "qua", thu: "qui", fri: "sex", sat: "sáb", sun: "dom", seg: "seg", ter: "ter", qua: "qua", qui: "qui", sex: "sex", sab: "sáb", dom: "dom" };
@@ -43,8 +43,10 @@ const STATE_LABEL: Record<HabitLogState, string> = { concluido: "feito", parcial
 
 export interface HabitRowProps {
   habit: Habit;
-  /** Registros deste hábito (ao menos os últimos 7 dias; mais dias alongam a sequência). */
+  /** Registros deste hábito (ao menos os últimos 7 dias). */
   logs: HabitLog[];
+  /** Vezes feitas no total; sem o dado ainda, conta os registros recebidos. */
+  consistency?: HabitConsistency;
   today: string;
   /** Hoje o hábito não está previsto (dia não marcado): aparece, mas sem destaque. */
   offSchedule?: boolean;
@@ -55,16 +57,18 @@ export interface HabitRowProps {
   onDelete: () => void;
 }
 
-/** Linha de hábito: marcar o dia com um toque, a semana, a sequência e a meta semanal. */
-export function HabitRow({ habit, logs, today, offSchedule = false, busy = false, onSetLog, onToggleStatus, onEdit, onDelete }: HabitRowProps) {
+/**
+ * Linha de hábito: marcar o dia com um toque, a semana, a consistência acumulada e a meta semanal.
+ * Não há sequência que zera: o total de vezes feitas só cresce.
+ */
+export function HabitRow({ habit, logs, today, consistency, offSchedule = false, busy = false, onSetLog, onToggleStatus, onEdit, onDelete }: HabitRowProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const byDate = new Map(logs.map((log) => [log.log_date, log.state]));
   const todayState = byDate.get(today);
   const week = Array.from({ length: 7 }, (_, index) => shiftDateKey(today, index - 6));
   const doneThisWeek = week.filter((date) => byDate.get(date) === "concluido").length;
   const weeklyTarget = getHabitWeeklyTarget(habit);
-  const [y = 0, m = 1, d = 1] = today.split("-").map(Number);
-  const streak = computeHabitStreak(habit, logs, new Date(y, m - 1, d));
+  const total = consistency ?? { total: logs.filter((log) => log.state === "concluido").length, since: null };
   const active = habit.status === "ativo";
   const done = todayState === "concluido";
 
@@ -110,9 +114,9 @@ export function HabitRow({ habit, logs, today, offSchedule = false, busy = false
       </div>
 
       <div className="flex w-[84px] shrink-0 flex-col items-end gap-0.5 text-right">
-        <span className={cx("inline-flex items-center gap-1 text-[13px] font-semibold tabular-nums", streak.count > 0 ? "text-fg" : "text-fg-4")} title={`Sequência atual: ${formatHabitStreak(streak)}`}>
-          <FireIcon size={14} weight={streak.count > 0 ? "fill" : "regular"} className={streak.count > 0 ? "text-[#e8804a]" : undefined} />
-          {streak.count}
+        <span className={cx("inline-flex items-center gap-1 text-[13px] font-semibold tabular-nums", total.total > 0 ? "text-fg" : "text-fg-4")} title={`${formatHabitConsistency(total)} no total. Pausas não zeram esse número.`}>
+          <SealCheckIcon size={14} weight={total.total > 0 ? "fill" : "regular"} className={total.total > 0 ? "text-gold-fg" : undefined} />
+          {total.total}
         </span>
         <span className="text-[11px] text-fg-4">{weeklyTarget ? `${doneThisWeek}/${weeklyTarget} na semana` : `${doneThisWeek} em 7 dias`}</span>
       </div>

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatDailyCountdown, getDailyChallenges, localDateKey, shiftLocalDateKey, summarizeDailyChallengeHistory } from "./dailyChallenges";
+import {
+  formatDailyCountdown,
+  getDailyChallenges,
+  localDateKey,
+  shiftLocalDateKey,
+  summarizeDailyChallengeHistory,
+  toTodayChallenges,
+} from "./dailyChallenges";
 import type { DailyChallengeProgress } from "./types";
 
 describe("desafios diários", () => {
@@ -59,5 +66,27 @@ describe("desafios diários", () => {
     expect(challenges.every((challenge) => challenge.difficulty !== "Especial")).toBe(true);
     expect(challenges.every((challenge) => challenge.target >= 1 && challenge.target <= 5)).toBe(true);
     expect(challenges.every((challenge) => challenge.rewardXp > 0)).toBe(true);
+  });
+
+  it("usa no histórico os desafios que a pessoa teve no dia, não a rotação padrão", () => {
+    const rows = [
+      { challenge_date: "2026-09-21", challenge_key: "task-5", progress: 5, completed_at: "2026-09-21T20:00:00.000Z" },
+    ] as DailyChallengeProgress[];
+    const choices = ["task-1", "study-1", "task-3", "task-5"].map((challenge_key) => ({ challenge_date: "2026-09-21", challenge_key }));
+    expect(summarizeDailyChallengeHistory("2026-09-22", rows, 1, choices)[0]).toMatchObject({ completedCount: 1, totalCount: 4, rewardXp: 50 });
+  });
+});
+
+describe("desafios da pessoa vindos do servidor", () => {
+  it("converte a resposta, limita o progresso à meta e ignora chaves desconhecidas", () => {
+    const challenges = toTodayChallenges([
+      { slot: 0, challenge_key: "task-1", progress: 3, completed_at: "2026-10-10T12:00:00Z", swaps: 0 },
+      { slot: 1, challenge_key: "chave-antiga", progress: 0, completed_at: null, swaps: 0 },
+      { slot: 2, challenge_key: "task-3", progress: 1, completed_at: null, swaps: 2 },
+    ]);
+    expect(challenges.map((challenge) => [challenge.slot, challenge.definition.key, challenge.progress])).toEqual([
+      [0, "task-1", 1],
+      [2, "task-3", 1],
+    ]);
   });
 });

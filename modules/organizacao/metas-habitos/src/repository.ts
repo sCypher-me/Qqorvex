@@ -1,4 +1,5 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
+import type { HabitConsistency } from "./service";
 import { refreshGamificationAfterSourceWrite } from "@qqorvex/module-gamificacao";
 import type {
   Goal,
@@ -297,4 +298,11 @@ export async function listHabitLogsInRange(client: Client, fromDate: string, toD
 export async function deleteHabitLog(client: Client, habitId: string, logDate: string): Promise<void> {
   const { error } = await client.from("habit_logs").delete().eq("habit_id", habitId).eq("log_date", logDate);
   if (error) throw error;
+}
+
+/** Quantas vezes cada hábito já foi feito, em todo o histórico (consistência acumulada). */
+export async function listHabitTotals(client: Client): Promise<Map<string, HabitConsistency>> {
+  const { data, error } = await client.rpc("get_my_habit_totals");
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.habit_id, { total: row.total, since: row.since }]));
 }

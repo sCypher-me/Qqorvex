@@ -27,6 +27,12 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
 - A Vex recebe o mesmo plano em `get_day_overview` e pode propor ajustar a duração de uma tarefa.
 - Seção "Quem vê o seu perfil" em Configurações → Perfil, dizendo exatamente o que sai da conta.
 - Opção em Conexões para mostrar ou não o @usuário do Qqorvex no Discord (desligada por padrão).
+- Hábitos mostram quantas vezes já foram feitos (consistência acumulada), no lugar de sequências de
+  dias seguidos que zeravam; o destaque de Metas & Hábitos passa a ser o hábito mais constante.
+- Desafios do dia sugeridos pelo que você usa no app e trocáveis por outro do mesmo nível (desafio
+  concluído não troca); uma mesma ação avança todos os desafios que combinam com ela. A Vex também
+  lista e troca desafios, com confirmação.
+- Central do Dono registra e mostra o histórico de insígnias e títulos concedidos manualmente.
 
 ### Corrigido
 

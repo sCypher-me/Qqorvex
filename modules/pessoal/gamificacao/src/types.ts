@@ -10,6 +10,7 @@ import type { Tables } from "@qqorvex/database";
 export type GamificationStats = Tables<"gamification_stats">;
 export type UserBadge = Tables<"user_badges">;
 export type DailyChallengeProgress = Tables<"user_daily_challenge_progress">;
+export type DailyChallengeChoice = Tables<"user_daily_challenge_choices">;
 
 /** Métricas específicas das conquistas, além dos contadores que geram XP. */
 export type AchievementCounterField =

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CaretDownIcon, FireIcon, PencilSimpleIcon, PlusIcon, TargetIcon, RepeatIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, PencilSimpleIcon, PlusIcon, SealCheckIcon, TargetIcon, RepeatIcon } from "@phosphor-icons/react";
 import { billingLimitMessage } from "@qqorvex/database";
 import {
   GOAL_STATUS,
@@ -10,9 +10,8 @@ import {
   NewGoalForm,
   NewHabitForm,
   RoutinesPanel,
-  computeHabitStreak,
-  formatHabitStreak,
-  habitStreakDays,
+  formatHabitConsistency,
+  mostConsistentHabit,
   habitScheduleOn,
   localDateKey,
   shiftDateKey,
@@ -22,6 +21,7 @@ import {
   useDeleteHabit,
   useGoals,
   useHabitLogsInRange,
+  useHabitTotals,
   useHabits,
   useSetHabitLog,
   useUpdateGoal,
@@ -138,6 +138,7 @@ export function MetasHabitosPage() {
   const today = localDateKey();
   const { habits, isLoading: habitsLoading, error: habitsError } = useHabits(supabase);
   const { logs, isLoading: logsLoading } = useHabitLogsInRange(supabase, shiftDateKey(today, -(HISTORY_DAYS + 7)), today);
+  const { totals: habitTotals } = useHabitTotals(supabase);
   const { goals, isLoading: goalsLoading, error: goalsError } = useGoals(supabase);
   const createHabit = useCreateHabit(supabase, userId ?? "");
   const createGoal = useCreateGoal(supabase, userId ?? "");
@@ -161,9 +162,7 @@ export function MetasHabitosPage() {
   const notDueToday = activeHabits.filter((habit) => habitScheduleOn(habit, todayDate) === null);
   const doneToday = dueToday.filter((habit) => logsByHabit.get(habit.id)?.some((log) => log.log_date === today && log.state === "concluido")).length;
   const todayPercent = dueToday.length ? Math.round((doneToday / dueToday.length) * 100) : 0;
-  const bestStreak = activeHabits
-    .map((habit) => ({ habit, streak: computeHabitStreak(habit, logsByHabit.get(habit.id) ?? [], todayDate) }))
-    .sort((a, b) => habitStreakDays(b.streak) - habitStreakDays(a.streak))[0];
+  const mostConsistent = mostConsistentHabit(activeHabits, habitTotals);
   const activeGoals = goals.filter((goal) => goal.status === "ativa");
   const visibleGoals = goals.filter((goal) => (goalFilter === "andamento" ? goal.status === "ativa" || goal.status === "planejada" || goal.status === "pausada" : goalFilter === "concluidas" ? goal.status === "concluida" || goal.status === "cancelada" : true));
 
@@ -175,6 +174,7 @@ export function MetasHabitosPage() {
       key={habit.id}
       habit={habit}
       logs={logsByHabit.get(habit.id) ?? []}
+      consistency={habitTotals.get(habit.id)}
       today={today}
       offSchedule={offSchedule}
       busy={setLog.isPending}
@@ -234,7 +234,7 @@ export function MetasHabitosPage() {
                 <EmptyState
                   icon={<RepeatIcon />}
                   title="Nenhum hábito ainda"
-                  description="Comece pequeno: algo que caiba em 2 minutos. Um toque por dia registra e a sequência mostra seu ritmo."
+                  description="Comece pequeno: algo que caiba em 2 minutos. Um toque registra, e cada vez feita soma — pausar não zera nada."
                   action={
                     <Button leadingIcon={<PlusIcon size={16} weight="bold" />} onClick={() => setHabitModal(true)}>
                       Criar hábito
@@ -265,13 +265,13 @@ export function MetasHabitosPage() {
               </ProgressRing>
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-fg">{dueToday.length === 0 ? "Dia livre" : doneToday === dueToday.length ? "Dia completo!" : `Faltam ${dueToday.length - doneToday}`}</p>
-                {bestStreak && bestStreak.streak.count > 0 ? (
+                {mostConsistent ? (
                   <p className="mt-1 flex items-center gap-1 text-xs text-fg-3">
-                    <FireIcon size={13} weight="fill" className="text-[#e8804a]" />
-                    {bestStreak.habit.name}: {formatHabitStreak(bestStreak.streak)}
+                    <SealCheckIcon size={13} weight="fill" className="text-gold-fg" />
+                    Mais constante: {mostConsistent.habit.name} · {formatHabitConsistency(mostConsistent.consistency).toLowerCase()}
                   </p>
                 ) : (
-                  <p className="mt-1 text-xs text-fg-3">Marque um hábito para começar uma sequência.</p>
+                  <p className="mt-1 text-xs text-fg-3">Cada vez que você marca um hábito conta — e nunca é perdida.</p>
                 )}
               </div>
             </section>
@@ -314,7 +314,7 @@ export function MetasHabitosPage() {
             {loading ? (
               <SkeletonList rows={4} leading />
             ) : habits.length === 0 ? (
-              <EmptyState icon={<RepeatIcon />} title="Nenhum hábito ainda" description="Crie o primeiro hábito para acompanhar sequência e consistência." action={<Button onClick={() => setHabitModal(true)}>Criar hábito</Button>} />
+              <EmptyState icon={<RepeatIcon />} title="Nenhum hábito ainda" description="Crie o primeiro hábito para acompanhar quantas vezes você já fez." action={<Button onClick={() => setHabitModal(true)}>Criar hábito</Button>} />
             ) : (
               <ul className="divide-y divide-line-soft">{[...activeHabits, ...habits.filter((habit) => habit.status !== "ativo")].map((habit) => habitRow(habit, habit.status === "ativo" && habitScheduleOn(habit, todayDate) === null))}</ul>
             )}

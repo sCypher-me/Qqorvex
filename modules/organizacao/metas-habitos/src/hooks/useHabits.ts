@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import { createHabit, deleteHabit, listHabits, logHabit, updateHabit, updateHabitStatus, listHabitLogsInRange, deleteHabitLog } from "../repository";
+import { createHabit, deleteHabit, listHabits, logHabit, updateHabit, updateHabitStatus, listHabitLogsInRange, listHabitTotals, deleteHabitLog } from "../repository";
+import type { HabitConsistency } from "../service";
 import type { Habit, HabitEditInput, HabitLogState, NewHabitInput } from "../types";
 
 const HABITS_KEY = ["habits"] as const;
@@ -43,10 +44,16 @@ export function useDeleteHabit(client: SupabaseClient<Database>) {
   });
 }
 
-const HABIT_LOG_KEY_PREFIXES = new Set(["habit-logs", "habit-logs-by-date", "habit-logs-range", "hoje"]);
+const HABIT_LOG_KEY_PREFIXES = new Set(["habit-logs", "habit-logs-by-date", "habit-logs-range", "habit-totals", "hoje"]);
 
 function invalidateHabitLogs(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ predicate: (query) => HABIT_LOG_KEY_PREFIXES.has(String(query.queryKey[0])) });
+}
+
+/** Consistência acumulada de cada hábito (vezes feitas no total). Atualiza junto com os registros. */
+export function useHabitTotals(client: SupabaseClient<Database>) {
+  const query = useQuery({ queryKey: ["habit-totals"], queryFn: () => listHabitTotals(client), staleTime: 30_000 });
+  return { totals: query.data ?? new Map<string, HabitConsistency>(), isLoading: query.isLoading, error: query.error };
 }
 
 /** Registros de todos os hábitos num intervalo (painel do dia, mapa de calor, resumo semanal). */

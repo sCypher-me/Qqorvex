@@ -1,17 +1,20 @@
 import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import {
   GAMIFICATION_UPDATED_EVENT,
   getGamificationStats,
+  getMyDailyChallenges,
+  listDailyChallengeChoices,
   listDailyChallengeHistory,
   listDailyChallengeProgress,
   listUnlockedBadges,
+  swapMyDailyChallenge,
   syncGamificationBadges,
 } from "../repository";
 import { BADGE_CATALOG, computeLevelProgress, getTitleForLevel } from "../service";
 import { getLatestUnlockedSubscriptionTenureKey, SPECIAL_BADGE_CATALOG } from "../specialBadges";
-import { shiftLocalDateKey } from "../dailyChallenges";
+import { shiftLocalDateKey, toTodayChallenges } from "../dailyChallenges";
 
 const STATS_KEY = ["gamification-stats"] as const;
 const BADGES_KEY = ["gamification-badges"] as const;
@@ -92,6 +95,24 @@ export function useDailyChallengeProgress(client: SupabaseClient<Database>, user
   return { progressByKey, isLoading: query.isLoading, error: query.error };
 }
 
+/** Desafios de hoje da pessoa (sugeridos pelo servidor e trocáveis), com o progresso de cada um. */
+export function useDailyChallenges(client: SupabaseClient<Database>, userId: string, challengeDate: string) {
+  const query = useQuery({
+    queryKey: ["gamification-daily-progress", userId, challengeDate, "choices"],
+    queryFn: async () => toTodayChallenges(await getMyDailyChallenges(client, challengeDate)),
+    staleTime: 15_000,
+  });
+  return { challenges: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
+
+export function useSwapDailyChallenge(client: SupabaseClient<Database>, userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slot: number) => swapMyDailyChallenge(client, slot),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gamification-daily-progress", userId] }),
+  });
+}
+
 export function useDailyChallengeHistory(
   client: SupabaseClient<Database>,
   userId: string,
@@ -100,9 +121,16 @@ export function useDailyChallengeHistory(
 ) {
   const query = useQuery({
     queryKey: ["gamification-daily-history", userId, todayKey],
-    queryFn: () => listDailyChallengeHistory(client, userId, shiftLocalDateKey(todayKey, -7), todayKey),
+    queryFn: async () => {
+      const from = shiftLocalDateKey(todayKey, -7);
+      const [progress, choices] = await Promise.all([
+        listDailyChallengeHistory(client, userId, from, todayKey),
+        listDailyChallengeChoices(client, userId, from, todayKey),
+      ]);
+      return { progress, choices };
+    },
     enabled,
     staleTime: 15_000,
   });
-  return { progress: query.data ?? [], isLoading: query.isLoading, error: query.error };
+  return { progress: query.data?.progress ?? [], choices: query.data?.choices ?? [], isLoading: query.isLoading, error: query.error };
 }

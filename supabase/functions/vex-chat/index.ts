@@ -50,7 +50,7 @@ const ALLOWED_TOOL_NAMES = new Set([
   "get_personal_overview", "list_personal_checkins", "create_personal_plan",
   "create_personal_project", "capture_personal_idea", "record_daily_checkin",
   "list_shopping_list", "add_shopping_list_item", "toggle_shopping_list_item",
-  "get_gamification_summary", "list_daily_challenges",
+  "get_gamification_summary", "list_daily_challenges", "swap_daily_challenge",
   "get_profile_summary", "update_profile", "set_vex_style",
   "search_web",
 ]);

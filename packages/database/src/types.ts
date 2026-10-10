@@ -1092,6 +1092,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_daily_challenge_choices: {
+        Row: {
+          challenge_date: string
+          challenge_key: string
+          created_at: string
+          slot: number
+          swaps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_date: string
+          challenge_key: string
+          created_at?: string
+          slot: number
+          swaps?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_date?: string
+          challenge_key?: string
+          created_at?: string
+          slot?: number
+          swaps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_daily_challenge_progress: {
         Row: {
           challenge_date: string
@@ -3236,18 +3266,24 @@ export type Database = {
       user_badges: {
         Row: {
           badge_key: string
+          grant_source: "automatico" | "dono"
+          granted_by: string | null
           id: string
           unlocked_at: string
           user_id: string
         }
         Insert: {
           badge_key: string
+          grant_source?: "automatico" | "dono"
+          granted_by?: string | null
           id?: string
           unlocked_at?: string
           user_id: string
         }
         Update: {
           badge_key?: string
+          grant_source?: "automatico" | "dono"
+          granted_by?: string | null
           id?: string
           unlocked_at?: string
           user_id?: string
@@ -3605,6 +3641,34 @@ export type Database = {
         }[]
       }
       owner_grant_gamification_badge: { Args: { p_badge_key: string; p_user_id: string }; Returns: boolean }
+      owner_list_gamification_audit: {
+        Args: { p_limit?: number }
+        Returns: {
+          action: "grant_badge" | "set_title"
+          actor_name: string
+          created_at: string
+          detail: Json
+          id: number
+          target_name: string
+          target_user_id: string
+        }[]
+      }
+      get_my_habit_totals: { Args: never; Returns: { habit_id: string; since: string; total: number }[] }
+      get_my_daily_challenges: {
+        Args: { p_date?: string }
+        Returns: {
+          action: string
+          challenge_key: string
+          completed_at: string | null
+          difficulty: string
+          progress: number
+          reward_xp: number
+          slot: number
+          swaps: number
+          target: number
+        }[]
+      }
+      swap_my_daily_challenge: { Args: { p_slot: number }; Returns: string }
       redeem_code: { Args: { input_code: string }; Returns: Json }
       sync_my_gamification_badges: { Args: never; Returns: number }
       release_billing_quota: {

@@ -31,6 +31,37 @@ export async function setAccountTitle(client: Client, targetUserId: string, titl
   if (error) throw error;
 }
 
+export interface GamificationAuditEntry {
+  id: number;
+  createdAt: string;
+  action: "grant_badge" | "set_title";
+  targetName: string;
+  actorName: string;
+  /** Insígnia concedida (grant_badge) ou título definido (set_title; vazio = removido). */
+  value: string | null;
+  /** grant_badge: a conta já tinha a insígnia. */
+  alreadyHad: boolean;
+}
+
+/** Registro das insígnias e títulos dados pelo Dono (quem, para quem, o quê e quando). */
+export async function listGamificationAudit(client: Client, limit = 30): Promise<GamificationAuditEntry[]> {
+  const { data, error } = await client.rpc("owner_list_gamification_audit", { p_limit: limit });
+  if (error) throw error;
+  return (data ?? []).map((row) => {
+    const detail = (row.detail && typeof row.detail === "object" ? row.detail : {}) as Record<string, unknown>;
+    const value = row.action === "grant_badge" ? detail.badge_key : detail.title;
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      action: row.action,
+      targetName: row.target_name,
+      actorName: row.actor_name,
+      value: typeof value === "string" ? value : null,
+      alreadyHad: detail.already_had === true,
+    };
+  });
+}
+
 export async function setAccountBanned(client: Client, targetUserId: string, banned: boolean): Promise<void> {
   const { error } = await client.rpc("owner_set_account_banned", { p_user_id: targetUserId, p_banned: banned });
   if (error) throw error;

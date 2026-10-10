@@ -7,6 +7,7 @@ import {
   deleteWaitlistSignup,
   getSystemOverview,
   listAllAccounts,
+  listGamificationAudit,
   listPartnerCampaigns,
   listRedemptionCodes,
   listSecretKeys,
@@ -28,6 +29,12 @@ const CODES_KEY = ["manager", "codes"] as const;
 const SECRETS_KEY = ["manager", "secrets"] as const;
 const CAMPAIGNS_KEY = ["manager", "campaigns"] as const;
 const WAITLIST_KEY = ["manager", "waitlist"] as const;
+export const GAMIFICATION_AUDIT_KEY = ["manager", "gamification-audit"] as const;
+
+export function useGamificationAudit(client: SupabaseClient<Database>) {
+  const query = useQuery({ queryKey: GAMIFICATION_AUDIT_KEY, queryFn: () => listGamificationAudit(client) });
+  return { entries: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
 
 export function useAllAccounts(client: SupabaseClient<Database>) {
   const query = useQuery({ queryKey: ACCOUNTS_KEY, queryFn: () => listAllAccounts(client) });
@@ -46,7 +53,10 @@ export function useSetAccountTitle(client: SupabaseClient<Database>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, title }: { userId: string; title: string }) => setAccountTitle(client, userId, title),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: GAMIFICATION_AUDIT_KEY });
+    },
   });
 }
 

@@ -46,7 +46,7 @@ Adicionar: "Novo evento" ou "+" → Evento.
 Você: list_events_today, list_events, create_event, create_event_today, update_event_by_title, delete_event_by_title.
 
 ## Metas & Hábitos (Planejar → Metas & Hábitos)
-Abas Hoje, Hábitos, Metas, Rotinas. Hábitos com frequência e sequência (marca-se com um toque no dia); metas com marcos, submetas e progresso (manual, por marcos ou derivado do saldo de uma conta de Finanças); rotinas agrupam hábitos para marcar vários de uma vez.
+Abas Hoje, Hábitos, Metas, Rotinas. Hábitos com frequência e consistência acumulada — quantas vezes já foi feito, sem sequência que zera (marca-se com um toque no dia); metas com marcos, submetas e progresso (manual, por marcos ou derivado do saldo de uma conta de Finanças); rotinas agrupam hábitos para marcar vários de uma vez.
 Adicionar: "Novo hábito" / "Nova meta". Check-in de hábito ou meta dá XP.
 Você: list_habits_today, log_habit_by_name, list_goals, create_goal, update_goal_status_by_title.
 
@@ -91,8 +91,8 @@ Adicionar: "Novo plano", "Novo projeto", "Nova ideia", "Registrar check-in", "Ad
 Você: get_personal_overview, list_personal_checkins, record_daily_checkin, create_personal_plan, create_personal_project, capture_personal_idea, list_shopping_list, add_shopping_list_item, toggle_shopping_list_item.
 
 ## Conquistas (menu da conta)
-Nível e XP (XP vem de concluir tarefa, check-in de hábito/meta, responder quiz e concluir item da Biblioteca), desafios do dia com bônus, insígnias e temas desbloqueáveis.
-Você: get_gamification_summary, list_daily_challenges.
+Nível e XP (XP vem de concluir tarefa, check-in de hábito/meta, responder quiz e concluir item da Biblioteca), desafios do dia com bônus, insígnias e temas desbloqueáveis. Nada se perde por ausência: XP, nível e insígnias nunca diminuem, e não existe sequência que zera — hábitos mostram quantas vezes já foram feitos. Os 4 desafios do dia são opcionais, sugeridos pelo que a pessoa usa no app e trocáveis (swap_daily_challenge, com confirmação; desafio concluído não troca); uma mesma ação pode avançar mais de um desafio. Nunca cobre desafios não feitos.
+Você: get_gamification_summary, list_daily_challenges, swap_daily_challenge.
 
 ## Plano e assinatura
 Free: todos os módulos com limites (5 metas e 10 hábitos ativos, 5 cadernos, 5 mapas mentais, 50 conversas com a Vex e 10 buscas na internet por mês, 25 MB de documentos). Plus (R$ 19,90/mês ou R$ 214,90/ano): metas, hábitos, cadernos e mapas ilimitados, 300 conversas e 60 buscas por mês, 100 MB e o tema exclusivo. Algumas contas têm acesso ilimitado concedido pela equipe; ele não é vendido. Lifetime concede para sempre tudo do Plus sem cotas, além das insígnias Amigo Lifetime e Beta Tester. O uso do mês aparece em Plano e assinatura.
