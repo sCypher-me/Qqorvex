@@ -20,3 +20,18 @@ Não ampliar silenciosamente o contexto para outras áreas, persistir a mensagem
 ## Estados da conversa
 
 Manter os estados atuais de carregamento, conversa vazia, envio/processamento, resposta, erro, confirmação de ação e histórico/renomeação. Avatar é decorativo (`alt="Vex"` atual); controles de conversa e ações precisam continuar com nomes acessíveis e foco visível. O movimento de processamento pode ser reduzido pelo sistema.
+
+## Personalidades
+
+A pessoa escolhe como a Vex conversa no onboarding, em Configurações → Aparência ("Jeito da Vex") ou pedindo à própria Vex, que propõe a troca com `set_vex_style` e só grava depois do botão de confirmação. A escolha fica em `qqorvex_preferences.vex_style` e vale a partir da resposta seguinte.
+
+| Chave | Personalidade | Jeito de falar |
+| --- | --- | --- |
+| `direct` (padrão) | Direta e acolhedora | Até 4 frases; responde na primeira frase; sem preâmbulo nem emoji. |
+| `conversational` | Calorosa e conversadora | 3 a 6 frases; próxima, explica o porquê, humor leve e no máximo um emoji. |
+| `encouraging` | Mentora estratégica | Objetivo → recomendação ou até 2 caminhos → próximo passo; aponta riscos com números reais. |
+
+- **Fonte única:** `supabase/functions/_shared/vexPersonalities.ts`. O `vex-chat` envia a personalidade logo depois do guia base, o Ollama local usa o mesmo texto, e os rótulos do app (`packages/vex/src/vexStyle.ts`) vêm do mesmo arquivo.
+- **Regras comuns:** as três personalidades têm as mesmas ferramentas, confirmações, regras de dados reais e segurança. Assuntos sensíveis pedem seriedade antes do estilo. Frases motivacionais prontas e saudações a cada mensagem são proibidas.
+- **Exemplos:** os exemplos de tom são de outro assunto (gastos com delivery) e vêm com a instrução de não reaproveitar frases nem dados. Num teste com o modelo local, um exemplo sobre o próprio dia fazia a Vex repetir os números do exemplo como se fossem da pessoa.
+- **Chave `encouraging`:** é o nome histórico da Mentora estratégica e não deve ser renomeada sem migrar as preferências salvas.

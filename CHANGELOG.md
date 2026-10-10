@@ -12,6 +12,11 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   sozinhas em vez de mostrar erro.
 - APK baixa a atualização em segundo plano no Wi-Fi e instala quando o app vai para segundo plano,
   sem tela de confirmação quando o Android permite. Ao voltar, o app avisa que foi atualizado.
+- Personalidades da Vex com jeitos realmente distintos (Direta e acolhedora, Calorosa e conversadora,
+  Mentora estratégica), cada uma com voz, tamanho de resposta e estrutura próprios e as mesmas
+  capacidades e confirmações.
+- Exemplo de resposta de cada personalidade no onboarding e em Configurações → Aparência.
+- A Vex troca a própria personalidade quando a pessoa pede, depois da confirmação.
 
 ### Corrigido
 
