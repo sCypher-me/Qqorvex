@@ -3,6 +3,25 @@
 Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são identificados com
 `android-beta-<data>-v<versão>` e publicados como prereleases no GitHub.
 
+## [Não lançado]
+
+### Adicionado
+
+- App web atualiza sem cair: depois de um deploy, a aba aberta troca para a versão nova na próxima
+  mudança de tela (conferindo `/version.json`) e telas que perderam o código antigo recarregam
+  sozinhas em vez de mostrar erro.
+- APK baixa a atualização em segundo plano no Wi-Fi e instala quando o app vai para segundo plano,
+  sem tela de confirmação quando o Android permite. Ao voltar, o app avisa que foi atualizado.
+
+### Corrigido
+
+- Ao voltar de suspensão ou do segundo plano, o app renova a sessão antes de recarregar os dados,
+  em vez de disparar dezenas de consultas com o token vencido (401) por até dois minutos.
+- Lembretes push, sincronização do Google Agenda e cargos do Discord não perdem mais a rodada quando o
+  Supabase recusa a primeira leitura de `app_secrets`; a leitura tenta de novo e falhas de
+  infraestrutura respondem 503 em vez de 401.
+- QA visual (`tools/visual-qa/capture.mjs`) funciona no Windows.
+
 ## [0.3.0] — 2026-10-06
 
 ### Adicionado

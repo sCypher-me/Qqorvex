@@ -6,6 +6,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { pushRoleConnection, readDiscordCredentials, readRoleMetadata, refreshTokens } from "../_shared/discord.ts";
+import { verifyCronSecret } from "../_shared/appSecrets.ts";
 
 const RUN_BUDGET_MS = 50_000;
 const BATCH_SIZE = 100;
@@ -18,10 +19,8 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { data: cronSecretRow } = await admin.from("app_secrets").select("value").eq("key", "cron_secret").single();
-  if (!cronSecretRow || req.headers.get("x-cron-secret") !== cronSecretRow.value) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = await verifyCronSecret(admin, req);
+  if (denied) return denied;
 
   const credentials = await readDiscordCredentials(admin);
   if (!credentials) return Response.json({ skipped: "credenciais do Discord não configuradas" });

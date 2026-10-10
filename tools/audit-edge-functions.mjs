@@ -52,8 +52,8 @@ requirePattern("vex-web-search", vexWebSearch, /checkQuerySafety\(query\)/, "blo
 assert.ok(vexWebSearch.indexOf("checkQuerySafety(query)") < vexWebSearch.indexOf("reserveMonthlyQuota("), "vex-web-search: valide a intenção antes de reservar cota ou chamar a busca externa");
 
 const notifications = await source("send-notifications");
-requirePattern("send-notifications", notifications, /x-cron-secret/, "autenticação do cron");
-requirePattern("send-notifications", notifications, /\.from\("app_secrets"\)/, "segredo lido do cofre");
+requirePattern("send-notifications", notifications, /verifyCronSecret\(supabase, req\)/, "autenticação do cron");
+requirePattern("send-notifications", notifications, /readAppSecrets\(supabase, \["vapid_public_key", "vapid_private_key"\]\)/, "segredo lido do cofre");
 requirePattern("send-notifications", notifications, /recurring_task_id/, "idempotência de tarefas recorrentes");
 requirePattern("send-notifications", notifications, /recurring_event_id/, "idempotência de eventos recorrentes");
 requirePattern("send-notifications", notifications, /ignoreDuplicates:\s*true/, "upsert sem duplicação");
@@ -78,7 +78,7 @@ requirePattern("create-zoom-meeting", zoom, /new AbortController\(\)/, "timeout 
 requirePattern("create-zoom-meeting", zoom, /\.from\("app_secrets"\)/, "credenciais fora do cliente");
 
 const googleSync = await source("sync-google-calendar");
-requirePattern("sync-google-calendar", googleSync, /x-cron-secret/, "autenticação do cron");
+requirePattern("sync-google-calendar", googleSync, /verifyCronSecret\(supabase, req\)/, "autenticação do cron");
 requirePattern("sync-google-calendar", googleSync, /refresh_token/, "uso do refresh token no servidor");
 requirePattern("sync-google-calendar", googleSync, /google_updated_at/, "controle de concorrência da sincronização");
 requirePattern("sync-google-calendar", googleSync, /\.eq\("user_id", connection\.user_id\)/, "isolamento da conexão por usuário");
@@ -105,7 +105,13 @@ requirePattern("_shared/discord", discordShared, /discord_client_secret/, "segre
 requirePattern("_shared/discord", discordShared, /AbortSignal\.timeout\(REQUEST_TIMEOUT_MS\)/, "timeout das chamadas ao Discord");
 
 const discordSync = await source("discord-roles-sync");
-requirePattern("discord-roles-sync", discordSync, /x-cron-secret/, "autenticação do cron");
+requirePattern("discord-roles-sync", discordSync, /verifyCronSecret\(admin, req\)/, "autenticação do cron");
+
+// Crons leem o cron_secret com nova tentativa e não tratam falha de leitura como segredo errado.
+const appSecretsHelper = await readFile(new URL("supabase/functions/_shared/appSecrets.ts", root), "utf8");
+requirePattern("_shared/appSecrets", appSecretsHelper, /req\.headers\.get\("x-cron-secret"\) !== expected/, "comparação do header do cron");
+requirePattern("_shared/appSecrets", appSecretsHelper, /\.from\("app_secrets"\)/, "segredo lido do cofre");
+requirePattern("_shared/appSecrets", appSecretsHelper, /status: 503/, "falha de leitura distinta de não autorizado");
 requirePattern("discord-roles-sync", discordSync, /RUN_BUDGET_MS/, "limite de duração por execução do cron");
 requirePattern("discord-roles-sync", discordSync, /\.eq\("user_id", connection\.user_id\)/, "isolamento da conexão por usuário");
 
