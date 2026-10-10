@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+  <!-- Saber se a rede é medida antes de baixar o APK automaticamente. -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <!-- Necessária para que o próprio app se atualize sem a tela de confirmação (Android 13+). -->
+  <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+
+  <application>
+    <!-- Resultado da sessão do PackageInstaller; só o próprio app envia (PendingIntent explícito). -->
+    <receiver
+      android:name="tech.biocypher.qqorvex.updater.InstallResultReceiver"
+      android:exported="false" />
+  </application>
 </manifest>

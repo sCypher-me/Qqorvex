@@ -1,11 +1,17 @@
 package tech.biocypher.qqorvex.updater
 
 import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.core.content.FileProvider
+import android.webkit.WebView
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -19,6 +25,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,16 +37,77 @@ class DownloadUpdateArgs {
   lateinit var sha256: String
 }
 
+private const val APK_NAME = "qqorvex-update.apk"
+private const val ACTION_INSTALL_STATUS = "tech.biocypher.qqorvex.updater.INSTALL_STATUS"
+
+/**
+ * Recebe o resultado da sessão do PackageInstaller. Numa atualização silenciosa bem-sucedida o
+ * processo é substituído antes deste retorno; os demais casos respondem à chamada pendente do JS.
+ */
+class InstallResultReceiver : BroadcastReceiver() {
+  override fun onReceive(context: Context, intent: Intent) {
+    val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+    val invoke = QqorvexUpdaterPlugin.pendingInstalls.remove(sessionId)
+    val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
+    val result = JSObject()
+
+    when (status) {
+      PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+        // O Android exigiu confirmação. Só dá para abrir a tela com o app em primeiro plano;
+        // em segundo plano a abertura é bloqueada e o JS oferece "Instalar" ao voltar.
+        @Suppress("DEPRECATION")
+        val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+        val opened = confirm != null && QqorvexUpdaterPlugin.foreground && runCatching {
+          context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.isSuccess
+        result.put("status", if (opened) "installer_opened" else "user_action_required")
+        invoke?.resolve(result)
+      }
+      PackageInstaller.STATUS_SUCCESS -> {
+        result.put("status", "installed")
+        invoke?.resolve(result)
+      }
+      else -> {
+        val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        invoke?.reject(message?.let { "O Android recusou a atualização: $it" } ?: "O Android não concluiu a atualização.")
+      }
+    }
+  }
+}
+
 @TauriPlugin
 class QqorvexUpdaterPlugin(private val activity: Activity) : Plugin(activity) {
+  companion object {
+    internal val pendingInstalls = ConcurrentHashMap<Int, Invoke>()
+    @Volatile internal var foreground = true
+  }
+
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-  private val apkName = "qqorvex-update.apk"
+
+  override fun load(webView: WebView) {
+    super.load(webView)
+    scope.launch { removeInstalledApk() }
+  }
+
+  override fun onResume() {
+    foreground = true
+  }
+
+  override fun onPause() {
+    foreground = false
+  }
 
   @Command
   fun getDeviceAbi(invoke: Invoke) {
     val architecture = Build.SUPPORTED_ABIS.firstOrNull()?.lowercase(Locale.ROOT) ?: "unknown"
+    val connectivity = activity.getSystemService(ConnectivityManager::class.java)
     val result = JSObject()
     result.put("architecture", architecture)
+    // Rede medida (dados móveis, roteador do celular): o download automático espera o Wi-Fi.
+    result.put("metered", runCatching { connectivity?.isActiveNetworkMetered }.getOrNull() ?: true)
+    // Sem a autorização "instalar apps desconhecidos" a instalação automática não é tentada: abrir
+    // as configurações do Android com o app em segundo plano seria intrusivo (e o sistema bloqueia).
+    result.put("canInstall", activity.packageManager.canRequestPackageInstalls())
     invoke.resolve(result)
   }
 
@@ -61,10 +129,10 @@ class QqorvexUpdaterPlugin(private val activity: Activity) : Plugin(activity) {
   @Command
   fun installUpdate(invoke: Invoke) {
     try {
-      val apk = File(activity.cacheDir, apkName)
+      val apk = File(activity.cacheDir, APK_NAME)
       require(apk.isFile && apk.length() > 0L) { "Baixe e valide a atualização antes de instalar." }
 
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !activity.packageManager.canRequestPackageInstalls()) {
+      if (!activity.packageManager.canRequestPackageInstalls()) {
         val settings = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
           .setData(Uri.parse("package:${activity.packageName}"))
         activity.startActivity(settings)
@@ -74,17 +142,66 @@ class QqorvexUpdaterPlugin(private val activity: Activity) : Plugin(activity) {
         return
       }
 
-      val apkUri = FileProvider.getUriForFile(activity, "${activity.packageName}.fileprovider", apk)
-      val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE)
-        .setDataAndType(apkUri, "application/vnd.android.package-archive")
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      activity.startActivity(installIntent)
-      val result = JSObject()
-      result.put("status", "installer_opened")
-      invoke.resolve(result)
+      scope.launch {
+        try {
+          commitInstallSession(apk, invoke)
+        } catch (error: Exception) {
+          invoke.reject(error.message ?: "O Android não conseguiu iniciar a atualização.")
+        }
+      }
     } catch (error: Exception) {
-      invoke.reject(error.message ?: "O Android não conseguiu abrir o instalador.")
+      invoke.reject(error.message ?: "O Android não conseguiu iniciar a atualização.")
     }
+  }
+
+  /**
+   * Instala pelo PackageInstaller pedindo que o Android dispense a confirmação. Desde o Android 12
+   * um app que atualiza a si mesmo, com permissão de instalar apps, pode ser atualizado sem tela de
+   * confirmação; se o sistema ainda exigir, o receiver abre a confirmação.
+   */
+  private fun commitInstallSession(apk: File, invoke: Invoke) {
+    val installer = activity.packageManager.packageInstaller
+    val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+      setAppPackageName(activity.packageName)
+      setInstallReason(PackageManager.INSTALL_REASON_USER)
+      setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+      setPackageSource(PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE)
+      setSize(apk.length())
+    }
+    val sessionId = installer.createSession(params)
+    try {
+      installer.openSession(sessionId).use { session ->
+        session.openWrite("qqorvex.apk", 0, apk.length()).use { output ->
+          apk.inputStream().use { input -> input.copyTo(output, 64 * 1024) }
+          session.fsync(output)
+        }
+        val callback = Intent(ACTION_INSTALL_STATUS)
+          .setClass(activity, InstallResultReceiver::class.java)
+          .setPackage(activity.packageName)
+        val pendingIntent = PendingIntent.getBroadcast(
+          activity,
+          sessionId,
+          callback,
+          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+        pendingInstalls[sessionId] = invoke
+        session.commit(pendingIntent.intentSender)
+      }
+    } catch (error: Exception) {
+      pendingInstalls.remove(sessionId)
+      runCatching { installer.abandonSession(sessionId) }
+      throw error
+    }
+  }
+
+  /** Depois de atualizado, o APK baixado não serve mais: apaga se não for mais novo que o instalado. */
+  private fun removeInstalledApk() {
+    val apk = File(activity.cacheDir, APK_NAME)
+    if (!apk.isFile) return
+    val manager = activity.packageManager
+    val downloaded = manager.getPackageArchiveInfo(apk.absolutePath, 0)?.longVersionCode
+    val installed = runCatching { manager.getPackageInfo(activity.packageName, 0).longVersionCode }.getOrNull()
+    if (downloaded == null || (installed != null && downloaded <= installed)) apk.delete()
   }
 
   private fun downloadAndVerify(rawUrl: String, rawSha256: String): Long {
@@ -118,7 +235,7 @@ class QqorvexUpdaterPlugin(private val activity: Activity) : Plugin(activity) {
         val maximumSize = 150L * 1024L * 1024L
         val declaredSize = connection.contentLengthLong
         require(declaredSize <= maximumSize) { "O arquivo de atualização excede o tamanho permitido." }
-        val temporaryFile = File(activity.cacheDir, "$apkName.part")
+        val temporaryFile = File(activity.cacheDir, "$APK_NAME.part")
         val digest = MessageDigest.getInstance("SHA-256")
         var totalBytes = 0L
         val buffer = ByteArray(64 * 1024)
@@ -153,7 +270,7 @@ class QqorvexUpdaterPlugin(private val activity: Activity) : Plugin(activity) {
             "A verificação de integridade da atualização falhou."
           }
 
-          val finalFile = File(activity.cacheDir, apkName)
+          val finalFile = File(activity.cacheDir, APK_NAME)
           if (finalFile.exists()) require(finalFile.delete()) { "Não foi possível substituir o download anterior." }
           require(temporaryFile.renameTo(finalFile)) { "Não foi possível preparar o APK para instalação." }
           return totalBytes
