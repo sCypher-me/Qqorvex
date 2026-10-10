@@ -188,6 +188,43 @@ const DAILY_CHALLENGE_POOL: Record<Exclude<DailyChallengeDifficulty, "Especial">
   ],
 };
 
+/** Todos os desafios possíveis (mesmo catálogo de app_private.gamification_challenge_catalog). */
+export const DAILY_CHALLENGE_CATALOG: readonly DailyChallengeDefinition[] = [
+  ...DAILY_CHALLENGE_POOL.Fácil,
+  ...DAILY_CHALLENGE_POOL.Médio,
+  ...DAILY_CHALLENGE_POOL.Difícil,
+];
+
+export function getDailyChallengeDefinition(key: string): DailyChallengeDefinition | null {
+  return DAILY_CHALLENGE_CATALOG.find((challenge) => challenge.key === key) ?? null;
+}
+
+/** Um desafio do dia da pessoa: a posição (0–1 fácil, 2 médio, 3 difícil), o desafio e o progresso. */
+export interface TodayChallenge {
+  slot: number;
+  definition: DailyChallengeDefinition;
+  progress: number;
+  completedAt: string | null;
+  swaps: number;
+}
+
+export interface DailyChallengeRow {
+  slot: number;
+  challenge_key: string;
+  progress: number;
+  completed_at: string | null;
+  swaps: number;
+}
+
+/** Converte a resposta de get_my_daily_challenges(); chaves desconhecidas ficam de fora. */
+export function toTodayChallenges(rows: DailyChallengeRow[]): TodayChallenge[] {
+  return rows.flatMap((row) => {
+    const definition = getDailyChallengeDefinition(row.challenge_key);
+    if (!definition) return [];
+    return [{ slot: row.slot, definition, progress: Math.min(row.progress, definition.target), completedAt: row.completed_at, swaps: row.swaps }];
+  });
+}
+
 export function localDateKey(date = new Date()): string {
   const parts = DAILY_CHALLENGE_DATE_TIME_FORMATTER.formatToParts(date);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
@@ -273,26 +310,37 @@ export interface DailyChallengeDaySummary {
   completedTitles: string[];
 }
 
-/** Resume os desafios de dias anteriores usando o mesmo catálogo determinístico daquela data. */
+/**
+ * Resume os desafios de dias anteriores: os que a pessoa teve naquele dia (escolhas salvas) ou, sem
+ * registro de escolha, a rotação padrão da data.
+ */
 export function summarizeDailyChallengeHistory(
   todayKey: string,
   progressRows: DailyChallengeProgress[],
   dayCount = 7,
+  choiceRows: Array<{ challenge_date: string; challenge_key: string }> = [],
 ): DailyChallengeDaySummary[] {
+  const choicesByDate = new Map<string, DailyChallengeDefinition[]>();
+  for (const choice of choiceRows) {
+    const definition = getDailyChallengeDefinition(choice.challenge_key);
+    if (!definition) continue;
+    choicesByDate.set(choice.challenge_date, [...(choicesByDate.get(choice.challenge_date) ?? []), definition]);
+  }
   const progressByDateAndKey = new Map(
     progressRows.map((row) => [`${row.challenge_date}:${row.challenge_key}`, row] as const),
   );
 
   return Array.from({ length: Math.max(0, Math.floor(dayCount)) }, (_, index) => {
     const dateKey = shiftLocalDateKey(todayKey, -(index + 1));
-    const completedChallenges = getDailyChallenges(dateKey).filter((challenge) =>
+    const dayChallenges = choicesByDate.get(dateKey) ?? getDailyChallenges(dateKey);
+    const completedChallenges = dayChallenges.filter((challenge) =>
       Boolean(progressByDateAndKey.get(`${dateKey}:${challenge.key}`)?.completed_at),
     );
 
     return {
       dateKey,
       completedCount: completedChallenges.length,
-      totalCount: getDailyChallenges(dateKey).length,
+      totalCount: dayChallenges.length,
       rewardXp: completedChallenges.reduce((total, challenge) => total + challenge.rewardXp, 0),
       completedTitles: completedChallenges.map((challenge) => challenge.title),
     };

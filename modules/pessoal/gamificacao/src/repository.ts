@@ -1,5 +1,6 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
-import type { DailyChallengeProgress, GamificationStats, UserBadge } from "./types";
+import type { DailyChallengeRow } from "./dailyChallenges";
+import type { DailyChallengeChoice, DailyChallengeProgress, GamificationStats, UserBadge } from "./types";
 
 type Client = SupabaseClient<Database>;
 
@@ -61,6 +62,36 @@ export async function listDailyChallengeHistory(
     .gte("challenge_date", startDate)
     .lt("challenge_date", endDateExclusive)
     .order("challenge_date", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/** Desafios do dia da pessoa (o servidor sugere uma vez por dia, com base no que ela usa). */
+export async function getMyDailyChallenges(client: Client, challengeDate?: string): Promise<DailyChallengeRow[]> {
+  const { data, error } = await client.rpc("get_my_daily_challenges", challengeDate ? { p_date: challengeDate } : {});
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Troca o desafio de uma posição por outro do mesmo nível. Desafio concluído não troca. */
+export async function swapMyDailyChallenge(client: Client, slot: number): Promise<string> {
+  const { data, error } = await client.rpc("swap_my_daily_challenge", { p_slot: slot });
+  if (error) throw error;
+  return data;
+}
+
+export async function listDailyChallengeChoices(
+  client: Client,
+  userId: string,
+  startDate: string,
+  endDateExclusive: string,
+): Promise<DailyChallengeChoice[]> {
+  const { data, error } = await client
+    .from("user_daily_challenge_choices")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("challenge_date", startDate)
+    .lt("challenge_date", endDateExclusive);
   if (error) throw error;
   return data;
 }

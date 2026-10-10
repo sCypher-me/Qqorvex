@@ -6,10 +6,11 @@ import {
   CalendarBlankIcon,
   CheckCircleIcon,
   ClockIcon,
-  FireIcon,
+  RepeatIcon,
   MapPinIcon,
   NotebookIcon,
   PlusIcon,
+  SealCheckIcon,
   SparkleIcon,
   TargetIcon,
   WalletIcon,
@@ -31,7 +32,7 @@ import {
   type TaskWithConditions,
 } from "@qqorvex/module-tarefas";
 import { addDays, eventCategory, startOfDay, useEventsInRange, type CalendarEvent } from "@qqorvex/module-agenda";
-import { computeHabitStreak, formatHabitStreak, getHabitWeeklyTarget, habitScheduleOn, useHabitLogsInRange, useHabits, useToggleHabitLog, type Habit, type HabitStreak } from "@qqorvex/module-metas-habitos";
+import { formatHabitConsistency, getHabitWeeklyTarget, habitScheduleOn, useHabitLogsInRange, useHabitTotals, useHabits, useToggleHabitLog, type Habit, type HabitConsistency } from "@qqorvex/module-metas-habitos";
 import { useTransactions } from "@qqorvex/module-financas";
 import { ContinueShelfCard, ShelfRow, buildLibraryShelves, useLibraryItems, useLibraryQuickStep } from "@qqorvex/module-biblioteca";
 import { usePages } from "@qqorvex/module-segundo-cerebro";
@@ -115,6 +116,7 @@ export function HojeEditorialPage() {
   const { habits } = useHabits(supabase);
   const { logs: habitLogs } = useHabitLogsInRange(supabase, addDaysToKey(today, -60), today);
   const toggleHabit = useToggleHabitLog(supabase);
+  const { totals: habitTotals } = useHabitTotals(supabase);
   const monthStart = `${today.slice(0, 8)}01`;
   const { transactions, isLoading: financeLoading } = useTransactions(supabase, monthStart);
   const { items: libraryItems } = useLibraryItems(supabase);
@@ -163,7 +165,7 @@ export function HojeEditorialPage() {
       const doneTodayHabit = logs.some((log) => log.log_date === today && log.state === "concluido");
       const weekStart = addDaysToKey(today, -now.getDay());
       const weekCount = logs.filter((log) => log.log_date >= weekStart && log.state === "concluido").length;
-      return { habit, schedule, done: doneTodayHabit, streak: computeHabitStreak(habit, logs, now), weekCount, weekTarget: getHabitWeeklyTarget(habit) };
+      return { habit, schedule, done: doneTodayHabit, consistency: habitTotals.get(habit.id) ?? { total: 0, since: null }, weekCount, weekTarget: getHabitWeeklyTarget(habit) };
     })
     .filter((row) => row.schedule !== null);
   const fixedHabits = habitRows.filter((row) => row.schedule === "fixo");
@@ -256,7 +258,7 @@ export function HojeEditorialPage() {
           icon={<TargetIcon />}
           value={<span className="tabular-nums">{habitsDone}<span className="text-fg-4">/{fixedHabits.length}</span></span>}
           progress={fixedHabits.length ? (habitsDone / fixedHabits.length) * 100 : 0}
-          hint={fixedHabits.length === 0 ? "Nenhum previsto para hoje" : habitsDone === fixedHabits.length ? "Sequência mantida" : "Marque ao concluir"}
+          hint={fixedHabits.length === 0 ? "Nenhum previsto para hoje" : habitsDone === fixedHabits.length ? "Tudo feito por hoje" : "Marque ao concluir"}
           to="/planejar/metas"
         />
         <MetricTile
@@ -347,7 +349,7 @@ export function HojeEditorialPage() {
         <div className="flex min-w-0 flex-col gap-6">
           <CloseDayCard now={now} today={today} doneCount={doneToday} openCount={todayTasks.length - doneToday} />
 
-          <Panel title="Hábitos de hoje" icon={<FireIcon />} action={<ButtonLink to="/planejar/metas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Metas</ButtonLink>}>
+          <Panel title="Hábitos de hoje" icon={<RepeatIcon />} action={<ButtonLink to="/planejar/metas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Metas</ButtonLink>}>
             {habitRows.length === 0 ? (
               <EmptyState size="sm" icon={<TargetIcon />} title="Nenhum hábito ativo" description="Pequenas rotinas diárias constroem grandes resultados." action={<ButtonLink to="/planejar/metas" size="xs" variant="secondary">Criar hábito</ButtonLink>} />
             ) : (
@@ -357,7 +359,7 @@ export function HojeEditorialPage() {
                     key={row.habit.id}
                     habit={row.habit}
                     done={row.done}
-                    streak={row.streak}
+                    consistency={row.consistency}
                     weekly={row.schedule === "flexivel" && row.weekTarget ? `${row.weekCount}/${row.weekTarget} na semana` : undefined}
                     onToggle={() => toggleHabit.mutate({ habitId: row.habit.id, logDate: today, done: !row.done })}
                   />
@@ -433,7 +435,7 @@ function TimelineItem({ event, now, isCurrent, isNext }: { event: CalendarEvent;
   );
 }
 
-function HabitRow({ habit, done, streak, weekly, onToggle }: { habit: Habit; done: boolean; streak: HabitStreak; weekly?: string; onToggle: () => void }) {
+function HabitRow({ habit, done, consistency, weekly, onToggle }: { habit: Habit; done: boolean; consistency: HabitConsistency; weekly?: string; onToggle: () => void }) {
   return (
     <li className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-hover sm:px-5">
       <CompleteToggle done={done} label={done ? `Desmarcar ${habit.name}` : `Marcar ${habit.name} como feito`} onToggle={onToggle} />
@@ -441,10 +443,10 @@ function HabitRow({ habit, done, streak, weekly, onToggle }: { habit: Habit; don
         <span className={cx("block truncate text-[13.5px]", done ? "text-fg-3" : "text-fg")}>{habit.name}</span>
         {(habit.preferred_time || weekly) && <span className="text-2xs text-fg-4">{[habit.preferred_time?.slice(0, 5), weekly].filter(Boolean).join(" · ")}</span>}
       </span>
-      {streak.count > 0 && (
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-gold-fg" title={formatHabitStreak(streak)}>
-          <FireIcon size={13} weight="fill" />
-          {streak.count}
+      {consistency.total > 0 && (
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-gold-fg" title={`${formatHabitConsistency(consistency)} no total`}>
+          <SealCheckIcon size={13} weight="fill" />
+          {consistency.total}
         </span>
       )}
     </li>

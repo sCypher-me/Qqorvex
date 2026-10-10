@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRightIcon, CheckCircleIcon, ClockCountdownIcon, LightningIcon, PaletteIcon, SealCheckIcon, TrophyIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, ArrowsClockwiseIcon, CheckCircleIcon, ClockCountdownIcon, LightningIcon, PaletteIcon, SealCheckIcon, TrophyIcon } from "@phosphor-icons/react";
 import { useAuth } from "@qqorvex/auth";
 import {
   ActionCountersCard,
@@ -9,19 +9,19 @@ import {
   TitleBadge,
   formatDailyCountdown,
   formatXp,
-  getDailyChallenges,
   localDateKey,
   summarizeDailyChallengeHistory,
   useDailyChallengeHistory,
-  useDailyChallengeProgress,
+  useDailyChallenges,
   useGamificationStats,
+  useSwapDailyChallenge,
   useUnlockedBadges,
   type BadgeWithStatus,
   type DailyChallengeDefinition,
-  type DailyChallengeProgress,
   type GamificationStats,
+  type TodayChallenge,
 } from "@qqorvex/module-gamificacao";
-import { Button, ButtonLink, Notice, PageContainer, PageHeader, ProgressBar, Segmented, SkeletonBlock, Tabs, cx } from "@qqorvex/ui";
+import { Button, ButtonLink, Notice, PageContainer, PageHeader, ProgressBar, Segmented, SkeletonBlock, Tabs, cx, useToast } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
 import { usePageMeta } from "../app/shell/PageMeta";
 import { LEVEL_THEMES, VIP_THEME } from "../app/ThemeContext";
@@ -58,7 +58,15 @@ export function GamificacaoPage() {
   const { stats, progress, title, isLoading, refetch } = useGamificationStats(client, userId);
   const { badges, isLoading: badgesLoading, error: badgesError } = useUnlockedBadges(client, userId, isOwner);
   const dateKey = localDateKey(now);
-  const { progressByKey, isLoading: challengesLoading, error: challengesError } = useDailyChallengeProgress(client, userId, dateKey);
+  const { challenges, isLoading: challengesLoading, error: challengesError } = useDailyChallenges(client, userId, dateKey);
+  const swapChallenge = useSwapDailyChallenge(client, userId);
+  const { toast } = useToast();
+
+  function swap(challenge: TodayChallenge) {
+    swapChallenge.mutate(challenge.slot, {
+      onError: (error) => toast({ title: "Não deu para trocar", description: error instanceof Error ? error.message : "Tente de novo em instantes.", tone: "danger" }),
+    });
+  }
 
   if (isLoading && !progress) {
     return (
@@ -81,8 +89,7 @@ export function GamificacaoPage() {
   }
 
   const unlocked = badges.filter((badge) => badge.isUnlockedForUser).length;
-  const challenges = getDailyChallenges(dateKey);
-  const doneToday = challenges.filter((challenge) => Boolean(progressByKey.get(challenge.key)?.completed_at)).length;
+  const doneToday = challenges.filter((challenge) => Boolean(challenge.completedAt)).length;
 
   return (
     <PageContainer>
@@ -109,18 +116,25 @@ export function GamificacaoPage() {
                 <h2 id="daily-title" className="text-[15px] font-semibold text-fg">
                   Desafios de hoje <span className="ml-1 text-xs font-normal tabular-nums text-fg-3">{challengesLoading ? "" : `${doneToday}/${challenges.length}`}</span>
                 </h2>
-                <p className="text-xs text-fg-3">Quatro por dia, do fácil ao difícil. Recompensa em XP.</p>
+                <p className="text-xs text-fg-3">Opcionais e escolhidos pelo que você usa no app. Troque o que não combina com o seu dia; deixar de fazer não tira nada.</p>
               </div>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs text-fg-2">
                 <ClockCountdownIcon size={14} className="text-fg-3" />
                 Novos em <time className="font-medium tabular-nums text-fg">{formatDailyCountdown(now)}</time>
               </span>
             </div>
-            {challengesError && <Notice compact>Os registros de hoje não puderam ser confirmados.</Notice>}
+            {challengesError && <Notice compact>Os desafios de hoje não puderam ser carregados. Seu XP continua contando normalmente.</Notice>}
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {challenges.map((challenge) => (
-                <ChallengeCard key={challenge.key} challenge={challenge} progress={progressByKey.get(challenge.key)} available={!challengesError && !challengesLoading} />
-              ))}
+              {challengesLoading
+                ? Array.from({ length: 4 }, (_, index) => <SkeletonBlock key={index} className="h-40 w-full rounded-xl" />)
+                : challenges.map((challenge) => (
+                    <ChallengeCard
+                      key={challenge.slot}
+                      challenge={challenge}
+                      swapping={swapChallenge.isPending && swapChallenge.variables === challenge.slot}
+                      onSwap={() => swap(challenge)}
+                    />
+                  ))}
             </div>
             <ChallengeHistory userId={userId} dateKey={dateKey} />
           </section>
@@ -187,32 +201,44 @@ const DIFFICULTY: Record<DailyChallengeDefinition["difficulty"], string> = {
   Especial: "bg-ai-soft text-ai-fg",
 };
 
-function ChallengeCard({ challenge, progress, available }: { challenge: DailyChallengeDefinition; progress?: DailyChallengeProgress; available: boolean }) {
-  const current = Math.min(progress?.progress ?? 0, challenge.target);
-  const done = available && Boolean(progress?.completed_at);
+function ChallengeCard({ challenge, swapping, onSwap }: { challenge: TodayChallenge; swapping: boolean; onSwap: () => void }) {
+  const { definition } = challenge;
+  const current = challenge.progress;
+  const done = Boolean(challenge.completedAt);
   return (
     <article className={cx("flex min-w-0 flex-col gap-3 rounded-xl border p-4", done ? "border-success/35 bg-success-soft" : "border-line bg-surface")}>
       <div className="flex items-center justify-between gap-2">
-        <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", DIFFICULTY[challenge.difficulty] ?? "bg-hover text-fg-2")}>{challenge.difficulty}</span>
+        <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", DIFFICULTY[definition.difficulty] ?? "bg-hover text-fg-2")}>{definition.difficulty}</span>
         <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-gold-fg">
-          <LightningIcon size={13} weight="fill" />+{challenge.rewardXp} XP
+          <LightningIcon size={13} weight="fill" />+{definition.rewardXp} XP
         </span>
       </div>
       <div className="min-w-0">
-        <h3 className="text-[14px] font-semibold leading-snug text-fg">{challenge.title}</h3>
-        <p className="mt-1 text-xs leading-relaxed text-fg-3">{challenge.description}</p>
+        <h3 className="text-[14px] font-semibold leading-snug text-fg">{definition.title}</h3>
+        <p className="mt-1 text-xs leading-relaxed text-fg-3">{definition.description}</p>
       </div>
       <div className="mt-auto flex flex-col gap-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className={done ? "font-medium text-success" : "tabular-nums text-fg-2"}>{!available ? "—" : done ? "Concluído" : `${current} de ${challenge.target} ${challenge.unit}`}</span>
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className={done ? "font-medium text-success" : "tabular-nums text-fg-2"}>{done ? "Concluído" : `${current} de ${definition.target} ${definition.unit}`}</span>
           {!done && (
-            <Link to={challenge.href} className="inline-flex items-center gap-1 font-medium text-gold-fg hover:underline">
-              {challenge.actionLabel} <ArrowRightIcon size={12} />
+            <Link to={definition.href} className="inline-flex items-center gap-1 font-medium text-gold-fg hover:underline">
+              {definition.actionLabel} <ArrowRightIcon size={12} />
             </Link>
           )}
           {done && <CheckCircleIcon size={16} weight="fill" className="text-success" />}
         </div>
-        <ProgressBar value={available ? (current / challenge.target) * 100 : 0} height={4} tone={done ? "success" : "gold"} />
+        <ProgressBar value={(current / definition.target) * 100} height={4} tone={done ? "success" : "gold"} />
+        {!done && (
+          <button
+            type="button"
+            onClick={onSwap}
+            disabled={swapping}
+            className="inline-flex items-center gap-1 self-start text-[11px] font-medium text-fg-3 transition-colors hover:text-fg disabled:opacity-60"
+            aria-label={`Trocar o desafio ${definition.title}`}
+          >
+            <ArrowsClockwiseIcon size={12} className={swapping ? "animate-spin" : undefined} /> {swapping ? "Trocando…" : "Trocar"}
+          </button>
+        )}
       </div>
     </article>
   );
@@ -221,8 +247,8 @@ function ChallengeCard({ challenge, progress, available }: { challenge: DailyCha
 function ChallengeHistory({ userId, dateKey }: { userId: string; dateKey: string }) {
   const { client } = useAuth();
   const [open, setOpen] = useState(false);
-  const { progress, isLoading, error } = useDailyChallengeHistory(client, userId, dateKey, open);
-  const days = summarizeDailyChallengeHistory(dateKey, progress);
+  const { progress, choices, isLoading, error } = useDailyChallengeHistory(client, userId, dateKey, open);
+  const days = summarizeDailyChallengeHistory(dateKey, progress, 7, choices);
   return (
     <div className="flex flex-col gap-3">
       <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="self-start text-xs font-medium text-fg-3 hover:text-fg">

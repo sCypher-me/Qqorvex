@@ -396,6 +396,20 @@ export const fixtures = {
 };
 
 export const rpcFixtures = {
+  // Consistência acumulada: vezes feitas no total (inclui o histórico além dos 14 dias simulados).
+  get_my_habit_totals: habits.map((h, index) => ({ habit_id: h.id, total: [42, 30, 17, 9][index] ?? 0, since: dateKey(-120) })),
+  // Desafios do dia da pessoa: um concluído (não troca) e três em aberto.
+  get_my_daily_challenges: [
+    { slot: 0, challenge_key: "task-1", difficulty: "Fácil", action: "task_completed", target: 1, reward_xp: 10, progress: 1, completed_at: at(0, 9), swaps: 0 },
+    { slot: 1, challenge_key: "checkin-1", difficulty: "Fácil", action: "habit_or_goal_checkin", target: 1, reward_xp: 10, progress: 0, completed_at: null, swaps: 0 },
+    { slot: 2, challenge_key: "library-2", difficulty: "Médio", action: "library_item_completed", target: 2, reward_xp: 25, progress: 1, completed_at: null, swaps: 1 },
+    { slot: 3, challenge_key: "task-5", difficulty: "Difícil", action: "task_completed", target: 5, reward_xp: 50, progress: 1, completed_at: null, swaps: 0 },
+  ],
+  swap_my_daily_challenge: "study-1",
+  owner_list_gamification_audit: [
+    { id: 2, created_at: at(-1, 15), action: "grant_badge", detail: { badge_key: "beta_tester", already_had: false }, target_user_id: USER_ID, target_name: "Bia", actor_name: "Ana" },
+    { id: 1, created_at: at(-3, 10), action: "set_title", detail: { title: "Pioneira", previous_title: null }, target_user_id: USER_ID, target_name: "Bia", actor_name: "Ana" },
+  ],
   // Discord conectado, sem publicar o @usuário (padrão de privacidade).
   get_my_discord_connection: { username: "ana_souza", roles: { beta_tester: true, plus: false, lifetime: false, parceiro: false }, synced_at: at(0, 8), share_username: false },
   list_all_accounts: [

@@ -21,151 +21,31 @@ export function computeMilestoneProgress(milestones: GoalMilestone[]): number | 
 }
 
 /**
- * "Sequência atual" — dias consecutivos com registro 'concluido' terminando na data de
- * referência (ou no dia mais recente com registro, o que vier primeiro). Informativo, não é
- * score de disciplina: a UI decide como apresentar o número, sem linguagem de culpa.
+ * Consistência acumulada de um hábito: quantas vezes ele já foi feito, desde o primeiro registro.
+ * O número só cresce — pular dias, pausar o hábito ou ficar um tempo sem usar o app nunca o zera
+ * nem vira "dívida" (regra da Gamificação). Substitui as antigas sequências de dias seguidos.
  */
-export function computeCurrentStreak(logs: HabitLog[], referenceDate: Date): number {
-  const doneDates = new Set(
-    logs.filter((log) => log.state === "concluido").map((log) => log.log_date),
-  );
+export interface HabitConsistency {
+  /** Vezes feitas no total (registros "concluido"). */
+  total: number;
+  /** Primeiro dia com registro feito, quando há. */
+  since: string | null;
+}
 
-  const today = localDateKey(referenceDate);
-  // A sequência de ontem continua válida durante o dia de hoje, até o usuário registrar
-  // o hábito. Isso evita mostrar "0 dias" logo pela manhã para quem cumpriu ontem.
-  let cursorDate = doneDates.has(today) ? today : shiftDateKey(today, -1);
-  if (!doneDates.has(cursorDate)) return 0;
+export function formatHabitConsistency({ total }: HabitConsistency): string {
+  if (total === 0) return "Ainda não feito";
+  return total === 1 ? "Feito 1 vez" : `Feito ${total} vezes`;
+}
 
-  let streak = 0;
-  while (doneDates.has(cursorDate)) {
-    streak += 1;
-    cursorDate = shiftDateKey(cursorDate, -1);
+/** Hábito com mais vezes feitas, para o destaque "mais constante". Empate fica com o mais antigo. */
+export function mostConsistentHabit<T extends { id: string }>(habits: T[], totals: Map<string, HabitConsistency>): { habit: T; consistency: HabitConsistency } | null {
+  let best: { habit: T; consistency: HabitConsistency } | null = null;
+  for (const habit of habits) {
+    const consistency = totals.get(habit.id);
+    if (!consistency || consistency.total === 0) continue;
+    if (!best || consistency.total > best.consistency.total) best = { habit, consistency };
   }
-
-  return streak;
-}
-
-export type HabitStreakUnit = "dia" | "vez" | "semana" | "mes";
-
-export interface HabitStreak {
-  count: number;
-  unit: HabitStreakUnit;
-}
-
-/**
- * Sequência medida na frequência do próprio hábito — `computeCurrentStreak` conta dias corridos e
- * zerava, por exemplo, um hábito de seg/qua/sex toda terça. Regras:
- * - diário: dias seguidos (mesma regra de `computeCurrentStreak`);
- * - dias específicos: vezes seguidas; dia fora da agenda nunca quebra, dia previsto sem registro
- *   quebra (menos hoje, que ainda está em aberto);
- * - X vezes por semana / semanal: semanas (domingo a sábado) que bateram a cota;
- * - mensal: meses com pelo menos um registro.
- * O período atual só soma quando a cota já foi batida e nunca quebra a sequência.
- */
-export function computeHabitStreak(habit: Habit, logs: HabitLog[], referenceDate: Date): HabitStreak {
-  const unit = habitStreakUnit(habit);
-  const doneDates = new Set(logs.filter((log) => log.state === "concluido").map((log) => log.log_date));
-  if (doneDates.size === 0) return { count: 0, unit };
-
-  const today = localDateKey(referenceDate);
-  const earliest = [...doneDates].sort()[0] ?? today;
-
-  switch (unit) {
-    case "vez": {
-      const days = ((habit.frequency_config ?? {}) as unknown as HabitFrequencyConfig).days ?? [];
-      return { count: countScheduledStreak(doneDates, today, earliest, days), unit };
-    }
-    case "semana":
-      return { count: countPeriodStreak(doneDates, today, earliest, "semana", getHabitWeeklyTarget(habit) ?? 1), unit };
-    case "mes":
-      return { count: countPeriodStreak(doneDates, today, earliest, "mes", 1), unit };
-    default:
-      return { count: computeCurrentStreak(logs, referenceDate), unit };
-  }
-}
-
-/** "3 dias seguidos", "1 vez seguida", "2 semanas seguidas", "1 mês seguido". */
-export function formatHabitStreak({ count, unit }: HabitStreak): string {
-  const one = count === 1;
-  const label = {
-    dia: one ? "dia seguido" : "dias seguidos",
-    vez: one ? "vez seguida" : "vezes seguidas",
-    semana: one ? "semana seguida" : "semanas seguidas",
-    mes: one ? "mês seguido" : "meses seguidos",
-  }[unit];
-  return `${count} ${label}`;
-}
-
-/** Duração aproximada em dias, só para comparar sequências de unidades diferentes. */
-export function habitStreakDays({ count, unit }: HabitStreak): number {
-  return count * { dia: 1, vez: 1, semana: 7, mes: 30 }[unit];
-}
-
-function habitStreakUnit(habit: Habit): HabitStreakUnit {
-  switch (habit.frequency_type) {
-    case "dias_especificos":
-      return (((habit.frequency_config ?? {}) as unknown as HabitFrequencyConfig).days?.length ?? 0) > 0 ? "vez" : "dia";
-    case "x_vezes_semana":
-    case "semanal":
-      return "semana";
-    case "mensal":
-      return "mes";
-    default:
-      return "dia";
-  }
-}
-
-function countScheduledStreak(doneDates: Set<string>, today: string, earliest: string, days: string[]): number {
-  let count = 0;
-  for (let cursor = today; cursor >= earliest; cursor = shiftDateKey(cursor, -1)) {
-    if (doneDates.has(cursor)) {
-      count += 1;
-      continue;
-    }
-    if (cursor !== today && isScheduledWeekday(days, weekdayOfKey(cursor))) break;
-  }
-  return count;
-}
-
-function countPeriodStreak(doneDates: Set<string>, today: string, earliest: string, period: "semana" | "mes", target: number): number {
-  const currentStart = periodStartOf(today, period);
-  let count = 0;
-  for (let start = currentStart; ; start = previousPeriodStart(start, period)) {
-    const end = nextPeriodStart(start, period);
-    let done = 0;
-    for (const date of doneDates) if (date >= start && date < end) done += 1;
-    if (done >= target) count += 1;
-    else if (start !== currentStart) break;
-    if (start <= earliest) break;
-  }
-  return count;
-}
-
-function weekdayOfKey(dateKey: string): number {
-  const [year = 1970, month = 1, day = 1] = dateKey.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-}
-
-function isScheduledWeekday(days: string[], weekday: number): boolean {
-  const code = WEEKDAY_CODES[weekday];
-  const legacy = LEGACY_WEEKDAY_CODES[weekday];
-  return days.some((day) => day === code || day === legacy);
-}
-
-function periodStartOf(dateKey: string, period: "semana" | "mes"): string {
-  return period === "semana" ? shiftDateKey(dateKey, -weekdayOfKey(dateKey)) : `${dateKey.slice(0, 8)}01`;
-}
-
-function nextPeriodStart(start: string, period: "semana" | "mes"): string {
-  if (period === "semana") return shiftDateKey(start, 7);
-  const [year = 1970, month = 1] = start.split("-").map(Number);
-  return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
-}
-
-function previousPeriodStart(start: string, period: "semana" | "mes"): string {
-  if (period === "semana") return shiftDateKey(start, -7);
-  const [year = 1970, month = 1] = start.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 10);
+  return best;
 }
 
 /** Data civil local em YYYY-MM-DD, sem deslocar o dia por conversão para UTC. */

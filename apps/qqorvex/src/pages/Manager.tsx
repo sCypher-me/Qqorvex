@@ -1,10 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRightIcon, CopyIcon, DownloadSimpleIcon, KeyIcon, MagnifyingGlassIcon, ProhibitIcon, TicketIcon, TrashIcon, TrophyIcon, UsersIcon } from "@phosphor-icons/react";
 import { useAuth, useProfile } from "@qqorvex/auth";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, IconButton, Input, Notice, PageContainer, PageHeader, Select, SkeletonCards, SkeletonList, Tabs, useToast, type BadgeTone } from "@qqorvex/ui";
 import {
+  GAMIFICATION_AUDIT_KEY,
   useAllAccounts,
+  useGamificationAudit,
   useCreatePartnerCampaign,
   useCreateRedemptionCode,
   useDeleteAccount,
@@ -127,7 +130,7 @@ export function ManagerPage() {
         />
       </PageHeader>
       {tab === "visao-geral" && <OverviewSection onNavigate={setTab} />}
-      {tab === "contas" && <><InviteSection /><AccountsSection currentUserId={userId} /></>}
+      {tab === "contas" && <><InviteSection /><AccountsSection currentUserId={userId} /><GamificationAuditSection /></>}
       {tab === "codigos" && <CodesSection userId={userId} />}
       {tab === "lista" && <WaitlistSection onNavigate={setTab} />}
       {tab === "config" && <SecretsSection />}
@@ -188,6 +191,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (tab: ManagerTab) => void
 
 function AccountsSection({ currentUserId }: { currentUserId: string }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { accounts, isLoading, error } = useAllAccounts(supabase);
   const deleteAccountMutation = useDeleteAccount(supabase);
   const setAccountBanned = useSetAccountBanned(supabase);
@@ -211,6 +215,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string }) {
         p_badge_key: badgeKey,
       });
       if (grantError) throw grantError;
+      void queryClient.invalidateQueries({ queryKey: GAMIFICATION_AUDIT_KEY });
       if (!data) {
         toast({ title: "Essa conta já possui a insígnia.", tone: "info" });
       } else {
@@ -843,4 +848,39 @@ function InviteSection() {
       {message && <Notice>{message}</Notice>}
     </form>
   </Panel>;
+}
+
+/** Quem concedeu cada insígnia ou título manual, para quem e quando (auditoria das concessões). */
+function GamificationAuditSection() {
+  const { entries, isLoading, error } = useGamificationAudit(supabase);
+  const badgeLabel = (key: string | null) => MANUAL_BADGES.find((badge) => badge.key === key)?.label ?? key ?? "—";
+  return (
+    <Panel title="Histórico de concessões" description="Insígnias e títulos dados manualmente pela Central do Dono. As insígnias automáticas não aparecem aqui.">
+      {isLoading ? (
+        <SkeletonList rows={3} />
+      ) : error ? (
+        <SectionError what="o histórico de concessões" />
+      ) : entries.length === 0 ? (
+        <p className="text-[13px] text-fg-3">Nenhuma concessão manual registrada ainda.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-line-soft">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 py-2 text-[13px]">
+              <span className="font-medium text-fg">{entry.targetName}</span>
+              <span className="text-fg-2">
+                {entry.action === "grant_badge"
+                  ? `recebeu a insígnia ${badgeLabel(entry.value)}${entry.alreadyHad ? " (já tinha)" : ""}`
+                  : entry.value
+                    ? `recebeu o título “${entry.value}”`
+                    : "teve o título removido"}
+              </span>
+              <span className="ml-auto text-xs tabular-nums text-fg-4">
+                {entry.actorName} · {new Date(entry.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
 }

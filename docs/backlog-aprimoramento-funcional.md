@@ -71,6 +71,8 @@
 
 ### 6. Gamificação
 
+> **Estado (10/10/2026):** auditado e completo. Já estavam certos: XP só soma (eventos únicos, sem decremento), progresso automático por gatilhos, só o marco atual de assinatura, vitrine escolhida (título + 3 insígnias), notificação de desbloqueio única. Feito agora: sequências que zeravam substituídas por consistência acumulada (`get_my_habit_totals`); desafios do dia por pessoa (`user_daily_challenge_choices`), sugeridos pelo que ela usa e trocáveis sem punição, sem permitir XP extra; origem (`grant_source`/`granted_by`) e auditoria das concessões do Dono, com histórico na Central.
+
 - Não retirar XP, níveis ou conquistas obtidas por ausência; não transformar dias perdidos em dívida nem usar sequência quebrável. Mostrar consistência acumulada sem penalidade.
 - Sugerir desafios opcionais com base em metas e hábitos do usuário; permitir trocar ou ignorar sem punição.
 - Atualizar progresso automaticamente por ações observáveis no app, sem exigir registro duplicado; usar confirmação manual apenas para ações externas ao app.
