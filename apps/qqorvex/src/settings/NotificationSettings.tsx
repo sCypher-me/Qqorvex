@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRingingIcon, CalendarBlankIcon, DeviceMobileIcon, RepeatIcon, WalletIcon } from "@phosphor-icons/react";
+import { useState } from "react";
+import { BellRingingIcon, CalendarBlankIcon, DeviceMobileIcon, RepeatIcon, RoadHorizonIcon, WalletIcon } from "@phosphor-icons/react";
+import { useAuth } from "@qqorvex/auth";
 import { listPushSubscriptions, removePushSubscriptionByEndpoint, useNotifications } from "@qqorvex/notifications";
 import { Button, Notice, SkeletonList, Switch } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
@@ -28,8 +30,27 @@ const SOURCES = [
   { icon: <WalletIcon />, title: "Orçamento", description: "Quando os gastos de uma categoria passam do limite do mês." },
 ];
 
+function readPreferences(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
+  const saved = metadata?.qqorvex_preferences;
+  return saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
+}
+
 export function NotificationSettings() {
   const { userId } = useAccount();
+  const { session } = useAuth();
+  const [planAlerts, setPlanAlerts] = useState(() => readPreferences(session?.user.user_metadata).plan_alerts !== false);
+  const [planAlertsError, setPlanAlertsError] = useState(false);
+
+  async function togglePlanAlerts(next: boolean) {
+    setPlanAlerts(next);
+    setPlanAlertsError(false);
+    const current = readPreferences(session?.user.user_metadata);
+    const { error } = await supabase.auth.updateUser({ data: { qqorvex_preferences: { ...current, plan_alerts: next } } });
+    if (error) {
+      setPlanAlerts(!next);
+      setPlanAlertsError(true);
+    }
+  }
   const queryClient = useQueryClient();
   const push = useNotifications(supabase, userId, import.meta.env.VITE_VAPID_PUBLIC_KEY);
   const subscriptions = useQuery({ queryKey: [...SUBSCRIPTIONS_KEY, userId], queryFn: () => listPushSubscriptions(supabase) });
@@ -71,7 +92,14 @@ export function NotificationSettings() {
           {SOURCES.map((source) => (
             <SettingsListRow key={source.title} leading={<IconTile>{source.icon}</IconTile>} title={source.title} description={source.description} />
           ))}
+          <SettingsListRow
+            leading={<IconTile><RoadHorizonIcon /></IconTile>}
+            title="Plano do dia"
+            description="Só quando há um conflito real na agenda ou uma tarefa de hoje que não cabe mais no seu horário disponível. Um aviso por problema, nunca fora do seu horário."
+            trailing={<Switch checked={planAlerts} onChange={(next) => void togglePlanAlerts(next)} label="Avisos do plano do dia" />}
+          />
         </SettingsList>
+        {planAlertsError && <Notice compact>Não foi possível salvar essa preferência agora. Tente de novo.</Notice>}
       </SettingsCard>
 
       <SettingsCard title="Dispositivos com notificações" description="Remova os que você não usa mais." aside={<Button size="sm" variant="ghost" onClick={refreshList}>Atualizar</Button>}>

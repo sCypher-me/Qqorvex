@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRightIcon, CalendarBlankIcon, CoffeeIcon, MoonStarsIcon, PencilSimpleIcon, RoadHorizonIcon } from "@phosphor-icons/react";
 import { useAuth } from "@qqorvex/auth";
 import {
@@ -58,6 +58,13 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
   const [editingWindow, setEditingWindow] = useState(false);
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
+
+  const location = useLocation();
+  // Aviso push de prazo em risco abre "/#plano-do-dia": rola até o painel quando ele terminar de carregar.
+  useEffect(() => {
+    if (location.hash !== "#plano-do-dia" || loading) return;
+    document.getElementById("plano-do-dia")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.hash, loading]);
 
   const candidates = useMemo(() => selectDayPlanTasks(tasks, today), [tasks, today]);
   const fallbackMinutes = useMemo(() => defaultTaskMinutes(allTasks.map((task) => task.estimated_minutes ?? 0)), [allTasks]);

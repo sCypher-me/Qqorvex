@@ -63,6 +63,11 @@ requirePattern("send-notifications", notifications, /AbortSignal\.timeout\(SUPAB
 requirePattern("send-notifications", notifications, /timeout:\s*PUSH_REQUEST_TIMEOUT_MS/, "timeout dos envios Web Push");
 requirePattern("send-notifications", notifications, /RUN_BUDGET_MS/, "limite de duração por execução do cron");
 requirePattern("send-notifications", notifications, /progressResponse\(true\)/, "retomada parcial do cron no próximo ciclo");
+// Avisos do plano do dia: respeitam a preferência, o horário disponível e nunca repetem um problema.
+requirePattern("send-notifications", notifications, /preferences\.plan_alerts === false\) continue/, "opção de desligar avisos do plano do dia");
+requirePattern("send-notifications", notifications, /isWithinWindow\(wallNow, dayWindow\)/, "avisos só dentro do horário disponível");
+requirePattern("send-notifications", notifications, /from\("notification_alert_log"\)\s*\.upsert/, "registro dos avisos enviados");
+requirePattern("send-notifications", notifications, /if \(delivered === 0\) continue/, "só marca como avisado quando algum dispositivo recebeu");
 
 const oauth = await source("google-oauth-callback");
 requirePattern("google-oauth-callback", oauth, /google_oauth_states/, "estado OAuth persistido");
