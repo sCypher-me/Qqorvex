@@ -1,11 +1,6 @@
 import type { ChatMessage, ToolDefinition, VexProvider, VexProviderResponse } from "../types";
 import type { VexStyle } from "../vexStyle";
-
-const LOCAL_STYLE_PROMPTS: Record<VexStyle, string> = {
-  direct: "Estilo escolhido: direta e acolhedora; vá ao ponto com gentileza e prefira respostas curtas.",
-  conversational: "Estilo escolhido: calorosa e conversadora; acrescente contexto útil e fale de forma próxima, sem rodeios.",
-  encouraging: "Estilo escolhido: mentora estratégica; ajude a esclarecer prioridades, comparar alternativas e transformar objetivos em passos realistas. Aponte riscos com cuidado, preserve a autonomia da pessoa e nunca use culpa ou pressão.",
-};
+import { vexPersonalityInstruction } from "../../../../supabase/functions/_shared/vexPersonalities";
 
 /**
  * "Priorizar Ollama... para a v1" no ambiente de desenvolvimento — mas "o aplicativo em produção
@@ -24,7 +19,7 @@ export class OllamaProvider implements VexProvider {
   async chat({ messages, tools, vexStyle = "direct" }: { messages: ChatMessage[]; tools: ToolDefinition[]; vexStyle?: VexStyle }): Promise<VexProviderResponse> {
     const firstUserIndex = messages.findIndex((message) => message.role !== "system");
     const styledMessages = [...messages];
-    styledMessages.splice(firstUserIndex < 0 ? styledMessages.length : firstUserIndex, 0, { role: "system", content: LOCAL_STYLE_PROMPTS[vexStyle] });
+    styledMessages.splice(firstUserIndex < 0 ? styledMessages.length : firstUserIndex, 0, { role: "system", content: vexPersonalityInstruction(vexStyle) });
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

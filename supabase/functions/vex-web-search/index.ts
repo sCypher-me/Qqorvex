@@ -2,7 +2,7 @@
 // `search_web` (packages/vex/src/tools/webTools.ts). Mesmo padrão de segredo em `app_secrets` e
 // CORS de `create-zoom-meeting`/`vex-chat`: a chave da Tavily nunca vai pro bundle do navegador.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { releaseMonthlyQuota, reserveMonthlyQuota } from "../_shared/billing.ts";
 import { checkQuerySafety } from "../_shared/vexSafety.ts";
 
@@ -32,7 +32,7 @@ function bearerToken(req: Request): string | null {
   return token.length > 0 && token.length <= 4_096 ? token : null;
 }
 
-async function authenticate(req: Request, supabase: ReturnType<typeof createClient>): Promise<string | null> {
+async function authenticate(req: Request, supabase: SupabaseClient): Promise<string | null> {
   const token = bearerToken(req);
   if (!token) return null;
   const { data, error } = await supabase.auth.getUser(token);

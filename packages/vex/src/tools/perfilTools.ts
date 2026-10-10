@@ -1,11 +1,24 @@
 import type { SupabaseClient, Database } from "@qqorvex/database";
 import { getProfile, isBRPhoneValid, normalizeBRPhone, updateProfile } from "@qqorvex/auth";
 import type { ToolDefinition } from "../types";
+import { normalizeVexStyle, VEX_STYLE_OPTIONS, vexStyleLabel } from "../vexStyle";
 
 type Client = SupabaseClient<Database>;
 
 function clean(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+const VEX_STYLE_VALUES = VEX_STYLE_OPTIONS.map((option) => option.value);
+
+/** Grava a personalidade nas preferências da conta sem apagar as demais (tema, cor de destaque…). */
+async function saveVexStyle(client: Client, style: string): Promise<string | null> {
+  const { data, error: readError } = await client.auth.getUser();
+  if (readError || !data.user) return readError?.message ?? "sessão indisponível";
+  const saved = data.user.user_metadata?.qqorvex_preferences;
+  const current = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : {};
+  const { error } = await client.auth.updateUser({ data: { qqorvex_preferences: { ...current, vex_style: style } } });
+  return error?.message ?? null;
 }
 
 export function createPerfilTools(client: Client, userId: string): ToolDefinition[] {
@@ -55,6 +68,36 @@ export function createPerfilTools(client: Client, userId: string): ToolDefinitio
         });
         if (error) return { summary: "Não consegui atualizar o perfil: " + error };
         return { summary: "Perfil atualizado com sucesso.", data: profile };
+      },
+    },
+    {
+      name: "set_vex_style",
+      description:
+        "Troca a personalidade da Vex (o jeito de conversar) quando a pessoa pede para você falar de outro jeito daqui em diante. direct = Direta e acolhedora (curta e objetiva), conversational = Calorosa e conversadora (próxima, explica o porquê), encouraging = Mentora estratégica (prioridades, caminhos e riscos). Não muda ferramentas nem permissões.",
+      parameters: {
+        type: "object",
+        properties: {
+          style: { type: "string", enum: VEX_STYLE_VALUES, description: "Personalidade escolhida" },
+        },
+        required: ["style"],
+        additionalProperties: false,
+      },
+      requiresConfirmation: true,
+      preview(args) {
+        return {
+          title: "Mudar a personalidade da Vex",
+          fields: [{ label: "Nova personalidade", value: vexStyleLabel(args.style) }],
+          note: "Vale para as próximas respostas e fica salvo em Configurações → Aparência.",
+        };
+      },
+      async execute(args) {
+        if (!VEX_STYLE_VALUES.includes(args.style as never)) {
+          return { summary: "Escolha uma das personalidades: Direta e acolhedora, Calorosa e conversadora ou Mentora estratégica.", ok: false };
+        }
+        const style = normalizeVexStyle(args.style);
+        const error = await saveVexStyle(client, style);
+        if (error) return { summary: "Não consegui salvar a nova personalidade: " + error, ok: false };
+        return { summary: `Personalidade da Vex alterada para ${vexStyleLabel(style)}. As próximas respostas já seguem esse jeito.`, data: { style } };
       },
     },
   ];

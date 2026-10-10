@@ -132,14 +132,14 @@ export function AppearanceSettings() {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Jeito da Vex" description="Escolha como ela escreve. Você pode mudar isso quando quiser.">
+      <SettingsCard title="Jeito da Vex" description="Escolha como ela conversa com você. As três fazem as mesmas coisas e pedem a mesma confirmação; muda só o jeito de falar. Você também pode pedir a troca para a própria Vex.">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Estilo de conversa da Vex">
           {VEX_STYLE_OPTIONS.map((option) => {
             const selected = vexStyle === option.value;
             return (
               <button key={option.value} type="button" role="radio" aria-checked={selected} onClick={() => chooseVexStyle(option.value)} className={cx("flex min-h-24 items-start gap-3 rounded-xl border p-4 text-left transition-colors", selected ? "border-gold-line bg-gold-soft ring-1 ring-gold-line" : "border-line hover:border-line-strong hover:bg-hover")}>
                 <SparkleIcon size={18} className={selected ? "mt-0.5 shrink-0 text-gold-fg" : "mt-0.5 shrink-0 text-fg-3"} />
-                <span className="min-w-0 flex-1"><span className="block text-[13.5px] font-medium text-fg">{option.label}</span><span className="mt-1 block text-xs leading-relaxed text-fg-3">{option.description}</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-[13.5px] font-medium text-fg">{option.label}</span><span className="mt-1 block text-xs leading-relaxed text-fg-3">{option.description}</span><span className="mt-2.5 block border-l-2 border-ai-line pl-2.5 text-xs italic leading-relaxed text-fg-2"><span className="sr-only">Exemplo de resposta: </span>“{option.sample}”</span></span>
                 {selected && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gold text-on-gold"><CheckIcon size={12} weight="bold" /></span>}
               </button>
             );

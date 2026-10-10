@@ -272,7 +272,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
                       {VEX_STYLE_OPTIONS.map((option) => (
                         <button key={option.value} type="button" aria-pressed={vexStyle === option.value} onClick={() => setVexStyle(option.value)} className={`flex min-h-[82px] items-start gap-3 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${vexStyle === option.value ? "border-gold-line bg-gold-soft" : "border-line bg-surface-0 hover:bg-hover"}`}>
                           <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${vexStyle === option.value ? "border-gold-line" : "border-line-strong"}`}>{vexStyle === option.value && <span className="h-2 w-2 rounded-full bg-gold" />}</span>
-                          <span><span className="block text-sm font-semibold text-fg">{option.label}</span><span className="mt-1 block text-xs leading-5 text-fg-3">{option.description}</span></span>
+                          <span><span className="block text-sm font-semibold text-fg">{option.label}</span><span className="mt-1 block text-xs leading-5 text-fg-3">{option.description}</span><span className="mt-2 block border-l-2 border-ai-line pl-2 text-xs italic leading-5 text-fg-2"><span className="sr-only">Exemplo de resposta: </span>“{option.sample}”</span></span>
                         </button>
                       ))}
                     </div>
