@@ -275,6 +275,17 @@ export function compareTasksForAction(a: Task, b: Task): number {
   return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
 }
 
+/**
+ * Tarefas que entram no plano de um dia (tela Hoje e Vex): abertas, com prazo até a data ou em
+ * andamento, sem pré-requisito pendente quando a condição já foi calculada. Em andamento primeiro,
+ * depois a mesma ordem de ação do resto do app.
+ */
+export function selectDayPlanTasks<T extends Task & { isBlocked?: boolean }>(tasks: T[], date: string): T[] {
+  return tasks
+    .filter((task) => task.status !== "concluido" && !task.isBlocked && ((task.due_date !== null && task.due_date <= date) || task.status === "em_andamento"))
+    .sort((a, b) => Number(b.status === "em_andamento") - Number(a.status === "em_andamento") || compareTasksForAction(a, b));
+}
+
 /** Rótulo curto do prazo ("Hoje", "Amanhã", "sex", "12 out", "Atrasada há 2 dias"). */
 export function formatDueLabel(dueDate: string, today = localDateKey()): string {
   if (dueDate === today) return "Hoje";

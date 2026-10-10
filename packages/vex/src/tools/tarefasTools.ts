@@ -21,6 +21,7 @@ export function describeTask(task: Task, today = localDateKey()): string {
   if (task.due_date) parts.push(`prazo ${formatDateKey(task.due_date, today)} (${task.due_date})`);
   if (task.priority !== "sem_prioridade") parts.push(`prioridade ${PRIORITY_LABEL[task.priority]}`);
   if (task.status === "em_andamento") parts.push("em andamento");
+  if (task.estimated_minutes) parts.push(`duração ${task.estimated_minutes} min`);
   return `- ${parts.join(" · ")} [id: ${task.id}]`;
 }
 
@@ -125,7 +126,7 @@ export function createTarefasTools(client: SupabaseClient<Database>, userId: str
       name: "update_task_by_id",
       label: "Tarefas",
       description:
-        "Atualiza título, prazo, prioridade e/ou status de uma tarefa pelo id exato (os ids aparecem em list_tasks e no item em foco). Use para reagendar ou priorizar.",
+        "Atualiza título, prazo, prioridade, status e/ou duração estimada de uma tarefa pelo id exato (os ids aparecem em list_tasks, no plano do dia e no item em foco). Use para reagendar, priorizar ou corrigir a duração usada no plano do dia.",
       parameters: {
         type: "object",
         properties: {
@@ -134,6 +135,7 @@ export function createTarefasTools(client: SupabaseClient<Database>, userId: str
           dueDate: { type: "string", description: "Novo prazo AAAA-MM-DD (opcional)" },
           priority: { type: "string", enum: ["alta", "media", "baixa", "sem_prioridade"], description: "Nova prioridade (opcional)" },
           status: { type: "string", enum: ["nao_iniciado", "em_andamento", "concluido"], description: "Novo status (opcional)" },
+          estimatedMinutes: { type: "number", description: "Duração estimada em minutos, de 5 a 600 (opcional)" },
         },
         required: ["taskId"],
       },
@@ -145,17 +147,21 @@ export function createTarefasTools(client: SupabaseClient<Database>, userId: str
           ...(isDateKey(args.dueDate) ? [{ label: "Novo prazo", value: formatDateKey(args.dueDate) }] : []),
           ...(typeof args.priority === "string" ? [{ label: "Prioridade", value: PRIORITY_LABEL[args.priority as TaskPriority] ?? args.priority }] : []),
           ...(typeof args.status === "string" ? [{ label: "Status", value: STATUS_LABEL[args.status as TaskStatus] ?? args.status }] : []),
+          ...(args.estimatedMinutes !== undefined ? [{ label: "Duração estimada", value: `${Number(args.estimatedMinutes)} min` }] : []),
         ],
       }),
       async execute(args) {
         const taskId = String(args.taskId ?? "").trim();
         if (!taskId) return { summary: "Não recebi o ID da tarefa a atualizar." };
         if (args.dueDate !== undefined && !isDateKey(args.dueDate)) return { summary: "Não atualizei: o prazo precisa estar no formato AAAA-MM-DD." };
+        const minutes = args.estimatedMinutes === undefined ? undefined : Math.round(Number(args.estimatedMinutes));
+        if (minutes !== undefined && !(minutes >= 5 && minutes <= 600)) return { summary: "Não atualizei: a duração precisa ficar entre 5 e 600 minutos.", ok: false };
         const updated = await updateTask(client, taskId, {
           title: args.title as string | undefined,
           dueDate: args.dueDate as string | undefined,
           priority: args.priority as TaskPriority | undefined,
           status: args.status as TaskStatus | undefined,
+          estimatedMinutes: minutes,
         });
         return { summary: `Tarefa atualizada: "${updated.title}"${updated.due_date ? ` (prazo ${formatDateKey(updated.due_date)})` : ""}.`, data: updated };
       },

@@ -48,6 +48,8 @@
 
 ### 4. Hoje
 
+> **Estado (10/10/2026):** feito o plano do dia (janela ajustável, 20% de folga, duração estimada pela mediana das estimativas, divisão de tarefas longas, reavaliação ao vivo), a sugestão agrupada de mover prazos com confirmação única e itens removíveis, o convite para fechar o dia e o plano na Vex. Faltam: push só para conflito real/prazo em risco (precisa calcular o plano no `send-notifications`), estimativa de duração pela descrição via Vex com pergunta quando incerta, reorganização que proponha mudar compromissos, e a captura rápida em linguagem natural para todos os tipos.
+
 - Planejar o dia usando compromissos, tarefas, prazos, duração estimada das tarefas e preferências de disponibilidade.
 - Usar janela inicial de **08:00–21:00**, ajustável pelo usuário; reservar aproximadamente **20%** do tempo disponível para pausas e imprevistos.
 - Estimar duração de tarefas a partir da descrição e de correções anteriores; perguntar quando a estimativa for muito incerta.
