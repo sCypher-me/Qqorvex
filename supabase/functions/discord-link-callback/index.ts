@@ -43,7 +43,9 @@ Deno.serve(async (req) => {
     const tokens = await exchangeCode(credentials, code);
     const discordUser = await fetchDiscordUser(tokens.accessToken);
     const { metadata, username } = await readRoleMetadata(admin, stateRow.user_id);
-    await pushRoleConnection(credentials.clientId, tokens.accessToken, metadata, username);
+    // Reconectar mantém a escolha anterior; conexão nova começa sem publicar o @usuário.
+    const { data: previous } = await admin.from("discord_connections").select("share_username").eq("user_id", stateRow.user_id).maybeSingle();
+    await pushRoleConnection(credentials.clientId, tokens.accessToken, metadata, previous?.share_username === true ? username : null);
 
     // Um Discord só pode estar ligado a uma conta do Qqorvex: a conexão mais recente vence.
     await admin.from("discord_connections").delete().eq("discord_user_id", discordUser.id).neq("user_id", stateRow.user_id);

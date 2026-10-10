@@ -396,6 +396,8 @@ export const fixtures = {
 };
 
 export const rpcFixtures = {
+  // Discord conectado, sem publicar o @usuário (padrão de privacidade).
+  get_my_discord_connection: { username: "ana_souza", roles: { beta_tester: true, plus: false, lifetime: false, parceiro: false }, synced_at: at(0, 8), share_username: false },
   list_all_accounts: [
     { id: USER_ID, email: "ana.souza@exemplo.com", display_name: "Ana", username: "ana.souza", role: "dono", account_tier: "padrao", created_at: at(-60, 9) },
     { id: "22222222-0000-4000-8000-000000000001", email: "bruno.lima@exemplo.com", display_name: "Bruno Lima", username: "bruno", role: "usuario", account_tier: "parceiro", created_at: at(-41, 14) },

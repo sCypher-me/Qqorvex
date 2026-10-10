@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
   const { data: connections, error } = await admin
     .from("discord_connections")
-    .select("user_id, access_token, refresh_token, token_expires_at, role_metadata, synced_at")
+    .select("user_id, access_token, refresh_token, token_expires_at, role_metadata, synced_at, share_username")
     .order("synced_at", { ascending: true, nullsFirst: true })
     .limit(BATCH_SIZE);
   if (error) {
@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
       const stale = !connection.synced_at || Date.now() - new Date(connection.synced_at).getTime() > RESYNC_AFTER_MS;
       if (!changed && !stale) continue;
 
-      await pushRoleConnection(credentials.clientId, accessToken, metadata, username);
+      // O @usuário só vai para o Discord se a pessoa ativou em Configurações → Conexões.
+      await pushRoleConnection(credentials.clientId, accessToken, metadata, connection.share_username ? username : null);
       await admin.from("discord_connections")
         .update({ role_metadata: metadata, synced_at: new Date().toISOString() })
         .eq("user_id", connection.user_id);

@@ -25,9 +25,16 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   até o botão, dá para desmarcar itens e desfazer depois.
 - Convite opcional para fechar o dia na última hora do horário disponível, sem mover nada sozinho.
 - A Vex recebe o mesmo plano em `get_day_overview` e pode propor ajustar a duração de uma tarefa.
+- Seção "Quem vê o seu perfil" em Configurações → Perfil, dizendo exatamente o que sai da conta.
+- Opção em Conexões para mostrar ou não o @usuário do Qqorvex no Discord (desligada por padrão).
 
 ### Corrigido
 
+- O @usuário do Qqorvex não é mais publicado no perfil do Discord sem consentimento; conexões
+  existentes param de publicá-lo na próxima sincronização.
+- Foto de perfil passa a ficar em armazenamento privado, exibida por links temporários; se a imagem
+  falhar, aparece a inicial em vez do ícone quebrado.
+- O texto do Perfil não promete mais "áreas compartilhadas" que não existem.
 - Ao voltar de suspensão ou do segundo plano, o app renova a sessão antes de recarregar os dados,
   em vez de disparar dezenas de consultas com o token vencido (401) por até dois minutos.
 - Lembretes push, sincronização do Google Agenda e cargos do Discord não perdem mais a rodada quando o

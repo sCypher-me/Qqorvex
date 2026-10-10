@@ -3,6 +3,7 @@ import { CaretUpDownIcon, MoonIcon, SignOutIcon, SunIcon } from "@phosphor-icons
 import { useAuth } from "@qqorvex/auth";
 import { Avatar, Badge, DropdownMenu, cx, type MenuEntry } from "@qqorvex/ui";
 import { useAccount } from "../account";
+import { useAvatarSrc } from "../useAvatarSrc";
 import { useTheme } from "../ThemeContext";
 import { ACCOUNT_LINKS } from "./navigation";
 
@@ -10,7 +11,8 @@ import { ACCOUNT_LINKS } from "./navigation";
 export function UserMenu({ collapsed = false, compact = false }: { collapsed?: boolean; compact?: boolean }) {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { profile, displayName, email, isOwner, isPlus, access } = useAccount();
+  const { profile, displayName, email, isOwner, isPlus, access, userId } = useAccount();
+  const avatarSrc = useAvatarSrc(profile?.avatar_url, userId);
   const planBadge = access?.source === "lifetime" ? "Lifetime" : access?.source === "parceiro" ? "Parceiro" : isPlus ? "Plus" : null;
   const { theme, toggleTheme } = useTheme();
 
@@ -39,7 +41,7 @@ export function UserMenu({ collapsed = false, compact = false }: { collapsed?: b
       trigger={(props) =>
         compact ? (
           <button type="button" {...props} aria-label="Abrir menu da conta" className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--q-focus)]">
-            <Avatar src={profile?.avatar_url} name={displayName} size={30} />
+            <Avatar src={avatarSrc} name={displayName} size={30} />
           </button>
         ) : (
           <button
@@ -51,7 +53,7 @@ export function UserMenu({ collapsed = false, compact = false }: { collapsed?: b
               collapsed ? "h-10 w-10 justify-center" : "w-full px-2 py-1.5",
             )}
           >
-            <Avatar src={profile?.avatar_url} name={displayName} size={collapsed ? 28 : 30} />
+            <Avatar src={avatarSrc} name={displayName} size={collapsed ? 28 : 30} />
             {!collapsed && (
               <>
                 <span className="min-w-0 flex-1">
