@@ -21,7 +21,13 @@ describe("parseDiscordConnection", () => {
       username: "vex",
       roles: { beta_tester: true, plus: false, lifetime: false, parceiro: false },
       syncedAt: "2026-10-06T19:00:00Z",
+      shareUsername: false,
     });
+  });
+
+  it("só considera o @usuário publicado quando o servidor confirma a escolha", () => {
+    expect(parseDiscordConnection({ username: "vex", roles: {}, share_username: true })?.shareUsername).toBe(true);
+    expect(parseDiscordConnection({ username: "vex", roles: {}, share_username: "true" })?.shareUsername).toBe(false);
   });
 
   it("devolve null sem conexão ou com formato inesperado", () => {

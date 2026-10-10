@@ -8,6 +8,8 @@ export interface DiscordConnection {
   username: string;
   roles: DiscordRoles;
   syncedAt: string | null;
+  /** O @usuário do Qqorvex aparece no perfil do Discord. Desligado por padrão. */
+  shareUsername: boolean;
 }
 
 export interface DiscordRoles {
@@ -49,6 +51,7 @@ export function parseDiscordConnection(raw: unknown): DiscordConnection | null {
       parceiro: roles.parceiro === true,
     },
     syncedAt: typeof value.synced_at === "string" ? value.synced_at : null,
+    shareUsername: value.share_username === true,
   };
 }
 
@@ -56,8 +59,8 @@ export function activeRoleLabels(roles: DiscordRoles): string[] {
   return (Object.keys(DISCORD_ROLE_LABELS) as Array<keyof DiscordRoles>).filter((key) => roles[key]).map((key) => DISCORD_ROLE_LABELS[key]);
 }
 
-async function invokeDiscordLink<T>(client: Client, action: "start" | "disconnect"): Promise<T> {
-  const { data, error } = await client.functions.invoke("discord-link", { body: { action } });
+async function invokeDiscordLink<T>(client: Client, action: "start" | "disconnect" | "share_username", extra: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await client.functions.invoke("discord-link", { body: { action, ...extra } });
   if (error) throw error;
   if (data && typeof data === "object" && "error" in data && typeof data.error === "string") throw new Error(data.error);
   return data as T;
@@ -87,6 +90,15 @@ export function useConnectDiscord(client: Client) {
       const { url } = await invokeDiscordLink<{ url: string }>(client, "start");
       window.location.href = url;
     },
+  });
+}
+
+/** Publica ou retira o @usuário do Qqorvex no perfil do Discord (os cargos não mudam). */
+export function useDiscordShareUsername(client: Client) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (share: boolean) => invokeDiscordLink<{ shareUsername: boolean }>(client, "share_username", { share }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CONNECTION_KEY }),
   });
 }
 

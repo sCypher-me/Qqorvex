@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from "react";
-import { CameraIcon, CheckCircleIcon, CheckIcon, TrashIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { CameraIcon, CheckCircleIcon, CheckIcon, LockSimpleIcon, TrashIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { Link } from "react-router-dom";
 import {
   formatE164ToBRInput,
   isBRPhoneValid,
@@ -13,6 +14,7 @@ import {
 import { SpecialBadgeArt, TitleBadge, useGamificationStats, useUnlockedBadges } from "@qqorvex/module-gamificacao";
 import { Avatar, Button, Input, Notice, ProgressBar, Select, SkeletonBlock, Textarea, cx, useToast } from "@qqorvex/ui";
 import { useAccount } from "../app/account";
+import { useAvatarSrc } from "../app/useAvatarSrc";
 import { PhoneField } from "../components/PhoneField";
 import { SettingsCard, SettingsHeader } from "./shared";
 
@@ -41,6 +43,7 @@ export function ProfileSettings() {
   const userId = session!.user.id;
   const email = session!.user.email ?? "";
   const { profile, isLoading, error: loadError, refresh, save } = useProfile(client, userId);
+  const avatarSrc = useAvatarSrc(profile?.avatar_url, userId);
   const { progress, title } = useGamificationStats(client, userId);
   const isOwner = profile?.role === "dono";
   const { badges, isLoading: badgesLoading } = useUnlockedBadges(client, userId, isOwner);
@@ -168,7 +171,7 @@ export function ProfileSettings() {
 
   return (
     <div className="flex flex-col gap-5 pb-20">
-      <SettingsHeader title="Perfil" description="Como você aparece no Qqorvex. Nome, usuário e vitrine ficam visíveis em áreas compartilhadas; telefone e e-mail, não." />
+      <SettingsHeader title="Perfil" description="Seu nome, foto e vitrine no Qqorvex. O perfil é privado: outras pessoas não o veem." />
 
       {saveError && <Notice title="Não foi possível salvar">{saveError}</Notice>}
 
@@ -177,7 +180,7 @@ export function ProfileSettings() {
           <SettingsCard title="Identidade">
             <div className="flex flex-wrap items-center gap-4">
               <div className="relative">
-                <Avatar src={profile?.avatar_url} name={shownName} size={72} ring />
+                <Avatar src={avatarSrc} name={shownName} size={72} ring />
                 <label htmlFor="profile-avatar-file" className={cx("absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-line bg-raised text-fg-2 shadow-sm hover:text-fg", avatarBusy && "pointer-events-none opacity-60")} title="Trocar foto">
                   <CameraIcon size={15} />
                   <span className="sr-only">Trocar foto de perfil</span>
@@ -186,7 +189,7 @@ export function ProfileSettings() {
               </div>
               <div className="min-w-[11rem] flex-1">
                 <p className="text-[13.5px] font-medium text-fg">Foto de perfil</p>
-                <p className="text-xs text-fg-3">JPG, PNG ou WEBP. Aparece no menu e na sua vitrine.</p>
+                <p className="text-xs text-fg-3">JPG, PNG ou WEBP. Guardada de forma privada; aparece só para você.</p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="secondary" loading={avatarBusy} onClick={() => document.getElementById("profile-avatar-file")?.click()}>
@@ -225,7 +228,7 @@ export function ProfileSettings() {
             <Textarea label="Bio" labelAside={<span className="tabular-nums">{draft.bio.length}/180</span>} value={draft.bio} onChange={(event) => update("bio", event.target.value.slice(0, 180))} rows={3} maxLength={180} placeholder="Uma frase sobre você" />
           </SettingsCard>
 
-          <SettingsCard title="Vitrine" description="Um título e até três insígnias que representam sua jornada." aside={<span className="text-xs tabular-nums text-fg-3">{draft.badgeKeys.length}/3</span>}>
+          <SettingsCard title="Vitrine" description="Um título e até três insígnias que representam sua jornada, em vez da coleção inteira." aside={<span className="text-xs tabular-nums text-fg-3">{draft.badgeKeys.length}/3</span>}>
             <Select label="Título em destaque" value={draft.selectedTitle} onChange={(event) => update("selectedTitle", event.target.value)}>
               {availableTitles.map((option) => (
                 <option key={option} value={option}>
@@ -279,7 +282,7 @@ export function ProfileSettings() {
           <div className="overflow-hidden rounded-xl border border-line bg-surface">
             <div className="h-16 bg-[linear-gradient(120deg,var(--q-gold-soft),transparent_70%)]" aria-hidden="true" />
             <div className="-mt-9 flex flex-col gap-3 px-4 pb-4">
-              <Avatar src={profile?.avatar_url} name={shownName} size={64} className="ring-4 ring-surface" />
+              <Avatar src={avatarSrc} name={shownName} size={64} className="ring-4 ring-surface" />
               <div className="min-w-0">
                 <p className="truncate text-[15px] font-semibold text-fg">{shownName}</p>
                 <p className="truncate text-xs text-fg-3">@{draft.username || "seu_usuario"}</p>
@@ -305,6 +308,7 @@ export function ProfileSettings() {
               )}
             </div>
           </div>
+          <PrivacySummary />
         </aside>
       </div>
 
@@ -330,5 +334,29 @@ export function ProfileSettings() {
         </div>
       )}
     </div>
+  );
+}
+
+/** O que sai do perfil e para quem — sem prometer áreas compartilhadas que não existem. */
+function PrivacySummary() {
+  return (
+    <section aria-labelledby="perfil-privacidade" className="mt-3 flex flex-col gap-2.5 rounded-xl border border-line bg-surface p-4">
+      <h2 id="perfil-privacidade" className="flex items-center gap-1.5 text-[13px] font-semibold text-fg">
+        <LockSimpleIcon size={14} className="text-fg-3" /> Quem vê o seu perfil
+      </h2>
+      <ul className="flex flex-col gap-2 text-xs leading-relaxed text-fg-2">
+        <li><strong className="font-medium text-fg">Só você.</strong> O Qqorvex não tem perfil público, e outras pessoas não encontram o seu.</li>
+        <li>E-mail e telefone nunca aparecem fora da sua conta.</li>
+        <li>
+          <strong className="font-medium text-fg">Discord</strong>, se conectado: recebe seus cargos; o seu @usuário só aparece lá se você ativar em{" "}
+          <Link to="/configuracoes/conexoes" className="text-gold-fg underline-offset-2 hover:underline">Conexões</Link>.
+        </li>
+        <li>A administração do Qqorvex vê nome, @usuário, e-mail e título para gerenciar contas e dar suporte.</li>
+        <li>
+          O que você escreve para a Vex é processado pelo provedor de IA para responder. Detalhes nos{" "}
+          <Link to="/termos" className="text-gold-fg underline-offset-2 hover:underline">Termos</Link>.
+        </li>
+      </ul>
+    </section>
   );
 }

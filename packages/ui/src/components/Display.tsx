@@ -1,4 +1,4 @@
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import { useState, type CSSProperties, type HTMLAttributes, type ReactNode } from "react";
 import { cx } from "../cx";
 
 /* ───────────────────────────── Skeleton ───────────────────────────── */
@@ -147,7 +147,9 @@ export function initialsOf(name: string): string {
 export function Avatar({ src, name, size = 32, className, ring = false }: { src?: string | null; name: string; size?: number; className?: string; ring?: boolean }) {
   const style = { width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.38)) };
   const classes = cx("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full", ring && "ring-2 ring-gold-line ring-offset-2 ring-offset-canvas", className);
-  if (src) return <img src={src} alt="" className={cx(classes, "object-cover")} style={style} />;
+  // Link vencido ou foto removida: mostra a inicial em vez do ícone de imagem quebrada.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (src && src !== failedSrc) return <img src={src} alt="" className={cx(classes, "object-cover")} style={style} onError={() => setFailedSrc(src)} />;
   return (
     <span aria-hidden="true" className={cx(classes, "bg-gold-soft font-semibold text-gold-fg")} style={style}>
       {initialsOf(name) || "·"}

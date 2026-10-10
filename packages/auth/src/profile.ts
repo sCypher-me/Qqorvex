@@ -91,6 +91,27 @@ export function getManagedProfileAvatarPath(url: string | null | undefined, user
   }
 }
 
+/** Validade dos links da foto de perfil. O app renova antes disso (ver `useAvatarSrc`). */
+export const PROFILE_AVATAR_LINK_SECONDS = 60 * 60;
+
+/**
+ * O bucket das fotos é privado: `avatar_url` guarda só a identificação do arquivo, e a imagem é
+ * exibida por um link temporário que só o dono consegue gerar. Fotos externas (ex.: Google) seguem
+ * como estão. Sem acesso ao arquivo, devolve `null` e a interface mostra a inicial.
+ */
+export async function signProfileAvatarUrl(
+  client: SupabaseClient<Database>,
+  url: string | null | undefined,
+  userId: string,
+): Promise<string | null> {
+  if (!url) return null;
+  const path = getManagedProfileAvatarPath(url, userId);
+  if (!path) return url;
+  const { data, error } = await client.storage.from(PROFILE_AVATAR_BUCKET).createSignedUrl(path, PROFILE_AVATAR_LINK_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 export async function removeManagedProfileAvatar(
   client: SupabaseClient<Database>,
   userId: string,

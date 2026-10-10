@@ -3,8 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { CalendarBlankIcon, DiscordLogoIcon, EnvelopeSimpleIcon, GithubLogoIcon, GoogleLogoIcon } from "@phosphor-icons/react";
 import { OAUTH_PROVIDERS, useAuth, useIdentities, type OAuthProviderId } from "@qqorvex/auth";
 import { useDisconnectGoogleCalendar, useGoogleCalendarConnection } from "@qqorvex/module-agenda";
-import { Badge, Button, ButtonLink, ConfirmDialog, Notice, SkeletonList } from "@qqorvex/ui";
-import { activeRoleLabels, parseDiscordLinkParam, useConnectDiscord, useDisconnectDiscord, useDiscordConnection } from "./discordRoles";
+import { Badge, Button, ButtonLink, ConfirmDialog, Notice, SkeletonList, Switch } from "@qqorvex/ui";
+import { activeRoleLabels, parseDiscordLinkParam, useConnectDiscord, useDisconnectDiscord, useDiscordConnection, useDiscordShareUsername } from "./discordRoles";
 import { IconTile, SettingsCard, SettingsHeader, SettingsList, SettingsListRow } from "./shared";
 
 const DISCORD_RESULT_NOTICE = {
@@ -34,6 +34,7 @@ export function ConnectionsSettings() {
   const discord = useDiscordConnection(client);
   const connectDiscord = useConnectDiscord(client);
   const disconnectDiscord = useDisconnectDiscord(client);
+  const shareDiscordUsername = useDiscordShareUsername(client);
   const [confirmDiscord, setConfirmDiscord] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const discordParam = parseDiscordLinkParam(searchParams.get("discord"));
@@ -160,6 +161,23 @@ export function ConnectionsSettings() {
             />
           </SettingsList>
         )}
+        {discord.connection && (
+          <div className="flex items-start gap-3 rounded-lg border border-line px-3.5 py-3">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-medium text-fg">Mostrar meu @usuário do Qqorvex no Discord</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-fg-3">
+                Desligado, o Discord mostra só os cargos. Ligado, quem vê seu perfil no Discord também vê o seu @usuário do Qqorvex.
+              </span>
+            </span>
+            <Switch
+              label="Mostrar meu @usuário do Qqorvex no Discord"
+              checked={shareDiscordUsername.isPending ? shareDiscordUsername.variables === true : discord.connection.shareUsername}
+              disabled={shareDiscordUsername.isPending}
+              onChange={(share) => shareDiscordUsername.mutate(share)}
+            />
+          </div>
+        )}
+        {shareDiscordUsername.error && <Notice compact>{shareDiscordUsername.error instanceof Error ? shareDiscordUsername.error.message : "Não foi possível atualizar o Discord."}</Notice>}
         {discordResult && <Notice compact tone={DISCORD_RESULT_NOTICE[discordResult].tone}>{DISCORD_RESULT_NOTICE[discordResult].text}</Notice>}
         {connectDiscord.error && <Notice compact>{connectDiscord.error instanceof Error ? connectDiscord.error.message : "Não foi possível iniciar a conexão com o Discord."}</Notice>}
         {disconnectDiscord.error && <Notice compact>{disconnectDiscord.error instanceof Error ? disconnectDiscord.error.message : "Não foi possível desconectar o Discord."}</Notice>}

@@ -23,6 +23,7 @@ import {
 } from "@qqorvex/auth";
 import { BILLING_PLANS } from "../billing/plans";
 import { useTheme, type ThemePreference } from "./ThemeContext";
+import { useAvatarSrc } from "./useAvatarSrc";
 import { normalizeVexStyle, VEX_STYLE_OPTIONS, type VexStyle } from "@qqorvex/vex";
 
 type FocusArea = "routine" | "organization" | "study" | "personal";
@@ -57,6 +58,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
 
   const selectedFocus = FOCUS_OPTIONS.find((option) => option.value === focusArea) ?? FOCUS_OPTIONS[0]!;
   const currentAvatar = avatarPreview ?? profile?.avatar_url ?? null;
+  const currentAvatarSrc = useAvatarSrc(currentAvatar, userId);
 
   useEffect(() => {
     if (!themeWasSelected.current) setSelectedTheme(preference);
@@ -289,7 +291,7 @@ export function Onboarding({ onComplete }: { onComplete: (path: string) => void 
                   <div className="mt-8 flex flex-col items-center rounded-2xl border border-dashed border-line bg-surface-0 px-5 py-8 text-center sm:py-10">
                     <div className="relative h-28 w-28 shrink-0">
                       <div className="grid h-full w-full place-items-center overflow-hidden rounded-full border border-gold-line bg-surface shadow-[0_0_34px_rgba(74,200,216,.12)]">
-                        {currentAvatar ? <img src={currentAvatar} alt={`Foto de perfil de ${displayName}`} className="h-full w-full object-cover" /> : <span className="font-display text-3xl font-semibold text-fg-2">{initials}</span>}
+                        {currentAvatarSrc ? <img src={currentAvatarSrc} alt={`Foto de perfil de ${displayName}`} className="h-full w-full object-cover" /> : <span className="font-display text-3xl font-semibold text-fg-2">{initials}</span>}
                       </div>
                       <span className="absolute bottom-0 right-0 grid h-9 w-9 translate-x-0.5 translate-y-0.5 place-items-center rounded-full border-2 border-surface bg-gold text-on-gold"><CameraIcon size={17} /></span>
                     </div>

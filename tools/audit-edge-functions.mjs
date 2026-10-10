@@ -106,6 +106,10 @@ requirePattern("_shared/discord", discordShared, /AbortSignal\.timeout\(REQUEST_
 
 const discordSync = await source("discord-roles-sync");
 requirePattern("discord-roles-sync", discordSync, /verifyCronSecret\(admin, req\)/, "autenticação do cron");
+// Privacidade: o @usuário do Qqorvex só vai ao Discord quando a pessoa ativou (padrão desligado).
+requirePattern("discord-roles-sync", discordSync, /connection\.share_username \? username : null/, "@usuário só com consentimento");
+requirePattern("discord-link-callback", await source("discord-link-callback"), /share_username === true \? username : null/, "@usuário só com consentimento");
+requirePattern("discord-link", await source("discord-link"), /share \? username : null/, "@usuário só com consentimento");
 
 // Crons leem o cron_secret com nova tentativa e não tratam falha de leitura como segredo errado.
 const appSecretsHelper = await readFile(new URL("supabase/functions/_shared/appSecrets.ts", root), "utf8");

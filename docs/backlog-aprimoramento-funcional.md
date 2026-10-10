@@ -62,6 +62,8 @@
 
 ### 5. Perfil
 
+> **Estado (10/10/2026):** o Qqorvex não tem perfil público — o perfil só é visível para a própria pessoa (e nome, @usuário, e-mail e título para o Dono). Decisão: blindar o que existe em vez de criar uma página pública. Feito: texto corrigido, seção "Quem vê o seu perfil", @usuário no Discord só com consentimento (padrão desligado), foto em bucket privado com links temporários. A vitrine já limita a um título e até 3 insígnias. Se um perfil público for criado no futuro, ele deve nascer privado e com escolha de campos.
+
 - Usar privacidade como padrão para novas contas, com controle público/privado e personalização opcional dos campos públicos.
 - Manter e-mail e telefone sempre privados.
 - Deixar o usuário escolher badges/títulos exibidos na vitrine, em vez de publicar toda a coleção.
