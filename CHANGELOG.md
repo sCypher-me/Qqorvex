@@ -33,6 +33,10 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   concluído não troca); uma mesma ação avança todos os desafios que combinam com ela. A Vex também
   lista e troca desafios, com confirmação.
 - Central do Dono registra e mostra o histórico de insígnias e títulos concedidos manualmente.
+- Avisos push do plano do dia: só quando há conflito real na agenda (dois compromissos se
+  sobrepondo) ou uma tarefa atrasada ou de hoje que não cabe mais no horário disponível. Um aviso por
+  problema, nunca fora do horário disponível, com opção de desligar em Notificações. Tocar no aviso
+  abre a Agenda ou o plano do dia.
 
 ### Corrigido
 

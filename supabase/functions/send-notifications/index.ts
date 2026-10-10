@@ -7,6 +7,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 import { readAppSecrets, verifyCronSecret } from "../_shared/appSecrets.ts";
+import { normalizeDayWindow } from "../_shared/dayPlan.ts";
+import { computePlanAlerts, isWithinWindow, toWallClock, zoneOffsetMs, type AlertTask } from "../_shared/planAlerts.ts";
 
 /**
  * Datas e horários "de parede" do app (lembretes de hábito, tarefas recorrentes, orçamento do
@@ -63,6 +65,7 @@ Deno.serve(async (req) => {
   let tasksGenerated = 0;
   let recurringEventsChecked = 0;
   let eventsGenerated = 0;
+  let planAlertsSent = 0;
   let totalSent = 0;
 
   function progressResponse(partial: boolean): Response {
@@ -79,6 +82,7 @@ Deno.serve(async (req) => {
       tasksGenerated,
       recurringEventsChecked,
       eventsGenerated,
+      planAlertsSent,
       notificationsSent: totalSent,
     }), { headers: { "Content-Type": "application/json" } });
   }
@@ -489,6 +493,81 @@ Deno.serve(async (req) => {
     });
     eventsGenerated++;
   }
+
+  // Fonte 7: avisos do plano do dia — só conflito real na agenda ou prazo em risco (backlog do
+  // Hoje). Mesmo cálculo da tela (_shared/dayPlan.ts), no horário de Brasília, dentro do horário
+  // disponível da pessoa e uma vez por problema (notification_alert_log). Quem desligou "Avisos do
+  // plano do dia" em Configurações → Notificações não recebe.
+  if (!hasRuntimeBudget()) return progressResponse(true);
+  const realNow = new Date();
+  const wallNow = toWallClock(realNow, APP_TIME_ZONE);
+  const toWall = (iso: string) => toWallClock(new Date(iso), APP_TIME_ZONE);
+  const nextMidnightInstant = new Date(Date.UTC(wallNow.getFullYear(), wallNow.getMonth(), wallNow.getDate() + 1) - zoneOffsetMs(realNow, APP_TIME_ZONE));
+
+  const { data: subscribedRows } = await supabase.from("push_subscriptions").select("user_id");
+  const subscribedUsers = [...new Set((subscribedRows ?? []).map((row) => row.user_id as string))];
+  for (const userId of subscribedUsers) {
+    if (!hasRuntimeBudget()) return progressResponse(true);
+    const { data: userData } = await supabase.auth.admin.getUserById(userId);
+    const savedPreferences = userData?.user?.user_metadata?.qqorvex_preferences;
+    const preferences = savedPreferences && typeof savedPreferences === "object" ? savedPreferences as Record<string, unknown> : {};
+    if (preferences.plan_alerts === false) continue;
+    const dayWindow = normalizeDayWindow(preferences.day_window);
+    if (!isWithinWindow(wallNow, dayWindow)) continue;
+
+    const [{ data: taskRows }, { data: eventRows }, { data: sentRows }] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("id, title, status, priority, due_date, created_at, estimated_minutes")
+        .eq("user_id", userId)
+        .eq("is_cancelled", false)
+        .is("parent_task_id", null),
+      supabase
+        .from("events")
+        .select("id, title, start_at, end_at")
+        .eq("user_id", userId)
+        .eq("is_all_day", false)
+        .lt("start_at", nextMidnightInstant.toISOString())
+        .gt("end_at", realNow.toISOString()),
+      supabase.from("notification_alert_log").select("alert_key").eq("user_id", userId).eq("sent_on", todayDateStr),
+    ]);
+
+    const tasks = taskRows ?? [];
+    const statusById = new Map(tasks.map((task) => [task.id as string, task.status as string]));
+    const openIds = tasks.filter((task) => task.status !== "concluido").map((task) => task.id as string);
+    const blockedIds = new Set<string>();
+    if (openIds.length) {
+      const { data: edges } = await supabase.from("task_dependencies").select("task_id, depends_on_task_id").in("task_id", openIds);
+      for (const edge of edges ?? []) {
+        const dependencyStatus = statusById.get(edge.depends_on_task_id as string);
+        if (dependencyStatus && dependencyStatus !== "concluido") blockedIds.add(edge.task_id as string);
+      }
+    }
+
+    const alerts = computePlanAlerts({
+      now: wallNow,
+      today: todayDateStr,
+      window: dayWindow,
+      tasks: tasks.map((task) => ({ ...task, blocked: blockedIds.has(task.id as string) }) as AlertTask),
+      events: (eventRows ?? []).map((event) => ({ id: event.id as string, title: event.title as string, start: toWall(event.start_at as string), end: toWall(event.end_at as string) })),
+      alreadySent: new Set((sentRows ?? []).map((row) => row.alert_key as string)),
+    });
+
+    for (const alert of alerts) {
+      const delivered = await sendToUser(userId, { title: alert.title, body: alert.body, url: alert.url });
+      // Sem nenhum dispositivo recebendo, o problema fica para o próximo ciclo em vez de sumir.
+      if (delivered === 0) continue;
+      totalSent += delivered;
+      planAlertsSent++;
+      await supabase
+        .from("notification_alert_log")
+        .upsert(alert.keys.map((key) => ({ user_id: userId, alert_key: key, sent_on: todayDateStr })), { onConflict: "user_id,alert_key", ignoreDuplicates: true });
+    }
+  }
+
+  // Registro dos avisos só precisa cobrir o dia; guarda duas semanas para diagnóstico.
+  const cleanupBefore = new Date(Date.UTC(wallNow.getFullYear(), wallNow.getMonth(), wallNow.getDate() - 14)).toISOString().slice(0, 10);
+  await supabase.from("notification_alert_log").delete().lt("sent_on", cleanupBefore);
 
   return progressResponse(false);
 });
