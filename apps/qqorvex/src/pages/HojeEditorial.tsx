@@ -41,6 +41,7 @@ import { useQuickCreate } from "../app/shell/QuickCreate";
 import { MODULE_ROUTES } from "../app/shell/navigation";
 import { supabase } from "../app/supabase";
 import { useVexLauncher } from "../vex/VexLauncher";
+import { CloseDayCard, DayPlanPanel } from "./HojeDayPlan";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -224,9 +225,9 @@ export function HojeEditorialPage() {
             variant="ai"
             size="sm"
             leadingIcon={<SparkleIcon size={15} weight="fill" />}
-            onClick={() => openVex("Monte um plano realista para o meu dia de hoje considerando minhas tarefas, prazos, compromissos e hábitos. Sugira a ordem e horários.")}
+            onClick={() => openVex("Revise o plano do meu dia: confira se as durações das tarefas fazem sentido, o que está apertado e o que eu poderia mover. Use o plano sugerido do meu dia como base.")}
           >
-            Planejar o dia com a Vex
+            Revisar o plano com a Vex
           </Button>
           <Button size="sm" leadingIcon={<PlusIcon size={15} weight="bold" />} onClick={() => quickCreate.open("task", { date: today })}>
             Nova tarefa
@@ -294,6 +295,8 @@ export function HojeEditorialPage() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
+          <DayPlanPanel now={now} today={today} tasks={tasks} allTasks={allTasks} events={events} loading={tasksLoading || eventsLoading} />
+
           <Panel title="Foco do dia" icon={<CheckCircleIcon />} action={<ButtonLink to="/planejar/tarefas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Todas</ButtonLink>}>
             <div className="px-4 pb-2 sm:px-5">
               <SmartAdd onCreate={addTodayTask} defaults={{ dueDate: today }} placeholder="Adicionar ao seu dia…" />
@@ -342,6 +345,8 @@ export function HojeEditorialPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
+          <CloseDayCard now={now} today={today} doneCount={doneToday} openCount={todayTasks.length - doneToday} />
+
           <Panel title="Hábitos de hoje" icon={<FireIcon />} action={<ButtonLink to="/planejar/metas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Metas</ButtonLink>}>
             {habitRows.length === 0 ? (
               <EmptyState size="sm" icon={<TargetIcon />} title="Nenhum hábito ativo" description="Pequenas rotinas diárias constroem grandes resultados." action={<ButtonLink to="/planejar/metas" size="xs" variant="secondary">Criar hábito</ButtonLink>} />

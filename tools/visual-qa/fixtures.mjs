@@ -46,7 +46,20 @@ const tasks = [
   { title: "Planejar viagem de dezembro", status: "nao_iniciado", priority: "sem_prioridade", tags: ["pessoal"] },
   { title: "Configurar backup do notebook", status: "concluido", priority: "media", completed_at: at(-1, 18), tags: ["casa"] },
   { title: "Ler artigo sobre hábitos atômicos", status: "concluido", priority: "baixa", completed_at: at(-2, 21), tags: ["leitura"] },
-].map((t, i) => ({ ...base, id: id("t0000000"), created_at: at(-10 + i, 9), ...t }));
+].map((t, i) => ({
+  ...base,
+  // Defaults das colunas no banco: sem eles o filtro `is_cancelled = false` do app descartava tudo.
+  is_cancelled: false,
+  parent_task_id: null,
+  description: null,
+  start_date: null,
+  due_date: null,
+  estimated_minutes: null,
+  completed_at: null,
+  id: id("t0000000"),
+  created_at: at(-10 + i, 9),
+  ...t,
+}));
 
 const events = [
   { title: "Daily do time", start_at: at(0, 9, 30), end_at: at(0, 9, 45), category: "trabalho", meeting_link: "https://meet.google.com/abc" },

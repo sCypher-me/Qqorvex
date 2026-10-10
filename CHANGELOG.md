@@ -17,6 +17,14 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   capacidades e confirmações.
 - Exemplo de resposta de cada personalidade no onboarding e em Configurações → Aparência.
 - A Vex troca a própria personalidade quando a pessoa pede, depois da confirmação.
+- Plano do dia no Hoje: encaixa as tarefas atrasadas, de hoje e em andamento entre os compromissos,
+  dentro do horário disponível (08:00–21:00 por padrão, ajustável no painel), com 20% do tempo
+  reservado para pausas e imprevistos. Tarefas sem duração usam a mediana das suas estimativas e
+  podem ser ajustadas ali mesmo; tarefas longas são divididas entre os intervalos.
+- Quando o dia não fecha, o Hoje mostra quanto falta e sugere passar prazos para amanhã: nada muda
+  até o botão, dá para desmarcar itens e desfazer depois.
+- Convite opcional para fechar o dia na última hora do horário disponível, sem mover nada sozinho.
+- A Vex recebe o mesmo plano em `get_day_overview` e pode propor ajustar a duração de uma tarefa.
 
 ### Corrigido
 
@@ -26,6 +34,7 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   Supabase recusa a primeira leitura de `app_secrets`; a leitura tenta de novo e falhas de
   infraestrutura respondem 503 em vez de 401.
 - QA visual (`tools/visual-qa/capture.mjs`) funciona no Windows.
+- Dados simulados do QA visual têm os valores padrão das tarefas; antes o Hoje e as Tarefas apareciam vazios.
 
 ## [0.3.0] — 2026-10-06
 

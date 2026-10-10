@@ -666,6 +666,9 @@ importers:
       '@qqorvex/module-gamificacao':
         specifier: workspace:*
         version: link:../../modules/pessoal/gamificacao
+      '@qqorvex/module-hoje':
+        specifier: workspace:*
+        version: link:../../modules/hoje
       '@qqorvex/module-metas-habitos':
         specifier: workspace:*
         version: link:../../modules/organizacao/metas-habitos
