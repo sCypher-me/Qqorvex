@@ -2,6 +2,7 @@
 // que o servidor usa para dar os cargos. Credenciais em app_secrets (discord_client_id,
 // discord_client_secret); o segredo nunca sai das Edge Functions.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { readAppSecrets } from "./appSecrets.ts";
 
 const API = "https://discord.com/api/v10";
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -28,8 +29,13 @@ export interface RoleMetadata {
 }
 
 export async function readDiscordCredentials(admin: SupabaseClient): Promise<DiscordCredentials | null> {
-  const { data } = await admin.from("app_secrets").select("key, value").in("key", ["discord_client_id", "discord_client_secret"]);
-  const secrets = Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
+  let secrets: Record<string, string>;
+  try {
+    secrets = await readAppSecrets(admin, ["discord_client_id", "discord_client_secret"]);
+  } catch (error) {
+    console.error("discord: credenciais indisponíveis após novas tentativas", error);
+    return null;
+  }
   if (!secrets.discord_client_id || !secrets.discord_client_secret) return null;
   return {
     clientId: secrets.discord_client_id,

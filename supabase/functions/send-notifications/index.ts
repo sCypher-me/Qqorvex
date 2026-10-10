@@ -6,6 +6,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { readAppSecrets, verifyCronSecret } from "../_shared/appSecrets.ts";
 
 /**
  * Datas e horários "de parede" do app (lembretes de hábito, tarefas recorrentes, orçamento do
@@ -82,20 +83,22 @@ Deno.serve(async (req) => {
     }), { headers: { "Content-Type": "application/json" } });
   }
 
-  const { data: cronSecretRow } = await supabase.from("app_secrets").select("value").eq("key", "cron_secret").single();
-  const providedSecret = req.headers.get("x-cron-secret");
-  if (!cronSecretRow || providedSecret !== cronSecretRow.value) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = await verifyCronSecret(supabase, req);
+  if (denied) return denied;
 
   if (!hasRuntimeBudget()) return progressResponse(true);
 
-  const { data: vapidPublicRow } = await supabase.from("app_secrets").select("value").eq("key", "vapid_public_key").single();
-  const { data: vapidPrivateRow } = await supabase.from("app_secrets").select("value").eq("key", "vapid_private_key").single();
-  if (!vapidPublicRow || !vapidPrivateRow) {
+  let vapid: Record<string, string>;
+  try {
+    vapid = await readAppSecrets(supabase, ["vapid_public_key", "vapid_private_key"]);
+  } catch (error) {
+    console.error("send-notifications: chaves VAPID indisponíveis", error);
+    return new Response("Serviço temporariamente indisponível", { status: 503 });
+  }
+  if (!vapid.vapid_public_key || !vapid.vapid_private_key) {
     return new Response(JSON.stringify({ error: "Chaves VAPID não configuradas." }), { status: 500 });
   }
-  webpush.setVapidDetails("mailto:contato@biocypher.tech", vapidPublicRow.value, vapidPrivateRow.value);
+  webpush.setVapidDetails("mailto:contato@biocypher.tech", vapid.vapid_public_key, vapid.vapid_private_key);
 
   async function sendToUser(userId: string, payload: Record<string, unknown>) {
     const { data: subscriptions } = await supabase.from("push_subscriptions").select("*").eq("user_id", userId);

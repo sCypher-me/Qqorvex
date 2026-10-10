@@ -1,10 +1,13 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@qqorvex/ui";
 import { AreaLayout } from "./shell/AreaLayout";
 import { LEGACY_REDIRECTS } from "./shell/navigation";
 import { AppUpdateBanner } from "./updates/AppUpdateBanner";
+import { WebUpdateWatcher } from "./updates/WebUpdateWatcher";
+import { lazyWithRecovery } from "./updates/webUpdate";
+import { installSessionAwareFocus, retryQuery, retryQueryDelay } from "./sessionRecovery";
 
 /**
  * Code-splitting por rota: cada página vira o próprio chunk, carregado só quando visitada.
@@ -12,41 +15,44 @@ import { AppUpdateBanner } from "./updates/AppUpdateBanner";
  * comportamento. `ModuleRegistrations` continua eager (roda no mount, pra alimentar a Hoje
  * independente da rota inicial), mas importa só as funções leves de `hoje-provider.ts` de cada
  * módulo — os componentes pesados (KanbanBoard, MonthView, GraphView, BasesPanel...) só entram
- * no bundle quando a página daquele módulo é aberta.
+ * no bundle quando a página daquele módulo é aberta. `lazyWithRecovery` recarrega a página se um
+ * deploy novo removeu o pedaço antigo da tela (ver `updates/webUpdate.ts`).
  */
-const HojePage = lazy(() => import("../pages/HojeEditorial").then((m) => ({ default: m.HojeEditorialPage })));
-const AppRuntime = lazy(() => import("./AppRuntime").then((m) => ({ default: m.AppRuntime })));
-const ProtectedLayout = lazy(() => import("./ProtectedLayout").then((m) => ({ default: m.ProtectedLayout })));
-const EmailLoginPage = lazy(() => import("../pages/EmailLogin").then((m) => ({ default: m.EmailLoginPage })));
-const AcceptInvitePage = lazy(() => import("../pages/AcceptInvite").then((m) => ({ default: m.AcceptInvitePage })));
-const LoginPage = lazy(() => import("../pages/Login").then((m) => ({ default: m.LoginPage })));
-const RegistrarPage = lazy(() => import("../pages/Registrar").then((m) => ({ default: m.RegistrarPage })));
-const TermosPage = lazy(() => import("../pages/Termos").then((m) => ({ default: m.TermosPage })));
-const EsqueciSenhaPage = lazy(() => import("../pages/EsqueciSenha").then((m) => ({ default: m.EsqueciSenhaPage })));
-const RedefinirSenhaPage = lazy(() => import("../pages/RedefinirSenha").then((m) => ({ default: m.RedefinirSenhaPage })));
-const MfaPage = lazy(() => import("../pages/Mfa").then((m) => ({ default: m.MfaPage })));
-const TarefasPage = lazy(() => import("../pages/Tarefas").then((m) => ({ default: m.TarefasPage })));
-const AgendaPage = lazy(() => import("../pages/Agenda").then((m) => ({ default: m.AgendaPage })));
-const MetasHabitosPage = lazy(() => import("../pages/MetasHabitos").then((m) => ({ default: m.MetasHabitosPage })));
-const EstudosPage = lazy(() => import("../pages/Estudos").then((m) => ({ default: m.EstudosPage })));
-const EstudosCadernoPage = lazy(() => import("../pages/EstudosCaderno").then((m) => ({ default: m.EstudosCadernoPage })));
-const SegundoCerebroPage = lazy(() => import("../pages/SegundoCerebro").then((m) => ({ default: m.SegundoCerebroPage })));
-const SegundoCerebroPaginaPage = lazy(() =>
+const HojePage = lazyWithRecovery(() => import("../pages/HojeEditorial").then((m) => ({ default: m.HojeEditorialPage })));
+const AppRuntime = lazyWithRecovery(() => import("./AppRuntime").then((m) => ({ default: m.AppRuntime })));
+const ProtectedLayout = lazyWithRecovery(() => import("./ProtectedLayout").then((m) => ({ default: m.ProtectedLayout })));
+const EmailLoginPage = lazyWithRecovery(() => import("../pages/EmailLogin").then((m) => ({ default: m.EmailLoginPage })));
+const AcceptInvitePage = lazyWithRecovery(() => import("../pages/AcceptInvite").then((m) => ({ default: m.AcceptInvitePage })));
+const LoginPage = lazyWithRecovery(() => import("../pages/Login").then((m) => ({ default: m.LoginPage })));
+const RegistrarPage = lazyWithRecovery(() => import("../pages/Registrar").then((m) => ({ default: m.RegistrarPage })));
+const TermosPage = lazyWithRecovery(() => import("../pages/Termos").then((m) => ({ default: m.TermosPage })));
+const EsqueciSenhaPage = lazyWithRecovery(() => import("../pages/EsqueciSenha").then((m) => ({ default: m.EsqueciSenhaPage })));
+const RedefinirSenhaPage = lazyWithRecovery(() => import("../pages/RedefinirSenha").then((m) => ({ default: m.RedefinirSenhaPage })));
+const MfaPage = lazyWithRecovery(() => import("../pages/Mfa").then((m) => ({ default: m.MfaPage })));
+const TarefasPage = lazyWithRecovery(() => import("../pages/Tarefas").then((m) => ({ default: m.TarefasPage })));
+const AgendaPage = lazyWithRecovery(() => import("../pages/Agenda").then((m) => ({ default: m.AgendaPage })));
+const MetasHabitosPage = lazyWithRecovery(() => import("../pages/MetasHabitos").then((m) => ({ default: m.MetasHabitosPage })));
+const EstudosPage = lazyWithRecovery(() => import("../pages/Estudos").then((m) => ({ default: m.EstudosPage })));
+const EstudosCadernoPage = lazyWithRecovery(() => import("../pages/EstudosCaderno").then((m) => ({ default: m.EstudosCadernoPage })));
+const SegundoCerebroPage = lazyWithRecovery(() => import("../pages/SegundoCerebro").then((m) => ({ default: m.SegundoCerebroPage })));
+const SegundoCerebroPaginaPage = lazyWithRecovery(() =>
   import("../pages/SegundoCerebroPagina").then((m) => ({ default: m.SegundoCerebroPaginaPage })),
 );
-const BibliotecaPage = lazy(() => import("../pages/Biblioteca").then((m) => ({ default: m.BibliotecaPage })));
-const DocumentosPage = lazy(() => import("../pages/Documentos").then((m) => ({ default: m.DocumentosPage })));
-const FinancasPage = lazy(() => import("../pages/Financas").then((m) => ({ default: m.FinancasPage })));
-const VidaPessoalPage = lazy(() => import("../pages/VidaPessoal").then((m) => ({ default: m.VidaPessoalPage })));
-const ConfiguracoesPage = lazy(() => import("../pages/Configuracoes").then((m) => ({ default: m.ConfiguracoesPage })));
-const AssinaturaPage = lazy(() => import("../pages/Assinatura").then((m) => ({ default: m.AssinaturaPage })));
-const ManagerPage = lazy(() => import("../pages/Manager").then((m) => ({ default: m.ManagerPage })));
-const GamificacaoPage = lazy(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
-const VexPage = lazy(() => import("../pages/Vex").then((m) => ({ default: m.VexPage })));
+const BibliotecaPage = lazyWithRecovery(() => import("../pages/Biblioteca").then((m) => ({ default: m.BibliotecaPage })));
+const DocumentosPage = lazyWithRecovery(() => import("../pages/Documentos").then((m) => ({ default: m.DocumentosPage })));
+const FinancasPage = lazyWithRecovery(() => import("../pages/Financas").then((m) => ({ default: m.FinancasPage })));
+const VidaPessoalPage = lazyWithRecovery(() => import("../pages/VidaPessoal").then((m) => ({ default: m.VidaPessoalPage })));
+const ConfiguracoesPage = lazyWithRecovery(() => import("../pages/Configuracoes").then((m) => ({ default: m.ConfiguracoesPage })));
+const AssinaturaPage = lazyWithRecovery(() => import("../pages/Assinatura").then((m) => ({ default: m.AssinaturaPage })));
+const ManagerPage = lazyWithRecovery(() => import("../pages/Manager").then((m) => ({ default: m.ManagerPage })));
+const GamificacaoPage = lazyWithRecovery(() => import("../pages/Gamificacao").then((m) => ({ default: m.GamificacaoPage })));
+const VexPage = lazyWithRecovery(() => import("../pages/Vex").then((m) => ({ default: m.VexPage })));
+
+installSessionAwareFocus();
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 20_000, refetchOnWindowFocus: true, retry: 1 },
+    queries: { staleTime: 20_000, refetchOnWindowFocus: true, retry: retryQuery, retryDelay: retryQueryDelay },
   },
 });
 
@@ -71,6 +77,7 @@ export function App() {
       <ToastProvider>
         <BrowserRouter>
           <AppUpdateBanner />
+          <WebUpdateWatcher />
           <Suspense fallback={<PageFallback />}>
             <AppRuntime>
               <Routes>

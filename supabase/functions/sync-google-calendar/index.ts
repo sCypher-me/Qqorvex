@@ -4,6 +4,7 @@
 // os dois lados mudaram a mesma coisa.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { readAppSecrets, verifyCronSecret } from "../_shared/appSecrets.ts";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const CALENDAR_API = "https://www.googleapis.com/calendar/v3/calendars";
@@ -28,16 +29,16 @@ function toGoogleEventBody(event: {
 Deno.serve(async (req) => {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-  const { data: cronSecretRow } = await supabase.from("app_secrets").select("value").eq("key", "cron_secret").single();
-  if (!cronSecretRow || req.headers.get("x-cron-secret") !== cronSecretRow.value) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = await verifyCronSecret(supabase, req);
+  if (denied) return denied;
 
-  const { data: googleSecretRows } = await supabase
-    .from("app_secrets")
-    .select("key, value")
-    .in("key", ["google_client_id", "google_client_secret"]);
-  const googleSecrets = Object.fromEntries((googleSecretRows ?? []).map((r) => [r.key, r.value]));
+  let googleSecrets: Record<string, string>;
+  try {
+    googleSecrets = await readAppSecrets(supabase, ["google_client_id", "google_client_secret"]);
+  } catch (error) {
+    console.error("sync-google-calendar: credenciais do Google indisponíveis", error);
+    return new Response("Serviço temporariamente indisponível", { status: 503 });
+  }
 
   const { data: connections } = await supabase.from("google_calendar_connections").select("*");
 

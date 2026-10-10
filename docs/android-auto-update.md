@@ -1,10 +1,30 @@
 # Atualizações do app Android
 
-O app beta verifica o GitHub Releases ao abrir e depois a cada seis horas enquanto permanece aberto. Quando encontra uma versão mais nova, apresenta um aviso dentro do Qqorvex. O botão de atualização baixa o APK no próprio app, confere o SHA-256 e abre o instalador do Android.
+O app beta verifica o GitHub Releases ao abrir, ao voltar para a tela e a cada 30 minutos (com cache
+de seis horas da consulta). Quando encontra uma versão mais nova para o seu canal e arquitetura:
+
+1. **Download em segundo plano.** No Wi-Fi (rede não medida) o APK é baixado sozinho e o SHA-256 é
+   conferido antes de qualquer instalação. Em dados móveis o app espera; o aviso oferece
+   "Atualizar agora" para quem quiser baixar mesmo assim.
+2. **Instalação quando você sai do app.** Com o APK pronto, a instalação acontece quando o Qqorvex vai
+   para segundo plano, pelo `PackageInstaller` do Android pedindo `USER_ACTION_NOT_REQUIRED`. Ao voltar,
+   o app já abre na versão nova e mostra "Qqorvex atualizado". Nada é instalado enquanto a tela está em
+   uso; "Instalar agora" no aviso antecipa a troca.
+3. **Quando o Android pede confirmação.** Se o sistema exigir confirmação (por exemplo, a primeira
+   atualização depois de instalar o APK pelo navegador), o aviso dentro do app mostra "Instalar agora".
+   A tentativa automática não se repete para a mesma versão antes de 6 horas.
 
 ## O que o Android ainda exige
 
-Como o Qqorvex é distribuído por APK fora da Play Store, o Android pede autorização para instalar apps dessa fonte (uma vez por aparelho) e confirmação para cada atualização. O app não instala APKs silenciosamente. A primeira versão que contém o atualizador também precisa ser instalada manualmente; as seguintes podem ser recebidas pelo aviso dentro do app.
+- **Autorização "Instalar apps desconhecidos"** para o Qqorvex, uma vez por aparelho. Sem ela, a
+  instalação automática não é tentada (abrir as configurações com o app em segundo plano seria
+  intrusivo); o aviso leva às configurações quando a pessoa tocar em Instalar.
+- **Atualização sem confirmação** vale quando o próprio app atualiza a si mesmo, com a autorização acima,
+  o mesmo certificado de assinatura e `targetSdk` recente. O Android pode, ainda assim, pedir
+  confirmação em casos que ele decidir; o fluxo de confirmação continua funcionando.
+- A primeira versão que contém este atualizador precisa ser instalada manualmente.
+- O APK baixado fica no cache do app e é apagado na abertura seguinte, quando a versão instalada já é
+  igual ou mais nova.
 
 ## Publicar uma versão que o app reconhece
 

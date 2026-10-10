@@ -40,7 +40,9 @@ depois. Itens marcados com ✅ já foram verificados em 03/10/2026.
 
 - **Crons e notificações:** no SQL Editor,
   `select created, status_code, left(content, 200) from net._http_response order by created desc limit 20;`
-  — tudo deve ser 200 (um 401 isolado de vez em quando é a corrida do segredo do cron, inofensivo).
+  — tudo deve ser 200. Um 401 do PostgREST ao ler `app_secrets` logo no início da função derrubava
+  a rodada inteira; desde a 0.3.1 a leitura tenta de novo e, se o cofre continuar inacessível, a função
+  responde 503 (falha de infraestrutura) em vez de 401 (segredo do cron incorreto).
 - **Erros das funções:** Supabase → Edge Functions → Logs (`vex-chat` é a mais importante).
 - **Uso da Vex por conta:** tabela `billing_usage_monthly`.
 - **Alertas do banco:** Supabase → Advisors (segurança e desempenho) depois de cada migration.

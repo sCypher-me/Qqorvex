@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useRef, type KeyboardEvent } from "react";
+import { Suspense, useEffect, useRef, type KeyboardEvent } from "react";
 import { Skeleton } from "@qqorvex/ui";
+import { lazyWithRecovery } from "../app/updates/webUpdate";
 
-const VexConversationView = lazy(() => import("./VexConversationView").then((m) => ({ default: m.VexConversationView })));
+const VexConversationView = lazyWithRecovery(() => import("./VexConversationView").then((m) => ({ default: m.VexConversationView })));
 
 function PanelSkeleton() {
   return (

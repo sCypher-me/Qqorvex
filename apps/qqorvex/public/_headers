@@ -14,3 +14,11 @@
 # O service worker de notificações precisa sempre da versão mais nova.
 /sw.js
   Cache-Control: no-cache
+
+# Manifesto do build atual: o app confere para trocar de versão sem cair. Nunca pode vir de cache.
+/version.json
+  Cache-Control: no-store
+
+# O HTML aponta para os arquivos com hash do deploy atual; sempre revalida.
+/index.html
+  Cache-Control: no-cache

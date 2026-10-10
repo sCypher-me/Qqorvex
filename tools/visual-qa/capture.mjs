@@ -85,6 +85,8 @@ if (!baseUrl) {
       VITE_VEX_USE_OLLAMA: "false",
     },
     stdio: args.verbose ? "inherit" : "ignore",
+    // No Windows o corepack é um .cmd: sem shell o spawn falha com ENOENT.
+    shell: process.platform === "win32",
   });
   await waitFor(baseUrl);
 }
@@ -167,7 +169,12 @@ try {
   }
 } finally {
   await browser.close();
-  server?.kill("SIGTERM");
+  if (server && process.platform === "win32") {
+    // Com shell, o kill encerraria só o cmd.exe e deixaria o Vite preso na porta.
+    spawn("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+  } else {
+    server?.kill("SIGTERM");
+  }
 }
 
 const unique = [...new Set(problems)];
