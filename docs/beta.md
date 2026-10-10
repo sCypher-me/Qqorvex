@@ -14,16 +14,18 @@ depois. Itens marcados com ✅ já foram verificados em 03/10/2026.
 - ✅ Segredos das integrações configurados (Gemini, Tavily, VAPID, Google, Zoom, cron).
 - ✅ Todas as 20 telas abrem sem erro de console nem chamada falhando; a Vex testada de ponta a ponta
   (caderno → resumo → flashcards → quiz respondido com XP).
+- ✅ Publicado no Cloudflare Pages (04/10/2026): app em https://qqorvex-app.pages.dev e site em
+  https://qqorvex.pages.dev, ambos publicados a cada push na `main`. Endereço do app no Supabase Auth
+  (Site URL e Redirect URLs) e no `app_base_url`; hostnames no Turnstile; lista de espera aberta
+  (`turnstile_secret_key`) e testada com uma inscrição real.
 
 ## Antes de liberar
 
-1. **Publicar no Cloudflare Pages.** Siga [`deploy-cloudflare.md`](deploy-cloudflare.md): projeto
-   `qqorvex-app` (app, https://qqorvex-app.pages.dev) e, depois, `qqorvex` (site com lista de espera).
-   Ao final, o endereço do app precisa estar no Supabase (Site URL e Redirect URLs), no
-   `app_base_url` (Central do Dono → Integrações; hoje aponta para `http://localhost:5173`) e nos
-   hostnames do Turnstile.
-2. **Proteção de senhas vazadas.** Supabase → Authentication → Password Security → ligar
-   "Leaked password protection" (o único alerta de segurança pendente do Supabase).
+1. **Testar o login no endereço publicado.** Entrar com e-mail e senha e com GitHub em
+   https://qqorvex-app.pages.dev, e conferir que o "Esqueci a senha" abre `/redefinir-senha` lá.
+2. **Proteção de senhas vazadas (adiada).** Só existe nos planos pagos do Supabase; o projeto está no
+   Free. Quando assinar o Pro: Authentication → Attack Protection → ligar "Leaked password
+   protection" (é o único alerta de segurança pendente do Supabase).
 3. **Cobrança desligada no beta.** Deixe `VITE_BILLING_CHANNEL` sem valor: a página de assinatura mostra
    os planos, mas ninguém consegue pagar ainda (ver `docs/assinaturas.md` para ligar o Stripe depois).
 4. **Acesso dos testers.** Duas opções na Central do Dono → Códigos:

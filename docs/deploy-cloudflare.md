@@ -29,11 +29,11 @@ Em **Environment variables** (Production e Preview):
 | `NODE_VERSION` | `22` |
 | `PNPM_VERSION` | `9.15.9` |
 | `VITE_SUPABASE_URL` | `https://uowipikbumbaprckdvkg.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | a mesma do seu `apps/qqorvex/.env` |
-| `VITE_TURNSTILE_SITE_KEY` | a mesma do `.env` |
-| `VITE_VAPID_PUBLIC_KEY` | a mesma do `.env` |
-| `VITE_GOOGLE_CLIENT_ID` | a mesma do `.env` (conexão com o Google Agenda) |
-| `VITE_TMDB_API_KEY` | a mesma do `.env` (capas de filmes e séries) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | a mesma do seu `apps/qqorvex/.env.local` |
+| `VITE_TURNSTILE_SITE_KEY` | a mesma do `.env.local` |
+| `VITE_VAPID_PUBLIC_KEY` | a mesma do `.env.local` |
+| `VITE_GOOGLE_CLIENT_ID` | a mesma do `.env.local` (conexão com o Google Agenda) |
+| `VITE_TMDB_API_KEY` | a mesma do `.env.local` (capas de filmes e séries) |
 
 Não crie `VITE_BILLING_CHANNEL` durante o beta (cobrança desligada) nem `VITE_VEX_USE_OLLAMA`.
 Todas essas variáveis são públicas por natureza (vão para o navegador); chaves secretas ficam só no
@@ -56,6 +56,8 @@ aparecer. O login ainda não volta para lá até o passo 3.
      - `https://qqorvex-app.pages.dev/**`
      - `https://*.qqorvex-app.pages.dev/**` (prévias dos PRs)
      - `http://localhost:5173/**`
+     - `http://tauri.localhost/**` (app desktop no Windows)
+     - `qqorvex://auth/callback` (login social no app Android)
 2. **Central do Dono → Integrações → "URL pública do Qqorvex"** (`app_base_url`):
    `https://qqorvex-app.pages.dev` — é para onde o Google Agenda devolve a pessoa depois de conectar.
 3. **Cloudflare → Turnstile →** o widget usado no login → Hostnames: adicione `qqorvex-app.pages.dev`
