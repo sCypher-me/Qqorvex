@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { isChunkLoadError, isReloadPending, reloadForNewVersion } from "./updates/webUpdate";
 
 interface AppErrorBoundaryProps {
   children: ReactNode;
@@ -6,6 +7,8 @@ interface AppErrorBoundaryProps {
 
 interface AppErrorBoundaryState {
   hasError: boolean;
+  /** A tela falhou porque um deploy novo removeu o código antigo; a recarga já foi disparada. */
+  updating: boolean;
 }
 
 /**
@@ -13,13 +16,15 @@ interface AppErrorBoundaryState {
  * a interface mostra uma recuperação segura sem expor stack trace ao usuário.
  */
 export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
-  state: AppErrorBoundaryState = { hasError: false };
+  state: AppErrorBoundaryState = { hasError: false, updating: false };
 
-  static getDerivedStateFromError(): AppErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): AppErrorBoundaryState {
+    return { hasError: true, updating: isReloadPending() || isChunkLoadError(error) };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isReloadPending() || (isChunkLoadError(error) && reloadForNewVersion())) return;
+    if (this.state.updating) this.setState({ updating: false });
     console.error("Erro não tratado na interface do Qqorvex", { error, errorInfo });
   }
 
@@ -29,6 +34,13 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    if (this.state.updating) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-canvas text-fg-3" role="status" aria-live="polite">
+          <span className="text-sm">Atualizando o Qqorvex…</span>
+        </main>
+      );
+    }
 
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#06080b] px-5 py-10 text-fg">

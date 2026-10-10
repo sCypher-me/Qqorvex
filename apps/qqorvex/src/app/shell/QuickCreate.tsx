@@ -1,6 +1,7 @@
-import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarPlusIcon, CheckSquareIcon, CurrencyCircleDollarIcon, NotePencilIcon } from "@phosphor-icons/react";
 import { DropdownMenu, type DropdownMenuProps } from "@qqorvex/ui";
+import { lazyWithRecovery } from "../updates/webUpdate";
 
 export type QuickCreateKind = "task" | "event" | "transaction" | "note";
 
@@ -18,7 +19,7 @@ export const QUICK_CREATE_TITLES: Record<QuickCreateKind, string> = {
   note: "Nova nota",
 };
 
-const QuickCreateDialog = lazy(() => import("./QuickCreateDialog").then((m) => ({ default: m.QuickCreateDialog })));
+const QuickCreateDialog = lazyWithRecovery(() => import("./QuickCreateDialog").then((m) => ({ default: m.QuickCreateDialog })));
 
 interface QuickCreateValue {
   open: (kind: QuickCreateKind, defaults?: { title?: string; date?: string }) => void;

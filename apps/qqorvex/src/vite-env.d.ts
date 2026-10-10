@@ -15,3 +15,4 @@ interface ImportMeta {
 }
 declare const __QQORVEX_APP_VERSION__: string;
 declare const __QQORVEX_UPDATE_CHANNEL__: "beta" | "stable";
+declare const __QQORVEX_BUILD_ID__: string;
