@@ -16,6 +16,8 @@
 
 ### 1. Login, cadastro e onboarding
 
+> **Estado (11/10/2026):** auditado, completo. Confirmação de e-mail exigida pelo Supabase antes de liberar a conta, com tela de pendência (reenvio com espera e troca do endereço); acesso por senha, passkey ou link/código por e-mail (`/entrar-por-email`); erros mapeados sem perder o formulário (PR #14) e captcha; deep links de confirmação, convite e OAuth com testes (`emailConfirmationDeepLink`, `invitationDeepLink`, `oauthDeepLink`); onboarding com "Pular por enquanto" e personalidade padrão alterável.
+
 - Exigir confirmação de e-mail antes de liberar os dados privados da conta; enquanto isso, mostrar claramente o estado pendente.
 - No estado pendente, permitir reenviar a confirmação e corrigir o endereço de e-mail.
 - Oferecer acesso por senha e como alternativa por link ou código de uso único.
@@ -24,6 +26,8 @@
 - Tornar onboarding opcional e retomável. Oferecer escolha de personalidade da Vex; ao pular, usar um padrão que possa ser alterado depois.
 
 ### 2. Central de Segurança
+
+> **Estado (11/10/2026):** completo, exceto o aviso por e-mail. Já existiam: QR do 2FA corrigido com chave manual, ativação só depois do código, encerrar sessões uma a uma, histórico de acessos, Cofre com PIN no servidor (15 min, por sessão). Feito agora (migração `account_security`): códigos de recuperação (10, uso único, só com aal2, gerar novos invalida os anteriores; "Perdi o acesso ao autenticador" no login), confirmação de identidade (código do autenticador, senha atual via `verify_my_password` ou código por e-mail) para trocar e-mail/senha, remover 2FA, gerar códigos e encerrar sessões; aviso por push de acesso por aparelho novo (`claim_new_device_logins` no `send-notifications`, abre a sessão para encerrar); Cofre fecha ao ir para segundo plano e após 5 min sem uso. Falta: o aviso de novo dispositivo **por e-mail** precisa de um provedor de e-mail transacional (decisão do dono).
 
 - Corrigir o QR de 2FA e fornecer chave manual como alternativa.
 - Só ativar 2FA depois de validar um código do autenticador.

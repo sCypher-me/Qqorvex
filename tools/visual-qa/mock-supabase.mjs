@@ -13,7 +13,7 @@ function b64url(value) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-export function fakeSession({ onboarding = false } = {}) {
+export function fakeSession({ onboarding = false, mfa = false } = {}) {
   const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
   const user = {
     id: USER_ID,
@@ -25,13 +25,13 @@ export function fakeSession({ onboarding = false } = {}) {
     app_metadata: { provider: "email", providers: ["email"] },
     user_metadata: onboarding ? { full_name: "Ana Souza", qqorvex_onboarding_pending: true } : { full_name: "Ana Souza", qqorvex_onboarding_completed: true },
     identities: [],
-    factors: [],
+    factors: mfa ? [{ id: "qa-totp", factor_type: "totp", status: "verified", friendly_name: "Celular", created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] : [],
     created_at: new Date(Date.now() - 86_400_000 * 60).toISOString(),
     updated_at: new Date().toISOString(),
   };
   const accessToken = [
     b64url({ alg: "HS256", typ: "JWT" }),
-    b64url({ sub: USER_ID, aud: "authenticated", role: "authenticated", exp, aal: "aal1", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }], session_id: "qa-session" }),
+    b64url({ sub: USER_ID, aud: "authenticated", role: "authenticated", exp, aal: mfa && mfa !== "pending" ? "aal2" : "aal1", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }], session_id: "qa-session" }),
     "qa-signature",
   ].join(".");
   return { access_token: accessToken, refresh_token: "qa-refresh", token_type: "bearer", expires_in: 31_536_000, expires_at: exp, user };
@@ -150,10 +150,10 @@ function newId() {
 }
 
 /** Instala as rotas do mock numa página Playwright. */
-export async function installSupabaseMock(page, { log = false, onboarding = false, owner = false } = {}) {
+export async function installSupabaseMock(page, { log = false, onboarding = false, owner = false, mfa = false } = {}) {
   const mock = createMockDatabase();
   if (owner) for (const profile of mock.db.profiles ?? []) profile.role = "dono";
-  const session = fakeSession({ onboarding });
+  const session = fakeSession({ onboarding, mfa });
 
   // A fixture without a Realtime server should close mocked WebSockets locally instead of
   // letting the browser attempt DNS/network access for the fake Supabase host.

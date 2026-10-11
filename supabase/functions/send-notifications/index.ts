@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
   let recurringEventsChecked = 0;
   let eventsGenerated = 0;
   let planAlertsSent = 0;
+  let newDeviceAlertsSent = 0;
   let totalSent = 0;
 
   function progressResponse(partial: boolean): Response {
@@ -83,6 +84,7 @@ Deno.serve(async (req) => {
       recurringEventsChecked,
       eventsGenerated,
       planAlertsSent,
+      newDeviceAlertsSent,
       notificationsSent: totalSent,
     }), { headers: { "Content-Type": "application/json" } });
   }
@@ -126,6 +128,21 @@ Deno.serve(async (req) => {
       await supabase.from("push_subscriptions").delete().in("id", expiredIds);
     }
     return outcomes.filter((outcome) => outcome.delivered).length;
+  }
+
+  // Fonte 0: acesso por um aparelho novo (Central de Segurança). A função registra os aparelhos dos
+  // acessos recentes e devolve só os desconhecidos; a janela cobre ciclos atrasados sem repetir aviso.
+  if (!hasRuntimeBudget()) return progressResponse(true);
+  const { data: newDevices, error: newDevicesError } = await supabase.rpc("claim_new_device_logins", { since: new Date(Date.now() - 20 * 60_000).toISOString() });
+  if (newDevicesError) console.error("send-notifications: aparelhos novos", newDevicesError.message);
+  for (const login of newDevices ?? []) {
+    const delivered = await sendToUser(login.alert_user_id, {
+      title: "Novo acesso à sua conta",
+      body: `Entrada pelo ${login.alert_device}. Não foi você? Toque para encerrar essa sessão.`,
+      url: `/configuracoes/seguranca?sessao=${login.alert_session_id}`,
+    });
+    totalSent += delivered;
+    if (delivered) newDeviceAlertsSent++;
   }
 
   // Fonte 1: lembretes de evento da Agenda ("Lembretes têm tabela mas nada os dispara").

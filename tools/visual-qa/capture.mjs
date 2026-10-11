@@ -128,7 +128,7 @@ try {
       for (const route of routes) {
         const page = await context.newPage();
         const isPublic = ["/login", "/criar-conta", "/esqueci-senha", "/redefinir-senha", "/mfa", "/entrar-por-email"].includes(route);
-        if (!isPublic) await installSupabaseMock(page, { log: args.log === "true", onboarding: args.onboarding === "true", owner: args.owner === "true" });
+        if (!isPublic) await installSupabaseMock(page, { log: args.log === "true", onboarding: args.onboarding === "true", owner: args.owner === "true", mfa: args.mfa === "pending" ? "pending" : args.mfa === "true" });
         else {
           await page.addInitScript((key) => {
             try {

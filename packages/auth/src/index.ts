@@ -1,6 +1,7 @@
 export * from "./AuthProvider";
 export * from "./RequireAuth";
 export * from "./mfa";
+export * from "./accountSecurity";
 export * from "./useMfaFactors";
 export * from "./passkey";
 export * from "./usePasskeys";

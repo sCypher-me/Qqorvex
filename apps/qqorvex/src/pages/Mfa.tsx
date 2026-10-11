@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Button, Notice, Skeleton } from "@qqorvex/ui";
-import { useAuth, useMfaFactors, verifyTotpChallenge, getAssuranceLevel, isMfaPending } from "@qqorvex/auth";
+import { Button, Input, Notice, Skeleton } from "@qqorvex/ui";
+import { useAuth, useMfaFactors, verifyTotpChallenge, getAssuranceLevel, isMfaPending, redeemRecoveryCode } from "@qqorvex/auth";
 import { AuthLayout } from "./AuthLayout";
 
 const CODE_LENGTH = 6;
@@ -18,6 +18,8 @@ export function MfaPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -110,9 +112,53 @@ export function MfaPage() {
     }
   }
 
+  /** Perdeu o autenticador: um código de recuperação remove o 2FA e leva a pessoa a ativar de novo. */
+  async function handleRecovery(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await redeemRecoveryCode(client, recoveryCode);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      navigate("/configuracoes/seguranca?recuperado=1", { replace: true });
+    } catch {
+      setError("Não foi possível validar o código. Verifique sua conexão e tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleBack() {
     await signOut();
     navigate("/login", { replace: true });
+  }
+
+  if (recoveryMode) {
+    return (
+      <AuthLayout>
+        <form onSubmit={handleRecovery} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <h1 className="m-0 font-display text-[30px] font-semibold tracking-[-0.02em] text-fg">Código de recuperação</h1>
+            <p className="m-0 text-[14px] leading-relaxed text-fg-3">
+              Digite um dos códigos que você guardou ao ativar o 2FA. Ele vale uma vez: a verificação em duas etapas é desligada para você entrar e cadastrar o autenticador de novo.
+            </p>
+          </div>
+          <Input label="Código" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} placeholder="abcde-fghjk" autoComplete="one-time-code" autoCapitalize="off" spellCheck={false} autoFocus className="font-mono" />
+          {error && <Notice tone="error">{error}</Notice>}
+          <div className="flex flex-col gap-2.5">
+            <Button type="submit" variant="primary" disabled={busy || recoveryCode.replace(/[^a-zA-Z0-9]/g, "").length < 10} size="lg" fullWidth>
+              {busy ? "Verificando…" : "Entrar com o código"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => { setRecoveryMode(false); setError(null); }} size="lg" fullWidth>
+              Voltar para o app autenticador
+            </Button>
+          </div>
+        </form>
+      </AuthLayout>
+    );
   }
 
   return (
@@ -180,6 +226,9 @@ export function MfaPage() {
                 fullWidth
               >
                 {busy ? "Verificando…" : "Verificar"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => { setRecoveryMode(true); setError(null); }} size="lg" fullWidth>
+                Perdi o acesso ao autenticador
               </Button>
               <Button type="button" variant="ghost" onClick={handleBack} size="lg" fullWidth>
                 Usar outra conta
