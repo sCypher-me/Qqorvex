@@ -2,10 +2,12 @@
 // dentro do horário disponível da pessoa, e uma única vez por problema. Lógica pura — o
 // `send-notifications` busca os dados, chama `computePlanAlerts` e registra as chaves enviadas.
 import { buildDayPlan, defaultTaskMinutes, normalizeDayWindow, parseClock, type DayWindow } from "./dayPlan.ts";
+import { planEstimateFor } from "./taskEstimate.ts";
 
 export interface AlertTask {
   id: string;
   title: string;
+  description?: string | null;
   status: "nao_iniciado" | "em_andamento" | "concluido";
   priority: "alta" | "media" | "baixa" | "sem_prioridade";
   due_date: string | null;
@@ -148,6 +150,7 @@ export function computePlanAlerts(input: {
       id: task.id,
       title: task.title,
       estimatedMinutes: task.estimated_minutes,
+      estimate: planEstimateFor(task, input.tasks),
       mustFinishToday: task.due_date !== null && task.due_date <= input.today,
     })),
     events: input.events.map((event) => ({ id: event.id, title: event.title, start: event.start, end: event.end })),

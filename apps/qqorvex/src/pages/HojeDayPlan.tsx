@@ -13,7 +13,7 @@ import {
   type DayWindow,
   type PlanEntry,
 } from "@qqorvex/module-hoje";
-import { addDaysToKey, selectDayPlanTasks, useUpdateTask, type Task, type TaskWithConditions } from "@qqorvex/module-tarefas";
+import { addDaysToKey, planEstimateFor, selectDayPlanTasks, useUpdateTask, type Task, type TaskWithConditions } from "@qqorvex/module-tarefas";
 import type { CalendarEvent } from "@qqorvex/module-agenda";
 import { Button, Checkbox, Notice, cx, useToast } from "@qqorvex/ui";
 import { supabase } from "../app/supabase";
@@ -78,11 +78,12 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
           id: task.id,
           title: task.title,
           estimatedMinutes: task.estimated_minutes,
+          estimate: planEstimateFor(task, allTasks),
           mustFinishToday: task.due_date !== null && task.due_date <= today,
         })),
         events: events.filter((event) => !event.is_all_day).map((event) => ({ id: event.id, title: event.title, start: new Date(event.start_at), end: new Date(event.end_at) })),
       }),
-    [candidates, events, fallbackMinutes, now, today, dayWindow],
+    [allTasks, candidates, events, fallbackMinutes, now, today, dayWindow],
   );
 
   const movable = plan.overflow.filter((item) => item.mustFinishToday);
@@ -167,7 +168,7 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
                     size="sm"
                     checked={!deselected.has(item.id)}
                     onChange={() => setDeselected((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })}
-                    label={<span className="text-[13px] text-fg">{item.title} <span className="text-fg-4">· {item.estimated ? "~" : ""}{formatPlanMinutes(item.minutes)}</span></span>}
+                    label={<span className="text-[13px] text-fg">{item.title} <span className="text-fg-4">· {item.estimated ? "~" : ""}{formatPlanMinutes(item.minutes)}{item.estimated && item.confidence === "baixa" ? " · duração incerta" : ""}</span></span>}
                   />
                 </li>
               ))}
@@ -246,12 +247,16 @@ function PlanRow({ entry, now, onOpenTask, onDuration }: { entry: PlanEntry; now
           <span className="shrink-0 text-2xs tabular-nums text-fg-4">{formatPlanMinutes(entry.minutes)}</span>
         ) : (
           <label className="flex shrink-0 items-center gap-1 text-2xs text-fg-4">
-            {entry.estimated && <span title="Sem duração na tarefa: usamos a mediana das suas estimativas. Ajuste para o plano ficar mais certo.">estimado</span>}
+            {entry.estimated && entry.confidence === "baixa" ? (
+              <span className="font-medium text-gold-fg" title="Não deu para estimar pela tarefa nem pelo seu histórico. Escolha a duração para o plano ficar certo.">Quanto tempo leva?</span>
+            ) : entry.estimated ? (
+              <span title={`Estimado ${entry.note ?? "pelo seu histórico"}. Ajuste se não for isso — a correção ensina as próximas estimativas.`}>estimado</span>
+            ) : null}
             <span className="sr-only">Duração de {entry.title}</span>
             <select
               value={entry.minutes}
               onChange={(event) => onDuration(entry.id, Number(event.target.value))}
-              className={cx("q-input h-7 rounded-md px-1.5 text-2xs tabular-nums", entry.estimated && "border-dashed")}
+              className={cx("q-input h-7 rounded-md px-1.5 text-2xs tabular-nums", entry.estimated && "border-dashed", entry.estimated && entry.confidence === "baixa" && "border-gold-line")}
               data-size="sm"
             >
               {options.map((minutes) => (

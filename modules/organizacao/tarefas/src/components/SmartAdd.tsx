@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type Ref } from "react";
-import { CalendarBlankIcon, FlagIcon, HashIcon, PlusIcon } from "@phosphor-icons/react";
+import { CalendarBlankIcon, ClockIcon, FlagIcon, HashIcon, PlusIcon } from "@phosphor-icons/react";
 import { Button } from "@qqorvex/ui";
 import { parseQuickTask } from "../service";
 import type { NewTaskInput } from "../types";
@@ -8,6 +8,7 @@ const TOKEN_ICON = {
   date: <CalendarBlankIcon size={12} weight="bold" />,
   priority: <FlagIcon size={12} weight="fill" />,
   tag: <HashIcon size={12} weight="bold" />,
+  duration: <ClockIcon size={12} weight="bold" />,
 };
 
 /**
@@ -44,6 +45,7 @@ export function SmartAdd({
         dueDate: parsed.dueDate ?? defaults?.dueDate,
         priority: parsed.priority ?? defaults?.priority,
         tags: [...new Set([...(defaults?.tags ?? []), ...parsed.tags])],
+        estimatedMinutes: parsed.estimatedMinutes ?? defaults?.estimatedMinutes,
       });
       setValue("");
     } catch {

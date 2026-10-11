@@ -37,6 +37,10 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   sobrepondo) ou uma tarefa atrasada ou de hoje que não cabe mais no horário disponível. Um aviso por
   problema, nunca fora do horário disponível, com opção de desligar em Notificações. Tocar no aviso
   abre a Agenda ou o plano do dia.
+- Estimativa de duração das tarefas sem duração salva: pelo que está escrito ("30min", "1h30"), por
+  tarefas parecidas que você já estimou ou pelo tipo de tarefa. Quando não há pista, o plano pergunta
+  "Quanto tempo leva?". A captura rápida entende a duração ("revisar contrato 45min") sem confundir
+  com horário ("às 14h").
 
 ### Corrigido
 
