@@ -23,6 +23,11 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   podem ser ajustadas ali mesmo; tarefas longas são divididas entre os intervalos.
 - Quando o dia não fecha, o Hoje mostra quanto falta e sugere passar prazos para amanhã: nada muda
   até o botão, dá para desmarcar itens e desfazer depois.
+- Reorganização do dia no Hoje: quando o dia não fecha ou há conflito na agenda, o painel propõe
+  mudar de horário os blocos que você marcou para si (foco; estudos e pessoal sem local nem link),
+  mover para amanhã o que libera tempo e só então passar prazos para amanhã. Reuniões nunca são
+  movidas; conflito entre elas aparece como aviso. Tudo numa lista só, com um botão "Aplicar" e
+  desfazer.
 - Convite opcional para fechar o dia na última hora do horário disponível, sem mover nada sozinho.
 - A Vex recebe o mesmo plano em `get_day_overview` e pode propor ajustar a duração de uma tarefa.
 - Seção "Quem vê o seu perfil" em Configurações → Perfil, dizendo exatamente o que sai da conta.
@@ -44,6 +49,8 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
 
 ### Corrigido
 
+- O plano do dia dava prioridade a tarefas em andamento com prazo distante e deixava de fora as que
+  vencem hoje; agora o que vence hoje (ou está atrasado) entra primeiro, no app e nos avisos push.
 - O @usuário do Qqorvex não é mais publicado no perfil do Discord sem consentimento; conexões
   existentes param de publicá-lo na próxima sincronização.
 - Foto de perfil passa a ficar em armazenamento privado, exibida por links temporários; se a imagem

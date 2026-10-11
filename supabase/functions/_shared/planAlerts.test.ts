@@ -17,12 +17,19 @@ describe("seleção das tarefas do plano no servidor", () => {
       task("bloqueada", { blocked: true }),
       task("amanha", { due_date: "2026-10-11" }),
       task("andamento-sem-prazo", { status: "em_andamento", due_date: null }),
+      task("andamento-semana-que-vem", { status: "em_andamento", due_date: "2026-10-15" }),
+      task("andamento-hoje", { status: "em_andamento" }),
       task("atrasada-baixa", { due_date: "2026-10-08", priority: "baixa" }),
       task("hoje-alta", { priority: "alta", created_at: "2026-10-05T10:00:00Z" }),
       task("hoje-alta-antiga", { priority: "alta", created_at: "2026-10-02T10:00:00Z" }),
     ];
     const asApp = tasks.map((item) => ({ ...item, is_cancelled: false, isBlocked: item.blocked }) as unknown as Task & { isBlocked: boolean });
     expect(selectPlanTasks(tasks, today).map((item) => item.id)).toEqual(selectDayPlanTasks(asApp, today).map((item) => item.id));
+  });
+
+  it("põe o que vence hoje antes do que só está em andamento", () => {
+    const tasks = [task("andamento-semana-que-vem", { status: "em_andamento", due_date: "2026-10-15" }), task("atrasada", { due_date: "2026-10-08" }), task("andamento-hoje", { status: "em_andamento" })];
+    expect(selectPlanTasks(tasks, today).map((item) => item.id)).toEqual(["andamento-hoje", "atrasada", "andamento-semana-que-vem"]);
   });
 });
 

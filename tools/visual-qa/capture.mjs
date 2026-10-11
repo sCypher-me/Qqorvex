@@ -6,6 +6,7 @@
  *   node tools/visual-qa/capture.mjs --routes=/,/planejar/tarefas --viewports=desktop --themes=dark
  *   node tools/visual-qa/capture.mjs --url=http://localhost:5199   # reaproveita um servidor já rodando
  *   node tools/visual-qa/capture.mjs --full           # captura a página inteira (scroll)
+ *   node tools/visual-qa/capture.mjs --time=10:00     # fixa o relógio do navegador nesse horário de hoje
  *
  * Saída em tools/visual-qa/out/. Erros de console/página são impressos no final — qualquer
  * `pageerror` é tratado como falha (exit 1).
@@ -109,6 +110,13 @@ try {
         timezoneId: "America/Sao_Paulo",
         colorScheme: theme === "light" ? "light" : "dark",
       });
+      if (args.time) {
+        // Relógio fixo para telas que dependem da hora (ex.: plano do dia no meio da tarde).
+        const [hours, minutes] = args.time.split(":").map(Number);
+        const fixed = new Date();
+        fixed.setHours(hours, minutes ?? 0, 0, 0);
+        await context.clock.setFixedTime(fixed);
+      }
       await context.addInitScript((value) => {
         try {
           window.localStorage.setItem("qqorvex.theme", value);

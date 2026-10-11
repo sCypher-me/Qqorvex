@@ -7,14 +7,17 @@ import {
   defaultTaskMinutes,
   formatPlanMinutes,
   isClosingTime,
+  isFlexibleEvent,
   normalizeDayWindow,
+  proposeReorganization,
   validateDayWindow,
+  type ReorgChange,
   type DayPlan,
   type DayWindow,
   type PlanEntry,
 } from "@qqorvex/module-hoje";
 import { addDaysToKey, planEstimateFor, selectDayPlanTasks, useUpdateTask, type Task, type TaskWithConditions } from "@qqorvex/module-tarefas";
-import type { CalendarEvent } from "@qqorvex/module-agenda";
+import { useRescheduleEvent, type CalendarEvent } from "@qqorvex/module-agenda";
 import { Button, Checkbox, Notice, cx, useToast } from "@qqorvex/ui";
 import { supabase } from "../app/supabase";
 
@@ -54,6 +57,7 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
   const { toast } = useToast();
   const navigate = useNavigate();
   const updateTask = useUpdateTask(supabase);
+  const rescheduleEvent = useRescheduleEvent(supabase);
   const { dayWindow, save } = useDayWindow();
   const [editingWindow, setEditingWindow] = useState(false);
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
@@ -68,26 +72,35 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
 
   const candidates = useMemo(() => selectDayPlanTasks(tasks, today), [tasks, today]);
   const fallbackMinutes = useMemo(() => defaultTaskMinutes(allTasks.map((task) => task.estimated_minutes ?? 0)), [allTasks]);
-  const plan = useMemo(
+  const planTasks = useMemo(
     () =>
-      buildDayPlan({
-        now,
-        window: dayWindow,
-        defaultMinutes: fallbackMinutes,
-        tasks: candidates.map((task) => ({
-          id: task.id,
-          title: task.title,
-          estimatedMinutes: task.estimated_minutes,
-          estimate: planEstimateFor(task, allTasks),
-          mustFinishToday: task.due_date !== null && task.due_date <= today,
-        })),
-        events: events.filter((event) => !event.is_all_day).map((event) => ({ id: event.id, title: event.title, start: new Date(event.start_at), end: new Date(event.end_at) })),
-      }),
-    [allTasks, candidates, events, fallbackMinutes, now, today, dayWindow],
+      candidates.map((task) => ({
+        id: task.id,
+        title: task.title,
+        estimatedMinutes: task.estimated_minutes,
+        estimate: planEstimateFor(task, allTasks),
+        mustFinishToday: task.due_date !== null && task.due_date <= today,
+        dueDate: task.due_date,
+      })),
+    [allTasks, candidates, today],
   );
-
-  const movable = plan.overflow.filter((item) => item.mustFinishToday);
-  const selected = movable.filter((item) => !deselected.has(item.id));
+  const planEvents = useMemo(
+    () =>
+      events
+        .filter((event) => !event.is_all_day)
+        .map((event) => ({ id: event.id, title: event.title, start: new Date(event.start_at), end: new Date(event.end_at), flexible: isFlexibleEvent(event) })),
+    [events],
+  );
+  const plan = useMemo(
+    () => buildDayPlan({ now, window: dayWindow, defaultMinutes: fallbackMinutes, tasks: planTasks, events: planEvents }),
+    [dayWindow, fallbackMinutes, now, planEvents, planTasks],
+  );
+  // Proposta de reorganização: só é aplicada quando a pessoa confirma.
+  const reorganization = useMemo(
+    () => proposeReorganization({ now, window: dayWindow, tomorrow: addDaysToKey(today, 1), tasks: planTasks, events: planEvents, defaultMinutes: fallbackMinutes }),
+    [dayWindow, fallbackMinutes, now, planEvents, planTasks, today],
+  );
+  const selected = reorganization.changes.filter((change) => !deselected.has(changeKey(change)));
 
   function setDuration(taskId: string, minutes: number) {
     updateTask.mutate(
@@ -99,23 +112,32 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
     );
   }
 
-  async function moveToTomorrow() {
-    const tomorrow = addDaysToKey(today, 1);
-    const previous = new Map(candidates.filter((task) => selected.some((item) => item.id === task.id)).map((task) => [task.id, task.due_date]));
+  /** Aplica as mudanças marcadas (prazos e horários) de uma vez e oferece desfazer todas. */
+  async function applyReorganization() {
     setMoving(true);
     try {
-      const results = await Promise.allSettled(selected.map((item) => updateTask.mutateAsync({ taskId: item.id, updates: { dueDate: tomorrow } })));
-      const moved = selected.filter((_, index) => results[index]!.status === "fulfilled");
-      const failed = selected.length - moved.length;
+      const results = await Promise.allSettled(
+        selected.map((change) =>
+          change.kind === "task_due"
+            ? updateTask.mutateAsync({ taskId: change.id, updates: { dueDate: change.to } })
+            : rescheduleEvent.mutateAsync({ eventId: change.id, startAt: change.to.start.toISOString(), endAt: change.to.end.toISOString() }),
+        ),
+      );
+      const applied = selected.filter((_, index) => results[index]!.status === "fulfilled");
+      const failed = selected.length - applied.length;
       setDeselected(new Set());
       toast({
-        title: moved.length === 1 ? "1 tarefa movida para amanhã" : `${moved.length} tarefas movidas para amanhã`,
-        description: failed ? `${failed} não pôde ser movida; tente de novo.` : "O plano de hoje foi refeito com o que cabe.",
+        title: applied.length === 1 ? "1 mudança aplicada" : `${applied.length} mudanças aplicadas`,
+        description: failed ? `${failed} não pôde ser aplicada; tente de novo.` : "O plano de hoje foi refeito.",
         tone: failed ? "info" : "success",
-        action: moved.length
+        action: applied.length
           ? {
               label: "Desfazer",
-              onClick: () => moved.forEach((item) => updateTask.mutate({ taskId: item.id, updates: { dueDate: previous.get(item.id) ?? null } })),
+              onClick: () =>
+                applied.forEach((change) => {
+                  if (change.kind === "task_due") updateTask.mutate({ taskId: change.id, updates: { dueDate: change.from } });
+                  else rescheduleEvent.mutate({ eventId: change.id, startAt: change.from.start.toISOString(), endAt: change.from.end.toISOString() });
+                }),
             }
           : undefined,
       });
@@ -123,6 +145,19 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
       setMoving(false);
     }
   }
+
+  function toggleChange(change: ReorgChange) {
+    setDeselected((current) => {
+      const next = new Set(current);
+      const key = changeKey(change);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  const showReorganization = reorganization.changes.length > 0 || reorganization.unresolvedConflicts.length > 0;
+  const fixesDay = reorganization.planAfter.status === "cabe" || reorganization.planAfter.status === "sem_tarefas";
 
   return (
     <section id="plano-do-dia" className="flex min-w-0 flex-col rounded-xl border border-line bg-surface" aria-label="Plano do dia">
@@ -147,32 +182,53 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
         <PlanSummary plan={plan} loading={loading} />
       </div>
 
-      {movable.length > 0 && (
+      {showReorganization && (
         <div className="px-4 pt-2 sm:px-5">
           <Notice
             tone="warning"
-            title={plan.status === "encerrado" ? "Ficaram tarefas com prazo de hoje" : `O dia não fecha: faltam ${formatPlanMinutes(plan.shortfallMinutes)}`}
+            title={
+              plan.status === "encerrado"
+                ? "Ficaram tarefas com prazo de hoje"
+                : plan.status === "nao_cabe"
+                  ? `O dia não fecha: faltam ${formatPlanMinutes(plan.shortfallMinutes)}`
+                  : "Conflito na agenda"
+            }
             actions={
-              <Button size="xs" onClick={() => void moveToTomorrow()} disabled={selected.length === 0} loading={moving}>
-                {selected.length === 1 ? "Mover 1 para amanhã" : `Mover ${selected.length} para amanhã`}
-              </Button>
+              reorganization.changes.length > 0 ? (
+                <Button size="xs" onClick={() => void applyReorganization()} disabled={selected.length === 0} loading={moving}>
+                  {selected.length === 1 ? "Aplicar 1 mudança" : `Aplicar ${selected.length} mudanças`}
+                </Button>
+              ) : undefined
             }
           >
-            <p>
-              {plan.status === "encerrado" ? "Se quiser, passe o prazo delas para amanhã." : "Sugestão: passar o prazo destas tarefas para amanhã."} Nada muda até você confirmar; desmarque o que quiser manter hoje.
-            </p>
-            <ul className="mt-2 flex flex-col gap-1.5">
-              {movable.map((item) => (
-                <li key={item.id}>
-                  <Checkbox
-                    size="sm"
-                    checked={!deselected.has(item.id)}
-                    onChange={() => setDeselected((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })}
-                    label={<span className="text-[13px] text-fg">{item.title} <span className="text-fg-4">· {item.estimated ? "~" : ""}{formatPlanMinutes(item.minutes)}{item.estimated && item.confidence === "baixa" ? " · duração incerta" : ""}</span></span>}
-                  />
-                </li>
-              ))}
-            </ul>
+            {reorganization.changes.length > 0 && (
+              <>
+                <p>
+                  Proposta para reorganizar o dia. Nada muda até você confirmar; desmarque o que quiser manter como está.
+                  {fixesDay && plan.status !== "encerrado" ? " Com todas as mudanças, o dia fecha." : ""}
+                </p>
+                <ul className="mt-2 flex flex-col gap-1.5">
+                  {reorganization.changes.map((change) => (
+                    <li key={changeKey(change)}>
+                      <Checkbox size="sm" checked={!deselected.has(changeKey(change))} onChange={() => toggleChange(change)} label={<ChangeLabel change={change} today={today} />} />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {reorganization.unresolvedConflicts.length > 0 && (
+              <ul className={cx("flex flex-col gap-1", reorganization.changes.length > 0 && "mt-2")}>
+                {reorganization.unresolvedConflicts.map(({ first, second, start }) => (
+                  <li key={`${first.id}-${second.id}`} className="text-[13px]">
+                    “{first.title}” e “{second.title}” se sobrepõem às {fmtClock(start)}. Como não são blocos só seus, ajuste na{" "}
+                    <button type="button" onClick={() => navigate("/planejar/agenda")} className="font-medium text-gold-fg hover:underline">
+                      Agenda
+                    </button>
+                    .
+                  </li>
+                ))}
+              </ul>
+            )}
           </Notice>
         </div>
       )}
@@ -191,6 +247,30 @@ export function DayPlanPanel({ now, today, tasks, allTasks, events, loading }: D
         </ol>
       )}
     </section>
+  );
+}
+
+function changeKey(change: ReorgChange): string {
+  return `${change.kind}:${change.id}`;
+}
+
+function ChangeLabel({ change, today }: { change: ReorgChange; today: string }) {
+  if (change.kind === "task_due") {
+    return (
+      <span className="text-[13px] text-fg">
+        {change.title} <span className="text-fg-4">· prazo {change.from && change.from < today ? "atrasado" : "de hoje"} → amanhã</span>
+      </span>
+    );
+  }
+  const sameDay = change.to.start.toDateString() === change.from.start.toDateString();
+  return (
+    <span className="text-[13px] text-fg">
+      {change.title}{" "}
+      <span className="text-fg-4">
+        · {fmtClock(change.from.start)} → {sameDay ? fmtClock(change.to.start) : `amanhã às ${fmtClock(change.to.start)}`}
+        {change.reason === "conflito" ? " · resolve conflito" : " · libera tempo hoje"}
+      </span>
+    </span>
   );
 }
 

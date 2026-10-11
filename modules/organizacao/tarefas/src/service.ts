@@ -295,7 +295,11 @@ export function compareTasksForAction(a: Task, b: Task): number {
 export function selectDayPlanTasks<T extends Task & { isBlocked?: boolean }>(tasks: T[], date: string): T[] {
   return tasks
     .filter((task) => task.status !== "concluido" && !task.isBlocked && ((task.due_date !== null && task.due_date <= date) || task.status === "em_andamento"))
-    .sort((a, b) => Number(b.status === "em_andamento") - Number(a.status === "em_andamento") || compareTasksForAction(a, b));
+    .sort((a, b) => {
+      // Primeiro o que vence hoje (ou está atrasado); "em andamento" sem prazo hoje só ocupa o que sobrar.
+      const dueToday = (task: Task) => Number(task.due_date !== null && task.due_date <= date);
+      return dueToday(b) - dueToday(a) || Number(b.status === "em_andamento") - Number(a.status === "em_andamento") || compareTasksForAction(a, b);
+    });
 }
 
 /** Rótulo curto do prazo ("Hoje", "Amanhã", "sex", "12 out", "Atrasada há 2 dias"). */
