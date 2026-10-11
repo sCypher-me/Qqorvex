@@ -3,7 +3,7 @@ import { listEventsInRange } from "@qqorvex/module-agenda";
 import { listRecurringTransactions, listTransactions, upcomingBills } from "@qqorvex/module-financas";
 import { habitScheduleOn, listHabitLogsForDate, listHabits } from "@qqorvex/module-metas-habitos";
 import { buildDayPlan, defaultTaskMinutes, formatPlanMinutes, normalizeDayWindow, type DayPlan, type DayWindow } from "@qqorvex/module-hoje";
-import { compareTasksForAction, listActiveTasks, selectDayPlanTasks, type Task } from "@qqorvex/module-tarefas";
+import { compareTasksForAction, listActiveTasks, planEstimateFor, selectDayPlanTasks, type Task } from "@qqorvex/module-tarefas";
 import type { ToolDefinition } from "../types";
 import { describeEvent } from "./agendaTools";
 import { addDays, formatDateKey, formatMoney, isDateKey, localDateKey, localDateTime } from "./shared";
@@ -40,7 +40,7 @@ export function planForDate(tasks: Task[], events: PlanEvent[], date: string, to
     now: date === today ? now : localDateTime(date, window.start),
     window,
     defaultMinutes: defaultTaskMinutes(tasks.map((task) => task.estimated_minutes ?? 0)),
-    tasks: candidates.map((task) => ({ id: task.id, title: task.title, estimatedMinutes: task.estimated_minutes, mustFinishToday: task.due_date !== null && task.due_date <= date })),
+    tasks: candidates.map((task) => ({ id: task.id, title: task.title, estimatedMinutes: task.estimated_minutes, estimate: planEstimateFor(task, tasks), mustFinishToday: task.due_date !== null && task.due_date <= date })),
     events: events.filter((event) => !event.is_all_day).map((event) => ({ id: event.id, title: event.title, start: new Date(event.start_at), end: new Date(event.end_at) })),
   });
 }
@@ -55,7 +55,11 @@ export function describeDayPlan(plan: DayPlan, window: DayWindow): string {
     if (entry.kind === "pause") return [];
     const range = `${clock(entry.start)}–${clock(entry.end)}`;
     if (entry.kind === "event") return [`- ${range} · compromisso: ${entry.title}`];
-    const duration = `${entry.estimated ? "~" : ""}${formatPlanMinutes(entry.minutes)}${entry.estimated ? ", duração estimada" : ""}`;
+    const duration = !entry.estimated
+      ? formatPlanMinutes(entry.minutes)
+      : entry.confidence === "baixa"
+        ? `~${formatPlanMinutes(entry.minutes)}, estimativa incerta — pergunte à pessoa quanto tempo leva`
+        : `~${formatPlanMinutes(entry.minutes)}, estimada (${entry.note ?? "pelo histórico"})`;
     return [`- ${range} · tarefa: ${entry.title} (${duration}${entry.part ? `, parte ${entry.part.index} de ${entry.part.total}` : ""}) [id: ${entry.id}]`];
   });
   const status =

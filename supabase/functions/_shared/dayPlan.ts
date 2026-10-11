@@ -30,10 +30,14 @@ const MIN_SPLIT_CHUNK = 30;
 const MIN_WINDOW_MINUTES = 60;
 export const DEFAULT_TASK_MINUTES = 30;
 
+export type PlanEstimateConfidence = "alta" | "media" | "baixa";
+
 export interface PlanTaskInput {
   id: string;
   title: string;
   estimatedMinutes: number | null;
+  /** Sem duração salva: estimativa pelo texto/histórico (ver `_shared/taskEstimate.ts`). */
+  estimate?: { minutes: number; confidence: PlanEstimateConfidence; note?: string } | null;
   /** Atrasada ou com prazo hoje: se não couber, o dia "não fecha" e a interface propõe mover. */
   mustFinishToday: boolean;
 }
@@ -47,7 +51,7 @@ export interface PlanFixedBlock {
 
 export type PlanEntry =
   | { kind: "event"; id: string; title: string; start: Date; end: Date }
-  | { kind: "task"; id: string; title: string; start: Date; end: Date; minutes: number; estimated: boolean; part?: { index: number; total: number } }
+  | { kind: "task"; id: string; title: string; start: Date; end: Date; minutes: number; estimated: boolean; confidence?: PlanEstimateConfidence; note?: string; part?: { index: number; total: number } }
   | { kind: "pause"; start: Date; end: Date };
 
 export interface PlanOverflowTask {
@@ -55,6 +59,7 @@ export interface PlanOverflowTask {
   title: string;
   minutes: number;
   estimated: boolean;
+  confidence?: PlanEstimateConfidence;
   mustFinishToday: boolean;
 }
 
@@ -208,7 +213,11 @@ export function buildDayPlan(input: {
 
   const sizedTasks = input.tasks.map((task) => {
     const known = task.estimatedMinutes !== null && task.estimatedMinutes > 0;
-    return { ...task, minutes: known ? Math.round(task.estimatedMinutes!) : fallbackMinutes, estimated: !known };
+    if (known) return { ...task, minutes: Math.round(task.estimatedMinutes!), estimated: false, confidence: undefined, note: undefined };
+    if (task.estimate && task.estimate.minutes > 0) {
+      return { ...task, minutes: Math.round(task.estimate.minutes), estimated: true, confidence: task.estimate.confidence, note: task.estimate.note };
+    }
+    return { ...task, minutes: fallbackMinutes, estimated: true, confidence: "baixa" as const, note: undefined };
   });
   const eventEntries: PlanEntry[] = input.events
     .filter((event) => event.end > from && event.start < windowEnd)
@@ -221,7 +230,7 @@ export function buildDayPlan(input: {
       windowEnd,
       from: windowEnd,
       entries: [],
-      overflow: sizedTasks.map(({ id, title, minutes, estimated, mustFinishToday }) => ({ id, title, minutes, estimated, mustFinishToday })),
+      overflow: sizedTasks.map(({ id, title, minutes, estimated, confidence, mustFinishToday }) => ({ id, title, minutes, estimated, confidence, mustFinishToday })),
       freeMinutes: 0,
       plannedMinutes: 0,
       shortfallMinutes: 0,
@@ -238,7 +247,7 @@ export function buildDayPlan(input: {
   for (const task of sizedTasks) {
     const placement = placeContiguous(intervals, task.minutes) ?? placeSplit(intervals, task.minutes);
     if (!placement) {
-      overflow.push({ id: task.id, title: task.title, minutes: task.minutes, estimated: task.estimated, mustFinishToday: task.mustFinishToday });
+      overflow.push({ id: task.id, title: task.title, minutes: task.minutes, estimated: task.estimated, confidence: task.confidence, mustFinishToday: task.mustFinishToday });
       continue;
     }
     placement.forEach((piece, index) => {
@@ -252,6 +261,8 @@ export function buildDayPlan(input: {
         end: taskEnd,
         minutes: piece.minutes,
         estimated: task.estimated,
+        ...(task.confidence ? { confidence: task.confidence } : {}),
+        ...(task.note ? { note: task.note } : {}),
         ...(placement.length > 1 ? { part: { index: index + 1, total: placement.length } } : {}),
       });
       entries.push({ kind: "pause", start: taskEnd, end: pauseEnd });

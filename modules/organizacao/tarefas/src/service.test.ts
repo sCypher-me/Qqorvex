@@ -91,6 +91,21 @@ import { compareTasksForAction, dueBucketOf, formatDueLabel, parseQuickTask } fr
 describe("parseQuickTask", () => {
   const today = "2026-09-29"; // terça-feira
 
+  it("entende a duração escrita e tira do título", () => {
+    const parsed = parseQuickTask("Revisar contrato amanhã 45min #trabalho", today);
+    expect(parsed.title).toBe("Revisar contrato");
+    expect(parsed.estimatedMinutes).toBe(45);
+    expect(parsed.dueDate).toBe("2026-09-30");
+    expect(parsed.tokens.find((token) => token.kind === "duration")?.label).toBe("45 min");
+    expect(parseQuickTask("Estudar 1h30", today)).toMatchObject({ title: "Estudar", estimatedMinutes: 90 });
+  });
+
+  it("mantém horário do dia no título em vez de virar duração", () => {
+    const parsed = parseQuickTask("Reunião com Bia às 14h", today);
+    expect(parsed.estimatedMinutes).toBeUndefined();
+    expect(parsed.title).toBe("Reunião com Bia às 14h");
+  });
+
   it("reconhece data relativa, prioridade e tags e limpa o título", () => {
     const parsed = parseQuickTask("Pagar conta de luz amanhã !alta #casa #Contas", today);
     expect(parsed.title).toBe("Pagar conta de luz");

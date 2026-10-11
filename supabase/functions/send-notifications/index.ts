@@ -518,7 +518,7 @@ Deno.serve(async (req) => {
     const [{ data: taskRows }, { data: eventRows }, { data: sentRows }] = await Promise.all([
       supabase
         .from("tasks")
-        .select("id, title, status, priority, due_date, created_at, estimated_minutes")
+        .select("id, title, description, status, priority, due_date, created_at, estimated_minutes")
         .eq("user_id", userId)
         .eq("is_cancelled", false)
         .is("parent_task_id", null),

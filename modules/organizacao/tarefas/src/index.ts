@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./service";
+export * from "./estimate";
 export * from "./repository";
 export * from "./hoje-provider";
 export * from "./hooks/useTasks";

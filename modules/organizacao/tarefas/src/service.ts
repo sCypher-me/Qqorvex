@@ -1,3 +1,4 @@
+import { extractDuration } from "./estimate";
 import type { TablesUpdate } from "@qqorvex/database";
 import type { RecurringTask, Task, TaskPriority, TaskRecurrenceFrequency, TaskWithConditions } from "./types";
 
@@ -121,8 +122,10 @@ export interface ParsedQuickTask {
   dueDate?: string;
   priority?: Task["priority"];
   tags: string[];
+  /** Duração escrita ("30min", "1h30"), já fora do título. */
+  estimatedMinutes?: number;
   /** Trechos reconhecidos (para mostrar ao usuário o que foi entendido). */
-  tokens: Array<{ kind: "date" | "priority" | "tag"; label: string }>;
+  tokens: Array<{ kind: "date" | "priority" | "tag" | "duration"; label: string }>;
 }
 
 const WEEKDAYS: Array<[RegExp, number]> = [
@@ -151,9 +154,10 @@ function formatShortDate(key: string): string {
 }
 
 /**
- * Entende "Pagar luz amanhã !alta #casa": datas relativas (hoje, amanhã, depois de amanhã,
+ * Entende "Pagar luz amanhã !alta #casa 15min": datas relativas (hoje, amanhã, depois de amanhã,
  * dias da semana, "em 3 dias", "semana que vem", "dia 15", "15/10"), prioridade (!alta, !média,
- * !baixa, !!!, !!) e tags (#casa). O que não for reconhecido continua no título.
+ * !baixa, !!!, !!), tags (#casa) e duração ("30min", "1h30"; "às 14h" é horário e fica no título).
+ * O que não for reconhecido continua no título.
  */
 export function parseQuickTask(input: string, today = localDateKey()): ParsedQuickTask {
   let text = ` ${input.trim()} `;
@@ -177,6 +181,14 @@ export function parseQuickTask(input: string, today = localDateKey()): ParsedQui
     tokens.push({ kind: "priority", label: priority === "alta" ? "Alta" : priority === "media" ? "Média" : "Baixa" });
     return " ";
   });
+
+  let estimatedMinutes: number | undefined;
+  const duration = extractDuration(text);
+  if (duration) {
+    estimatedMinutes = duration.minutes;
+    tokens.push({ kind: "duration", label: duration.minutes >= 60 && duration.minutes % 60 === 0 ? `${duration.minutes / 60}h` : duration.minutes > 60 ? `${Math.floor(duration.minutes / 60)}h${String(duration.minutes % 60).padStart(2, "0")}` : `${duration.minutes} min` });
+    text = text.replace(duration.match, " ");
+  }
 
   const setDate = (key: string, match: string) => {
     if (dueDate) return false;
@@ -238,7 +250,7 @@ export function parseQuickTask(input: string, today = localDateKey()): ParsedQui
   }
 
   const title = text.replace(/\s+/g, " ").trim();
-  return { title, dueDate, priority, tags, tokens };
+  return { title, dueDate, priority, tags, estimatedMinutes, tokens };
 }
 
 /* ───────────────────── Agrupamento e rótulos ───────────────────── */
