@@ -35,6 +35,8 @@
 
 ### 3. Vex: confiabilidade, contexto e execução
 
+> **Estado (11/10/2026):** completo. Já existiam: guia completo do app no servidor (`_shared/vexGuide.ts`) com lista de ferramentas permitidas, contexto da tela/item atual (`CurrentItemContext`), confirmação por botão com verificação do resultado, registro de ações concluídas/recusadas para não repetir, até 3 consultas por resposta com progresso ("Consultando…"), as três personalidades e conteúdo educativo sem bloqueio por palavra. Feito agora: plano único (`propose_plan`: várias ações que gravam dados, em uma ou várias áreas, numa lista em que a pessoa retira itens e confirma o resto num botão; falha parcial vira recibo "feito/falhou/retirado" e oferta de tentar de novo só o que falhou); memória com consentimento (`vex_memories` + `remember`/`list_memories`/`forget_memory`, todas as gravações com cartão; Configurações → Aparência → Memória da Vex para ver, editar e apagar; entram no contexto como preferências, não como regras); pesquisas salvas com fontes obrigatórias (`create_page_with_content` com `research`/`sources`, bloco "Fontes" e referências [1], [2]…).
+
 - Usar um catálogo atualizado das capacidades reais do app, com as permissões e ações disponíveis em cada área.
 - Passar à Vex o contexto relevante da tela/item atual, sem carregar dados não relacionados ao pedido.
 - Padronizar o fluxo de trabalho: entender o objetivo, consultar app/web conforme necessário, preparar o resultado, pedir apenas dados indispensáveis, exibir destino e mudanças, obter confirmação por botão, executar e verificar a gravação.

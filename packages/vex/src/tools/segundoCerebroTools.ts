@@ -37,23 +37,35 @@ export function createSegundoCerebroTools(client: SupabaseClient<Database>, user
     {
       name: "create_page_with_content",
       description:
-        "Cria uma nova página no Segundo Cérebro já com um bloco de texto — use quando o usuário pedir para salvar algo que foi pesquisado/discutido na conversa (o conteúdo pesquisado vai no parâmetro content)",
+        "Cria uma nova página no Segundo Cérebro já com um bloco de texto — use quando o usuário pedir para salvar algo que foi pesquisado/discutido na conversa (o conteúdo pesquisado vai no parâmetro content). Se o conteúdo veio de pesquisa na internet, marque research=true e passe as fontes usadas (sources); no texto, indique a fonte junto das afirmações importantes ([1], [2]…) e sinalize o que for incerto ou divergente entre fontes",
       parameters: {
         type: "object",
         properties: {
           title: { type: "string", description: "Título da página" },
           content: { type: "string", description: "Conteúdo (texto) a salvar na página" },
+          research: { type: "boolean", description: "true quando o conteúdo veio de pesquisa na internet" },
+          sources: { type: "array", items: { type: "string" }, description: "Fontes, uma por item, no formato 'Título — https://…', na mesma ordem das referências [1], [2]…" },
         },
         required: ["title", "content"],
       },
       requiresConfirmation: true,
+      // Pesquisa salva sem fonte não passa: referências são obrigatórias nos materiais de pesquisa.
+      validate: (args) => {
+        if (args.research !== true) return null;
+        const sources = Array.isArray(args.sources) ? args.sources.filter((source) => typeof source === "string" && /https?:\/\//.test(source)) : [];
+        return sources.length > 0 ? null : "uma pesquisa salva precisa das fontes (sources) com link";
+      },
       async execute(args) {
         const title = String(args.title ?? "").trim();
         const content = String(args.content ?? "").trim();
         if (!title || !content) return { summary: "Não consegui criar a página: título ou conteúdo vazio." };
+        const sources = Array.isArray(args.sources) ? args.sources.map((source) => String(source).trim()).filter(Boolean) : [];
         const page = await createPage(client, userId, { title });
         await createBlock(client, page.id, "texto", { text: content }, 0);
-        return { summary: `Página criada com conteúdo: "${page.title}".`, data: page };
+        if (sources.length > 0) {
+          await createBlock(client, page.id, "texto", { text: `Fontes\n${sources.map((source, index) => `[${index + 1}] ${source}`).join("\n")}` }, 1);
+        }
+        return { summary: `Página criada com conteúdo${sources.length ? ` e ${sources.length} ${sources.length === 1 ? "fonte" : "fontes"}` : ""}: "${page.title}".`, data: page };
       },
     },
     {

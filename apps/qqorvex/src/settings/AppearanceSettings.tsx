@@ -7,6 +7,7 @@ import { useAccount } from "../app/account";
 import { LEVEL_THEMES, VIP_THEME, useTheme, type AppSkin, type ThemePreference } from "../app/ThemeContext";
 import { SkinPreview, ThemeRewardCard, type ThemeRewardDefinition } from "../components/ThemeRewardCard";
 import { SettingsCard, SettingsHeader } from "./shared";
+import { VexMemorySettings } from "./VexMemorySettings";
 import { normalizeVexStyle, VEX_STYLE_OPTIONS, type VexStyle } from "@qqorvex/vex";
 
 const DEFAULT_SKIN: ThemeRewardDefinition = {
@@ -146,6 +147,8 @@ export function AppearanceSettings() {
           })}
         </div>
       </SettingsCard>
+
+      <VexMemorySettings />
 
       <SettingsCard
         title="Temas visuais"

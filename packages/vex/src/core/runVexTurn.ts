@@ -1,5 +1,5 @@
 import { checkQuerySafety } from "../safety";
-import type { ChatMessage, ToolDefinition, VexActionPreview, VexProvider, VexStep, VexTurnResult } from "../types";
+import type { ChatMessage, ToolDefinition, ToolResult, VexActionPreview, VexProvider, VexStep, VexTurnResult } from "../types";
 
 const MAX_TOOL_ARGUMENTS_CHARS = 16_000;
 
@@ -60,7 +60,7 @@ export function validateToolArguments(tool: ToolDefinition, args: unknown): stri
     if (property.type === "array" && !Array.isArray(value)) return `"${key}" precisa ser uma lista`;
   }
 
-  return null;
+  return tool.validate?.(args) ?? null;
 }
 
 /** Quantas consultas (ferramentas sem confirmação) a Vex pode encadear antes de responder. */
@@ -98,23 +98,23 @@ export async function runVexTurn(params: TurnParams): Promise<VexTurnResult> {
 export async function confirmVexToolCall(params: TurnParams & { tool: ToolDefinition; args: Record<string, unknown> }): Promise<VexTurnResult> {
   const validationError = validateToolArguments(params.tool, params.args);
   if (validationError) return { kind: "message", content: `Não consegui executar essa ação: ${validationError}.`, steps: [] };
-  const { message, step } = await executeTool(params.tool, params.args);
+  const { message, step, result: executed } = await executeTool(params.tool, params.args);
   params.onStep?.(step);
-  if (!step.ok) return { kind: "message", content: message.content, steps: [step] };
+  if (!step.ok) return { kind: "message", content: message.content, steps: [step], executed };
   // O modelo precisa ver que foi ELE quem pediu a ação e que ela já aconteceu; sem isso, o resultado
   // solto parece um pedido ainda pendente e ele propõe a mesma ação de novo.
-  const executed: ChatMessage = { role: "assistant", content: actionRecord("done", previewToolCall(params.tool, params.args)) };
+  const record: ChatMessage = { role: "assistant", content: actionRecord("done", previewToolCall(params.tool, params.args)) };
   const executedKey = `${params.tool.name}:${JSON.stringify(params.args)}`;
   let result: VexTurnResult;
   try {
-    result = await continueTurn({ ...params, messages: [...params.messages, executed, message] }, [step], { executedKey, summary: message.content });
+    result = await continueTurn({ ...params, messages: [...params.messages, record, message] }, [step], { executedKey, summary: message.content });
   } catch {
     // A falha ao redigir a resposta posterior não desfaz nem invalida a ação já executada.
-    return { kind: "message", content: `${message.content} A ação foi concluída, mas não consegui continuar a resposta agora.`, steps: [step] };
+    return { kind: "message", content: `${message.content} A ação foi concluída, mas não consegui continuar a resposta agora.`, steps: [step], executed };
   }
   // Se o modelo não comentar o resultado, o resumo da ferramenta é a resposta.
-  if (result.kind === "message" && !result.content.trim()) return { ...result, content: message.content };
-  return result;
+  if (result.kind === "message" && !result.content.trim()) return { ...result, content: message.content, executed };
+  return result.kind === "blocked" ? result : { ...result, executed };
 }
 
 async function continueTurn(
@@ -187,16 +187,18 @@ async function continueTurn(
   return { kind: "message", content: lastSummary ?? "", steps };
 }
 
-async function executeTool(tool: ToolDefinition, args: Record<string, unknown>): Promise<{ message: ChatMessage; step: VexStep }> {
+async function executeTool(tool: ToolDefinition, args: Record<string, unknown>): Promise<{ message: ChatMessage; step: VexStep; result: ToolResult }> {
   const label = tool.label ?? tool.name;
   try {
     const result = await tool.execute(args);
-    return { message: { role: "tool", toolName: tool.name, content: result.summary }, step: { tool: tool.name, label, ok: result.ok !== false } };
+    return { message: { role: "tool", toolName: tool.name, content: result.summary }, step: { tool: tool.name, label, ok: result.ok !== false }, result };
   } catch (error) {
     const detail = error instanceof Error && error.message ? ` (${error.message.slice(0, 160)})` : "";
+    const summary = `Não foi possível concluir "${label}" agora${detail}. Nada foi alterado além do que já estava salvo.`;
     return {
-      message: { role: "tool", toolName: tool.name, content: `Não foi possível concluir "${label}" agora${detail}. Nada foi alterado além do que já estava salvo.` },
+      message: { role: "tool", toolName: tool.name, content: summary },
       step: { tool: tool.name, label, ok: false },
+      result: { summary, ok: false },
     };
   }
 }
@@ -262,7 +264,8 @@ export function actionRecord(status: "done" | "cancelled" | "failed", action: Ve
   return `[A ação falhou e nada foi alterado: ${what}.]`;
 }
 
-function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): VexActionPreview {
+/** Como uma ação aparece no cartão de confirmação (prévia da ferramenta ou os argumentos legíveis). */
+export function previewToolCall(tool: ToolDefinition, args: Record<string, unknown>): VexActionPreview {
   if (tool.preview) {
     try {
       return tool.preview(args);

@@ -316,6 +316,10 @@ export const fixtures = {
   documents,
   gamification_stats: [{ user_id: USER_ID, xp: 1840, tasks_completed: 42, habit_or_goal_checkins: 96, library_items_completed: 7, quizzes_completed: 5, quizzes_90_plus: 2, checkin_days_completed: 18, updated_at: now }],
   user_badges: [],
+  vex_memories: [
+    { ...base, id: id("m0000000"), content: "Prefere reuniões depois das 10h", updated_at: now },
+    { ...base, id: id("m0000000"), content: "Estuda para a certificação AWS", updated_at: now },
+  ],
   vex_conversations: [
     { ...base, id: id("v0000000"), title: "Planejar a semana", updated_at: new Date(Date.now() - 2 * 3600000).toISOString() },
     { ...base, id: id("v0000000"), title: "Quanto gastei com mercado?", updated_at: new Date(Date.now() - 26 * 3600000).toISOString() },

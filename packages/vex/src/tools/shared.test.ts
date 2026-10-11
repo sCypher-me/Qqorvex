@@ -46,6 +46,7 @@ describe("registro de ferramentas", () => {
     const names = tools.map((tool) => tool.name);
     expect(new Set(names).size).toBe(names.length);
     expect(tools.every((tool) => Boolean(tool.label))).toBe(true);
-    expect(tools.length).toBeLessThanOrEqual(64);
+    const limit = Number(/const MAX_TOOLS = (\d+);/.exec(vexChatSource)?.[1]);
+    expect(tools.length).toBeLessThanOrEqual(limit);
   });
 });
