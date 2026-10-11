@@ -19,6 +19,7 @@ import { MobileBottomNav } from "./shell/MobileNav";
 import { PageTransition } from "./shell/PageTransition";
 import { QuickCreateProvider } from "./shell/QuickCreate";
 import { supabase } from "./supabase";
+import { useVaultAutoLock } from "./useVaultAutoLock";
 import { Onboarding } from "./Onboarding";
 import { APP_SKIN_STORAGE_KEY, isAppSkin, useTheme, type ThemePreference } from "./ThemeContext";
 import { TermsAcceptanceGate } from "./TermsAcceptanceGate";
@@ -107,6 +108,7 @@ function Shell() {
   const collapsed = true;
   const [vexOpen, setVexOpen] = useState(() => readFlag(VEX_OPEN_KEY));
   const [paletteOpen, setPaletteOpen] = useState(false);
+  useVaultAutoLock(supabase);
   const [onboardingFinished, setOnboardingFinished] = useState(false);
   const [passwordSetupFinished, setPasswordSetupFinished] = useState(false);
   const user = session!.user;

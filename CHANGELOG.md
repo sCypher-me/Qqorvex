@@ -23,6 +23,14 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   podem ser ajustadas ali mesmo; tarefas longas são divididas entre os intervalos.
 - Quando o dia não fecha, o Hoje mostra quanto falta e sugere passar prazos para amanhã: nada muda
   até o botão, dá para desmarcar itens e desfazer depois.
+- Códigos de recuperação do 2FA: 10 códigos de uso único entregues ao ativar a verificação (copiar ou
+  baixar), com contagem e geração de novos em Segurança. No login, "Perdi o acesso ao autenticador"
+  aceita um código e leva a pessoa a ativar o 2FA de novo.
+- Ações sensíveis (trocar e-mail ou senha, remover o 2FA, gerar códigos, encerrar sessões) pedem de
+  novo o código do autenticador, a senha atual ou um código por e-mail.
+- Aviso por push quando a conta é acessada por um aparelho novo; tocar no aviso abre a opção de
+  encerrar aquela sessão.
+- O Cofre fecha sozinho quando o app vai para segundo plano e depois de 5 minutos sem uso.
 - Captura rápida em linguagem natural no Hoje e no botão "+": escreva "Dentista sexta às 15h",
   "Gastei 40 no mercado", "Ideia: app de receitas" ou "Leite na lista" e o app mostra o tipo e o
   destino (Agenda, Finanças, Notas, Pessoal, Tarefas) antes de salvar. Dá para trocar o tipo com um

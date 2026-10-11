@@ -430,6 +430,8 @@ export const rpcFixtures = {
   get_my_document_storage_quota: [{ used_bytes: 1_462_000, quota_bytes: 25 * 1024 * 1024, max_file_bytes: 10 * 1024 * 1024, is_plus: false }],
   has_google_calendar_connection: false,
   has_security_pin: false,
+  count_mfa_recovery_codes: 7,
+  i_have_password: true,
   is_username_available: true,
   list_my_sessions: [
     { id: "qa-session", created_at: at(-12, 9), refreshed_at: at(0, 8), user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", ip: "189.40.12.8" },

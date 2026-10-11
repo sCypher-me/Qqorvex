@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from "react";
-import { CheckCircleIcon, CircleDashedIcon, DesktopIcon, DeviceMobileIcon, FingerprintIcon, KeyIcon, LockKeyIcon, ShieldCheckIcon, SignOutIcon } from "@phosphor-icons/react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
+import { CheckCircleIcon, CircleDashedIcon, CopySimpleIcon, DownloadSimpleIcon, DesktopIcon, DeviceMobileIcon, FingerprintIcon, KeyIcon, LockKeyIcon, ShieldCheckIcon, SignOutIcon } from "@phosphor-icons/react";
 import {
-  changePassword, emailRedirect, isPasswordValid, mapAuthError, requestReauthentication,
+  changePassword, countRecoveryCodes, generateRecoveryCodes, recoveryCodesFile, emailRedirect, isPasswordValid, mapAuthError, requestReauthentication,
   deletePasskey,
   enrollTotp,
   parseUserAgent,
@@ -22,6 +23,7 @@ import {
 } from "@qqorvex/auth";
 import { Badge, Button, ConfirmDialog, Input, Modal, Notice, ProgressRing, SkeletonBlock, SkeletonList, cx, useToast } from "@qqorvex/ui";
 import { PasswordField } from "../components/PasswordField";
+import { useReauth } from "./ReauthDialog";
 import { IconTile, SettingsCard, SettingsHeader, SettingsList, SettingsListRow, relativeTime } from "./shared";
 
 const RECENT_ACTIVITY_MS = 24 * 60 * 60 * 1000;
@@ -85,6 +87,12 @@ export function SecuritySettings() {
   const [confirmOthers, setConfirmOthers] = useState(false);
   const [confirmEverywhere, setConfirmEverywhere] = useState(false);
 
+  const reauth = useReauth();
+  const [recoveryCount, setRecoveryCount] = useState<number | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [params, setParams] = useSearchParams();
+
   const [pinCurrent, setPinCurrent] = useState("");
   const [pinValue, setPinValue] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -93,6 +101,38 @@ export function SecuritySettings() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const verifiedFactors = factors.filter((factor) => factor.status === "verified");
+  const hasTotp = verifiedFactors.length > 0;
+
+  useEffect(() => {
+    if (!hasTotp) return setRecoveryCount(null);
+    void countRecoveryCodes(client).then(setRecoveryCount);
+  }, [client, hasTotp]);
+
+  // Aviso de novo acesso abre "?sessao=<id>": leva direto à confirmação de encerrar aquela sessão.
+  const targetSession = params.get("sessao");
+  useEffect(() => {
+    if (!targetSession || sessionsLoading) return;
+    document.getElementById("seguranca-sessoes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (targetSession !== currentSessionId && sessions.some((item) => item.id === targetSession)) setRevokeId(targetSession);
+    setParams((current) => { const next = new URLSearchParams(current); next.delete("sessao"); return next; }, { replace: true });
+  }, [currentSessionId, sessions, sessionsLoading, setParams, targetSession]);
+
+  async function createRecoveryCodes() {
+    setRecoveryBusy(true);
+    try {
+      const { codes, error } = await generateRecoveryCodes(client);
+      if (error) return toast({ title: "Códigos não gerados", description: error, tone: "danger" });
+      setRecoveryCodes(codes);
+      setRecoveryCount(codes.length);
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  async function regenerateRecoveryCodes() {
+    if (!(await reauth.confirm("gerar novos códigos", { force: true }))) return;
+    await createRecoveryCodes();
+  }
   const emailVerified = Boolean(session?.user.email_confirmed_at);
   const checks = [
     { key: "email", label: "E-mail verificado", done: emailVerified, href: "#seguranca-email" },
@@ -111,6 +151,7 @@ export function SecuritySettings() {
       setEmailError("Informe um endereço diferente do e-mail atual.");
       return;
     }
+    if (!(await reauth.confirm("trocar o e-mail"))) return;
     setEmailBusy(true);
     try {
       const { error } = await client.auth.updateUser({ email: email.toLowerCase() }, { emailRedirectTo: emailRedirect("/configuracoes/seguranca") });
@@ -228,11 +269,14 @@ export function SecuritySettings() {
         setMfaError(error);
         return;
       }
+      const firstFactor = verifiedFactors.length === 0;
       setEnrollment(null);
       setCode("");
       setMfaModalOpen(false);
       refreshFactors();
       toast({ title: "Verificação em duas etapas ativada", tone: "success" });
+      // Primeiro autenticador: já entrega os códigos de recuperação (a sessão acabou de virar aal2).
+      if (firstFactor) await createRecoveryCodes();
     } catch {
       setMfaError("Não foi possível verificar o código. Confira sua conexão e tente novamente.");
     } finally {
@@ -267,6 +311,7 @@ export function SecuritySettings() {
   }
 
   async function removeFactor(factorId: string) {
+    if (!(await reauth.confirm("remover o app autenticador"))) return;
     setMfaBusy(true);
     try {
       const { error } = await unenrollFactor(client, factorId);
@@ -324,6 +369,7 @@ export function SecuritySettings() {
   }
 
   async function signOut(scope: "others" | "global") {
+    if (!(await reauth.confirm(scope === "global" ? "sair de todos os dispositivos" : "encerrar as outras sessões"))) return;
     setSessionError(null);
     setSessionsBusy(true);
     const { error } = await client.auth.signOut({ scope });
@@ -367,6 +413,12 @@ export function SecuritySettings() {
   return (
     <div className="flex flex-col gap-5">
       <SettingsHeader title="Segurança" description="Como você entra, onde sua conta está aberta e a proteção dos documentos do Cofre." />
+
+      {params.get("recuperado") === "1" && !hasTotp && (
+        <Notice tone="warning" title="Você entrou com um código de recuperação">
+          A verificação em duas etapas foi desligada para você conseguir entrar. Ative de novo com o app autenticador para manter a conta protegida.
+        </Notice>
+      )}
 
       <section className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:p-5" aria-label="Resumo de segurança">
         <div className="flex items-center gap-4 sm:w-64 sm:shrink-0">
@@ -417,7 +469,7 @@ export function SecuritySettings() {
 
         <SettingsCard title="Senha" description="Ao trocar, as outras sessões são encerradas por segurança.">
           <p className="text-[13px] text-fg-3">Use uma senha forte e única. A troca pede confirmação adicional quando necessário.</p>
-          <Button variant="secondary" className="self-start" onClick={() => { setPasswordError(null); setPasswordModalOpen(true); }}>Trocar senha</Button>
+          <Button variant="secondary" className="self-start" onClick={() => void (async () => { if (!(await reauth.confirm("trocar a senha"))) return; setPasswordError(null); setPasswordModalOpen(true); })()}>Trocar senha</Button>
         </SettingsCard>
 
         <SettingsCard
@@ -461,6 +513,17 @@ export function SecuritySettings() {
                   />
                 ))}
               </SettingsList>
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line-soft px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-fg">Códigos de recuperação</p>
+                  <p className="text-xs text-fg-3">
+                    {recoveryCount === null ? "Verificando…" : recoveryCount === 0 ? "Nenhum código válido. Gere agora para não ficar sem acesso se perder o celular." : `${recoveryCount} ${recoveryCount === 1 ? "código disponível" : "códigos disponíveis"}. Cada um vale uma vez.`}
+                  </p>
+                </div>
+                <Button size="xs" variant={recoveryCount === 0 ? "primary" : "secondary"} loading={recoveryBusy} onClick={() => void regenerateRecoveryCodes()}>
+                  {recoveryCount === 0 ? "Gerar códigos" : "Gerar novos"}
+                </Button>
+              </div>
               <p className="text-xs leading-relaxed text-fg-3">Dica: cadastre um segundo app em outro aparelho. Ele serve de reserva se você perder o celular.</p>
               <Button variant="secondary" size="sm" className="self-start" loading={mfaBusy} disabled={factors.length >= 10} onClick={() => void startEnrollment()}>
                 Adicionar app de reserva
@@ -544,6 +607,7 @@ export function SecuritySettings() {
         </SettingsCard>
 
         <SettingsCard
+          id="seguranca-sessoes"
           title="Onde sua conta está aberta"
           description="Encerre acessos que você não reconhece."
           aside={sessionsLoading ? undefined : <span className="text-xs tabular-nums text-fg-3">{sessions.length} {sessions.length === 1 ? "sessão" : "sessões"}</span>}
@@ -688,6 +752,49 @@ export function SecuritySettings() {
           </div>
         ) : null}
       </Modal>
+
+      <Modal
+        isOpen={recoveryCodes !== null}
+        onClose={() => setRecoveryCodes(null)}
+        title="Guarde seus códigos de recuperação"
+        description="Se perder o app autenticador, cada código permite entrar uma vez. Eles não aparecem de novo; gerar novos invalida estes."
+        size="sm"
+        icon={<KeyIcon size={18} />}
+      >
+        <div className="flex flex-col gap-4">
+          <ol className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg border border-line-soft bg-canvas/40 px-4 py-3 font-mono text-[13px] text-fg">
+            {(recoveryCodes ?? []).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="secondary"
+              leadingIcon={<CopySimpleIcon size={15} />}
+              onClick={() => void navigator.clipboard?.writeText((recoveryCodes ?? []).join("\n")).then(() => toast({ title: "Códigos copiados", tone: "success" }))}
+            >
+              Copiar
+            </Button>
+            <Button
+              variant="secondary"
+              leadingIcon={<DownloadSimpleIcon size={15} />}
+              onClick={() => {
+                const blob = new Blob([recoveryCodesFile(recoveryCodes ?? [], session?.user.email)], { type: "text/plain;charset=utf-8" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "qqorvex-codigos-de-recuperacao.txt";
+                link.click();
+                URL.revokeObjectURL(link.href);
+              }}
+            >
+              Baixar .txt
+            </Button>
+            <Button onClick={() => setRecoveryCodes(null)}>Já guardei</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {reauth.dialog}
 
       <ConfirmDialog
         isOpen={removeFactorId !== null}

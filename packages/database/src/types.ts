@@ -3697,6 +3697,15 @@ export type Database = {
       vault_unlocked_until: { Args: never; Returns: string | null }
       count_my_vault_documents: { Args: never; Returns: number }
       move_document_to_vault: { Args: { document_id: string }; Returns: boolean }
+      generate_mfa_recovery_codes: { Args: never; Returns: string[] }
+      count_mfa_recovery_codes: { Args: never; Returns: number }
+      use_mfa_recovery_code: { Args: { code: string }; Returns: boolean }
+      i_have_password: { Args: never; Returns: boolean }
+      verify_my_password: { Args: { password: string }; Returns: boolean }
+      claim_new_device_logins: {
+        Args: { since: string }
+        Returns: { alert_session_id: string; alert_user_id: string; alert_device: string; alert_ip: string | null; alert_at: string }[]
+      }
     }
     Enums: {
       account_type: "dinheiro" | "conta_bancaria" | "carteira_digital" | "outro"
