@@ -20,15 +20,12 @@ import {
   CompleteToggle,
   DueChip,
   PriorityFlag,
-  SmartAdd,
   compareTasksForAction,
   localDateKey,
   addDaysToKey,
-  useCreateTask,
   useAllTasks,
   useTasks,
   useUpdateTaskStatus,
-  type NewTaskInput,
   type TaskWithConditions,
 } from "@qqorvex/module-tarefas";
 import { addDays, eventCategory, startOfDay, useEventsInRange, type CalendarEvent } from "@qqorvex/module-agenda";
@@ -41,6 +38,7 @@ import { useAccount } from "../app/account";
 import { useQuickCreate } from "../app/shell/QuickCreate";
 import { MODULE_ROUTES } from "../app/shell/navigation";
 import { supabase } from "../app/supabase";
+import { QuickCaptureBar } from "../app/shell/QuickCaptureBar";
 import { useVexLauncher } from "../vex/VexLauncher";
 import { CloseDayCard, DayPlanPanel } from "./HojeDayPlan";
 
@@ -110,7 +108,6 @@ export function HojeEditorialPage() {
   const today = localDateKey(now);
   const { tasks, isLoading: tasksLoading } = useTasks(supabase, userId);
   const { tasks: allTasks } = useAllTasks(supabase);
-  const createTask = useCreateTask(supabase, userId);
   const updateStatus = useUpdateTaskStatus(supabase);
   const { events, isLoading: eventsLoading } = useEventsInRange(supabase, startOfDay(now), addDays(startOfDay(now), 1));
   const { habits } = useHabits(supabase);
@@ -145,10 +142,6 @@ export function HojeEditorialPage() {
         },
       },
     );
-  }
-
-  async function addTodayTask(input: NewTaskInput) {
-    await createTask.mutateAsync(input);
   }
 
   /* ── Agenda ── */
@@ -301,7 +294,7 @@ export function HojeEditorialPage() {
 
           <Panel title="Foco do dia" icon={<CheckCircleIcon />} action={<ButtonLink to="/planejar/tarefas" variant="ghost" size="xs" trailingIcon={<ArrowRightIcon size={12} />}>Todas</ButtonLink>}>
             <div className="px-4 pb-2 sm:px-5">
-              <SmartAdd onCreate={addTodayTask} defaults={{ dueDate: today }} placeholder="Adicionar ao seu dia…" />
+              <QuickCaptureBar defaultTaskDate={today} placeholder="Adicionar ao seu dia — tarefa, compromisso, gasto, ideia…" />
             </div>
             {tasksLoading ? (
               <div className="flex flex-col gap-2 px-5 py-3">

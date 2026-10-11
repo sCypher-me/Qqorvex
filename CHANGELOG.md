@@ -23,6 +23,10 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   podem ser ajustadas ali mesmo; tarefas longas são divididas entre os intervalos.
 - Quando o dia não fecha, o Hoje mostra quanto falta e sugere passar prazos para amanhã: nada muda
   até o botão, dá para desmarcar itens e desfazer depois.
+- Captura rápida em linguagem natural no Hoje e no botão "+": escreva "Dentista sexta às 15h",
+  "Gastei 40 no mercado", "Ideia: app de receitas" ou "Leite na lista" e o app mostra o tipo e o
+  destino (Agenda, Finanças, Notas, Pessoal, Tarefas) antes de salvar. Dá para trocar o tipo com um
+  toque, e nada é salvo antes do botão.
 - Reorganização do dia no Hoje: quando o dia não fecha ou há conflito na agenda, o painel propõe
   mudar de horário os blocos que você marcou para si (foco; estudos e pessoal sem local nem link),
   mover para amanhã o que libera tempo e só então passar prazos para amanhã. Reuniões nunca são
