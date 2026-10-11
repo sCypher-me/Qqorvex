@@ -53,6 +53,16 @@ export async function updateEvent(client: Client, eventId: string, input: NewEve
   return data;
 }
 
+/**
+ * Muda só o horário de um compromisso (início e fim), sem tocar em título, local, link ou margens —
+ * usado pela reorganização do dia, que move blocos flexíveis.
+ */
+export async function rescheduleEventTimes(client: Client, eventId: string, startAt: string, endAt: string): Promise<CalendarEvent> {
+  const { data, error } = await client.from("events").update({ start_at: startAt, end_at: endAt }).eq("id", eventId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+
 /** "Lembretes têm tabela mas nada os dispara" — agora dispara via `send-notifications` (pg_cron). */
 async function createEventReminder(client: Client, eventId: string, minutesBefore: number): Promise<EventReminder> {
   const { data, error } = await client

@@ -39,6 +39,8 @@ export function selectPlanTasks(tasks: AlertTask[], date: string): AlertTask[] {
   return tasks
     .filter((task) => task.status !== "concluido" && !task.blocked && ((task.due_date !== null && task.due_date <= date) || task.status === "em_andamento"))
     .sort((a, b) => {
+      const dueToday = Number(b.due_date !== null && b.due_date <= date) - Number(a.due_date !== null && a.due_date <= date);
+      if (dueToday) return dueToday;
       const inProgress = Number(b.status === "em_andamento") - Number(a.status === "em_andamento");
       if (inProgress) return inProgress;
       const dueA = a.due_date ?? "9999-12-31";
@@ -81,9 +83,9 @@ export function zoneOffsetMs(instant: Date, timeZone: string): number {
 }
 
 /** Pares de compromissos com horário que se sobrepõem de verdade (sem contar margens) a partir de `from`. */
-export function findEventConflicts(events: AlertEvent[], from: Date): Array<{ first: AlertEvent; second: AlertEvent; start: Date }> {
+export function findEventConflicts<T extends AlertEvent>(events: T[], from: Date): Array<{ first: T; second: T; start: Date }> {
   const upcoming = events.filter((event) => event.end > from).sort((a, b) => a.start.getTime() - b.start.getTime());
-  const conflicts: Array<{ first: AlertEvent; second: AlertEvent; start: Date }> = [];
+  const conflicts: Array<{ first: T; second: T; start: Date }> = [];
   for (let i = 0; i < upcoming.length; i += 1) {
     for (let j = i + 1; j < upcoming.length; j += 1) {
       const first = upcoming[i]!;
