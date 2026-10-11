@@ -10,6 +10,7 @@ import { billingLimitMessage } from "@qqorvex/database";
 import { Button, Input, Modal, Notice, Segmented, Select, useToast } from "@qqorvex/ui";
 import { useAccount } from "../account";
 import { supabase } from "../supabase";
+import { QuickCaptureBar } from "./QuickCaptureBar";
 import { QUICK_CREATE_OPTIONS, QUICK_CREATE_TITLES, type QuickCreateKind } from "./QuickCreate";
 
 function addDays(key: string, days: number): string {
@@ -36,6 +37,8 @@ export function QuickCreateDialog({
   const option = QUICK_CREATE_OPTIONS.find((item) => item.kind === kind)!;
   return (
     <Modal isOpen onClose={onClose} title={QUICK_CREATE_TITLES[kind]} size="md" icon={option.icon}>
+      <QuickCaptureBar autoFocus onDone={onClose} />
+      <p className="-mt-1 text-2xs text-fg-4">Ou preencha os detalhes:</p>
       <Segmented
         label="Tipo de item"
         size="sm"
