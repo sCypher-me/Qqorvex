@@ -23,7 +23,7 @@ import { createBlock, createPage } from "@qqorvex/module-segundo-cerebro";
 import { Button, ButtonLink, IconButton, Markdown, Notice, VexAvatar, cx, markdownToPlainText, useToast } from "@qqorvex/ui";
 import type { VexActionPreview, VexStep } from "@qqorvex/vex";
 import { supabase } from "../app/supabase";
-import type { ActionStatus, DisplayMessage, PendingAction, ProviderIssue, VexNotice } from "./useVexChat";
+import type { ActionStatus, DisplayMessage, PendingAction, PlanStepStatus, ProviderIssue, VexNotice } from "./useVexChat";
 import { latestVexRequestHasCompletedAction } from "./retryHistory";
 import { decodeVexAttachmentMessage } from "./fileAttachments";
 
@@ -233,9 +233,36 @@ const ACTION_STATUS: Record<ActionStatus, { label: string; icon: Icon; className
   failed: { label: "Não concluído", icon: WarningCircleIcon, className: "text-danger" },
 };
 
-function ActionReceipt({ action, status }: { action: VexActionPreview; status: ActionStatus }) {
+const PLAN_STEP_STATUS: Record<PlanStepStatus, { label: string; className: string }> = {
+  feito: { label: "Feito", className: "text-success" },
+  falhou: { label: "Falhou", className: "text-danger" },
+  retirado: { label: "Retirado", className: "text-fg-4" },
+};
+
+function ActionReceipt({ action, status, planSteps }: { action: VexActionPreview; status: ActionStatus; planSteps?: Array<{ title: string; status: PlanStepStatus }> }) {
   const meta = ACTION_STATUS[status];
   const subject = action.fields[0]?.value;
+  if (planSteps) {
+    return (
+      <div className="ml-9 rounded-lg border border-line-soft bg-surface/60 px-3 py-2 text-[13px]">
+        <div className="flex items-center gap-2">
+          <meta.icon size={16} weight="fill" className={cx("shrink-0", meta.className)} />
+          <span className={cx("min-w-0 flex-1 truncate", status === "cancelled" ? "text-fg-3 line-through decoration-fg-4" : "text-fg-2")}>{action.title}</span>
+          <span className={cx("shrink-0 text-xs", meta.className)}>{status === "cancelled" ? meta.label : `${planSteps.filter((step) => step.status === "feito").length} de ${planSteps.length}`}</span>
+        </div>
+        {status !== "cancelled" && (
+          <ul className="mt-1.5 flex flex-col gap-0.5 pl-6">
+            {planSteps.map((step, index) => (
+              <li key={`${index}-${step.title}`} className="flex items-center gap-2 text-xs">
+                <span className={cx("min-w-0 flex-1 truncate", step.status === "retirado" ? "text-fg-4 line-through" : "text-fg-3")}>{step.title}</span>
+                <span className={PLAN_STEP_STATUS[step.status].className}>{PLAN_STEP_STATUS[step.status].label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="ml-9 flex items-center gap-2 rounded-lg border border-line-soft bg-surface/60 px-3 py-2 text-[13px]">
       <meta.icon size={16} weight="fill" className={cx("shrink-0", meta.className)} />
@@ -248,11 +275,49 @@ function ActionReceipt({ action, status }: { action: VexActionPreview; status: A
   );
 }
 
-function ConfirmCard({ pending, busy, onConfirm, onCancel }: { pending: PendingAction; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
+function ConfirmCard({ pending, busy, onConfirm, onCancel, onToggleStep }: { pending: PendingAction; busy: boolean; onConfirm: () => void; onCancel: () => void; onToggleStep: (index: number) => void }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     confirmRef.current?.focus({ preventScroll: true });
-  }, [pending]);
+  }, [pending.action, pending.args]);
+  if (pending.plan) {
+    const keptCount = pending.plan.length - (pending.excluded?.length ?? 0);
+    return (
+      <div className="ml-9 overflow-hidden rounded-xl border border-ai-line bg-surface shadow-sm animate-pop-in" role="group" aria-label={`Confirmar plano: ${pending.action.title}`}>
+        <div className="flex items-center gap-2 border-b border-line-soft bg-ai-soft px-4 py-2.5">
+          <LightningIcon size={15} weight="fill" className="text-ai-fg" />
+          <p className="min-w-0 truncate text-[13px] font-semibold text-fg">{pending.action.title}</p>
+          <span className="ml-auto hidden shrink-0 text-[11px] text-fg-3 sm:inline">Desmarque o que não quiser</span>
+        </div>
+        <ul className="flex flex-col divide-y divide-line-soft">
+          {pending.plan.map((step, index) => {
+            const included = !pending.excluded?.includes(index);
+            return (
+              <li key={`${index}-${step.title}`}>
+                <label className="flex cursor-pointer items-start gap-3 px-4 py-2.5 hover:bg-hover">
+                  <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-[var(--q-ai)]" checked={included} disabled={busy} onChange={() => onToggleStep(index)} />
+                  <span className="min-w-0 flex-1">
+                    <span className={cx("block text-[13.5px]", included ? "text-fg" : "text-fg-4 line-through")}>{step.title}</span>
+                    {step.fields.length > 0 && (
+                      <span className={cx("block break-words text-xs", included ? "text-fg-3" : "text-fg-4")}>{step.fields.map((field) => `${field.label}: ${field.value}`).join(" · ")}</span>
+                    )}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="flex items-center justify-end gap-2 border-t border-line-soft px-3 py-2.5">
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
+            Cancelar
+          </Button>
+          <Button ref={confirmRef} size="sm" onClick={onConfirm} loading={busy} disabled={keptCount === 0}>
+            {keptCount === 1 ? "Confirmar 1 ação" : `Confirmar ${keptCount} ações`}
+          </Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="ml-9 overflow-hidden rounded-xl border border-ai-line bg-surface shadow-sm animate-pop-in" role="group" aria-label={`Confirmar: ${pending.action.title}`}>
       <div className="flex items-center gap-2 border-b border-line-soft bg-ai-soft px-4 py-2.5">
@@ -309,12 +374,13 @@ export interface VexThreadProps {
   providerIssue: ProviderIssue | null;
   onConfirm: () => void;
   onCancel: () => void;
+  onToggleStep: (index: number) => void;
   onRetry: () => void;
   onDismissIssue: () => void;
 }
 
 /** Lista de mensagens: pergunta, resposta formatada, ações confirmadas e o cartão de confirmação. */
-export function VexThread({ variant, messages, busy, liveStep, pending, notice, providerIssue, onConfirm, onCancel, onRetry, onDismissIssue }: VexThreadProps) {
+export function VexThread({ variant, messages, busy, liveStep, pending, notice, providerIssue, onConfirm, onCancel, onToggleStep, onRetry, onDismissIssue }: VexThreadProps) {
   const canRetryFallback = !pending && !latestVexRequestHasCompletedAction(messages);
   return (
     <div className={cx("flex flex-col", variant === "page" ? "gap-6" : "gap-5")}>
@@ -339,7 +405,7 @@ export function VexThread({ variant, messages, busy, liveStep, pending, notice, 
             </div>
           );
         }
-        if (message.role === "action") return <ActionReceipt key={message.id} action={message.action} status={message.status} />;
+        if (message.role === "action") return <ActionReceipt key={message.id} action={message.action} status={message.status} planSteps={message.planSteps} />;
         return <AssistantMessage key={message.id} content={message.content} steps={message.steps} variant={variant} fallback={message.fallback} />;
       })}
 
@@ -350,7 +416,7 @@ export function VexThread({ variant, messages, busy, liveStep, pending, notice, 
               <StepsLine steps={pending.steps} />
             </div>
           )}
-          <ConfirmCard pending={pending} busy={busy} onConfirm={onConfirm} onCancel={onCancel} />
+          <ConfirmCard pending={pending} busy={busy} onConfirm={onConfirm} onCancel={onCancel} onToggleStep={onToggleStep} />
         </div>
       )}
 

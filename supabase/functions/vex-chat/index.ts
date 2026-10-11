@@ -28,7 +28,7 @@ const CORS_HEADERS = {
 const MAX_MESSAGES = 48;
 const MAX_MESSAGE_CHARS = 12_000;
 const MAX_TOTAL_MESSAGE_CHARS = 120_000;
-const MAX_TOOLS = 64;
+const MAX_TOOLS = 96;
 const MAX_TOOL_DESCRIPTION_CHARS = 2_000;
 const MAX_TOOL_SCHEMA_CHARS = 24_000;
 const GEMINI_TIMEOUT_MS = 25_000;
@@ -53,6 +53,10 @@ const ALLOWED_TOOL_NAMES = new Set([
   "get_gamification_summary", "list_daily_challenges", "swap_daily_challenge",
   "get_profile_summary", "update_profile", "set_vex_style",
   "search_web",
+  "propose_plan",
+  "remember",
+  "list_memories",
+  "forget_memory",
 ]);
 
 const requestBuckets = new Map<string, { startedAt: number; count: number }>();

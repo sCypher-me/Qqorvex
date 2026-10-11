@@ -4,7 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   EchoProvider,
   GeminiProvider,
+  PLAN_TOOL_NAME,
+  keepPlanSteps,
   normalizeVexStyle,
+  previewPlanSteps,
+  readPlanSteps,
   OllamaProvider,
   ResilientProvider,
   VEX_SYSTEM_PROMPT,
@@ -17,8 +21,11 @@ import {
   useAppendVexMessage,
   useCreateVexConversation,
   useRenameVexConversation,
+  useVexMemories,
   useVexMessages,
+  vexMemoriesContext,
   type ChatMessage,
+  type PlanStepResult,
   type ToolDefinition,
   type VexActionPreview,
   type VexStep,
@@ -50,10 +57,12 @@ const FALLBACK_AFTER_ACTION_MARKER = "[Resposta em modo básico após ação con
 
 export type ActionStatus = "done" | "cancelled" | "failed";
 
+export type PlanStepStatus = "feito" | "falhou" | "retirado";
+
 export type DisplayMessage =
   | { id: string; role: "user"; content: string }
   | { id: string; role: "assistant"; content: string; steps?: VexStep[]; fallback?: boolean; completedAction?: boolean }
-  | { id: string; role: "action"; action: VexActionPreview; status: ActionStatus };
+  | { id: string; role: "action"; action: VexActionPreview; status: ActionStatus; planSteps?: Array<{ title: string; status: PlanStepStatus }> };
 
 export interface PendingAction {
   tool: ToolDefinition;
@@ -62,6 +71,14 @@ export interface PendingAction {
   steps: VexStep[];
   conversationId: string;
   history: DisplayMessage[];
+  /** Plano com várias ações: cada passo como aparece no cartão, e os que a pessoa retirou. */
+  plan?: VexActionPreview[];
+  excluded?: number[];
+}
+
+function planPending(base: Omit<PendingAction, "plan" | "excluded">, tools: ToolDefinition[]): PendingAction {
+  if (base.tool.name !== PLAN_TOOL_NAME) return base;
+  return { ...base, plan: previewPlanSteps(readPlanSteps(base.args), tools), excluded: [] };
 }
 
 export interface VexNotice {
@@ -112,6 +129,8 @@ export function useVexChat() {
   const renameConversation = useRenameVexConversation(supabase);
   const appendMessage = useAppendVexMessage(supabase);
   const messagesQuery = useVexMessages(supabase, activeConversationId);
+  const memoriesQuery = useVexMemories(supabase, Boolean(userId));
+  const memories = memoriesQuery.data;
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -169,28 +188,31 @@ export function useVexChat() {
           page: location.pathname === "/vex" ? null : { title: pageMeta.title, subtitle: pageMeta.subtitle },
           currentItem,
         }),
+        ...vexMemoriesContext(memories ?? []),
         ...toChat(history),
       ]),
-    [currentItem, firstName, location.pathname, pageMeta.subtitle, pageMeta.title],
+    [currentItem, firstName, location.pathname, memories, pageMeta.subtitle, pageMeta.title],
   );
 
   const applyResult = useCallback(
     (result: VexTurnResult, history: DisplayMessage[], conversationId: string, usedFallback = false) => {
       if (result.kind === "blocked") {
         setNotice({ text: result.reason, tone: "info" });
-        return;
+        return history;
       }
       if (result.kind === "confirmation_required") {
-        setPending({ tool: result.tool, args: result.toolCall.arguments, action: result.action, steps: result.steps, conversationId, history });
-        return;
+        setPending(planPending({ tool: result.tool, args: result.toolCall.arguments, action: result.action, steps: result.steps, conversationId, history }, tools));
+        return history;
       }
       const content = result.content.trim() || "Não recebi uma resposta desta vez. Pode reformular?";
       const completedAction = latestVexRequestHasCompletedAction(history);
-      setMessages([...history, { id: uid(), role: "assistant", content, steps: result.steps, fallback: usedFallback, completedAction }]);
+      const next: DisplayMessage[] = [...history, { id: uid(), role: "assistant", content, steps: result.steps, fallback: usedFallback, completedAction }];
+      setMessages(next);
       const marker = completedAction ? FALLBACK_AFTER_ACTION_MARKER : FALLBACK_MESSAGE_MARKER;
       appendMessage.mutate({ conversationId, role: "assistant", content: usedFallback ? `${marker}${content}` : content });
+      return next;
     },
-    [appendMessage],
+    [appendMessage, tools],
   );
 
   const runTurn = useCallback(
@@ -312,6 +334,10 @@ export function useVexChat() {
   const confirm = useCallback(async () => {
     if (!pending) return;
     const current = pending;
+    // Plano: só os passos que a pessoa manteve (índices originais).
+    const kept = current.plan ? current.plan.map((_, index) => index).filter((index) => !current.excluded?.includes(index)) : [];
+    if (current.plan && kept.length === 0) return cancelRef.current();
+    const args = current.plan ? keepPlanSteps(current.args, kept) : current.args;
     setPending(null);
     setProviderIssue(null);
     const turn = (turnRef.current += 1);
@@ -324,22 +350,53 @@ export function useVexChat() {
         tools,
         vexStyle,
         tool: current.tool,
-        args: current.args,
+        args,
         onStep: (step) => {
           if (turn === turnRef.current) setLiveStep(step.label);
         },
       });
       void queryClient.invalidateQueries();
       const failed = result.kind === "message" && result.steps[0]?.ok === false;
-      const history: DisplayMessage[] = [...current.history, { id: uid(), role: "action", action: current.action, status: failed ? "failed" : "done" }];
+
+      // Recibo do plano: o que foi feito, o que falhou e o que a pessoa retirou — o modelo também vê isso
+      // e não repete o que já deu certo.
+      const planResults = result.kind !== "blocked" ? ((result.executed?.data as { results?: PlanStepResult[] } | undefined)?.results ?? []) : [];
+      const statusOf = (index: number): PlanStepStatus => {
+        const position = kept.indexOf(index);
+        if (position < 0) return "retirado";
+        return planResults[position]?.ok ? "feito" : "falhou";
+      };
+      const planSteps = current.plan?.map((preview, index) => ({ title: preview.title, status: statusOf(index) }));
+      const action: VexActionPreview = planSteps
+        ? { title: current.action.title, fields: planSteps.map((step, index) => ({ label: `${index + 1}. ${step.title}`, value: step.status })) }
+        : current.action;
+      const history: DisplayMessage[] = [...current.history, { id: uid(), role: "action", action, status: failed ? "failed" : "done", ...(planSteps ? { planSteps } : {}) }];
       if (turn !== turnRef.current) {
         setMessages(history);
         return;
       }
       setMessages(history);
       // O primeiro passo é a própria ação confirmada (já aparece no recibo), não uma consulta.
-      applyResult(result.kind === "blocked" ? result : { ...result, steps: result.steps.slice(1) }, history, current.conversationId, fallbackEpochRef.current > fallbackEpoch);
-      if (failed && fallbackEpochRef.current === fallbackEpoch) {
+      const after = applyResult(result.kind === "blocked" ? result : { ...result, steps: result.steps.slice(1) }, history, current.conversationId, fallbackEpochRef.current > fallbackEpoch);
+
+      // Passos que falharam voltam como um novo plano, só com eles, para tentar de novo sem repetir o resto.
+      const failedSteps = current.plan && planResults.length > 0 ? kept.filter((index) => statusOf(index) === "falhou") : [];
+      if (failedSteps.length > 0 && result.kind === "message" && turn === turnRef.current) {
+        const retryArgs = keepPlanSteps(current.args, failedSteps);
+        setPending(
+          planPending(
+            {
+              tool: current.tool,
+              args: retryArgs,
+              action: { title: failedSteps.length === 1 ? "Tentar de novo a ação que falhou" : `Tentar de novo as ${failedSteps.length} ações que falharam`, fields: [] },
+              steps: [],
+              conversationId: current.conversationId,
+              history: after,
+            },
+            tools,
+          ),
+        );
+      } else if (failed && fallbackEpochRef.current === fallbackEpoch) {
         setNotice({ text: "Não consegui concluir essa ação. O pedido original continua aqui; tente novamente quando a conexão estabilizar.", tone: "error", retry: true });
       }
     } catch {
@@ -359,6 +416,17 @@ export function useVexChat() {
     setPending(null);
     setProviderIssue(null);
   }, [pending]);
+  const cancelRef = useRef(cancel);
+  cancelRef.current = cancel;
+
+  /** Retira ou devolve um passo do plano antes de confirmar. */
+  const toggleStep = useCallback((index: number) => {
+    setPending((current) => {
+      if (!current?.plan) return current;
+      const excluded = current.excluded ?? [];
+      return { ...current, excluded: excluded.includes(index) ? excluded.filter((item) => item !== index) : [...excluded, index] };
+    });
+  }, []);
 
   const reset = useCallback(() => {
     turnRef.current += 1;
@@ -410,6 +478,7 @@ export function useVexChat() {
     stop,
     confirm,
     cancel,
+    toggleStep,
     newConversation,
     selectConversation,
     dismissNotice: () => setNotice(null),

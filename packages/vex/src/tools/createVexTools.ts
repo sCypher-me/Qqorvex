@@ -14,6 +14,8 @@ import { createSegundoCerebroTools } from "./segundoCerebroTools";
 import { createTarefasTools } from "./tarefasTools";
 import { createVidaPessoalTools } from "./vidaPessoalTools";
 import { createWebTools } from "./webTools";
+import { createPlanTool } from "./planTools";
+import { createMemoryTools } from "./memoryTools";
 
 export interface VexToolsOptions {
   tmdbApiKey?: string;
@@ -46,8 +48,11 @@ export function createVexTools(
     ...labeled("Vida pessoal", createVidaPessoalTools(client, userId)),
     ...labeled("Conquistas", createGamificacaoTools(client, userId)),
     ...labeled("Perfil", createPerfilTools(client, userId)),
+    ...createMemoryTools(client),
   ];
 
   if (options.includeWebSearch !== false) tools.push(...labeled("Web", createWebTools(client)));
+  // Plano único com várias ações que gravam dados; enxerga as demais ferramentas.
+  tools.push(createPlanTool(() => tools));
   return tools;
 }

@@ -23,6 +23,12 @@ Todas as mudanças importantes do app ficam registradas aqui. Os APKs beta são 
   podem ser ajustadas ali mesmo; tarefas longas são divididas entre os intervalos.
 - Quando o dia não fecha, o Hoje mostra quanto falta e sugere passar prazos para amanhã: nada muda
   até o botão, dá para desmarcar itens e desfazer depois.
+- Plano único da Vex: pedidos com várias ações (criar tarefa, marcar compromisso, pôr na lista…)
+  aparecem juntos numa lista; você desmarca o que não quiser e confirma o resto com um botão. Se
+  algo falhar, o recibo mostra o que foi feito e a Vex oferece tentar de novo só o que falhou.
+- Memória da Vex com consentimento: ela só guarda o que você pede ("lembre que…") e confirma; tudo
+  aparece em Configurações → Aparência → Memória da Vex para editar ou apagar.
+- Pesquisas salvas pela Vex trazem as fontes com link e referências no texto.
 - Captura rápida em linguagem natural no Hoje e no botão "+": escreva "Dentista sexta às 15h",
   "Gastei 40 no mercado", "Ideia: app de receitas" ou "Leite na lista" e o app mostra o tipo e o
   destino (Agenda, Finanças, Notas, Pessoal, Tarefas) antes de salvar. Dá para trocar o tipo com um

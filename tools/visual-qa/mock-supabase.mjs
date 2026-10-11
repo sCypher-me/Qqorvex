@@ -266,6 +266,25 @@ export async function installSupabaseMock(page, { log = false, onboarding = fals
           });
         }
         if (last.role === "tool") return json({ kind: "message", content: "Pronto! Criei a tarefa **Revisar contrato** para amanhã, com prioridade alta. Quer um lembrete às 9h?" });
+        if (/viagem/.test(text) && tools.has("propose_plan")) {
+          const friday = new Date(Date.now() + 5 * 86_400_000);
+          const key = `${friday.getFullYear()}-${String(friday.getMonth() + 1).padStart(2, "0")}-${String(friday.getDate()).padStart(2, "0")}`;
+          const step = (tool, args) => ({ tool, arguments_json: JSON.stringify(args) });
+          return json({
+            kind: "tool_call",
+            toolCall: {
+              name: "propose_plan",
+              arguments: {
+                title: "Preparar a viagem de sexta",
+                steps: [
+                  step("create_task", { title: "Comprar passagem", dueDate: key, priority: "alta" }),
+                  step("create_event", { title: "Voo para Recife", date: key, startTime: "18:30", durationMinutes: 180 }),
+                  step("add_shopping_list_item", { name: "Protetor solar" }),
+                ],
+              },
+            },
+          });
+        }
         if (/dia/.test(text) && tools.has("get_day_overview")) return json({ kind: "tool_call", toolCall: { name: "get_day_overview", arguments: {} } });
         if (/tarefa/.test(text) && tools.has("create_task")) {
           const tomorrow = new Date(Date.now() + 86_400_000);

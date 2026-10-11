@@ -24,3 +24,6 @@ export * from "./tools/gamificacaoTools";
 export * from "./tools/perfilTools";
 export * from "./tools/hojeTools";
 export * from "./tools/createVexTools";
+export * from "./tools/planTools";
+export * from "./tools/memoryTools";
+export * from "./memories";

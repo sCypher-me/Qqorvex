@@ -115,6 +115,7 @@ export function VexConversationView({ onClose, variant = "panel" }: { onClose?: 
               providerIssue={chat.providerIssue}
               onConfirm={() => void chat.confirm()}
               onCancel={chat.cancel}
+              onToggleStep={chat.toggleStep}
               onRetry={() => void chat.retry()}
               onDismissIssue={chat.dismissProviderIssue}
             />

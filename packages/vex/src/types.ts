@@ -52,6 +52,8 @@ export interface ToolDefinition {
   requiresConfirmation: boolean;
   /** Descrição legível da ação para o cartão de confirmação. Sem ela, os argumentos aparecem crus. */
   preview?: (args: Record<string, unknown>) => VexActionPreview;
+  /** Conferência extra dos argumentos além do schema (ex.: cada passo de um plano). Devolve o problema ou null. */
+  validate?: (args: Record<string, unknown>) => string | null;
   execute: (args: Record<string, unknown>) => Promise<ToolResult>;
 }
 
@@ -70,6 +72,6 @@ export interface VexProvider {
 }
 
 export type VexTurnResult =
-  | { kind: "message"; content: string; steps: VexStep[] }
-  | { kind: "confirmation_required"; toolCall: ToolCall; tool: ToolDefinition; preview: string; action: VexActionPreview; steps: VexStep[] }
+  | { kind: "message"; content: string; steps: VexStep[]; executed?: ToolResult }
+  | { kind: "confirmation_required"; toolCall: ToolCall; tool: ToolDefinition; preview: string; action: VexActionPreview; steps: VexStep[]; executed?: ToolResult }
   | { kind: "blocked"; reason: string };
